@@ -66,3 +66,20 @@
 - Added Account / Cash-COD customer classification.
 - Added customer type to the customer workspace/list.
 - Aligned Settings action buttons.
+
+
+## 0.2.0-alpha.6
+- Added schema-versioned SQLite upgrades.
+- Fixed Alpha 5 SQLite startup syntax error.
+- Added unit and integration test projects.
+- Added migration regression tests.
+- Updated build script to run tests.
+- Added Functional Specification, Business Rules, and Testing documentation.
+
+
+## 0.2.0-alpha.6.1
+- Fixed missing xUnit namespaces in new test projects.
+- Fixed build script false-success reporting.
+- Added batch build/test launcher.
+- Removed EF1002 schema-upgrade warnings.
+- Removed duplicate WinForms DPI manifest configuration.

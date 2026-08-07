@@ -45,6 +45,7 @@ public sealed class CustomersView : UserControl
         customerType.Items.Add(new CustomerTypeOption(CustomerType.CashCod, "Cash / COD"));
         customerType.SelectedIndex = 0;
         Build();
+        code.Leave += (_, _) => code.Text = code.Text.Trim().ToUpperInvariant();
         _ = ReloadAsync();
     }
 

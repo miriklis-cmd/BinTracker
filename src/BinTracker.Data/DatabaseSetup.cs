@@ -9,8 +9,6 @@ public static class DatabaseSetup
 
     public static DatabaseSettings Settings => _settings ??= DatabaseConfiguration.Load();
 
-    // Kept for compatibility with existing code and backup work. SQLite is the active
-    // provider in this alpha; PostgreSQL will be enabled before multi-user deployment.
     public static string AppFolder => DatabaseConfiguration.AppFolder;
     public static string DatabasePath => DatabaseConfiguration.DefaultSqlitePath;
     public static string ConnectionString =>
@@ -45,8 +43,7 @@ public static class DatabaseSetup
 
             case DatabaseProvider.PostgreSql:
                 throw new NotSupportedException(
-                    "PostgreSQL support is prepared but not enabled in this alpha. " +
-                    "SQLite remains active until the multi-user deployment milestone.");
+                    "PostgreSQL support is prepared but not enabled in this alpha.");
 
             default:
                 throw new NotSupportedException(
@@ -75,136 +72,59 @@ public static class DatabaseSetup
         }
     }
 
-    private static async Task InitializeSqliteAsync(BinTrackerDbContext db)
+    internal static async Task InitializeSqliteAsync(BinTrackerDbContext db)
     {
         await db.Database.EnsureCreatedAsync();
 
-        // These statements upgrade older alpha SQLite databases without deleting
-        // customer/container/movement data. Keeping this SQLite-specific work here
-        // prevents provider details leaking into services or the UI.
-        await db.Database.ExecuteSqlRawAsync("""
-            CREATE TABLE IF NOT EXISTS UserAccounts (
-                Id INTEGER NOT NULL CONSTRAINT PK_UserAccounts PRIMARY KEY AUTOINCREMENT,
-                Username TEXT NOT NULL,
-                DisplayName TEXT NOT NULL,
-                PasswordHash TEXT NOT NULL,
-                PasswordSalt TEXT NOT NULL,
-                Role INTEGER NOT NULL,
-                IsActive INTEGER NOT NULL,
-                MustChangePassword INTEGER NOT NULL,
-                CreatedUtc TEXT NOT NULL,
-                CreatedByUserId INTEGER NULL,
-                LastLoginUtc TEXT NULL
-            );
-            """);
+        // From Alpha 6 onward, database changes are applied in explicit numbered steps.
+        // This replaces the earlier collection of ad-hoc "if missing" upgrade statements.
+        await EnsureSchemaVersionTableAsync(db);
 
-        await db.Database.ExecuteSqlRawAsync(
-            "CREATE UNIQUE INDEX IF NOT EXISTS IX_UserAccounts_Username ON UserAccounts (Username);");
+        var currentVersion = await GetSchemaVersionAsync(db);
 
-        await db.Database.ExecuteSqlRawAsync("""
-            CREATE TABLE IF NOT EXISTS AuditEvents (
-                Id INTEGER NOT NULL CONSTRAINT PK_AuditEvents PRIMARY KEY AUTOINCREMENT,
-                TimestampUtc TEXT NOT NULL,
-                UserId INTEGER NULL,
-                Username TEXT NOT NULL,
-                Action TEXT NOT NULL,
-                EntityType TEXT NOT NULL,
-                EntityId TEXT NULL,
-                Description TEXT NOT NULL,
-                BeforeValues TEXT NULL,
-                AfterValues TEXT NULL,
-                ComputerName TEXT NOT NULL,
-                SessionId TEXT NOT NULL,
-                Succeeded INTEGER NOT NULL
-            );
-            """);
-
-        await db.Database.ExecuteSqlRawAsync(
-            "CREATE INDEX IF NOT EXISTS IX_AuditEvents_TimestampUtc ON AuditEvents (TimestampUtc);");
-
-        await db.Database.ExecuteSqlRawAsync(
-            "CREATE INDEX IF NOT EXISTS IX_AuditEvents_UserId_TimestampUtc ON AuditEvents (UserId, TimestampUtc);");
-
-        // Business schema upgrades for customer management and reminder automation groundwork.
-        await AddColumnIfMissingAsync(db, "Customers", "MobileNumber", "TEXT NULL");
-        await AddColumnIfMissingAsync(db, "Customers", "CustomerType", "INTEGER NOT NULL DEFAULT 0");
-        await AddColumnIfMissingAsync(db, "Customers", "Notes", "TEXT NULL");
-        await AddColumnIfMissingAsync(db, "Customers", "AllowEmailReminders", "INTEGER NOT NULL DEFAULT 1");
-        await AddColumnIfMissingAsync(db, "Customers", "AllowSmsReminders", "INTEGER NOT NULL DEFAULT 1");
-        await AddColumnIfMissingAsync(db, "Customers", "ReminderOptOut", "INTEGER NOT NULL DEFAULT 0");
-        await AddColumnIfMissingAsync(db, "Customers", "CreatedByUserId", "INTEGER NULL");
-        await AddColumnIfMissingAsync(db, "Customers", "UpdatedByUserId", "INTEGER NULL");
-
-        // Rename the original seeded type without affecting its stable Id or movement history.
-        await db.Database.ExecuteSqlRawAsync(
-            "UPDATE ContainerTypes SET Name = 'Blue Bin', Description = 'Standard blue reusable bin' WHERE Id = 1 AND Name = 'Standard Bin';");
-
-        await db.Database.ExecuteSqlRawAsync("""
-            CREATE TABLE IF NOT EXISTS ReminderDeliveries (
-                Id INTEGER NOT NULL CONSTRAINT PK_ReminderDeliveries PRIMARY KEY AUTOINCREMENT,
-                CustomerId INTEGER NOT NULL,
-                Channel INTEGER NOT NULL,
-                Status INTEGER NOT NULL,
-                Destination TEXT NOT NULL,
-                Subject TEXT NOT NULL,
-                MessageBody TEXT NOT NULL,
-                ProviderMessageId TEXT NULL,
-                ProviderResponse TEXT NULL,
-                CreatedUtc TEXT NOT NULL,
-                SentUtc TEXT NULL,
-                InitiatedByUserId INTEGER NULL,
-                OutstandingSnapshotJson TEXT NULL,
-                CONSTRAINT FK_ReminderDeliveries_Customers_CustomerId FOREIGN KEY (CustomerId) REFERENCES Customers (Id) ON DELETE RESTRICT
-            );
-            """);
-        await db.Database.ExecuteSqlRawAsync(
-            "CREATE INDEX IF NOT EXISTS IX_ReminderDeliveries_CustomerId_CreatedUtc ON ReminderDeliveries (CustomerId, CreatedUtc);");
-
-        // Enforce case-insensitive customer-code uniqueness at the database level when
-        // the existing alpha data has no collisions. If an older test database already
-        // contains e.g. "Albury" and "ALBURY", the service layer still blocks any new
-        // duplicates and the user can rename one of the existing test records first.
-        var duplicateCodeCount = await db.Database.SqlQueryRaw<int>("""
-            SELECT COUNT(*) AS Value
-            FROM (
-                SELECT UPPER(TRIM(CustomerCode))
-                FROM Customers
-                WHERE CustomerCode IS NOT NULL AND TRIM(CustomerCode) <> ''
-                GROUP BY UPPER(TRIM(CustomerCode))
-                HAVING COUNT(*) > 1
-            );
-            """).SingleAsync();
-
-        if (duplicateCodeCount == 0)
+        foreach (var migration in SqliteSchemaMigrations.All
+                     .Where(x => x.Version > currentVersion)
+                     .OrderBy(x => x.Version))
         {
-            await db.Database.ExecuteSqlRawAsync(
-                "CREATE UNIQUE INDEX IF NOT EXISTS IX_Customers_CustomerCode_NoCase ON Customers (CustomerCode COLLATE NOCASE);");
-        }
-    }
+            await using var transaction = await db.Database.BeginTransactionAsync();
 
-    private static async Task AddColumnIfMissingAsync(
-        BinTrackerDbContext db, string table, string column, string definition)
-    {
-        await using var connection = db.Database.GetDbConnection();
-        if (connection.State != System.Data.ConnectionState.Open)
-            await connection.OpenAsync();
-
-        await using var check = connection.CreateCommand();
-        check.CommandText = $"PRAGMA table_info({table});";
-        await using var reader = await check.ExecuteReaderAsync();
-        var exists = false;
-        while (await reader.ReadAsync())
-        {
-            if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
+            try
             {
-                exists = true;
-                break;
+                await migration.ApplyAsync(db);
+                await SetSchemaVersionAsync(db, migration.Version);
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
             }
         }
-        await reader.CloseAsync();
-
-        if (!exists)
-            await db.Database.ExecuteSqlRawAsync($"ALTER TABLE {table} ADD COLUMN {column} {definition};");
     }
 
+    private static async Task EnsureSchemaVersionTableAsync(BinTrackerDbContext db)
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS SchemaVersion (
+                Id INTEGER NOT NULL CONSTRAINT PK_SchemaVersion PRIMARY KEY,
+                Version INTEGER NOT NULL,
+                UpdatedUtc TEXT NOT NULL
+            );
+            """);
+
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO SchemaVersion (Id, Version, UpdatedUtc)
+            SELECT 1, 0, CURRENT_TIMESTAMP
+            WHERE NOT EXISTS (SELECT 1 FROM SchemaVersion WHERE Id = 1);
+            """);
+    }
+
+    internal static Task<int> GetSchemaVersionAsync(BinTrackerDbContext db) =>
+        db.Database
+            .SqlQueryRaw<int>("SELECT Version AS Value FROM SchemaVersion WHERE Id = 1")
+            .SingleAsync();
+
+    private static Task SetSchemaVersionAsync(BinTrackerDbContext db, int version) =>
+        db.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE SchemaVersion SET Version = {version}, UpdatedUtc = {DateTime.UtcNow} WHERE Id = 1");
 }

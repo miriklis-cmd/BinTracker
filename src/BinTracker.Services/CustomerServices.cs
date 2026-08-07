@@ -121,7 +121,7 @@ internal sealed class CustomerService(
                      x.CustomerCode.ToUpper() == normalisedCode,
                 cancellationToken))
             throw new InvalidOperationException(
-                $"Customer code '{model.CustomerCode}' is already in use. Customer codes are not case-sensitive.");
+                $"Customer code '{model.CustomerCode}' already exists. Customer codes are not case-sensitive.");
 
         if (model.Id == 0)
         {
