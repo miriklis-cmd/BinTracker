@@ -199,51 +199,72 @@ public sealed class MainForm : Form
     {
         SetPage("Settings");
 
-        var stack = new FlowLayoutPanel
+        var page = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            RowCount = 2,
+            Margin = new Padding(0),
+            Padding = new Padding(0)
         };
 
-        var profile = PanelBox(
-            "My Profile",
-            $"Username: {session.Username}\nRole: {session.Role}\nLogged in: {(session.LoginUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Unknown")}\nSession ID: {session.SessionId}");
+        page.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        var profileActions = new FlowLayoutPanel
+        var profile = CreateSettingsSection(
+            "My Profile",
+            new[]
+            {
+                ("Display name", session.DisplayName),
+                ("Username", session.Username),
+                ("Role", session.Role.ToString()),
+                ("Logged in", session.LoginUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Unknown"),
+                ("Session ID", session.SessionId)
+            });
+
+        var profileButtons = new FlowLayoutPanel
         {
-            Dock = DockStyle.Bottom,
+            Dock = DockStyle.Top,
             AutoSize = true,
             FlowDirection = FlowDirection.LeftToRight,
-            Padding = new Padding(0, 18, 0, 0)
+            WrapContents = true,
+            Margin = new Padding(0, 16, 0, 0),
+            Padding = new Padding(0)
         };
 
-        var passwordButton = new Button
+        var changePassword = new Button
         {
             Text = "Change Password",
             AutoSize = false,
-            Size = new Size(165, 44)
+            Size = new Size(165, 44),
+            Margin = new Padding(0)
         };
 
-        passwordButton.Click += (_, _) =>
+        changePassword.Click += (_, _) =>
         {
             using var form = new ChangePasswordForm(auth);
             form.ShowDialog(this);
         };
 
-        profileActions.Controls.Add(passwordButton);
-        profile.Controls.Add(profileActions);
-        stack.Controls.Add(profile);
+        profileButtons.Controls.Add(changePassword);
+        profile.Controls.Add(profileButtons);
 
-        var admin = PanelBox("Administration", "Manage authorised users and inspect the audit trail.");
-        var actions = new FlowLayoutPanel
+        var administration = CreateSettingsSection(
+            "Administration",
+            Array.Empty<(string Label, string Value)>(),
+            "Manage authorised users and inspect the audit trail.");
+
+        var adminButtons = new FlowLayoutPanel
         {
-            Dock = DockStyle.Bottom,
+            Dock = DockStyle.Top,
             AutoSize = true,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = true,
-            Padding = new Padding(0, 18, 0, 0)
+            Margin = new Padding(0, 16, 0, 0),
+            Padding = new Padding(0)
         };
 
         if (session.Role == UserRole.Administrator)
@@ -255,6 +276,7 @@ public sealed class MainForm : Form
                 Size = new Size(165, 44),
                 Margin = new Padding(0, 0, 12, 0)
             };
+
             usersButton.Click += (_, _) =>
             {
                 using var form = new UsersForm(users);
@@ -268,29 +290,123 @@ public sealed class MainForm : Form
                 Size = new Size(165, 44),
                 Margin = new Padding(0)
             };
+
             auditButton.Click += (_, _) =>
             {
                 using var form = new AuditLogForm(audit);
                 form.ShowDialog(this);
             };
 
-            actions.Controls.Add(usersButton);
-            actions.Controls.Add(auditButton);
+            adminButtons.Controls.Add(usersButton);
+            adminButtons.Controls.Add(auditButton);
         }
         else
         {
-            actions.Controls.Add(new Label
+            adminButtons.Controls.Add(new Label
             {
                 Text = "Administrator access is required for user and audit controls.",
                 AutoSize = true,
                 ForeColor = Color.Firebrick,
-                MaximumSize = new Size(720, 0)
+                MaximumSize = new Size(720, 0),
+                Margin = new Padding(0)
             });
         }
 
-        admin.Controls.Add(actions);
-        stack.Controls.Add(admin);
-        content.Controls.Add(stack);
+        administration.Controls.Add(adminButtons);
+
+        page.Controls.Add(profile, 0, 0);
+        page.Controls.Add(administration, 0, 1);
+
+        content.Controls.Add(page);
+    }
+
+    private static Panel CreateSettingsSection(
+        string heading,
+        IEnumerable<(string Label, string Value)> rows,
+        string? description = null)
+    {
+        var panel = new Panel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Color.White,
+            Padding = new Padding(24),
+            Margin = new Padding(0, 0, 0, 16),
+            MinimumSize = new Size(0, 120)
+        };
+
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2,
+            RowCount = 0,
+            Margin = new Padding(0),
+            Padding = new Padding(0)
+        };
+
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+        var title = new Label
+        {
+            Text = heading,
+            AutoSize = true,
+            Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 12)
+        };
+
+        layout.RowCount++;
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.Controls.Add(title, 0, layout.RowCount - 1);
+        layout.SetColumnSpan(title, 2);
+
+        if (!string.IsNullOrWhiteSpace(description))
+        {
+            var descriptionLabel = new Label
+            {
+                Text = description,
+                AutoSize = true,
+                ForeColor = Color.FromArgb(80, 90, 105),
+                MaximumSize = new Size(900, 0),
+                Margin = new Padding(0, 0, 0, 12)
+            };
+
+            layout.RowCount++;
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.Controls.Add(descriptionLabel, 0, layout.RowCount - 1);
+            layout.SetColumnSpan(descriptionLabel, 2);
+        }
+
+        foreach (var row in rows)
+        {
+            var label = new Label
+            {
+                Text = row.Label,
+                AutoSize = true,
+                ForeColor = Color.FromArgb(90, 100, 115),
+                Margin = new Padding(0, 6, 24, 6)
+            };
+
+            var value = new Label
+            {
+                Text = row.Value,
+                AutoSize = true,
+                ForeColor = Color.FromArgb(29, 39, 54),
+                Margin = new Padding(0, 6, 0, 6),
+                MaximumSize = new Size(760, 0)
+            };
+
+            layout.RowCount++;
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.Controls.Add(label, 0, layout.RowCount - 1);
+            layout.Controls.Add(value, 1, layout.RowCount - 1);
+        }
+
+        panel.Controls.Add(layout);
+        return panel;
     }
 
     private void Placeholder(string page, string text)

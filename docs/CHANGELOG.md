@@ -86,3 +86,8 @@
 
 ## 0.2.0-alpha.6.2
 - Added self-service password changes, administrator reset, forced change, lockout/unlock, session information, audit events, and security tests.
+
+
+## 0.2.0-alpha.6.2.1
+- Fixed blank Settings page caused by FlowLayoutPanel/AutoSize interaction.
+- Rebuilt Settings using explicit TableLayoutPanel sections.
