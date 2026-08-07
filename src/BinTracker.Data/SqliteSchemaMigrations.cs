@@ -15,7 +15,8 @@ internal static class SqliteSchemaMigrations
         new(2, "Customer communication fields", ApplyV2Async),
         new(3, "Reminder delivery history", ApplyV3Async),
         new(4, "Customer type and Blue Bin terminology", ApplyV4Async),
-        new(5, "Case-insensitive customer code index", ApplyV5Async)
+        new(5, "Case-insensitive customer code index", ApplyV5Async),
+        new(6, "Password self-service and account lockout", ApplyV6Async)
     ];
 
     private static async Task ApplyV1Async(BinTrackerDbContext db)
@@ -136,6 +137,16 @@ internal static class SqliteSchemaMigrations
         }
     }
 
+
+    private static async Task ApplyV6Async(BinTrackerDbContext db)
+    {
+        await AddUserColumnIfMissingAsync(db, "PasswordChangedUtc", "TEXT NULL");
+        await AddUserColumnIfMissingAsync(db, "FailedLoginCount", "INTEGER NOT NULL DEFAULT 0");
+        await AddUserColumnIfMissingAsync(db, "IsLocked", "INTEGER NOT NULL DEFAULT 0");
+        await AddUserColumnIfMissingAsync(db, "LockedUtc", "TEXT NULL");
+        await AddSettingsColumnIfMissingAsync(db, "MaxFailedLoginAttempts", "INTEGER NOT NULL DEFAULT 5");
+    }
+
     private static async Task AddColumnIfMissingAsync(
         BinTrackerDbContext db,
         string table,
@@ -183,5 +194,52 @@ internal static class SqliteSchemaMigrations
 
             await db.Database.ExecuteSqlRawAsync(sql);
         }
+    }
+
+    private static async Task AddUserColumnIfMissingAsync(
+        BinTrackerDbContext db,
+        string column,
+        string definition)
+    {
+        var existing = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('UserAccounts') WHERE name = {0}",
+                column)
+            .ToListAsync();
+
+        if (existing.Count != 0)
+            return;
+
+        var sql = column switch
+        {
+            "PasswordChangedUtc" => "ALTER TABLE UserAccounts ADD COLUMN PasswordChangedUtc TEXT NULL;",
+            "FailedLoginCount" => "ALTER TABLE UserAccounts ADD COLUMN FailedLoginCount INTEGER NOT NULL DEFAULT 0;",
+            "IsLocked" => "ALTER TABLE UserAccounts ADD COLUMN IsLocked INTEGER NOT NULL DEFAULT 0;",
+            "LockedUtc" => "ALTER TABLE UserAccounts ADD COLUMN LockedUtc TEXT NULL;",
+            _ => throw new InvalidOperationException("Unsupported user schema column.")
+        };
+
+        await db.Database.ExecuteSqlRawAsync(sql);
+    }
+
+    private static async Task AddSettingsColumnIfMissingAsync(
+        BinTrackerDbContext db,
+        string column,
+        string definition)
+    {
+        var existing = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ApplicationSettings') WHERE name = {0}",
+                column)
+            .ToListAsync();
+
+        if (existing.Count != 0)
+            return;
+
+        if (column != "MaxFailedLoginAttempts")
+            throw new InvalidOperationException("Unsupported settings schema column.");
+
+        await db.Database.ExecuteSqlRawAsync(
+            "ALTER TABLE ApplicationSettings ADD COLUMN MaxFailedLoginAttempts INTEGER NOT NULL DEFAULT 5;");
     }
 }

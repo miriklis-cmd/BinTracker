@@ -25,7 +25,7 @@ public sealed class SqliteMigrationTests
 
         var version = await DatabaseSetup.GetSchemaVersionAsync(db);
 
-        Assert.Equal(5, version);
+        Assert.Equal(6, version);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public sealed class SqliteMigrationTests
 
         await DatabaseSetup.InitializeSqliteAsync(db);
 
-        Assert.Equal(5, await DatabaseSetup.GetSchemaVersionAsync(db));
+        Assert.Equal(6, await DatabaseSetup.GetSchemaVersionAsync(db));
         Assert.Equal(2, await db.Customers.CountAsync());
     }
 
@@ -88,5 +88,30 @@ public sealed class SqliteMigrationTests
         Assert.Equal(
             "Blue Bin",
             (await db.ContainerTypes.AsNoTracking().SingleAsync(x => x.Id == 1)).Name);
+    }
+
+    [Fact]
+    public async Task Security_polish_migration_adds_lockout_columns()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<BinTrackerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var db = new BinTrackerDbContext(options);
+        await db.Database.EnsureCreatedAsync();
+        await DatabaseSetup.InitializeSqliteAsync(db);
+
+        var columns = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('UserAccounts')")
+            .ToListAsync();
+
+        Assert.Contains("FailedLoginCount", columns);
+        Assert.Contains("IsLocked", columns);
+        Assert.Contains("LockedUtc", columns);
+        Assert.Contains("PasswordChangedUtc", columns);
     }
 }

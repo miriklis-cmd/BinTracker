@@ -80,6 +80,7 @@ public sealed class ApplicationSettings
     public int AttentionQuantityThreshold { get; set; } = 20;
     public int AttentionAgeDays { get; set; } = 7;
     public int BackupRetentionCount { get; set; } = 30;
+    public int MaxFailedLoginAttempts { get; set; } = 5;
 }
 
 public sealed class UserAccount
@@ -95,6 +96,10 @@ public sealed class UserAccount
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public int? CreatedByUserId { get; set; }
     public DateTime? LastLoginUtc { get; set; }
+    public DateTime? PasswordChangedUtc { get; set; }
+    public int FailedLoginCount { get; set; }
+    public bool IsLocked { get; set; }
+    public DateTime? LockedUtc { get; set; }
 }
 
 public sealed class AuditEvent

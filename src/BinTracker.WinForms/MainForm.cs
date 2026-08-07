@@ -13,14 +13,16 @@ public sealed class MainForm : Form
     private readonly IAuditService audit;
     private readonly ICustomerService customers;
     private readonly ICustomerStatementReportService statementReports;
+    private readonly IAuthenticationService auth;
 
-    public MainForm(UserSession session, IUserService users, IAuditService audit, ICustomerService customers, ICustomerStatementReportService statementReports)
+    public MainForm(UserSession session, IUserService users, IAuditService audit, ICustomerService customers, ICustomerStatementReportService statementReports, IAuthenticationService auth)
     {
         this.session = session;
         this.users = users;
         this.audit = audit;
         this.customers = customers;
         this.statementReports = statementReports;
+        this.auth = auth;
 
         Text = $"BinTracker - {session.DisplayName}";
         StartPosition = FormStartPosition.CenterScreen;
@@ -197,7 +199,44 @@ public sealed class MainForm : Form
     {
         SetPage("Settings");
 
-        var panel = PanelBox("Administration", "Manage authorised users and inspect the audit trail.");
+        var stack = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false
+        };
+
+        var profile = PanelBox(
+            "My Profile",
+            $"Username: {session.Username}\nRole: {session.Role}\nLogged in: {(session.LoginUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Unknown")}\nSession ID: {session.SessionId}");
+
+        var profileActions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Bottom,
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            Padding = new Padding(0, 18, 0, 0)
+        };
+
+        var passwordButton = new Button
+        {
+            Text = "Change Password",
+            AutoSize = false,
+            Size = new Size(165, 44)
+        };
+
+        passwordButton.Click += (_, _) =>
+        {
+            using var form = new ChangePasswordForm(auth);
+            form.ShowDialog(this);
+        };
+
+        profileActions.Controls.Add(passwordButton);
+        profile.Controls.Add(profileActions);
+        stack.Controls.Add(profile);
+
+        var admin = PanelBox("Administration", "Manage authorised users and inspect the audit trail.");
         var actions = new FlowLayoutPanel
         {
             Dock = DockStyle.Bottom,
@@ -249,8 +288,9 @@ public sealed class MainForm : Form
             });
         }
 
-        panel.Controls.Add(actions);
-        content.Controls.Add(panel);
+        admin.Controls.Add(actions);
+        stack.Controls.Add(admin);
+        content.Controls.Add(stack);
     }
 
     private void Placeholder(string page, string text)

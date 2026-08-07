@@ -55,6 +55,18 @@ internal static class Program
                 return;
         }
 
+        var session = scope.ServiceProvider.GetRequiredService<UserSession>();
+
+        if (session.MustChangePassword)
+        {
+            using var change = new ChangePasswordForm(auth, required: true);
+            if (change.ShowDialog() != DialogResult.OK)
+            {
+                auth.LogoutAsync().GetAwaiter().GetResult();
+                return;
+            }
+        }
+
         Application.Run(scope.ServiceProvider.GetRequiredService<MainForm>());
 
         auth.LogoutAsync().GetAwaiter().GetResult();

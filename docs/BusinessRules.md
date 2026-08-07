@@ -17,3 +17,7 @@
 - Excel brought-forward balances become opening positions during cut-over.
 - Daily downstairs paperwork includes an outstanding summary and movement/balance detail.
 - Customer statements must explain how a current balance was reached.
+
+- Passwords do not expire periodically.
+- Five failed login attempts lock an account by default; an administrator unlocks it.
+- Administrator password resets force the user to choose a new password at next login.

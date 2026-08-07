@@ -83,3 +83,6 @@
 - Added batch build/test launcher.
 - Removed EF1002 schema-upgrade warnings.
 - Removed duplicate WinForms DPI manifest configuration.
+
+## 0.2.0-alpha.6.2
+- Added self-service password changes, administrator reset, forced change, lockout/unlock, session information, audit events, and security tests.

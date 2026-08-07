@@ -29,8 +29,10 @@ public sealed class UsersForm : Form
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Username", DataPropertyName = "Username", Width = 160 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Display name", DataPropertyName = "DisplayName", Width = 220 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Role", DataPropertyName = "Role", Width = 130 });
-        grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Active", DataPropertyName = "IsActive", Width = 80 });
-        grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Last login (UTC)", DataPropertyName = "LastLoginUtc", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, MinimumWidth = 180 });
+        grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Active", DataPropertyName = "IsActive", Width = 75 });
+        grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Locked", DataPropertyName = "IsLocked", Width = 75 });
+        grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Change password", DataPropertyName = "MustChangePassword", Width = 115 });
+        grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Last login (UTC)", DataPropertyName = "LastLoginUtc", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, MinimumWidth = 170 });
 
         var root = new TableLayoutPanel
         {
@@ -53,11 +55,19 @@ public sealed class UsersForm : Form
 
         var add = new Button { Text = "Add user", AutoSize = true, MinimumSize = new Size(120, 38) };
         add.Click += async (_, _) => await AddAsync();
-        var toggle = new Button { Text = "Activate / deactivate", AutoSize = true, MinimumSize = new Size(170, 38) };
+        var toggle = new Button { Text = "Activate / deactivate", AutoSize = false, Size = new Size(180, 40) };
         toggle.Click += async (_, _) => await ToggleAsync();
+
+        var reset = new Button { Text = "Reset password", AutoSize = false, Size = new Size(150, 40) };
+        reset.Click += async (_, _) => await ResetPasswordAsync();
+
+        var unlock = new Button { Text = "Unlock", AutoSize = false, Size = new Size(110, 40) };
+        unlock.Click += async (_, _) => await UnlockAsync();
 
         buttons.Controls.Add(add);
         buttons.Controls.Add(toggle);
+        buttons.Controls.Add(reset);
+        buttons.Controls.Add(unlock);
         root.Controls.Add(buttons, 0, 0);
         root.Controls.Add(grid, 0, 1);
         Controls.Add(root);
@@ -80,6 +90,45 @@ public sealed class UsersForm : Form
         catch (Exception ex)
         {
             MessageBox.Show(ex.Message, "Add user", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+
+    private async Task ResetPasswordAsync()
+    {
+        if (grid.CurrentRow?.DataBoundItem is not UserAccount user) return;
+
+        using var form = new ResetPasswordForm(user.Username);
+        if (form.ShowDialog(this) != DialogResult.OK) return;
+
+        try
+        {
+            await users.ResetPasswordAsync(user.Id, form.TemporaryPassword);
+            MessageBox.Show(
+                "Password reset. The user must change the temporary password at next login.",
+                "Users",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Reset password", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private async Task UnlockAsync()
+    {
+        if (grid.CurrentRow?.DataBoundItem is not UserAccount user) return;
+
+        try
+        {
+            await users.UnlockAsync(user.Id);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Unlock user", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -185,5 +234,101 @@ internal sealed class AddUserForm : Form
         control.MinimumSize = new Size(0, 34);
         control.Margin = new Padding(0, 0, 0, 4);
         panel.Controls.Add(control, 0, panel.RowCount - 1);
+    }
+}
+
+
+internal sealed class ResetPasswordForm : Form
+{
+    private readonly TextBox password = new() { Dock = DockStyle.Fill, UseSystemPasswordChar = true };
+    private readonly TextBox confirm = new() { Dock = DockStyle.Fill, UseSystemPasswordChar = true };
+    private readonly Label strength = new() { AutoSize = true, ForeColor = Color.DimGray };
+    private readonly Label error = new() { AutoSize = true, ForeColor = Color.Firebrick };
+
+    public string TemporaryPassword => password.Text;
+
+    public ResetPasswordForm(string username)
+    {
+        Text = $"Reset Password - {username}";
+        StartPosition = FormStartPosition.CenterParent;
+        AutoScaleMode = AutoScaleMode.Dpi;
+        ClientSize = new Size(560, 430);
+        MinimumSize = new Size(520, 400);
+        MaximizeBox = false;
+        MinimizeBox = false;
+
+        var body = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = false,
+            Padding = new Padding(28),
+            ColumnCount = 1,
+            RowCount = 7
+        };
+
+        body.Controls.Add(new Label
+        {
+            Text = $"Set a temporary password for {username}",
+            AutoSize = true,
+            Font = new Font("Segoe UI Semibold", 16F, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 12)
+        });
+
+        body.Controls.Add(new Label
+        {
+            Text = "The user will be required to change this password immediately after their next login.",
+            AutoSize = true,
+            MaximumSize = new Size(470, 0),
+            ForeColor = Color.DimGray,
+            Margin = new Padding(0, 0, 0, 12)
+        });
+
+        body.Controls.Add(new Label { Text = "Temporary password", AutoSize = true });
+        body.Controls.Add(password);
+        body.Controls.Add(strength);
+        body.Controls.Add(new Label { Text = "Confirm password", AutoSize = true });
+        body.Controls.Add(confirm);
+
+        var actions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 70,
+            FlowDirection = FlowDirection.LeftToRight,
+            Padding = new Padding(28, 12, 0, 0)
+        };
+
+        var save = new Button { Text = "Reset password", AutoSize = false, Size = new Size(160, 42) };
+        var cancel = new Button { Text = "Cancel", AutoSize = false, Size = new Size(120, 42), DialogResult = DialogResult.Cancel };
+
+        save.Click += (_, _) =>
+        {
+            error.Text = string.Empty;
+            if (password.Text != confirm.Text)
+            {
+                MessageBox.Show("The passwords do not match.", "Reset password", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                PasswordPolicy.Validate(password.Text);
+                DialogResult = DialogResult.OK;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Reset password", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        };
+
+        password.TextChanged += (_, _) => strength.Text = $"Strength: {PasswordPolicy.StrengthText(password.Text)}";
+
+        actions.Controls.Add(save);
+        actions.Controls.Add(cancel);
+
+        Controls.Add(body);
+        Controls.Add(actions);
+        AcceptButton = save;
+        CancelButton = cancel;
     }
 }

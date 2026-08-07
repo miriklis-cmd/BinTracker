@@ -64,7 +64,7 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
 
         b.Entity<ApplicationSettings>().HasData(new ApplicationSettings
         {
-            Id=1, AttentionQuantityThreshold=20, AttentionAgeDays=7, BackupRetentionCount=30
+            Id=1, AttentionQuantityThreshold=20, AttentionAgeDays=7, BackupRetentionCount=30, MaxFailedLoginAttempts=5
         });
 
         b.Entity<UserAccount>(e =>
