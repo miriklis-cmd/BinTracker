@@ -1,0 +1,68 @@
+# Changelog
+
+## 0.1.0-alpha.3
+
+- Added local login and role-based access foundation.
+- Added secure password hashing.
+- Added first-run administrator creation.
+- Added user administration.
+- Added append-only audit trail and administrator audit viewer.
+- Added auditing for login, logout, failed login, user creation and user status changes.
+- Added backward-compatible SQLite schema upgrade from Alpha 2.
+
+## 0.1.0-alpha.2
+
+- Corrected .NET 8 package compatibility and build issues.
+
+## 0.1.0-alpha.3.2
+
+- Fixed first-run administrator form layout for DPI scaling and smaller displays.
+- Added scrolling and a persistent bottom action bar so buttons remain visible.
+
+## 0.1.0-alpha.3.5
+
+- Applied DPI-aware, responsive layouts across the application.
+- Rebuilt the dashboard cards to prevent clipped headings, values and subtitles.
+- Removed the dashboard's unnecessary horizontal scrollbar.
+- Made header text and signed-in details resize safely.
+- Updated Users, Add User and Audit Trail windows for high-DPI and smaller displays.
+- Added minimum sizes, wrapping and scroll-safe layouts to current application forms.
+
+
+## 0.1.0-alpha.3.7
+- Kept SQLite as the active database for simple development/install.
+- Isolated database provider and connection configuration.
+- Added provider-neutral database settings.
+- Prepared the data layer for a later PostgreSQL multi-user migration.
+- Prevented future connection settings from being committed to Git.
+
+
+## 0.2.0-alpha.1
+- Added customer management.
+- Added customer reminder contact preferences.
+- Added customer audit events.
+- Added reminder delivery persistence groundwork.
+- Renamed Standard Bin to Blue Bin while preserving Id/history.
+
+## 0.2.0-alpha.2
+- Made customer code mandatory and code-first throughout Customer Management.
+- Expanded customer search fields and default sort order.
+- Added PDF Customer Statements using QuestPDF.
+- Added statement-period selection and report audit events.
+- Fixed Audit Trail grid sizing at high DPI.
+
+## 0.2.0-alpha.3
+- Aligned login action buttons and placed Log in before Cancel.
+- Main application now opens maximized.
+
+
+## 0.2.0-alpha.4
+- Fixed clipped Customer Statement Period actions at high DPI.
+- Fixed SaveFileDialog/OLE crash by keeping WinForms startup on the STA thread.
+
+
+## 0.2.0-alpha.5
+- Enforced customer-code uniqueness ignoring case.
+- Added Account / Cash-COD customer classification.
+- Added customer type to the customer workspace/list.
+- Aligned Settings action buttons.

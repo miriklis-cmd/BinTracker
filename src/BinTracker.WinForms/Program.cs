@@ -1,16 +1,62 @@
+using BinTracker.Data;
+using BinTracker.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
 namespace BinTracker.WinForms;
 
-static class Program
+internal static class Program
 {
-    /// <summary>
-    ///  The main entry point for the application.
-    /// </summary>
     [STAThread]
-    static void Main()
+    private static void Main()
     {
-        // To customize application configuration such as set high DPI settings or default font,
-        // see https://aka.ms/applicationconfiguration.
+        Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         ApplicationConfiguration.Initialize();
-        Application.Run(new Form1());
-    }    
+
+        using var host = Host.CreateDefaultBuilder()
+            .ConfigureServices(services =>
+            {
+                services.AddBinTrackerData();
+                services.AddBinTrackerServices();
+                services.AddTransient<MainForm>();
+            })
+            .Build();
+
+        try
+        {
+            // Keep startup on this STA thread. Using async Main here can resume on a
+            // thread-pool (MTA) thread before the WinForms message loop starts,
+            // which breaks OLE-backed dialogs such as SaveFileDialog.
+            DatabaseSetup.InitializeAsync(host.Services).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Database setup failed.\n\n{ex.Message}",
+                "BinTracker",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            return;
+        }
+
+        using var scope = host.Services.CreateScope();
+        var auth = scope.ServiceProvider.GetRequiredService<IAuthenticationService>();
+
+        if (!auth.HasUsersAsync().GetAwaiter().GetResult())
+        {
+            using var setup = new FirstRunAdminForm(auth);
+            if (setup.ShowDialog() != DialogResult.OK)
+                return;
+        }
+
+        using (var login = new LoginForm(auth))
+        {
+            if (login.ShowDialog() != DialogResult.OK)
+                return;
+        }
+
+        Application.Run(scope.ServiceProvider.GetRequiredService<MainForm>());
+
+        auth.LogoutAsync().GetAwaiter().GetResult();
+    }
 }
