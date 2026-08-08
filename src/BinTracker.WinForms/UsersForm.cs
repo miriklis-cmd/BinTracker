@@ -5,6 +5,15 @@ namespace BinTracker.WinForms;
 
 public sealed class UsersForm : Form
 {
+    private sealed record UserGridRow(
+        int Id,
+        string Username,
+        string DisplayName,
+        string Role,
+        string Status,
+        string LastLogin,
+        UserAccount Source);
+
     private readonly IUserService users;
     private readonly DataGridView grid = new()
     {
@@ -14,32 +23,65 @@ public sealed class UsersForm : Form
         SelectionMode = DataGridViewSelectionMode.FullRowSelect,
         MultiSelect = false,
         AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells,
-        RowHeadersVisible = false
+        RowHeadersVisible = false,
+        BackgroundColor = Color.White,
+        BorderStyle = BorderStyle.FixedSingle,
+        AllowUserToAddRows = false,
+        AllowUserToDeleteRows = false
     };
 
     public UsersForm(IUserService users)
     {
         this.users = users;
+
         Text = "Users";
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(900, 560);
-        MinimumSize = new Size(720, 460);
+        ClientSize = new Size(980, 620);
+        MinimumSize = new Size(820, 520);
 
-        grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Username", DataPropertyName = "Username", Width = 160 });
-        grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Display name", DataPropertyName = "DisplayName", Width = 220 });
-        grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Role", DataPropertyName = "Role", Width = 130 });
-        grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Active", DataPropertyName = "IsActive", Width = 75 });
-        grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Locked", DataPropertyName = "IsLocked", Width = 75 });
-        grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Change password", DataPropertyName = "MustChangePassword", Width = 115 });
-        grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Last login (UTC)", DataPropertyName = "LastLoginUtc", AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, MinimumWidth = 170 });
+        grid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "Username",
+            DataPropertyName = nameof(UserGridRow.Username),
+            Width = 150
+        });
+
+        grid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "Display name",
+            DataPropertyName = nameof(UserGridRow.DisplayName),
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+            MinimumWidth = 180
+        });
+
+        grid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "Role",
+            DataPropertyName = nameof(UserGridRow.Role),
+            Width = 130
+        });
+
+        grid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "Status",
+            DataPropertyName = nameof(UserGridRow.Status),
+            Width = 180
+        });
+
+        grid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "Last login",
+            DataPropertyName = nameof(UserGridRow.LastLogin),
+            Width = 160
+        });
 
         var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
             RowCount = 2,
-            Padding = new Padding(12)
+            Padding = new Padding(14)
         };
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
@@ -50,46 +92,65 @@ public sealed class UsersForm : Form
             AutoSize = true,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = true,
-            Padding = new Padding(0, 0, 0, 10)
+            Padding = new Padding(0, 0, 0, 12),
+            Margin = new Padding(0)
         };
 
-        var add = new Button { Text = "Add user", AutoSize = true, MinimumSize = new Size(120, 38) };
+        var add = ActionButton("Add User", 120);
         add.Click += async (_, _) => await AddAsync();
-        var toggle = new Button { Text = "Activate / deactivate", AutoSize = false, Size = new Size(180, 40) };
-        toggle.Click += async (_, _) => await ToggleAsync();
 
-        var reset = new Button { Text = "Reset password", AutoSize = false, Size = new Size(150, 40) };
+        var toggle = ActionButton("Activate / Deactivate", 180);
+        toggle.Click += async (_, _) => await ToggleActiveAsync();
+
+        var reset = ActionButton("Reset Password", 150);
         reset.Click += async (_, _) => await ResetPasswordAsync();
 
-        var lockToggle = new Button
-        {
-            Text = "Lock / Unlock",
-            AutoSize = false,
-            Size = new Size(140, 40)
-        };
+        var lockToggle = ActionButton("Lock / Unlock", 140);
         lockToggle.Click += async (_, _) => await ToggleLockAsync();
 
         buttons.Controls.Add(add);
         buttons.Controls.Add(toggle);
         buttons.Controls.Add(reset);
         buttons.Controls.Add(lockToggle);
+
         root.Controls.Add(buttons, 0, 0);
         root.Controls.Add(grid, 0, 1);
+
         Controls.Add(root);
 
         Shown += async (_, _) => await ReloadAsync();
     }
 
-    private async Task ReloadAsync() => grid.DataSource = (await users.GetUsersAsync()).ToList();
+    private async Task ReloadAsync()
+    {
+        var source = await users.GetUsersAsync();
+
+        grid.DataSource = source
+            .Select(user => new UserGridRow(
+                user.Id,
+                user.Username,
+                user.DisplayName,
+                user.Role.ToString(),
+                StatusText(user),
+                user.LastLoginUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Never",
+                user))
+            .ToList();
+    }
 
     private async Task AddAsync()
     {
         using var form = new AddUserForm();
-        if (form.ShowDialog(this) != DialogResult.OK) return;
+        if (form.ShowDialog(this) != DialogResult.OK)
+            return;
 
         try
         {
-            await users.CreateUserAsync(form.Username, form.DisplayName, form.Password, form.Role);
+            await users.CreateUserAsync(
+                form.Username,
+                form.DisplayName,
+                form.Password,
+                form.Role);
+
             await ReloadAsync();
         }
         catch (Exception ex)
@@ -98,23 +159,44 @@ public sealed class UsersForm : Form
         }
     }
 
+    private async Task ToggleActiveAsync()
+    {
+        if (SelectedUser() is not { } user)
+            return;
+
+        try
+        {
+            await users.SetActiveAsync(user.Id, !user.IsActive);
+            await ReloadAsync();
+            SelectUser(user.Id);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Users", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
 
     private async Task ResetPasswordAsync()
     {
-        if (grid.CurrentRow?.DataBoundItem is not UserAccount user) return;
+        if (SelectedUser() is not { } user)
+            return;
 
         using var form = new ResetPasswordForm(user.Username);
-        if (form.ShowDialog(this) != DialogResult.OK) return;
+        if (form.ShowDialog(this) != DialogResult.OK)
+            return;
 
         try
         {
             await users.ResetPasswordAsync(user.Id, form.TemporaryPassword);
+
             MessageBox.Show(
                 "Password reset. The user must change the temporary password at next login.",
                 "Users",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
+
             await ReloadAsync();
+            SelectUser(user.Id);
         }
         catch (Exception ex)
         {
@@ -124,12 +206,14 @@ public sealed class UsersForm : Form
 
     private async Task ToggleLockAsync()
     {
-        if (grid.CurrentRow?.DataBoundItem is not UserAccount user) return;
+        if (SelectedUser() is not { } user)
+            return;
 
         try
         {
             await users.SetLockedAsync(user.Id, !user.IsLocked);
             await ReloadAsync();
+            SelectUser(user.Id);
         }
         catch (Exception ex)
         {
@@ -137,22 +221,44 @@ public sealed class UsersForm : Form
         }
     }
 
-    private async Task ToggleAsync()
-    {
-        if (grid.CurrentRow?.DataBoundItem is not UserAccount user) return;
+    private UserAccount? SelectedUser() =>
+        grid.CurrentRow?.DataBoundItem is UserGridRow row ? row.Source : null;
 
-        try
+    private void SelectUser(int id)
+    {
+        foreach (DataGridViewRow row in grid.Rows)
         {
-            await users.SetActiveAsync(user.Id, !user.IsActive);
-            await ReloadAsync();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.Message, "Users", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            if (row.DataBoundItem is UserGridRow item && item.Id == id)
+            {
+                row.Selected = true;
+                grid.CurrentCell = row.Cells[0];
+                return;
+            }
         }
     }
-}
 
+    private static string StatusText(UserAccount user)
+    {
+        if (!user.IsActive)
+            return "Inactive";
+
+        if (user.IsLocked)
+            return "Locked";
+
+        if (user.MustChangePassword)
+            return "Active — password change required";
+
+        return "Active";
+    }
+
+    private static Button ActionButton(string text, int width) => new()
+    {
+        Text = text,
+        AutoSize = false,
+        Size = new Size(width, 40),
+        Margin = new Padding(0, 0, 10, 0)
+    };
+}
 
 internal sealed class AddUserForm : Form
 {
@@ -172,8 +278,8 @@ internal sealed class AddUserForm : Form
         Text = "Add User";
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(560, 540);
-        MinimumSize = new Size(520, 500);
+        ClientSize = new Size(580, 620);
+        MinimumSize = new Size(540, 580);
         FormBorderStyle = FormBorderStyle.Sizable;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -238,7 +344,7 @@ internal sealed class AddUserForm : Form
         var body = new Panel
         {
             Dock = DockStyle.Fill,
-            AutoScroll = true,
+            AutoScroll = false,
             Padding = new Padding(30),
             BackColor = Color.White
         };

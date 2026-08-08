@@ -95,3 +95,7 @@
 ## 0.2.0-alpha.6.2.2
 - UI polish for password/user/settings screens.
 - Added administrator manual Lock / Unlock.
+
+## 0.2.0-alpha.6.2.3
+- Removed unnecessary Add User vertical scrolling.
+- Simplified Users grid to a single Status column and improved sizing.
