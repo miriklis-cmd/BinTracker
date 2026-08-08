@@ -279,6 +279,7 @@ public interface IUserService
     Task SetActiveAsync(int userId, bool active, CancellationToken cancellationToken = default);
     Task ResetPasswordAsync(int userId, string temporaryPassword, CancellationToken cancellationToken = default);
     Task SetLockedAsync(int userId, bool locked, CancellationToken cancellationToken = default);
+    Task SetRoleAsync(int userId, UserRole role, CancellationToken cancellationToken = default);
 }
 
 internal sealed class UserService(IDbContextFactory<BinTrackerDbContext> factory, UserSession session, IAuditService audit) : IUserService
@@ -379,6 +380,37 @@ internal sealed class UserService(IDbContextFactory<BinTrackerDbContext> factory
             "UserAccount",
             user.Id.ToString(),
             $"Administrator {(locked ? "locked" : "unlocked")} user '{user.Username}'.",
+            cancellationToken: cancellationToken);
+    }
+
+    public async Task SetRoleAsync(
+        int userId,
+        UserRole role,
+        CancellationToken cancellationToken = default)
+    {
+        RequireAdmin();
+
+        if (session.UserId == userId && role != UserRole.Administrator)
+            throw new InvalidOperationException(
+                "You cannot remove your own Administrator role while you are signed in.");
+
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        var user = await db.UserAccounts.SingleAsync(x => x.Id == userId, cancellationToken);
+
+        var before = user.Role;
+        if (before == role)
+            return;
+
+        user.Role = role;
+        await db.SaveChangesAsync(cancellationToken);
+
+        await audit.WriteAsync(
+            "USER_ROLE_CHANGED",
+            "UserAccount",
+            user.Id.ToString(),
+            $"User '{user.Username}' role changed from {before} to {role}.",
+            before: new { Role = before },
+            after: new { Role = role },
             cancellationToken: cancellationToken);
     }
 

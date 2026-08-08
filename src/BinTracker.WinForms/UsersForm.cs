@@ -37,8 +37,8 @@ public sealed class UsersForm : Form
         Text = "Users";
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(980, 620);
-        MinimumSize = new Size(820, 520);
+        ClientSize = new Size(1120, 640);
+        MinimumSize = new Size(900, 540);
 
         grid.Columns.Add(new DataGridViewTextBoxColumn
         {
@@ -66,7 +66,7 @@ public sealed class UsersForm : Form
         {
             HeaderText = "Status",
             DataPropertyName = nameof(UserGridRow.Status),
-            Width = 180
+            Width = 245
         });
 
         grid.Columns.Add(new DataGridViewTextBoxColumn
@@ -99,8 +99,11 @@ public sealed class UsersForm : Form
         var add = ActionButton("Add User", 120);
         add.Click += async (_, _) => await AddAsync();
 
-        var toggle = ActionButton("Activate / Deactivate", 180);
+        var toggle = ActionButton("Activate / Deactivate", 205);
         toggle.Click += async (_, _) => await ToggleActiveAsync();
+
+        var editRole = ActionButton("Change Role", 135);
+        editRole.Click += async (_, _) => await ChangeRoleAsync();
 
         var reset = ActionButton("Reset Password", 150);
         reset.Click += async (_, _) => await ResetPasswordAsync();
@@ -110,6 +113,7 @@ public sealed class UsersForm : Form
 
         buttons.Controls.Add(add);
         buttons.Controls.Add(toggle);
+        buttons.Controls.Add(editRole);
         buttons.Controls.Add(reset);
         buttons.Controls.Add(lockToggle);
 
@@ -173,6 +177,27 @@ public sealed class UsersForm : Form
         catch (Exception ex)
         {
             MessageBox.Show(ex.Message, "Users", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private async Task ChangeRoleAsync()
+    {
+        if (SelectedUser() is not { } user)
+            return;
+
+        using var form = new ChangeRoleForm(user.Username, user.Role);
+        if (form.ShowDialog(this) != DialogResult.OK)
+            return;
+
+        try
+        {
+            await users.SetRoleAsync(user.Id, form.SelectedRole);
+            await ReloadAsync();
+            SelectUser(user.Id);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Change role", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -246,7 +271,7 @@ public sealed class UsersForm : Form
             return "Locked";
 
         if (user.MustChangePassword)
-            return "Active — password change required";
+            return "Active — change password required";
 
         return "Active";
     }
@@ -258,6 +283,116 @@ public sealed class UsersForm : Form
         Size = new Size(width, 40),
         Margin = new Padding(0, 0, 10, 0)
     };
+}
+
+
+internal sealed class ChangeRoleForm : Form
+{
+    private readonly ComboBox role = new()
+    {
+        Dock = DockStyle.Fill,
+        DropDownStyle = ComboBoxStyle.DropDownList
+    };
+
+    public UserRole SelectedRole => (UserRole)role.SelectedItem!;
+
+    public ChangeRoleForm(string username, UserRole currentRole)
+    {
+        Text = "Change User Role";
+        StartPosition = FormStartPosition.CenterParent;
+        AutoScaleMode = AutoScaleMode.Dpi;
+        ClientSize = new Size(520, 320);
+        MinimumSize = new Size(500, 300);
+        MaximizeBox = false;
+        MinimizeBox = false;
+        BackColor = Color.White;
+
+        role.DataSource = Enum.GetValues<UserRole>();
+        role.SelectedItem = currentRole;
+
+        var actionBar = new Panel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 82,
+            Padding = new Padding(28, 16, 28, 16),
+            BackColor = SystemColors.Control
+        };
+
+        var actions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Left,
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false
+        };
+
+        var save = new Button
+        {
+            Text = "Save Role",
+            AutoSize = false,
+            Size = new Size(145, 46),
+            Margin = new Padding(0, 0, 10, 0)
+        };
+
+        var cancel = new Button
+        {
+            Text = "Cancel",
+            AutoSize = false,
+            Size = new Size(130, 46),
+            DialogResult = DialogResult.Cancel,
+            Margin = new Padding(0)
+        };
+
+        save.Click += (_, _) =>
+        {
+            DialogResult = DialogResult.OK;
+            Close();
+        };
+
+        actions.Controls.Add(save);
+        actions.Controls.Add(cancel);
+        actionBar.Controls.Add(actions);
+
+        var body = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = false,
+            ColumnCount = 1,
+            RowCount = 4,
+            Padding = new Padding(30)
+        };
+
+        body.Controls.Add(new Label
+        {
+            Text = "Change user role",
+            AutoSize = true,
+            Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 8)
+        });
+
+        body.Controls.Add(new Label
+        {
+            Text = username,
+            AutoSize = true,
+            Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 16)
+        });
+
+        body.Controls.Add(new Label
+        {
+            Text = "Role",
+            AutoSize = true,
+            Margin = new Padding(0, 0, 0, 4)
+        });
+
+        body.Controls.Add(role);
+
+        Controls.Add(body);
+        Controls.Add(actionBar);
+
+        AcceptButton = save;
+        CancelButton = cancel;
+    }
 }
 
 internal sealed class AddUserForm : Form
