@@ -195,6 +195,7 @@ public sealed class MainForm : Form
         content.Controls.Add(new CustomersView(customers, session, statementReports));
     }
 
+
     private void ShowSettings()
     {
         SetPage("Settings");
@@ -214,18 +215,24 @@ public sealed class MainForm : Form
         page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        var profile = CreateSettingsSection(
-            "My Profile",
-            new[]
-            {
-                ("Display name", session.DisplayName),
-                ("Username", session.Username),
-                ("Role", session.Role.ToString()),
-                ("Logged in", session.LoginUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Unknown"),
-                ("Session ID", session.SessionId)
-            });
+        page.Controls.Add(BuildProfileSettingsSection(), 0, 0);
+        page.Controls.Add(BuildAdministrationSettingsSection(), 0, 1);
 
-        var profileButtons = new FlowLayoutPanel
+        content.Controls.Add(page);
+    }
+
+    private Control BuildProfileSettingsSection()
+    {
+        var section = SettingsSection("My Profile");
+
+        AddSettingsRow(section, "Display name", session.DisplayName);
+        AddSettingsRow(section, "Username", session.Username);
+        AddSettingsRow(section, "Role", session.Role.ToString());
+        AddSettingsRow(section, "Logged in",
+            session.LoginUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Unknown");
+        AddSettingsRow(section, "Session ID", session.SessionId);
+
+        var actions = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
@@ -249,21 +256,41 @@ public sealed class MainForm : Form
             form.ShowDialog(this);
         };
 
-        profileButtons.Controls.Add(changePassword);
-        profile.Controls.Add(profileButtons);
+        actions.Controls.Add(changePassword);
 
-        var administration = CreateSettingsSection(
-            "Administration",
-            Array.Empty<(string Label, string Value)>(),
-            "Manage authorised users and inspect the audit trail.");
+        var row = section.RowCount++;
+        section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        section.Controls.Add(actions, 0, row);
+        section.SetColumnSpan(actions, 2);
 
-        var adminButtons = new FlowLayoutPanel
+        return WrapSettingsSection(section);
+    }
+
+    private Control BuildAdministrationSettingsSection()
+    {
+        var section = SettingsSection("Administration");
+
+        var description = new Label
+        {
+            Text = "Manage authorised users and inspect the audit trail.",
+            AutoSize = true,
+            ForeColor = Color.FromArgb(80, 90, 105),
+            MaximumSize = new Size(900, 0),
+            Margin = new Padding(0, 0, 0, 14)
+        };
+
+        var descriptionRow = section.RowCount++;
+        section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        section.Controls.Add(description, 0, descriptionRow);
+        section.SetColumnSpan(description, 2);
+
+        var actions = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = true,
-            Margin = new Padding(0, 16, 0, 0),
+            Margin = new Padding(0),
             Padding = new Padding(0)
         };
 
@@ -297,12 +324,12 @@ public sealed class MainForm : Form
                 form.ShowDialog(this);
             };
 
-            adminButtons.Controls.Add(usersButton);
-            adminButtons.Controls.Add(auditButton);
+            actions.Controls.Add(usersButton);
+            actions.Controls.Add(auditButton);
         }
         else
         {
-            adminButtons.Controls.Add(new Label
+            actions.Controls.Add(new Label
             {
                 Text = "Administrator access is required for user and audit controls.",
                 AutoSize = true,
@@ -312,18 +339,69 @@ public sealed class MainForm : Form
             });
         }
 
-        administration.Controls.Add(adminButtons);
+        var actionRow = section.RowCount++;
+        section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        section.Controls.Add(actions, 0, actionRow);
+        section.SetColumnSpan(actions, 2);
 
-        page.Controls.Add(profile, 0, 0);
-        page.Controls.Add(administration, 0, 1);
-
-        content.Controls.Add(page);
+        return WrapSettingsSection(section);
     }
 
-    private static Panel CreateSettingsSection(
-        string heading,
-        IEnumerable<(string Label, string Value)> rows,
-        string? description = null)
+    private static TableLayoutPanel SettingsSection(string heading)
+    {
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2,
+            RowCount = 1,
+            Margin = new Padding(0),
+            Padding = new Padding(0)
+        };
+
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var headingLabel = new Label
+        {
+            Text = heading,
+            AutoSize = true,
+            Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 14)
+        };
+
+        layout.Controls.Add(headingLabel, 0, 0);
+        layout.SetColumnSpan(headingLabel, 2);
+
+        return layout;
+    }
+
+    private static void AddSettingsRow(TableLayoutPanel section, string labelText, string valueText)
+    {
+        var row = section.RowCount++;
+        section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        section.Controls.Add(new Label
+        {
+            Text = labelText,
+            AutoSize = true,
+            ForeColor = Color.FromArgb(90, 100, 115),
+            Margin = new Padding(0, 6, 24, 6)
+        }, 0, row);
+
+        section.Controls.Add(new Label
+        {
+            Text = valueText,
+            AutoSize = true,
+            ForeColor = Color.FromArgb(29, 39, 54),
+            MaximumSize = new Size(760, 0),
+            Margin = new Padding(0, 6, 0, 6)
+        }, 1, row);
+    }
+
+    private static Panel WrapSettingsSection(Control child)
     {
         var panel = new Panel
         {
@@ -333,79 +411,10 @@ public sealed class MainForm : Form
             BackColor = Color.White,
             Padding = new Padding(24),
             Margin = new Padding(0, 0, 0, 16),
-            MinimumSize = new Size(0, 120)
+            MinimumSize = new Size(0, 140)
         };
 
-        var layout = new TableLayoutPanel
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 2,
-            RowCount = 0,
-            Margin = new Padding(0),
-            Padding = new Padding(0)
-        };
-
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-
-        var title = new Label
-        {
-            Text = heading,
-            AutoSize = true,
-            Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 12)
-        };
-
-        layout.RowCount++;
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.Controls.Add(title, 0, layout.RowCount - 1);
-        layout.SetColumnSpan(title, 2);
-
-        if (!string.IsNullOrWhiteSpace(description))
-        {
-            var descriptionLabel = new Label
-            {
-                Text = description,
-                AutoSize = true,
-                ForeColor = Color.FromArgb(80, 90, 105),
-                MaximumSize = new Size(900, 0),
-                Margin = new Padding(0, 0, 0, 12)
-            };
-
-            layout.RowCount++;
-            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            layout.Controls.Add(descriptionLabel, 0, layout.RowCount - 1);
-            layout.SetColumnSpan(descriptionLabel, 2);
-        }
-
-        foreach (var row in rows)
-        {
-            var label = new Label
-            {
-                Text = row.Label,
-                AutoSize = true,
-                ForeColor = Color.FromArgb(90, 100, 115),
-                Margin = new Padding(0, 6, 24, 6)
-            };
-
-            var value = new Label
-            {
-                Text = row.Value,
-                AutoSize = true,
-                ForeColor = Color.FromArgb(29, 39, 54),
-                Margin = new Padding(0, 6, 0, 6),
-                MaximumSize = new Size(760, 0)
-            };
-
-            layout.RowCount++;
-            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            layout.Controls.Add(label, 0, layout.RowCount - 1);
-            layout.Controls.Add(value, 1, layout.RowCount - 1);
-        }
-
-        panel.Controls.Add(layout);
+        panel.Controls.Add(child);
         return panel;
     }
 

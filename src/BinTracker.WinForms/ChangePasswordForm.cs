@@ -20,8 +20,8 @@ public sealed class ChangePasswordForm : Form
         Text = required ? "Change Password Required" : "Change Password";
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(620, 520);
-        MinimumSize = new Size(560, 480);
+        ClientSize = new Size(640, 610);
+        MinimumSize = new Size(600, 570);
         MaximizeBox = false;
         MinimizeBox = false;
         BackColor = Color.White;

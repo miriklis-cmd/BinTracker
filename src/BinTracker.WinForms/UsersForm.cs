@@ -61,13 +61,18 @@ public sealed class UsersForm : Form
         var reset = new Button { Text = "Reset password", AutoSize = false, Size = new Size(150, 40) };
         reset.Click += async (_, _) => await ResetPasswordAsync();
 
-        var unlock = new Button { Text = "Unlock", AutoSize = false, Size = new Size(110, 40) };
-        unlock.Click += async (_, _) => await UnlockAsync();
+        var lockToggle = new Button
+        {
+            Text = "Lock / Unlock",
+            AutoSize = false,
+            Size = new Size(140, 40)
+        };
+        lockToggle.Click += async (_, _) => await ToggleLockAsync();
 
         buttons.Controls.Add(add);
         buttons.Controls.Add(toggle);
         buttons.Controls.Add(reset);
-        buttons.Controls.Add(unlock);
+        buttons.Controls.Add(lockToggle);
         root.Controls.Add(buttons, 0, 0);
         root.Controls.Add(grid, 0, 1);
         Controls.Add(root);
@@ -117,18 +122,18 @@ public sealed class UsersForm : Form
         }
     }
 
-    private async Task UnlockAsync()
+    private async Task ToggleLockAsync()
     {
         if (grid.CurrentRow?.DataBoundItem is not UserAccount user) return;
 
         try
         {
-            await users.UnlockAsync(user.Id);
+            await users.SetLockedAsync(user.Id, !user.IsLocked);
             await ReloadAsync();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Unlock user", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(ex.Message, "Lock / Unlock user", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -148,12 +153,14 @@ public sealed class UsersForm : Form
     }
 }
 
+
 internal sealed class AddUserForm : Form
 {
     private readonly TextBox username = new() { Dock = DockStyle.Fill };
     private readonly TextBox display = new() { Dock = DockStyle.Fill };
     private readonly TextBox password = new() { Dock = DockStyle.Fill, UseSystemPasswordChar = true };
     private readonly ComboBox role = new() { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
+    private readonly Label strength = new() { AutoSize = true, ForeColor = Color.DimGray };
 
     public string Username => username.Text;
     public string DisplayName => display.Text;
@@ -162,78 +169,137 @@ internal sealed class AddUserForm : Form
 
     public AddUserForm()
     {
-        Text = "Add user";
+        Text = "Add User";
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(500, 470);
-        MinimumSize = new Size(430, 400);
+        ClientSize = new Size(560, 540);
+        MinimumSize = new Size(520, 500);
         FormBorderStyle = FormBorderStyle.Sizable;
         MaximizeBox = false;
         MinimizeBox = false;
+        BackColor = Color.White;
 
         role.DataSource = Enum.GetValues<UserRole>();
         role.SelectedItem = UserRole.Operator;
 
-        var root = new TableLayoutPanel
+        var actionBar = new Panel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 82,
+            Padding = new Padding(28, 16, 28, 16),
+            BackColor = SystemColors.Control
+        };
+
+        var actions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Left,
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Margin = new Padding(0),
+            Padding = new Padding(0)
+        };
+
+        var save = new Button
+        {
+            Text = "Save",
+            AutoSize = false,
+            Size = new Size(140, 46),
+            Margin = new Padding(0, 0, 10, 0)
+        };
+
+        var cancel = new Button
+        {
+            Text = "Cancel",
+            AutoSize = false,
+            Size = new Size(140, 46),
+            DialogResult = DialogResult.Cancel,
+            Margin = new Padding(0)
+        };
+
+        save.Click += (_, _) =>
+        {
+            try
+            {
+                PasswordPolicy.Validate(password.Text);
+                DialogResult = DialogResult.OK;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Add user", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        };
+
+        actions.Controls.Add(save);
+        actions.Controls.Add(cancel);
+        actionBar.Controls.Add(actions);
+
+        var body = new Panel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            RowCount = 2,
-            Padding = new Padding(24)
+            AutoScroll = true,
+            Padding = new Padding(30),
+            BackColor = Color.White
         };
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
         var fields = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 1,
-            RowCount = 0
+            ColumnCount = 1
         };
-        fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+        fields.Controls.Add(new Label
+        {
+            Text = "Add user",
+            AutoSize = true,
+            Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 14)
+        });
 
         AddField(fields, "Username", username);
         AddField(fields, "Display name", display);
-        AddField(fields, "Password", password);
-        AddField(fields, "Role", role);
-        scroll.Controls.Add(fields);
+        AddField(fields, "Temporary password", password);
 
-        var actions = new FlowLayoutPanel
+        strength.Margin = new Padding(0, 0, 0, 8);
+        fields.Controls.Add(strength);
+
+        fields.Controls.Add(new Label
         {
-            Dock = DockStyle.Fill,
+            Text = "The user will be required to change this password at first login.",
             AutoSize = true,
-            FlowDirection = FlowDirection.RightToLeft,
-            WrapContents = false,
-            Padding = new Padding(0, 16, 0, 0)
-        };
-        var save = new Button { Text = "Save", AutoSize = true, MinimumSize = new Size(120, 42) };
-        save.Click += (_, _) => { DialogResult = DialogResult.OK; Close(); };
-        var cancel = new Button { Text = "Cancel", AutoSize = true, MinimumSize = new Size(100, 42), DialogResult = DialogResult.Cancel, Margin = new Padding(10, 0, 0, 0) };
-        actions.Controls.Add(save);
-        actions.Controls.Add(cancel);
+            ForeColor = Color.DimGray,
+            MaximumSize = new Size(470, 0),
+            Margin = new Padding(0, 0, 0, 8)
+        });
 
-        root.Controls.Add(scroll, 0, 0);
-        root.Controls.Add(actions, 0, 1);
-        Controls.Add(root);
+        AddField(fields, "Role", role);
+
+        body.Controls.Add(fields);
+        Controls.Add(body);
+        Controls.Add(actionBar);
 
         AcceptButton = save;
         CancelButton = cancel;
+
+        password.TextChanged += (_, _) =>
+            strength.Text = $"Strength: {PasswordPolicy.StrengthText(password.Text)}";
     }
 
-    private static void AddField(TableLayoutPanel panel, string text, Control control)
+    private static void AddField(TableLayoutPanel panel, string label, Control control)
     {
-        panel.RowCount++;
-        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        panel.Controls.Add(new Label { Text = text, AutoSize = true, Margin = new Padding(0, 10, 0, 4) }, 0, panel.RowCount - 1);
+        panel.Controls.Add(new Label
+        {
+            Text = label,
+            AutoSize = true,
+            Margin = new Padding(0, 10, 0, 4)
+        });
 
-        panel.RowCount++;
-        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        control.MinimumSize = new Size(0, 34);
-        control.Margin = new Padding(0, 0, 0, 4);
-        panel.Controls.Add(control, 0, panel.RowCount - 1);
+        control.MinimumSize = new Size(0, 36);
+        control.Margin = new Padding(0, 0, 0, 6);
+        panel.Controls.Add(control);
     }
 }
 
@@ -243,69 +309,120 @@ internal sealed class ResetPasswordForm : Form
     private readonly TextBox password = new() { Dock = DockStyle.Fill, UseSystemPasswordChar = true };
     private readonly TextBox confirm = new() { Dock = DockStyle.Fill, UseSystemPasswordChar = true };
     private readonly Label strength = new() { AutoSize = true, ForeColor = Color.DimGray };
-    private readonly Label error = new() { AutoSize = true, ForeColor = Color.Firebrick };
 
     public string TemporaryPassword => password.Text;
 
     public ResetPasswordForm(string username)
     {
-        Text = $"Reset Password - {username}";
+        Text = "Reset Password";
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(560, 430);
-        MinimumSize = new Size(520, 400);
+        ClientSize = new Size(600, 500);
+        MinimumSize = new Size(560, 470);
         MaximizeBox = false;
         MinimizeBox = false;
+        BackColor = Color.White;
 
-        var body = new TableLayoutPanel
+        var actionBar = new Panel
         {
-            Dock = DockStyle.Fill,
-            AutoSize = false,
-            Padding = new Padding(28),
-            ColumnCount = 1,
-            RowCount = 7
+            Dock = DockStyle.Bottom,
+            Height = 82,
+            Padding = new Padding(28, 16, 28, 16),
+            BackColor = SystemColors.Control
         };
 
-        body.Controls.Add(new Label
+        var actions = new FlowLayoutPanel
         {
-            Text = $"Set a temporary password for {username}",
+            Dock = DockStyle.Left,
             AutoSize = true,
-            Font = new Font("Segoe UI Semibold", 16F, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 12)
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false
+        };
+
+        var save = new Button
+        {
+            Text = "Reset Password",
+            AutoSize = false,
+            Size = new Size(165, 46),
+            Margin = new Padding(0, 0, 10, 0)
+        };
+
+        var cancel = new Button
+        {
+            Text = "Cancel",
+            AutoSize = false,
+            Size = new Size(130, 46),
+            DialogResult = DialogResult.Cancel,
+            Margin = new Padding(0)
+        };
+
+        actions.Controls.Add(save);
+        actions.Controls.Add(cancel);
+        actionBar.Controls.Add(actions);
+
+        var body = new Panel
+        {
+            Dock = DockStyle.Fill,
+            AutoScroll = true,
+            Padding = new Padding(30),
+            BackColor = Color.White
+        };
+
+        var form = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1
+        };
+
+        form.Controls.Add(new Label
+        {
+            Text = "Reset Password",
+            AutoSize = true,
+            Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 10)
         });
 
-        body.Controls.Add(new Label
+        form.Controls.Add(new Label
         {
-            Text = "The user will be required to change this password immediately after their next login.",
+            Text = "User",
             AutoSize = true,
-            MaximumSize = new Size(470, 0),
+            ForeColor = Color.DimGray,
+            Margin = new Padding(0, 0, 0, 2)
+        });
+
+        form.Controls.Add(new Label
+        {
+            Text = username,
+            AutoSize = true,
+            Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold),
+            MaximumSize = new Size(500, 0),
+            Margin = new Padding(0, 0, 0, 14)
+        });
+
+        form.Controls.Add(new Label
+        {
+            Text = "Set a temporary password. The user will be required to change it immediately after their next login.",
+            AutoSize = true,
+            MaximumSize = new Size(500, 0),
             ForeColor = Color.DimGray,
             Margin = new Padding(0, 0, 0, 12)
         });
 
-        body.Controls.Add(new Label { Text = "Temporary password", AutoSize = true });
-        body.Controls.Add(password);
-        body.Controls.Add(strength);
-        body.Controls.Add(new Label { Text = "Confirm password", AutoSize = true });
-        body.Controls.Add(confirm);
+        AddField(form, "Temporary password", password);
+        strength.Margin = new Padding(0, 0, 0, 8);
+        form.Controls.Add(strength);
+        AddField(form, "Confirm password", confirm);
 
-        var actions = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 70,
-            FlowDirection = FlowDirection.LeftToRight,
-            Padding = new Padding(28, 12, 0, 0)
-        };
-
-        var save = new Button { Text = "Reset password", AutoSize = false, Size = new Size(160, 42) };
-        var cancel = new Button { Text = "Cancel", AutoSize = false, Size = new Size(120, 42), DialogResult = DialogResult.Cancel };
+        body.Controls.Add(form);
 
         save.Click += (_, _) =>
         {
-            error.Text = string.Empty;
             if (password.Text != confirm.Text)
             {
-                MessageBox.Show("The passwords do not match.", "Reset password", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("The passwords do not match.", "Reset password",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -317,18 +434,32 @@ internal sealed class ResetPasswordForm : Form
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Reset password", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(ex.Message, "Reset password",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         };
 
-        password.TextChanged += (_, _) => strength.Text = $"Strength: {PasswordPolicy.StrengthText(password.Text)}";
-
-        actions.Controls.Add(save);
-        actions.Controls.Add(cancel);
+        password.TextChanged += (_, _) =>
+            strength.Text = $"Strength: {PasswordPolicy.StrengthText(password.Text)}";
 
         Controls.Add(body);
-        Controls.Add(actions);
+        Controls.Add(actionBar);
+
         AcceptButton = save;
         CancelButton = cancel;
+    }
+
+    private static void AddField(TableLayoutPanel panel, string label, Control control)
+    {
+        panel.Controls.Add(new Label
+        {
+            Text = label,
+            AutoSize = true,
+            Margin = new Padding(0, 10, 0, 4)
+        });
+
+        control.MinimumSize = new Size(0, 36);
+        control.Margin = new Padding(0, 0, 0, 6);
+        panel.Controls.Add(control);
     }
 }

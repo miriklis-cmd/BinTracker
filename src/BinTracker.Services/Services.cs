@@ -278,7 +278,7 @@ public interface IUserService
     Task CreateUserAsync(string username, string displayName, string password, UserRole role, CancellationToken cancellationToken = default);
     Task SetActiveAsync(int userId, bool active, CancellationToken cancellationToken = default);
     Task ResetPasswordAsync(int userId, string temporaryPassword, CancellationToken cancellationToken = default);
-    Task UnlockAsync(int userId, CancellationToken cancellationToken = default);
+    Task SetLockedAsync(int userId, bool locked, CancellationToken cancellationToken = default);
 }
 
 internal sealed class UserService(IDbContextFactory<BinTrackerDbContext> factory, UserSession session, IAuditService audit) : IUserService
@@ -353,23 +353,32 @@ internal sealed class UserService(IDbContextFactory<BinTrackerDbContext> factory
             cancellationToken: cancellationToken);
     }
 
-    public async Task UnlockAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task SetLockedAsync(
+        int userId,
+        bool locked,
+        CancellationToken cancellationToken = default)
     {
         RequireAdmin();
+
+        if (session.UserId == userId && locked)
+            throw new InvalidOperationException("You cannot lock your own account.");
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         var user = await db.UserAccounts.SingleAsync(x => x.Id == userId, cancellationToken);
 
-        user.IsLocked = false;
-        user.LockedUtc = null;
-        user.FailedLoginCount = 0;
+        user.IsLocked = locked;
+        user.LockedUtc = locked ? DateTime.UtcNow : null;
+
+        if (!locked)
+            user.FailedLoginCount = 0;
+
         await db.SaveChangesAsync(cancellationToken);
 
         await audit.WriteAsync(
-            "ACCOUNT_UNLOCKED",
+            locked ? "ACCOUNT_LOCKED_BY_ADMIN" : "ACCOUNT_UNLOCKED",
             "UserAccount",
             user.Id.ToString(),
-            $"Administrator unlocked user '{user.Username}'.",
+            $"Administrator {(locked ? "locked" : "unlocked")} user '{user.Username}'.",
             cancellationToken: cancellationToken);
     }
 

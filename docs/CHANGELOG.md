@@ -91,3 +91,7 @@
 ## 0.2.0-alpha.6.2.1
 - Fixed blank Settings page caused by FlowLayoutPanel/AutoSize interaction.
 - Rebuilt Settings using explicit TableLayoutPanel sections.
+
+## 0.2.0-alpha.6.2.2
+- UI polish for password/user/settings screens.
+- Added administrator manual Lock / Unlock.
