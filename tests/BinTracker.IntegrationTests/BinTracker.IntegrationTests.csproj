@@ -16,5 +16,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\BinTracker.Core\BinTracker.Core.csproj" />
     <ProjectReference Include="..\..\src\BinTracker.Data\BinTracker.Data.csproj" />
+    <ProjectReference Include="..\..\src\BinTracker.Services\BinTracker.Services.csproj" />
   </ItemGroup>
 </Project>

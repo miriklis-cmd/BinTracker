@@ -14,8 +14,16 @@ public sealed class MainForm : Form
     private readonly ICustomerService customers;
     private readonly ICustomerStatementReportService statementReports;
     private readonly IAuthenticationService auth;
+    private readonly IMovementService movements;
 
-    public MainForm(UserSession session, IUserService users, IAuditService audit, ICustomerService customers, ICustomerStatementReportService statementReports, IAuthenticationService auth)
+    public MainForm(
+        UserSession session,
+        IUserService users,
+        IAuditService audit,
+        ICustomerService customers,
+        ICustomerStatementReportService statementReports,
+        IAuthenticationService auth,
+        IMovementService movements)
     {
         this.session = session;
         this.users = users;
@@ -23,6 +31,7 @@ public sealed class MainForm : Form
         this.customers = customers;
         this.statementReports = statementReports;
         this.auth = auth;
+        this.movements = movements;
 
         Text = $"BinTracker - {session.DisplayName}";
         StartPosition = FormStartPosition.CenterScreen;
@@ -53,7 +62,7 @@ public sealed class MainForm : Form
         side.Controls.Add(Nav("Settings", ShowSettings));
         side.Controls.Add(Nav("Reports", () => Placeholder("Reports", "Report generation will record the user, filters, dates and export format in the audit trail.")));
         side.Controls.Add(Nav("Single Entry", () => Placeholder("Single Entry", "Record one IN (Returned) or OUT (Taken) movement.")));
-        side.Controls.Add(Nav("Batch Entry", () => Placeholder("Batch Entry", "Enter a whole day of returned bins, then taken bins.")));
+        side.Controls.Add(Nav("Batch Entry", ShowBatchEntry));
         side.Controls.Add(Nav("Customers", ShowCustomers));
         side.Controls.Add(Nav("Dashboard", ShowDashboard));
         side.Controls.Add(new Label
@@ -186,6 +195,13 @@ public sealed class MainForm : Form
         page.Controls.Add(cards, 0, 0);
         page.Controls.Add(info, 0, 1);
         content.Controls.Add(page);
+    }
+
+    private void ShowBatchEntry()
+    {
+        SetPage("Batch Entry");
+        content.AutoScroll = false;
+        content.Controls.Add(new BatchEntryView(movements, session));
     }
 
     private void ShowCustomers()

@@ -103,3 +103,10 @@
 ## 0.2.0-alpha.6.2.4
 - Fixed Users toolbar/status clipping.
 - Added administrator Change Role workflow with audit logging.
+
+## 0.2.0-alpha.7.0
+- Added operational Batch Entry.
+- Added transactional MovementService batch save and audit record.
+- Added customer-code autocomplete and live customer balances.
+- Added movement unit/integration tests.
+- Added release test checklist.

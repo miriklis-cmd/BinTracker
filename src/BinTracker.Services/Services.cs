@@ -508,6 +508,7 @@ public static class ServiceSetup
         services.AddScoped<IBalanceService, BalanceService>();
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<ICustomerStatementReportService, CustomerStatementReportService>();
+        services.AddScoped<IMovementService, MovementService>();
         return services;
     }
 }

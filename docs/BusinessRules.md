@@ -21,3 +21,7 @@
 - Passwords do not expire periodically.
 - Five failed login attempts lock an account by default; an administrator unlocks it.
 - Administrator password resets force the user to choose a new password at next login.
+
+- A saved batch has one movement direction: Returned (IN) or Taken (OUT).
+- Daily data entry normally records returns and dispatches as separate batches.
+- OUT increases the customer's outstanding position; IN reduces it and may create credit.

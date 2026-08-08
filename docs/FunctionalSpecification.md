@@ -42,3 +42,8 @@
 - BT-IMPORT-003: `(Bulk)` maps to Bulk Bin.
 - BT-IMPORT-004: `(Chep)` maps to CHEP Pallet.
 - BT-IMPORT-005: Unprefixed Excel customer rows map to Blue Bin.
+
+- BT-MOVE-005: A batch contains one movement direction.
+- BT-MOVE-006: Batch Entry must allow multiple customers and container types in one batch.
+- BT-MOVE-007: Saving a batch must be transactional.
+- BT-MOVE-008: Saved batches must be recorded in the audit trail.
