@@ -17,7 +17,7 @@ public sealed class MainForm : Form
     private readonly IAuthenticationService auth;
     private readonly IMovementService movements;
     private readonly ApplicationState appState;
-    private const string ApplicationVersion = "v0.2.0-alpha.7.2.11";
+    private const string ApplicationVersion = "v0.2.0-alpha.7.2.13";
 
     /// <summary>
     /// True when the user deliberately chose Logout rather than closing
@@ -121,19 +121,12 @@ public sealed class MainForm : Form
             Padding = Padding.Empty
         };
 
-        var logout = new Button
+        var logout = new LogoutControl
         {
-            Text = "Logout",
-            Image = IconAssets.Get("logout"),
-            ImageAlign = ContentAlignment.MiddleLeft,
-            TextAlign = ContentAlignment.MiddleRight,
-            TextImageRelation = TextImageRelation.ImageBeforeText,
             AutoSize = false,
-            Size = new Size(122, 42),
-            Padding = new Padding(10, 0, 10, 0),
+            Size = new Size(126, 42),
             Margin = new Padding(12, 5, 0, 0),
-            Cursor = Cursors.Hand,
-            UseVisualStyleBackColor = true
+            Cursor = Cursors.Hand
         };
 
         logout.Click += (_, _) => Logout();
@@ -708,4 +701,78 @@ public sealed class MainForm : Form
         panel.Controls.Add(layout);
         return panel;
     }
+
+    /// <summary>
+    /// DPI-safe logout control. Icon and text are drawn directly so WinForms
+    /// cannot crop the bitmap or truncate the caption at scaled display settings.
+    /// </summary>
+    private sealed class LogoutControl : Control
+    {
+        public LogoutControl()
+        {
+            BackColor = Color.White;
+            ForeColor = Color.Black;
+            Font = new Font("Segoe UI", 10F);
+            SetStyle(
+                ControlStyles.UserPaint |
+                ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.ResizeRedraw,
+                true);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+            var borderRect = new Rectangle(
+                0,
+                0,
+                Math.Max(0, Width - 1),
+                Math.Max(0, Height - 1));
+
+            using var borderPen = new Pen(Color.FromArgb(120, 135, 155), 1F);
+            e.Graphics.DrawRectangle(borderPen, borderRect);
+
+            var iconColor = Color.FromArgb(42, 57, 79);
+            using var iconPen = new Pen(iconColor, 1.8F);
+
+            var iconX = 14F;
+            var iconY = Height / 2F - 8F;
+
+            // Door.
+            e.Graphics.DrawRectangle(
+                iconPen,
+                iconX,
+                iconY,
+                10F,
+                16F);
+
+            // Outward arrow.
+            var midY = Height / 2F;
+            e.Graphics.DrawLine(iconPen, iconX + 8F, midY, iconX + 24F, midY);
+            e.Graphics.DrawLine(iconPen, iconX + 19F, midY - 5F, iconX + 24F, midY);
+            e.Graphics.DrawLine(iconPen, iconX + 19F, midY + 5F, iconX + 24F, midY);
+
+            var textRect = new Rectangle(
+                48,
+                0,
+                Math.Max(0, Width - 54),
+                Height);
+
+            TextRenderer.DrawText(
+                e.Graphics,
+                "Logout",
+                Font,
+                textRect,
+                ForeColor,
+                TextFormatFlags.VerticalCenter |
+                TextFormatFlags.Left |
+                TextFormatFlags.NoPadding |
+                TextFormatFlags.SingleLine);
+        }
+    }
+
 }

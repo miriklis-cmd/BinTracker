@@ -77,3 +77,13 @@
 - [ ] Logout icon and full `Logout` text are visible
 - [ ] Logout icon is vertically centred
 - [ ] Settings icon reads clearly as a cog/gear
+
+## Alpha 7.2.13
+- [ ] Login displays a complete eye icon, not a small line
+- [ ] Eye toggles visibility correctly
+- [ ] Eye remains visually inside the password field
+- [ ] Logout displays a complete door/arrow icon
+- [ ] Full `Logout` caption is visible
+- [ ] Logout icon and caption are vertically centred
+- [ ] Logout returns to Login correctly
+- [ ] Left navigation icons are unchanged

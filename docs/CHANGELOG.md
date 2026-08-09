@@ -164,3 +164,9 @@
 
 ## 0.2.0-alpha.7.2.11
 - Approved login/header/navigation polish.
+
+## 0.2.0-alpha.7.2.12
+- Applied approved icon artwork and fixed Logout clipping.
+
+## 0.2.0-alpha.7.2.13
+- Replaced problematic image rendering for password eye and Logout with DPI-safe custom WinForms drawing.
