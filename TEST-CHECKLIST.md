@@ -39,3 +39,23 @@
 - [ ] Login again without restarting the application
 - [ ] If a Batch Entry draft exists, it is still present after logout/login
 - [ ] Closing the main window with X still exits normally
+
+## Alpha 7.2.7
+- [ ] No blank band between customer buttons and Current Position
+- [ ] 09/08/2026 is fully readable
+- [ ] IN (Returned) is fully readable
+- [ ] OUT (Taken) is fully readable
+- [ ] Lawrence fits in Entered By
+
+## Alpha 7.2.8
+- [ ] Dashboard title is fully visible with no top/bottom clipping
+- [ ] Customers title is fully visible with no top/bottom clipping
+- [ ] Batch Entry / Reports / Settings titles are also clean
+- [ ] Dashboard nav icon displays
+- [ ] Customers nav icon displays
+- [ ] Batch Entry nav icon displays
+- [ ] Single Entry nav icon displays
+- [ ] Reports nav icon displays
+- [ ] Settings nav icon displays
+- [ ] Clicking either icon or nav text opens the correct page
+- [ ] Navigation still looks correct on the laptop DPI/scaling setting

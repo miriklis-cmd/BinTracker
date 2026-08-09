@@ -16,7 +16,7 @@ public sealed class MainForm : Form
     private readonly IAuthenticationService auth;
     private readonly IMovementService movements;
     private readonly ApplicationState appState;
-    private const string ApplicationVersion = "v0.2.0-alpha.7.2.6";
+    private const string ApplicationVersion = "v0.2.0-alpha.7.2.8";
 
     /// <summary>
     /// True when the user deliberately chose Logout rather than closing
@@ -69,12 +69,12 @@ public sealed class MainForm : Form
             Padding = new Padding(16)
         };
 
-        side.Controls.Add(Nav("Settings", ShowSettings));
-        side.Controls.Add(Nav("Reports", () => Placeholder("Reports", "Report generation will record the user, filters, dates and export format in the audit trail.")));
-        side.Controls.Add(Nav("Single Entry", () => Placeholder("Single Entry", "Record one IN (Returned) or OUT (Taken) movement.")));
-        side.Controls.Add(Nav("Batch Entry", ShowBatchEntry));
-        side.Controls.Add(Nav("Customers", ShowCustomers));
-        side.Controls.Add(Nav("Dashboard", ShowDashboard));
+        side.Controls.Add(Nav("\uE713", "Settings", ShowSettings));
+        side.Controls.Add(Nav("\uE9D2", "Reports", () => Placeholder("Reports", "Report generation will record the user, filters, dates and export format in the audit trail.")));
+        side.Controls.Add(Nav("\uE710", "Single Entry", () => Placeholder("Single Entry", "Record one IN (Returned) or OUT (Taken) movement.")));
+        side.Controls.Add(Nav("\uE8FD", "Batch Entry", ShowBatchEntry));
+        side.Controls.Add(Nav("\uE716", "Customers", ShowCustomers));
+        side.Controls.Add(Nav("\uE80F", "Dashboard", ShowDashboard));
         side.Controls.Add(new Label
         {
             Text = "BinTracker",
@@ -89,21 +89,26 @@ public sealed class MainForm : Form
         var header = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 76,
+            Height = 84,
+            MinimumSize = new Size(0, 84),
             BackColor = Color.White,
-            Padding = new Padding(24, 12, 24, 10),
+            Padding = new Padding(24, 10, 24, 8),
             ColumnCount = 2,
             RowCount = 1
         };
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
 
-        title.Dock = DockStyle.Fill;
-        title.AutoSize = false;
+        // AutoSize avoids the slight glyph clipping that can occur at
+        // non-100% Windows scaling when a fixed-height Label renders Segoe UI.
+        title.AutoSize = true;
+        title.Anchor = AnchorStyles.Left;
         title.Font = new Font("Segoe UI Semibold", 20F, FontStyle.Bold);
         title.ForeColor = Color.FromArgb(29, 39, 54);
         title.TextAlign = ContentAlignment.MiddleLeft;
-        title.AutoEllipsis = true;
+        title.AutoEllipsis = false;
+        title.Margin = new Padding(0, 2, 0, 0);
+        title.Padding = new Padding(0, 0, 0, 3);
 
         var sessionArea = new FlowLayoutPanel
         {
@@ -192,25 +197,63 @@ public sealed class MainForm : Form
         Close();
     }
 
-    private Button Nav(string text, Action action)
+    /// <summary>
+    /// Creates a navigation row with a Windows-native Segoe MDL2 icon.
+    /// The icon font is built into supported Windows versions, so BinTracker
+    /// does not need to distribute third-party image or font files.
+    /// </summary>
+    private Control Nav(string glyph, string text, Action action)
     {
-        var button = new Button
+        var row = new Panel
         {
-            Text = text,
             Dock = DockStyle.Top,
             Height = 50,
+            BackColor = Color.FromArgb(29, 39, 54),
+            Cursor = Cursors.Hand,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+
+        var icon = new Label
+        {
+            Text = glyph,
+            Dock = DockStyle.Left,
+            Width = 42,
+            ForeColor = Color.White,
+            Font = new Font("Segoe MDL2 Assets", 14F, FontStyle.Regular),
+            TextAlign = ContentAlignment.MiddleCenter,
+            Cursor = Cursors.Hand
+        };
+
+        var caption = new Button
+        {
+            Text = text,
+            Dock = DockStyle.Fill,
             FlatStyle = FlatStyle.Flat,
             BackColor = Color.FromArgb(29, 39, 54),
             ForeColor = Color.White,
             TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(12, 0, 0, 0),
+            Padding = new Padding(4, 0, 0, 0),
             Cursor = Cursors.Hand,
-            AutoEllipsis = true
+            AutoEllipsis = true,
+            Margin = Padding.Empty
         };
 
-        button.FlatAppearance.BorderSize = 0;
-        button.Click += (_, _) => action();
-        return button;
+        caption.FlatAppearance.BorderSize = 0;
+
+        void Activate()
+        {
+            action();
+        }
+
+        caption.Click += (_, _) => Activate();
+        icon.Click += (_, _) => Activate();
+        row.Click += (_, _) => Activate();
+
+        row.Controls.Add(caption);
+        row.Controls.Add(icon);
+
+        return row;
     }
 
     private async void ShowDashboard()

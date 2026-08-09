@@ -89,7 +89,7 @@ public sealed class CustomersView : UserControl
         // pushed below the visible client area on smaller displays.
         // The details area should consume only the height required by its controls.
         // The remaining height is then shared between the two operational grids.
-        right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        right.RowStyles.Add(new RowStyle(SizeType.Absolute, 360F));
         right.RowStyles.Add(new RowStyle(SizeType.Percent, 38F));
         right.RowStyles.Add(new RowStyle(SizeType.Percent, 62F));
         right.Controls.Add(BuildDetails(),0,0);
@@ -110,14 +110,13 @@ public sealed class CustomersView : UserControl
         // the customer action row.
         var form = new TableLayoutPanel
         {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Dock = DockStyle.Fill,
+            AutoSize = false,
             ColumnCount = 4,
             RowCount = 8,
             BackColor = Color.White,
-            Padding = new Padding(18, 12, 18, 8),
-            Margin = new Padding(0, 0, 0, 6)
+            Padding = new Padding(18, 12, 18, 4),
+            Margin = Padding.Empty
         };
 
         form.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -206,14 +205,14 @@ public sealed class CustomersView : UserControl
         {
             Name = "Date",
             HeaderText = "Date",
-            Width = 100
+            Width = 125
         });
 
         movements.Columns.Add(new DataGridViewTextBoxColumn
         {
             Name = "Direction",
             HeaderText = "Direction",
-            Width = 120
+            Width = 145
         });
 
         movements.Columns.Add(new DataGridViewTextBoxColumn
@@ -242,7 +241,7 @@ public sealed class CustomersView : UserControl
         {
             Name = "User",
             HeaderText = "Entered By",
-            Width = 110
+            Width = 125
         });
 
         return box;
@@ -361,8 +360,8 @@ public sealed class CustomersView : UserControl
         {
             Dock = DockStyle.Fill,
             BackColor = Color.White,
-            Padding = new Padding(18, 12, 18, 8),
-            Margin = new Padding(0, 0, 0, 6),
+            Padding = new Padding(18, 12, 18, 4),
+            Margin = Padding.Empty,
             MinimumSize = Size.Empty
         };
 

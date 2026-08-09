@@ -144,3 +144,10 @@
 - Rebuilt Customer details layout to eliminate the phantom whitespace.
 - Widened movement-history Date, Direction and Entered By columns.
 - Added top-right Logout and return-to-login session flow.
+
+## 0.2.0-alpha.7.2.7
+- Tightened Customer editor height and widened movement-history columns.
+
+## 0.2.0-alpha.7.2.8
+- Fixed shared page-title clipping at scaled DPI settings.
+- Added built-in Windows icons to the left navigation.
