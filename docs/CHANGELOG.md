@@ -151,3 +151,8 @@
 ## 0.2.0-alpha.7.2.8
 - Fixed shared page-title clipping at scaled DPI settings.
 - Added built-in Windows icons to the left navigation.
+
+## 0.2.0-alpha.7.2.9
+- Replaced navigation font glyphs with embedded PNG icons.
+- Added logout icon.
+- Added reusable show/hide password eye controls throughout the application.

@@ -1,45 +1,53 @@
-# BinTracker v0.1.0-alpha.3
+# BinTracker
 
-This release adds local authentication, roles, user administration, and an append-only audit trail.
+BinTracker is a Windows desktop application for managing returnable containers (bins, pallets and other reusable assets). It replaces the previous Excel workbook with a multi-user SQLite-backed application that records every movement and provides reporting, auditing and customer balance tracking.
 
-## First launch
+## Current status
 
-1. Open `BinTracker.sln`.
-2. Build and press F5.
-3. Create the first administrator account when prompted.
-4. Log in using that account.
+**Version:** v0.2.0-alpha.7.2.9
 
-Passwords must be at least 10 characters and include uppercase, lowercase, and a number.
+Implemented:
 
-## Audit coverage
+- Windows desktop application (.NET 8 WinForms)
+- SQLite database (automatic daily persistence)
+- Customer management
+- Batch Entry and Single Entry workflows
+- Running customer/container balances
+- Dashboard
+- Reporting framework
+- User authentication
+- Administrator / Operator roles
+- Password policy and forced password changes
+- Audit trail
+- Customer statements
+- Unsaved batch draft recovery
+- Logout support
+- Embedded navigation icons
+- Show/Hide password controls
+- Automated unit and integration tests
 
-The audit table now records successful and failed logins, logout, initial administrator creation, new users, user activation/deactivation, machine name, session ID, success/failure and before/after values where applicable.
+## Project structure
 
-The audit service is ready to record customer changes, movements, batch reversals, settings, backups/restores, Excel imports/exports, and generated reports as those features are implemented.
+- `src/BinTracker.Core` – domain models
+- `src/BinTracker.Data` – SQLite persistence
+- `src/BinTracker.Services` – business logic
+- `src/BinTracker.WinForms` – desktop UI
+- `tests` – unit and integration tests
+- `docs` – changelog and release notes
 
-Existing Alpha 2 data is preserved. Startup performs an idempotent database upgrade that adds the security tables if they do not exist.
+## Development principles
 
+- Strong separation of UI, business logic and data access.
+- Nullable reference warnings fixed.
+- Commented code for non-obvious logic.
+- Every significant feature accompanied by tests where practical.
+- Incremental alpha releases with release notes.
 
-## Multi-computer note
+## Planned before beta
 
-This alpha currently stores SQLite data locally under `%LOCALAPPDATA%`. Do not use separate installations as a shared multi-user production system yet. A central database provider will be added before multi-computer deployment.
-
-
-## Database deployment strategy
-
-BinTracker currently uses SQLite for fast single-PC development and testing.
-
-Database access is now isolated in `BinTracker.Data` and configured through:
-
-`%LOCALAPPDATA%\BinTracker\database.json`
-
-PostgreSQL is the planned central database before simultaneous multi-PC deployment.
-The PostgreSQL provider is not enabled yet, so this release has no extra server/install requirement.
-
-
-## v0.2.0-alpha.1
-Customer Management is now functional from the left navigation.
-
-## v0.2.0-alpha.2
-
-Customer codes are now the primary visible identifier in Customer Management. Select a customer and use **Customer Statement** to generate an audited PDF for a chosen period.
+- Rich reporting
+- Statement printing/export
+- Email/SMS reminder integration
+- Improved dashboard analytics
+- Backup/restore tools
+- Installer and automatic updates

@@ -587,7 +587,7 @@ internal sealed class AddUserForm : Form
 
         AddField(fields, "Username", username);
         AddField(fields, "Display name", display);
-        AddField(fields, "Temporary password", password);
+        AddField(fields, "Temporary password", PasswordUi.WithVisibilityToggle(password));
 
         strength.Margin = new Padding(0, 0, 0, 8);
         fields.Controls.Add(strength);
@@ -736,10 +736,10 @@ internal sealed class ResetPasswordForm : Form
             Margin = new Padding(0, 0, 0, 12)
         });
 
-        AddField(form, "Temporary password", password);
+        AddField(form, "Temporary password", PasswordUi.WithVisibilityToggle(password));
         strength.Margin = new Padding(0, 0, 0, 8);
         form.Controls.Add(strength);
-        AddField(form, "Confirm password", confirm);
+        AddField(form, "Confirm password", PasswordUi.WithVisibilityToggle(confirm));
 
         body.Controls.Add(form);
 

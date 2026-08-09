@@ -16,7 +16,7 @@ public sealed class MainForm : Form
     private readonly IAuthenticationService auth;
     private readonly IMovementService movements;
     private readonly ApplicationState appState;
-    private const string ApplicationVersion = "v0.2.0-alpha.7.2.8";
+    private const string ApplicationVersion = "v0.2.0-alpha.7.2.9";
 
     /// <summary>
     /// True when the user deliberately chose Logout rather than closing
@@ -69,12 +69,12 @@ public sealed class MainForm : Form
             Padding = new Padding(16)
         };
 
-        side.Controls.Add(Nav("\uE713", "Settings", ShowSettings));
-        side.Controls.Add(Nav("\uE9D2", "Reports", () => Placeholder("Reports", "Report generation will record the user, filters, dates and export format in the audit trail.")));
-        side.Controls.Add(Nav("\uE710", "Single Entry", () => Placeholder("Single Entry", "Record one IN (Returned) or OUT (Taken) movement.")));
-        side.Controls.Add(Nav("\uE8FD", "Batch Entry", ShowBatchEntry));
-        side.Controls.Add(Nav("\uE716", "Customers", ShowCustomers));
-        side.Controls.Add(Nav("\uE80F", "Dashboard", ShowDashboard));
+        side.Controls.Add(Nav("nav_settings", "Settings", ShowSettings));
+        side.Controls.Add(Nav("nav_reports", "Reports", () => Placeholder("Reports", "Report generation will record the user, filters, dates and export format in the audit trail.")));
+        side.Controls.Add(Nav("nav_single", "Single Entry", () => Placeholder("Single Entry", "Record one IN (Returned) or OUT (Taken) movement.")));
+        side.Controls.Add(Nav("nav_batch", "Batch Entry", ShowBatchEntry));
+        side.Controls.Add(Nav("nav_customers", "Customers", ShowCustomers));
+        side.Controls.Add(Nav("nav_dashboard", "Dashboard", ShowDashboard));
         side.Controls.Add(new Label
         {
             Text = "BinTracker",
@@ -123,8 +123,11 @@ public sealed class MainForm : Form
         var logout = new Button
         {
             Text = "Logout",
+            Image = IconAssets.Get("logout"),
+            ImageAlign = ContentAlignment.MiddleLeft,
+            TextImageRelation = TextImageRelation.ImageBeforeText,
             AutoSize = false,
-            Size = new Size(92, 38),
+            Size = new Size(112, 38),
             Margin = new Padding(12, 7, 0, 0),
             Cursor = Cursors.Hand
         };
@@ -198,11 +201,10 @@ public sealed class MainForm : Form
     }
 
     /// <summary>
-    /// Creates a navigation row with a Windows-native Segoe MDL2 icon.
-    /// The icon font is built into supported Windows versions, so BinTracker
-    /// does not need to distribute third-party image or font files.
+    /// Creates a navigation row using a PNG icon embedded in BinTracker.
+    /// This avoids workstation-specific font/glyph differences.
     /// </summary>
-    private Control Nav(string glyph, string text, Action action)
+    private Control Nav(string iconName, string text, Action action)
     {
         var row = new Panel
         {
@@ -214,15 +216,14 @@ public sealed class MainForm : Form
             Padding = Padding.Empty
         };
 
-        var icon = new Label
+        var icon = new PictureBox
         {
-            Text = glyph,
+            Image = IconAssets.Get(iconName),
+            SizeMode = PictureBoxSizeMode.CenterImage,
             Dock = DockStyle.Left,
             Width = 42,
-            ForeColor = Color.White,
-            Font = new Font("Segoe MDL2 Assets", 14F, FontStyle.Regular),
-            TextAlign = ContentAlignment.MiddleCenter,
-            Cursor = Cursors.Hand
+            Cursor = Cursors.Hand,
+            BackColor = Color.Transparent
         };
 
         var caption = new Button
@@ -241,10 +242,7 @@ public sealed class MainForm : Form
 
         caption.FlatAppearance.BorderSize = 0;
 
-        void Activate()
-        {
-            action();
-        }
+        void Activate() => action();
 
         caption.Click += (_, _) => Activate();
         icon.Click += (_, _) => Activate();

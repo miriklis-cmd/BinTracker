@@ -82,11 +82,11 @@ public sealed class ChangePasswordForm : Form
             Margin = new Padding(0, 0, 0, 14)
         });
 
-        AddField(form, "Current password", current);
-        AddField(form, "New password", next);
+        AddField(form, "Current password", PasswordUi.WithVisibilityToggle(current));
+        AddField(form, "New password", PasswordUi.WithVisibilityToggle(next));
         strength.Margin = new Padding(0, 2, 0, 8);
         form.Controls.Add(strength);
-        AddField(form, "Confirm new password", confirm);
+        AddField(form, "Confirm new password", PasswordUi.WithVisibilityToggle(confirm));
 
         form.Controls.Add(new Label
         {

@@ -68,7 +68,7 @@ public sealed class LoginForm : Form
         });
 
         AddField(fields, "Username", username);
-        AddField(fields, "Password", password);
+        AddField(fields, "Password", PasswordUi.WithVisibilityToggle(password));
 
         error.Margin = new Padding(0, 8, 0, 0);
         AddControl(fields, error);

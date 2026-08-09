@@ -59,3 +59,13 @@
 - [ ] Settings nav icon displays
 - [ ] Clicking either icon or nav text opens the correct page
 - [ ] Navigation still looks correct on the laptop DPI/scaling setting
+
+## Alpha 7.2.9
+- [ ] All six left-menu icons appear consistently
+- [ ] Logout button displays its icon
+- [ ] Login password eye reveals and re-hides password
+- [ ] Change Password eyes work on all password fields
+- [ ] Add User temporary-password eye works
+- [ ] Reset Password eyes work for password and confirmation
+- [ ] First-run Administrator eyes work if tested on a fresh database
+- [ ] Passwords are always masked initially

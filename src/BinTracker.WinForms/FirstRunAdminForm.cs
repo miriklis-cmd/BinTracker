@@ -78,8 +78,8 @@ public sealed class FirstRunAdminForm : Form
 
         AddField(fields, "Username", username);
         AddField(fields, "Display name", displayName);
-        AddField(fields, "Password", password);
-        AddField(fields, "Confirm password", confirm);
+        AddField(fields, "Password", PasswordUi.WithVisibilityToggle(password));
+        AddField(fields, "Confirm password", PasswordUi.WithVisibilityToggle(confirm));
 
         AddControl(fields, new Label
         {
