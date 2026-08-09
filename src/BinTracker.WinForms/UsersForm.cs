@@ -57,7 +57,7 @@ public sealed class UsersForm : Form
             Name = "DisplayName",
             HeaderText = "Display name",
             DataPropertyName = nameof(UserGridRow.DisplayName),
-            Width = 210
+            Width = 185
         });
 
         grid.Columns.Add(new DataGridViewTextBoxColumn
@@ -65,7 +65,7 @@ public sealed class UsersForm : Form
             Name = "Role",
             HeaderText = "Role",
             DataPropertyName = nameof(UserGridRow.Role),
-            Width = 125
+            Width = 155
         });
 
         grid.Columns.Add(new DataGridViewTextBoxColumn
@@ -154,9 +154,11 @@ public sealed class UsersForm : Form
         UpdateContextButtons();
     }
 
-    private void GridCellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+    private void GridCellFormatting(
+        object? sender,
+        DataGridViewCellFormattingEventArgs e)
     {
-        if (e.RowIndex < 0)
+        if (e.RowIndex < 0 || e.ColumnIndex < 0)
             return;
 
         if (grid.Rows[e.RowIndex].DataBoundItem is not UserGridRow row)
@@ -166,9 +168,11 @@ public sealed class UsersForm : Form
 
         if (column == "Status")
         {
-            e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
+            var style = e.CellStyle ?? new DataGridViewCellStyle();
+            e.CellStyle = style;
 
-            e.CellStyle.ForeColor = row.Status switch
+            style.Font = new Font(grid.Font, FontStyle.Bold);
+            style.ForeColor = row.Status switch
             {
                 "Active" => Color.ForestGreen,
                 "Password Reset Required" => Color.DarkOrange,
@@ -176,25 +180,31 @@ public sealed class UsersForm : Form
                 "Inactive" => Color.DimGray,
                 _ => grid.ForeColor
             };
-        }
-        else if (column == "Role")
-        {
-            e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
 
-            e.CellStyle.ForeColor = row.Source.Role switch
-            {
-                UserRole.Administrator => Color.RoyalBlue,
-                UserRole.Operator => Color.SeaGreen,
-                _ => Color.DimGray
-            };
+            return;
         }
+
+        if (column != "Role")
+            return;
+
+        var role = row.Source.Role;
+        var roleStyle = e.CellStyle ?? new DataGridViewCellStyle();
+        e.CellStyle = roleStyle;
+
+        roleStyle.Font = new Font(grid.Font, FontStyle.Bold);
+        roleStyle.ForeColor = role switch
+        {
+            UserRole.Administrator => Color.RoyalBlue,
+            UserRole.Operator => Color.SeaGreen,
+            _ => Color.DimGray
+        };
     }
 
     private void UpdateContextButtons()
     {
-        var user = SelectedUser();
+        var selected = SelectedUser();
 
-        if (user is null)
+        if (selected is null)
         {
             toggleActive.Text = "Deactivate";
             toggleLock.Text = "Lock";
@@ -206,8 +216,8 @@ public sealed class UsersForm : Form
         toggleActive.Enabled = true;
         toggleLock.Enabled = true;
 
-        toggleActive.Text = user.IsActive ? "Deactivate" : "Activate";
-        toggleLock.Text = user.IsLocked ? "Unlock" : "Lock";
+        toggleActive.Text = selected.IsActive ? "Deactivate" : "Activate";
+        toggleLock.Text = selected.IsLocked ? "Unlock" : "Lock";
     }
 
     private async Task AddAsync()

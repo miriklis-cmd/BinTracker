@@ -16,7 +16,13 @@ public sealed class MainForm : Form
     private readonly IAuthenticationService auth;
     private readonly IMovementService movements;
     private readonly ApplicationState appState;
-    private const string ApplicationVersion = "v0.2.0-alpha.7.1";
+    private const string ApplicationVersion = "v0.2.0-alpha.7.2.6";
+
+    /// <summary>
+    /// True when the user deliberately chose Logout rather than closing
+    /// BinTracker. Program.cs uses this to return to the login screen.
+    /// </summary>
+    public bool LogoutRequested { get; private set; }
 
     public MainForm(
         UserSession session,
@@ -99,17 +105,43 @@ public sealed class MainForm : Form
         title.TextAlign = ContentAlignment.MiddleLeft;
         title.AutoEllipsis = true;
 
+        var sessionArea = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = false,
+            FlowDirection = FlowDirection.RightToLeft,
+            WrapContents = false,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+
+        var logout = new Button
+        {
+            Text = "Logout",
+            AutoSize = false,
+            Size = new Size(92, 38),
+            Margin = new Padding(12, 7, 0, 0),
+            Cursor = Cursors.Hand
+        };
+
+        logout.Click += (_, _) => Logout();
+
         var signedIn = new Label
         {
             Text = $"Signed in: {session.DisplayName} ({session.Role})",
-            Dock = DockStyle.Fill,
+            AutoSize = true,
             TextAlign = ContentAlignment.MiddleRight,
             ForeColor = Color.DimGray,
-            AutoEllipsis = true
+            AutoEllipsis = true,
+            Margin = new Padding(0, 16, 0, 0),
+            MaximumSize = new Size(520, 0)
         };
 
+        sessionArea.Controls.Add(logout);
+        sessionArea.Controls.Add(signedIn);
+
         header.Controls.Add(title, 0, 0);
-        header.Controls.Add(signedIn, 1, 0);
+        header.Controls.Add(sessionArea, 1, 0);
 
         content.Dock = DockStyle.Fill;
         content.Padding = new Padding(24);
@@ -139,6 +171,25 @@ public sealed class MainForm : Form
         Controls.Add(status);
 
         ResumeLayout(true);
+    }
+
+    private void Logout()
+    {
+        var draftMessage = appState.DraftBatch.HasLines
+            ? "\n\nYour unsaved Batch Entry draft will be kept on this computer for the next login."
+            : string.Empty;
+
+        if (MessageBox.Show(
+                $"Log out {session.DisplayName}?{draftMessage}",
+                "Logout",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question) != DialogResult.Yes)
+        {
+            return;
+        }
+
+        LogoutRequested = true;
+        Close();
     }
 
     private Button Nav(string text, Action action)

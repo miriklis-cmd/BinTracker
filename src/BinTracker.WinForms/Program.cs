@@ -49,25 +49,36 @@ internal static class Program
                 return;
         }
 
-        using (var login = new LoginForm(auth))
+        while (true)
         {
-            if (login.ShowDialog() != DialogResult.OK)
-                return;
-        }
-
-        var session = scope.ServiceProvider.GetRequiredService<UserSession>();
-
-        if (session.MustChangePassword)
-        {
-            using var change = new ChangePasswordForm(auth, required: true);
-            if (change.ShowDialog() != DialogResult.OK)
+            using (var login = new LoginForm(auth))
             {
-                auth.LogoutAsync().GetAwaiter().GetResult();
-                return;
+                if (login.ShowDialog() != DialogResult.OK)
+                    break;
             }
-        }
 
-        Application.Run(scope.ServiceProvider.GetRequiredService<MainForm>());
+            var session = scope.ServiceProvider.GetRequiredService<UserSession>();
+
+            if (session.MustChangePassword)
+            {
+                using var change = new ChangePasswordForm(auth, required: true);
+                if (change.ShowDialog() != DialogResult.OK)
+                {
+                    auth.LogoutAsync().GetAwaiter().GetResult();
+                    break;
+                }
+            }
+
+            using var main = scope.ServiceProvider.GetRequiredService<MainForm>();
+            Application.Run(main);
+
+            // A normal window close exits BinTracker. An explicit Logout clears
+            // the authenticated session and loops back to the login dialog.
+            if (!main.LogoutRequested)
+                break;
+
+            auth.LogoutAsync().GetAwaiter().GetResult();
+        }
 
         auth.LogoutAsync().GetAwaiter().GetResult();
     }

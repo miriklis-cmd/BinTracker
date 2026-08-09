@@ -53,9 +53,9 @@ public sealed class BatchEntryView : UserControl
 
     private readonly NumericUpDown quantity = new()
     {
-        Minimum = 1,
+        Minimum = 0,
         Maximum = 100000,
-        Value = 1,
+        Value = 0,
         Width = 140,
         ThousandsSeparator = true
     };
@@ -81,7 +81,8 @@ public sealed class BatchEntryView : UserControl
         AllowUserToDeleteRows = false,
         RowHeadersVisible = false,
         BackgroundColor = Color.White,
-        BorderStyle = BorderStyle.FixedSingle
+        BorderStyle = BorderStyle.FixedSingle,
+        ShowCellToolTips = false
     };
 
     private readonly DataGridView balances = new()
@@ -95,7 +96,8 @@ public sealed class BatchEntryView : UserControl
         AllowUserToDeleteRows = false,
         RowHeadersVisible = false,
         BackgroundColor = Color.White,
-        BorderStyle = BorderStyle.FixedSingle
+        BorderStyle = BorderStyle.FixedSingle,
+        ShowCellToolTips = false
     };
 
     private readonly Label totals = new()
@@ -116,6 +118,8 @@ public sealed class BatchEntryView : UserControl
     private IReadOnlyList<MovementContainerOption> containers = [];
     private MovementCustomerSummary? selectedCustomer;
     private bool loadingDraft;
+    private DraftMovementLine? editingLine;
+    private Button? addOrUpdateButton;
 
     public BatchEntryView(
         IMovementService movements,
@@ -132,7 +136,11 @@ public sealed class BatchEntryView : UserControl
         Font = new Font("Segoe UI", 10F);
 
         Build();
-        Load += async (_, _) => await InitialiseAsync();
+        Load += async (_, _) =>
+        {
+            quantity.Text = string.Empty;
+            await InitialiseAsync();
+        };
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -140,6 +148,13 @@ public sealed class BatchEntryView : UserControl
         if (keyData == (Keys.Control | Keys.Enter))
         {
             _ = SaveBatchAsync();
+            return true;
+        }
+
+        if (keyData == Keys.Escape && editingLine is not null)
+        {
+            CancelEdit();
+            status.Text = "Edit cancelled.";
             return true;
         }
 
@@ -183,6 +198,12 @@ public sealed class BatchEntryView : UserControl
             Width = 130
         });
 
+        pending.SelectionChanged += async (_, _) =>
+        {
+            if (pending.CurrentRow?.DataBoundItem is DraftMovementLine line)
+                await LoadLineForEditAsync(line);
+        };
+
         balances.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "Container",
@@ -211,13 +232,16 @@ public sealed class BatchEntryView : UserControl
             if (balances.Rows[e.RowIndex].DataBoundItem is not PreviewBalanceRow row)
                 return;
 
-            e.CellStyle.ForeColor =
+            var style = e.CellStyle ?? new DataGridViewCellStyle();
+            e.CellStyle = style;
+
+            style.ForeColor =
                 row.PreviewBalance < 0 ? Color.ForestGreen :
                 row.PreviewBalance > 0 ? Color.Firebrick :
                 Color.DimGray;
 
             if (row.PreviewBalance != row.CurrentBalance)
-                e.CellStyle.Font = new Font(balances.Font, FontStyle.Bold);
+                style.Font = new Font(balances.Font, FontStyle.Bold);
         };
 
         var root = new TableLayoutPanel
@@ -407,6 +431,7 @@ public sealed class BatchEntryView : UserControl
         return form;
     }
 
+
     private Control BuildBatchActions()
     {
         var bar = new TableLayoutPanel
@@ -428,15 +453,22 @@ public sealed class BatchEntryView : UserControl
             WrapContents = true
         };
 
-        var add = ButtonOf("Add to Batch");
-        var remove = ButtonOf("Remove Selected");
+        addOrUpdateButton = ButtonOf("Add to Batch");
+        var remove = ButtonOf("Remove");
         var clear = ButtonOf("Clear Batch");
 
-        add.Click += async (_, _) => await AddLineAsync();
+        addOrUpdateButton.Click += async (_, _) =>
+        {
+            if (editingLine is null)
+                await AddLineAsync();
+            else
+                await UpdateLineAsync();
+        };
+
         remove.Click += (_, _) => RemoveSelected();
         clear.Click += (_, _) => ClearBatch();
 
-        left.Controls.Add(add);
+        left.Controls.Add(addOrUpdateButton);
         left.Controls.Add(remove);
         left.Controls.Add(clear);
         left.Controls.Add(totals);
@@ -597,28 +629,32 @@ public sealed class BatchEntryView : UserControl
 
     private void RefreshPreview()
     {
-        if (selectedCustomer is null)
+        var customer = selectedCustomer;
+
+        if (customer is null)
         {
             balances.DataSource = null;
             return;
         }
 
-        var rows = selectedCustomer.Balances
+        var rows = customer.Balances
             .Select(balance =>
             {
                 var pendingQuantity = Draft.Lines
                     .Where(x =>
-                        x.CustomerId == selectedCustomer.CustomerId &&
+                        x.CustomerId == customer.CustomerId &&
                         x.ContainerTypeId == balance.ContainerTypeId)
                     .Sum(x => x.Quantity);
 
                 var preview = balance.Balance;
 
                 if (pendingQuantity > 0)
+                {
                     preview = MovementPositionMath.Apply(
                         balance.Balance,
                         Draft.MovementType,
                         pendingQuantity);
+                }
 
                 return new PreviewBalanceRow(
                     balance.ContainerTypeId,
@@ -650,6 +686,13 @@ public sealed class BatchEntryView : UserControl
             return;
         }
 
+        if (quantity.Value <= 0)
+        {
+            validation.Text = "Quantity is required and must be greater than zero.";
+            quantity.Focus();
+            return;
+        }
+
         Draft.MovementDate = DateOnly.FromDateTime(movementDate.Value.Date);
 
         if (batchType.SelectedItem is BatchTypeOption type)
@@ -670,10 +713,105 @@ public sealed class BatchEntryView : UserControl
 
         reference.Clear();
         notes.Clear();
-        quantity.Value = 1;
+        quantity.Value = 0;
+        quantity.Text = string.Empty;
 
         customerCode.SelectAll();
         customerCode.Focus();
+    }
+
+
+    private async Task LoadLineForEditAsync(DraftMovementLine line)
+    {
+        editingLine = line;
+        customerCode.Text = line.CustomerCode;
+        quantity.Value = Math.Clamp(line.Quantity, (int)quantity.Minimum, (int)quantity.Maximum);
+        reference.Text = line.Reference ?? string.Empty;
+        notes.Text = line.Notes ?? string.Empty;
+
+        for (var i = 0; i < containerType.Items.Count; i++)
+        {
+            if (containerType.Items[i] is MovementContainerOption option &&
+                option.Id == line.ContainerTypeId)
+            {
+                containerType.SelectedIndex = i;
+                break;
+            }
+        }
+
+        await ResolveCustomerAsync();
+
+        if (addOrUpdateButton is not null)
+            addOrUpdateButton.Text = "Update Line";
+
+        status.Text = $"Editing draft line for {line.CustomerCode}. Press Esc to cancel.";
+    }
+
+    private async Task UpdateLineAsync()
+    {
+        if (editingLine is null)
+            return;
+
+        await ResolveCustomerAsync();
+
+        if (selectedCustomer is null)
+            return;
+
+        if (containerType.SelectedItem is not MovementContainerOption selectedContainer)
+            return;
+
+        if (quantity.Value <= 0)
+        {
+            validation.Text = "Quantity is required and must be greater than zero.";
+            quantity.Focus();
+            return;
+        }
+
+        var index = Draft.Lines.IndexOf(editingLine);
+        if (index < 0)
+        {
+            CancelEdit();
+            return;
+        }
+
+        Draft.Lines[index] = new DraftMovementLine(
+            selectedCustomer.CustomerId,
+            selectedCustomer.Code,
+            selectedCustomer.Name,
+            selectedContainer.Id,
+            selectedContainer.Name,
+            (int)quantity.Value,
+            Clean(reference.Text),
+            Clean(notes.Text));
+
+        var code = selectedCustomer.Code;
+        RefreshPendingGrid();
+        RefreshPreview();
+        CancelEdit(clearCustomer: false);
+        status.Text = $"Draft line updated for {code}.";
+    }
+
+    private void CancelEdit(bool clearCustomer = true)
+    {
+        editingLine = null;
+
+        if (addOrUpdateButton is not null)
+            addOrUpdateButton.Text = "Add to Batch";
+
+        quantity.Value = 0;
+        quantity.Text = string.Empty;
+        reference.Clear();
+        notes.Clear();
+
+        if (clearCustomer)
+        {
+            customerCode.Clear();
+            customerInfo.Text = string.Empty;
+            balances.DataSource = null;
+            selectedCustomer = null;
+        }
+
+        pending.ClearSelection();
     }
 
     private void RemoveSelected()
@@ -682,8 +820,13 @@ public sealed class BatchEntryView : UserControl
             return;
 
         Draft.Lines.Remove(line);
+
+        if (editingLine == line)
+            CancelEdit();
+
         RefreshPendingGrid();
         RefreshPreview();
+        pending.ClearSelection();
 
         status.Text = "Draft line removed.";
     }
@@ -701,6 +844,7 @@ public sealed class BatchEntryView : UserControl
             return;
 
         Draft.Clear();
+        CancelEdit();
 
         loadingDraft = true;
         movementDate.Value = Draft.MovementDate.ToDateTime(TimeOnly.MinValue);
@@ -833,7 +977,10 @@ public sealed class BatchEntryView : UserControl
         Text = text,
         AutoSize = false,
         Size = new Size(150, 42),
-        Margin = new Padding(0, 0, 10, 0)
+        Margin = new Padding(0, 0, 10, 0),
+        Padding = new Padding(0),
+        TextAlign = ContentAlignment.MiddleCenter,
+        UseVisualStyleBackColor = true
     };
 
     private static void AddField(

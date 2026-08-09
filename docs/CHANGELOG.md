@@ -119,3 +119,28 @@
 - Polished User Management colours, status wording and context-sensitive actions.
 - Improved Customer recent movement grid on smaller screens.
 - Added application version display and Known Issues.
+
+## 0.2.0-alpha.7.2
+- Added editable pending batch lines and further responsive UI polish.
+
+## 0.2.0-alpha.7.2.1
+- Cleaned the remaining WinForms nullable-reference warnings.
+
+## 0.2.0-alpha.7.2.2
+- Fixed the three remaining CS8602 warnings in DataGridView cell-formatting handlers.
+
+## 0.2.0-alpha.7.2.3
+- Fixed Customer screen lower-right clipping by removing fixed panel minimum heights and giving Movement History the remaining vertical space.
+
+## 0.2.0-alpha.7.2.4
+- Removed unused Customer details height and redistributed it to Current Position and Recent Movement History.
+
+## 0.2.0-alpha.7.2.5
+- Tightened Customer layout and redistributed lower-grid space.
+- Disabled automatic Batch Entry grid tooltips.
+- Quantity now starts blank and requires positive input.
+
+## 0.2.0-alpha.7.2.6
+- Rebuilt Customer details layout to eliminate the phantom whitespace.
+- Widened movement-history Date, Direction and Entered By columns.
+- Added top-right Logout and return-to-login session flow.

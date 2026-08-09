@@ -73,8 +73,25 @@ public sealed class CustomersView : UserControl
         customerGrid.SelectionChanged += async (_,_) => await SelectionChangedAsync();
         left.Controls.Add(tools,0,0); left.Controls.Add(addNew,0,1); left.Controls.Add(customerGrid,0,2);
 
-        var right = new TableLayoutPanel { Dock=DockStyle.Fill, ColumnCount=1, RowCount=3, AutoScroll=true };
-        right.RowStyles.Add(new RowStyle(SizeType.AutoSize)); right.RowStyles.Add(new RowStyle(SizeType.AutoSize)); right.RowStyles.Add(new RowStyle(SizeType.Percent,100));
+        var right = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            AutoScroll = false,
+            Margin = new Padding(0),
+            Padding = new Padding(0)
+        };
+
+        // Customer details take only the height they need.
+        // Current position is deliberately compact.
+        // Movement history receives every remaining pixel so it cannot be
+        // pushed below the visible client area on smaller displays.
+        // The details area should consume only the height required by its controls.
+        // The remaining height is then shared between the two operational grids.
+        right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        right.RowStyles.Add(new RowStyle(SizeType.Percent, 38F));
+        right.RowStyles.Add(new RowStyle(SizeType.Percent, 62F));
         right.Controls.Add(BuildDetails(),0,0);
         right.Controls.Add(BuildBalances(),0,1);
         right.Controls.Add(BuildMovements(),0,2);
@@ -84,32 +101,97 @@ public sealed class CustomersView : UserControl
         statement.Enabled = false;
     }
 
+
     private Control BuildDetails()
     {
-        var box = new Panel { Dock=DockStyle.Top, AutoSize=true, BackColor=Color.White, Padding=new Padding(18), Margin=new Padding(0,0,0,12) };
-        var form = new TableLayoutPanel { Dock=DockStyle.Top, AutoSize=true, ColumnCount=4, RowCount=8 };
-        form.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); form.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));
-        form.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); form.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50));
-        AddRow(form,0,"Customer code",code,"Customer name",name);
-        form.Controls.Add(LabelFor("Customer type"),0,1); form.Controls.Add(customerType,1,1);
-        AddRow(form,2,"Contact",contact,"Phone",phone);
-        AddRow(form,3,"Mobile",mobile,"Email",email);
-        form.Controls.Add(LabelFor("Address"),0,4); form.Controls.Add(address,1,4); form.SetColumnSpan(address,3);
-        form.Controls.Add(LabelFor("Notes"),0,5); form.Controls.Add(notes,1,5); form.SetColumnSpan(notes,3);
-        var prefs = new FlowLayoutPanel { Dock=DockStyle.Fill, AutoSize=true, WrapContents=true };
-        prefs.Controls.Add(emailReminders); prefs.Controls.Add(smsReminders); prefs.Controls.Add(optOut);
-        form.Controls.Add(LabelFor("Reminders"),0,6); form.Controls.Add(prefs,1,6); form.SetColumnSpan(prefs,3);
-        var actions = new FlowLayoutPanel { Dock=DockStyle.Fill, AutoSize=true, FlowDirection=FlowDirection.LeftToRight, WrapContents=true };
-        save.Click += async (_,_) => await SaveAsync(); deactivate.Click += async (_,_) => await ToggleActiveAsync();
-        statement.Click += async (_,_) => await GenerateStatementAsync();
-        actions.Controls.Add(save); actions.Controls.Add(deactivate); actions.Controls.Add(statement); actions.Controls.Add(status);
-        form.Controls.Add(actions,0,7); form.SetColumnSpan(actions,4);
-        box.Controls.Add(form); return box;
+        // The details table is the section itself. There is deliberately no
+        // fixed-height wrapper panel here: the table grows only as tall as its
+        // controls require, so the operational grids start immediately below
+        // the customer action row.
+        var form = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 4,
+            RowCount = 8,
+            BackColor = Color.White,
+            Padding = new Padding(18, 12, 18, 8),
+            Margin = new Padding(0, 0, 0, 6)
+        };
+
+        form.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        form.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+        form.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        form.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+
+        for (var row = 0; row < 8; row++)
+            form.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        AddRow(form, 0, "Customer code", code, "Customer name", name);
+
+        form.Controls.Add(LabelFor("Customer type"), 0, 1);
+        form.Controls.Add(customerType, 1, 1);
+
+        AddRow(form, 2, "Contact", contact, "Phone", phone);
+        AddRow(form, 3, "Mobile", mobile, "Email", email);
+
+        form.Controls.Add(LabelFor("Address"), 0, 4);
+        form.Controls.Add(address, 1, 4);
+        form.SetColumnSpan(address, 3);
+
+        form.Controls.Add(LabelFor("Notes"), 0, 5);
+        form.Controls.Add(notes, 1, 5);
+        form.SetColumnSpan(notes, 3);
+
+        var prefs = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = true,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+
+        prefs.Controls.Add(emailReminders);
+        prefs.Controls.Add(smsReminders);
+        prefs.Controls.Add(optOut);
+
+        form.Controls.Add(LabelFor("Reminders"), 0, 6);
+        form.Controls.Add(prefs, 1, 6);
+        form.SetColumnSpan(prefs, 3);
+
+        var actions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true,
+            Margin = new Padding(0, 2, 0, 0),
+            Padding = Padding.Empty
+        };
+
+        save.Click += async (_, _) => await SaveAsync();
+        deactivate.Click += async (_, _) => await ToggleActiveAsync();
+        statement.Click += async (_, _) => await GenerateStatementAsync();
+
+        actions.Controls.Add(save);
+        actions.Controls.Add(deactivate);
+        actions.Controls.Add(statement);
+        actions.Controls.Add(status);
+
+        form.Controls.Add(actions, 0, 7);
+        form.SetColumnSpan(actions, 4);
+
+        return form;
     }
 
     private Control BuildBalances()
     {
-        var box=Section("Current position by type", balances, 190);
+        var box = Section("Current position by type", balances);
+        box.Dock = DockStyle.Fill;
         balances.Columns.Add("Type","Container Type"); balances.Columns.Add("Balance","Balance"); balances.Columns.Add("Position","Position");
         balances.Columns[0].AutoSizeMode=DataGridViewAutoSizeColumnMode.Fill; balances.Columns[1].Width=100; balances.Columns[2].Width=140;
         return box;
@@ -117,20 +199,21 @@ public sealed class CustomersView : UserControl
 
     private Control BuildMovements()
     {
-        var box = Section("Recent movement history", movements, 260);
+        var box = Section("Recent movement history", movements);
+        box.Dock = DockStyle.Fill;
 
         movements.Columns.Add(new DataGridViewTextBoxColumn
         {
             Name = "Date",
             HeaderText = "Date",
-            Width = 82
+            Width = 100
         });
 
         movements.Columns.Add(new DataGridViewTextBoxColumn
         {
             Name = "Direction",
             HeaderText = "Direction",
-            Width = 105
+            Width = 120
         });
 
         movements.Columns.Add(new DataGridViewTextBoxColumn
@@ -159,7 +242,7 @@ public sealed class CustomersView : UserControl
         {
             Name = "User",
             HeaderText = "Entered By",
-            Width = 90
+            Width = 110
         });
 
         return box;
@@ -271,8 +354,33 @@ public sealed class CustomersView : UserControl
     private static void AddRow(TableLayoutPanel f,int row,string l1,Control c1,string l2,Control c2){ f.Controls.Add(LabelFor(l1),0,row); f.Controls.Add(c1,1,row); f.Controls.Add(LabelFor(l2),2,row); f.Controls.Add(c2,3,row); }
     private static Label LabelFor(string text)=>new(){Text=text,AutoSize=true,Anchor=AnchorStyles.Left,Margin=new Padding(0,7,10,7),ForeColor=Color.FromArgb(70,80,95)};
     private static TextBox Field(bool multiline=false)=>new(){Dock=DockStyle.Fill,Multiline=multiline,Height=multiline?58:30,Margin=new Padding(0,4,14,4)};
-    private static DataGridView Grid()=>new(){Dock=DockStyle.Fill,AllowUserToAddRows=false,AllowUserToDeleteRows=false,ReadOnly=true,MultiSelect=false,SelectionMode=DataGridViewSelectionMode.FullRowSelect,AutoGenerateColumns=false,RowHeadersVisible=false,BackgroundColor=Color.White,BorderStyle=BorderStyle.FixedSingle,AutoSizeRowsMode=DataGridViewAutoSizeRowsMode.AllCells};
-    private static Panel Section(string heading,Control child,int height){ var p=new Panel{Dock=DockStyle.Top,Height=height,MinimumSize=new Size(0,height),BackColor=Color.White,Padding=new Padding(18),Margin=new Padding(0,0,0,12)}; var l=new Label{Text=heading,Dock=DockStyle.Top,Height=34,Font=new Font("Segoe UI Semibold",12F,FontStyle.Bold)}; child.Dock=DockStyle.Fill; p.Controls.Add(child); p.Controls.Add(l); return p; }
+    private static DataGridView Grid()=>new(){Dock=DockStyle.Fill,AllowUserToAddRows=false,AllowUserToDeleteRows=false,ReadOnly=true,MultiSelect=false,SelectionMode=DataGridViewSelectionMode.FullRowSelect,AutoGenerateColumns=false,RowHeadersVisible=false,BackgroundColor=Color.White,BorderStyle=BorderStyle.FixedSingle,AutoSizeRowsMode=DataGridViewAutoSizeRowsMode.AllCells,ShowCellToolTips=false};
+    private static Panel Section(string heading, Control child)
+    {
+        var panel = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.White,
+            Padding = new Padding(18, 12, 18, 8),
+            Margin = new Padding(0, 0, 0, 6),
+            MinimumSize = Size.Empty
+        };
+
+        var label = new Label
+        {
+            Text = heading,
+            Dock = DockStyle.Top,
+            Height = 34,
+            Font = new Font("Segoe UI Semibold", 12F, FontStyle.Bold)
+        };
+
+        child.Dock = DockStyle.Fill;
+
+        panel.Controls.Add(child);
+        panel.Controls.Add(label);
+
+        return panel;
+    }
     private sealed record CustomerTypeOption(CustomerType Value, string Text)
     {
         public override string ToString() => Text;
