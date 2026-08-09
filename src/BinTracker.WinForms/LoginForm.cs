@@ -5,7 +5,7 @@ namespace BinTracker.WinForms;
 public sealed class LoginForm : Form
 {
     private readonly IAuthenticationService auth;
-    private readonly TextBox username = new() { Dock = DockStyle.Fill };
+    private readonly TextBox username = new() { Dock = DockStyle.Top, Width = 385 };
     private readonly TextBox password = new() { Dock = DockStyle.Fill, UseSystemPasswordChar = true };
     private readonly Label error = new()
     {
@@ -68,7 +68,9 @@ public sealed class LoginForm : Form
         });
 
         AddField(fields, "Username", username);
-        AddField(fields, "Password", PasswordUi.WithVisibilityToggle(password));
+        var passwordField = PasswordUi.WithVisibilityToggle(password);
+        passwordField.Width = 385;
+        AddField(fields, "Password", passwordField);
 
         error.Margin = new Padding(0, 8, 0, 0);
         AddControl(fields, error);

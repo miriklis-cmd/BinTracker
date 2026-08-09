@@ -156,3 +156,11 @@
 - Replaced navigation font glyphs with embedded PNG icons.
 - Added logout icon.
 - Added reusable show/hide password eye controls throughout the application.
+
+## 0.2.0-alpha.7.2.10
+- Integrated password eye controls into field styling.
+- Fixed Logout button clipping/alignment.
+- Replaced Settings navigation artwork with a standard cog icon.
+
+## 0.2.0-alpha.7.2.11
+- Approved login/header/navigation polish.

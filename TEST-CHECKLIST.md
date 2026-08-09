@@ -69,3 +69,11 @@
 - [ ] Reset Password eyes work for password and confirmation
 - [ ] First-run Administrator eyes work if tested on a fresh database
 - [ ] Passwords are always masked initially
+
+## Alpha 7.2.10
+- [ ] Login eye looks integrated with the password field
+- [ ] No separate box/button look around the eye
+- [ ] Eye still toggles password visibility correctly
+- [ ] Logout icon and full `Logout` text are visible
+- [ ] Logout icon is vertically centred
+- [ ] Settings icon reads clearly as a cog/gear

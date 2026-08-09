@@ -8,6 +8,7 @@ public sealed class MainForm : Form
 {
     private readonly Label title = new();
     private readonly Panel content = new();
+    private Control? selectedNav;
     private readonly UserSession session;
     private readonly IUserService users;
     private readonly IAuditService audit;
@@ -16,7 +17,7 @@ public sealed class MainForm : Form
     private readonly IAuthenticationService auth;
     private readonly IMovementService movements;
     private readonly ApplicationState appState;
-    private const string ApplicationVersion = "v0.2.0-alpha.7.2.9";
+    private const string ApplicationVersion = "v0.2.0-alpha.7.2.11";
 
     /// <summary>
     /// True when the user deliberately chose Logout rather than closing
@@ -96,8 +97,8 @@ public sealed class MainForm : Form
             ColumnCount = 2,
             RowCount = 1
         };
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 56F));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 44F));
 
         // AutoSize avoids the slight glyph clipping that can occur at
         // non-100% Windows scaling when a fixed-height Label renders Segoe UI.
@@ -125,11 +126,14 @@ public sealed class MainForm : Form
             Text = "Logout",
             Image = IconAssets.Get("logout"),
             ImageAlign = ContentAlignment.MiddleLeft,
+            TextAlign = ContentAlignment.MiddleRight,
             TextImageRelation = TextImageRelation.ImageBeforeText,
             AutoSize = false,
-            Size = new Size(112, 38),
-            Margin = new Padding(12, 7, 0, 0),
-            Cursor = Cursors.Hand
+            Size = new Size(122, 42),
+            Padding = new Padding(10, 0, 10, 0),
+            Margin = new Padding(12, 5, 0, 0),
+            Cursor = Cursors.Hand,
+            UseVisualStyleBackColor = true
         };
 
         logout.Click += (_, _) => Logout();
@@ -201,16 +205,18 @@ public sealed class MainForm : Form
     }
 
     /// <summary>
-    /// Creates a navigation row using a PNG icon embedded in BinTracker.
-    /// This avoids workstation-specific font/glyph differences.
+    /// Creates an embedded-icon navigation row and highlights the active page.
     /// </summary>
     private Control Nav(string iconName, string text, Action action)
     {
+        var normal = Color.FromArgb(29, 39, 54);
+        var selected = Color.FromArgb(40, 78, 128);
+
         var row = new Panel
         {
             Dock = DockStyle.Top,
             Height = 50,
-            BackColor = Color.FromArgb(29, 39, 54),
+            BackColor = normal,
             Cursor = Cursors.Hand,
             Margin = Padding.Empty,
             Padding = Padding.Empty
@@ -231,7 +237,7 @@ public sealed class MainForm : Form
             Text = text,
             Dock = DockStyle.Fill,
             FlatStyle = FlatStyle.Flat,
-            BackColor = Color.FromArgb(29, 39, 54),
+            BackColor = normal,
             ForeColor = Color.White,
             TextAlign = ContentAlignment.MiddleLeft,
             Padding = new Padding(4, 0, 0, 0),
@@ -242,7 +248,21 @@ public sealed class MainForm : Form
 
         caption.FlatAppearance.BorderSize = 0;
 
-        void Activate() => action();
+        void Activate()
+        {
+            if (selectedNav is Panel previous)
+            {
+                previous.BackColor = normal;
+                foreach (Control child in previous.Controls)
+                    child.BackColor = child is PictureBox ? Color.Transparent : normal;
+            }
+
+            selectedNav = row;
+            row.BackColor = selected;
+            caption.BackColor = selected;
+            icon.BackColor = Color.Transparent;
+            action();
+        }
 
         caption.Click += (_, _) => Activate();
         icon.Click += (_, _) => Activate();
@@ -250,7 +270,6 @@ public sealed class MainForm : Form
 
         row.Controls.Add(caption);
         row.Controls.Add(icon);
-
         return row;
     }
 
