@@ -15,6 +15,8 @@ public sealed class MainForm : Form
     private readonly ICustomerStatementReportService statementReports;
     private readonly IAuthenticationService auth;
     private readonly IMovementService movements;
+    private readonly ApplicationState appState;
+    private const string ApplicationVersion = "v0.2.0-alpha.7.1";
 
     public MainForm(
         UserSession session,
@@ -23,7 +25,8 @@ public sealed class MainForm : Form
         ICustomerService customers,
         ICustomerStatementReportService statementReports,
         IAuthenticationService auth,
-        IMovementService movements)
+        IMovementService movements,
+        ApplicationState appState)
     {
         this.session = session;
         this.users = users;
@@ -32,6 +35,7 @@ public sealed class MainForm : Form
         this.statementReports = statementReports;
         this.auth = auth;
         this.movements = movements;
+        this.appState = appState;
 
         Text = $"BinTracker - {session.DisplayName}";
         StartPosition = FormStartPosition.CenterScreen;
@@ -116,6 +120,12 @@ public sealed class MainForm : Form
         {
             SizingGrip = true
         };
+
+        status.Items.Add(new ToolStripStatusLabel
+        {
+            Text = $"BinTracker {ApplicationVersion}"
+        });
+
         status.Items.Add(new ToolStripStatusLabel
         {
             Text = $"Database: {DatabaseSetup.StatusText}",
@@ -152,9 +162,20 @@ public sealed class MainForm : Form
         return button;
     }
 
-    private void ShowDashboard()
+    private async void ShowDashboard()
     {
         SetPage("Dashboard");
+
+        OperationalDashboardSummary summary;
+        try
+        {
+            summary = await movements.GetDashboardSummaryAsync(
+                DateOnly.FromDateTime(DateTime.Today));
+        }
+        catch
+        {
+            summary = new OperationalDashboardSummary(0, 0, 0, 0);
+        }
 
         var page = new TableLayoutPanel
         {
@@ -181,16 +202,38 @@ public sealed class MainForm : Form
 
         for (var column = 0; column < 4; column++)
             cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+
         cards.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-        cards.Controls.Add(Card("Returned Today", "0", "IN"), 0, 0);
-        cards.Controls.Add(Card("Taken Today", "0", "OUT"), 1, 0);
-        cards.Controls.Add(Card("Outstanding", "0", "Calculated from movement history"), 2, 0);
-        cards.Controls.Add(Card("Requires Attention", "0", "Over 20 outstanding or older than 7 days"), 3, 0);
+        cards.Controls.Add(
+            Card("Returned Today", summary.ReturnedToday.ToString("N0"), "IN"),
+            0, 0);
+
+        cards.Controls.Add(
+            Card("Taken Today", summary.TakenToday.ToString("N0"), "OUT"),
+            1, 0);
+
+        cards.Controls.Add(
+            Card(
+                "Outstanding",
+                summary.Outstanding.ToString("N0"),
+                "Positive customer/container positions"),
+            2, 0);
+
+        cards.Controls.Add(
+            Card(
+                "Requires Attention",
+                summary.RequiresAttention.ToString("N0"),
+                "Customers over the configured quantity threshold"),
+            3, 0);
+
+        var draftText = appState.DraftBatch.HasLines
+            ? $" Unsaved Batch Entry draft: {appState.DraftBatch.Lines.Count} line(s), {appState.DraftBatch.TotalQuantity} containers."
+            : string.Empty;
 
         var info = PanelBox(
             "Security and audit enabled",
-            $"Signed in as {session.DisplayName}. Logins, failed logins, user administration and future customer, movement, settings, backup and report actions are recorded in the append-only audit trail.");
+            $"Signed in as {session.DisplayName}. Logins, user administration, customers and movement batches are recorded in the audit trail.{draftText}");
 
         page.Controls.Add(cards, 0, 0);
         page.Controls.Add(info, 0, 1);
@@ -201,7 +244,7 @@ public sealed class MainForm : Form
     {
         SetPage("Batch Entry");
         content.AutoScroll = false;
-        content.Controls.Add(new BatchEntryView(movements, session));
+        content.Controls.Add(new BatchEntryView(movements, session, appState));
     }
 
     private void ShowCustomers()

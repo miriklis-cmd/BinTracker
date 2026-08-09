@@ -1,48 +1,71 @@
-# BinTracker Alpha 7.0 Test Checklist
+# BinTracker Alpha 7.1 Test Checklist
 
 ## Build
 - [ ] Run `Build-BinTracker.bat`
-- [ ] Restore succeeds
 - [ ] Build succeeds
 - [ ] All automated tests pass
 
-## Navigation
+## Batch Entry keyboard workflow
+- [ ] Enter on Customer Code resolves customer
+- [ ] Enter on Quantity adds to batch when Reference/Notes are not needed
+- [ ] Enter on Reference adds to batch when Notes are not needed
+- [ ] Enter on Notes adds to batch
+- [ ] Ctrl+Enter opens Save Batch confirmation
+- [ ] Add / Remove / Clear / Save buttons are aligned
+
+## Live draft balances
+- [ ] Select a customer and note Blue Bin current position
+- [ ] Add an unsaved Blue Bin line
+- [ ] Re-select that customer
+- [ ] "With Draft" reflects the unsaved Blue Bin line
+- [ ] Add another container type for that customer
+- [ ] Blue preview remains altered while entering the second type
+- [ ] Remove the Blue line
+- [ ] Blue preview returns to the database position
+- [ ] CREDIT preview is green
+- [ ] OUT preview is red
+
+## Draft navigation
+- [ ] Add several unsaved lines
+- [ ] Click Customers
+- [ ] Add/edit a customer if desired
+- [ ] Return to Batch Entry
+- [ ] Unsaved draft lines are still present
+- [ ] Movement date and IN/OUT direction are retained
+- [ ] Changing IN/OUT is blocked while a draft has lines
+- [ ] Clear Batch removes the draft
+- [ ] Saving removes the draft only after successful save
+
+## Dashboard
+- [ ] Save a Returned (IN) batch
+- [ ] Open Dashboard
+- [ ] Returned Today reflects saved quantity
+- [ ] Save a Taken (OUT) batch
+- [ ] Open Dashboard
+- [ ] Taken Today reflects saved quantity
+- [ ] Outstanding reflects current positive customer/container positions
+- [ ] Dashboard mentions an unsaved draft when one exists
+
+## User management
+- [ ] Display Name column is narrower
+- [ ] Status is fully visible
+- [ ] Active is green
+- [ ] Password Reset Required is orange
+- [ ] Locked is red
+- [ ] Inactive is grey
+- [ ] Administrator/Operator/Viewer roles have subtle colours
+- [ ] Active user shows Deactivate button
+- [ ] Inactive user shows Activate button
+- [ ] Unlocked user shows Lock button
+- [ ] Locked user shows Unlock button
+
+## Customer screen
+- [ ] On the laptop/smaller screen, Recent Movement History fits better
+- [ ] Date, Direction, Container Type, Qty, Reference and Entered By are usable
+- [ ] No right-side content is unexpectedly clipped
+
+## General
+- [ ] Status bar shows BinTracker v0.2.0-alpha.7.1
 - [ ] Login still lands on Dashboard
-- [ ] Batch Entry opens from the left navigation
-- [ ] Customers, Settings and Audit still open normally
-
-## Returned (IN) batch
-- [ ] Batch type defaults to Returned (IN)
-- [ ] Customer code autocomplete suggests active customer codes
-- [ ] Entering a valid customer code shows customer name and Account/Cash-COD type
-- [ ] Customer position table loads
-- [ ] Add a Blue Bin return to the pending batch
-- [ ] Add a Yellow/Bulk/CHEP return
-- [ ] Pending line count and total quantity update
-- [ ] Remove Selected works
-- [ ] Save Batch asks for confirmation
-- [ ] Saved return reduces outstanding / can create credit
-- [ ] Audit Trail contains MOVEMENT_BATCH_RECORDED
-
-## Taken (OUT) batch
-- [ ] Switch batch type to Taken (OUT)
-- [ ] Add movements for multiple customers
-- [ ] Save Batch
-- [ ] Taken movements increase outstanding balances
-- [ ] Customer screen shows the new balances and movement history
-- [ ] Customer statement includes the movements
-
-## Validation
-- [ ] Unknown customer code is rejected
-- [ ] Inactive customer cannot be selected
-- [ ] Empty batch cannot be saved
-- [ ] Future movement date is rejected
-- [ ] Viewer cannot save a batch
-
-## Keyboard / usability
-- [ ] Tab moves through fields naturally
-- [ ] Enter after Customer Code resolves the customer
-- [ ] Enter in Notes adds the movement to the pending batch
-- [ ] After adding a line, focus returns to Customer Code
-- [ ] No unnecessary scrollbars at 150% Windows scaling
-- [ ] No text or buttons are clipped
+- [ ] Customer Statement still generates
+- [ ] Audit Trail still opens

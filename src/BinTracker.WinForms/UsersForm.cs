@@ -15,6 +15,10 @@ public sealed class UsersForm : Form
         UserAccount Source);
 
     private readonly IUserService users;
+
+    private readonly Button toggleActive = ActionButton("Deactivate");
+    private readonly Button toggleLock = ActionButton("Lock");
+
     private readonly DataGridView grid = new()
     {
         Dock = DockStyle.Fill,
@@ -37,44 +41,52 @@ public sealed class UsersForm : Form
         Text = "Users";
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(1120, 640);
-        MinimumSize = new Size(900, 540);
+        ClientSize = new Size(1060, 640);
+        MinimumSize = new Size(880, 540);
 
         grid.Columns.Add(new DataGridViewTextBoxColumn
         {
+            Name = "Username",
             HeaderText = "Username",
             DataPropertyName = nameof(UserGridRow.Username),
-            Width = 150
+            Width = 140
         });
 
         grid.Columns.Add(new DataGridViewTextBoxColumn
         {
+            Name = "DisplayName",
             HeaderText = "Display name",
             DataPropertyName = nameof(UserGridRow.DisplayName),
-            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-            MinimumWidth = 180
+            Width = 210
         });
 
         grid.Columns.Add(new DataGridViewTextBoxColumn
         {
+            Name = "Role",
             HeaderText = "Role",
             DataPropertyName = nameof(UserGridRow.Role),
-            Width = 130
+            Width = 125
         });
 
         grid.Columns.Add(new DataGridViewTextBoxColumn
         {
+            Name = "Status",
             HeaderText = "Status",
             DataPropertyName = nameof(UserGridRow.Status),
-            Width = 245
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+            MinimumWidth = 230
         });
 
         grid.Columns.Add(new DataGridViewTextBoxColumn
         {
+            Name = "LastLogin",
             HeaderText = "Last login",
             DataPropertyName = nameof(UserGridRow.LastLogin),
-            Width = 160
+            Width = 165
         });
+
+        grid.CellFormatting += GridCellFormatting;
+        grid.SelectionChanged += (_, _) => UpdateContextButtons();
 
         var root = new TableLayoutPanel
         {
@@ -83,6 +95,7 @@ public sealed class UsersForm : Form
             RowCount = 2,
             Padding = new Padding(14)
         };
+
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
@@ -96,26 +109,24 @@ public sealed class UsersForm : Form
             Margin = new Padding(0)
         };
 
-        var add = ActionButton("Add User", 120);
+        var add = ActionButton("Add User");
         add.Click += async (_, _) => await AddAsync();
 
-        var toggle = ActionButton("Activate / Deactivate", 205);
-        toggle.Click += async (_, _) => await ToggleActiveAsync();
+        toggleActive.Click += async (_, _) => await ToggleActiveAsync();
 
-        var editRole = ActionButton("Change Role", 135);
+        var editRole = ActionButton("Change Role");
         editRole.Click += async (_, _) => await ChangeRoleAsync();
 
-        var reset = ActionButton("Reset Password", 150);
+        var reset = ActionButton("Reset Password");
         reset.Click += async (_, _) => await ResetPasswordAsync();
 
-        var lockToggle = ActionButton("Lock / Unlock", 140);
-        lockToggle.Click += async (_, _) => await ToggleLockAsync();
+        toggleLock.Click += async (_, _) => await ToggleLockAsync();
 
         buttons.Controls.Add(add);
-        buttons.Controls.Add(toggle);
+        buttons.Controls.Add(toggleActive);
         buttons.Controls.Add(editRole);
         buttons.Controls.Add(reset);
-        buttons.Controls.Add(lockToggle);
+        buttons.Controls.Add(toggleLock);
 
         root.Controls.Add(buttons, 0, 0);
         root.Controls.Add(grid, 0, 1);
@@ -139,11 +150,70 @@ public sealed class UsersForm : Form
                 user.LastLoginUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Never",
                 user))
             .ToList();
+
+        UpdateContextButtons();
+    }
+
+    private void GridCellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+    {
+        if (e.RowIndex < 0)
+            return;
+
+        if (grid.Rows[e.RowIndex].DataBoundItem is not UserGridRow row)
+            return;
+
+        var column = grid.Columns[e.ColumnIndex].Name;
+
+        if (column == "Status")
+        {
+            e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
+
+            e.CellStyle.ForeColor = row.Status switch
+            {
+                "Active" => Color.ForestGreen,
+                "Password Reset Required" => Color.DarkOrange,
+                "Locked" => Color.Firebrick,
+                "Inactive" => Color.DimGray,
+                _ => grid.ForeColor
+            };
+        }
+        else if (column == "Role")
+        {
+            e.CellStyle.Font = new Font(grid.Font, FontStyle.Bold);
+
+            e.CellStyle.ForeColor = row.Source.Role switch
+            {
+                UserRole.Administrator => Color.RoyalBlue,
+                UserRole.Operator => Color.SeaGreen,
+                _ => Color.DimGray
+            };
+        }
+    }
+
+    private void UpdateContextButtons()
+    {
+        var user = SelectedUser();
+
+        if (user is null)
+        {
+            toggleActive.Text = "Deactivate";
+            toggleLock.Text = "Lock";
+            toggleActive.Enabled = false;
+            toggleLock.Enabled = false;
+            return;
+        }
+
+        toggleActive.Enabled = true;
+        toggleLock.Enabled = true;
+
+        toggleActive.Text = user.IsActive ? "Deactivate" : "Activate";
+        toggleLock.Text = user.IsLocked ? "Unlock" : "Lock";
     }
 
     private async Task AddAsync()
     {
         using var form = new AddUserForm();
+
         if (form.ShowDialog(this) != DialogResult.OK)
             return;
 
@@ -186,6 +256,7 @@ public sealed class UsersForm : Form
             return;
 
         using var form = new ChangeRoleForm(user.Username, user.Role);
+
         if (form.ShowDialog(this) != DialogResult.OK)
             return;
 
@@ -207,6 +278,7 @@ public sealed class UsersForm : Form
             return;
 
         using var form = new ResetPasswordForm(user.Username);
+
         if (form.ShowDialog(this) != DialogResult.OK)
             return;
 
@@ -247,7 +319,9 @@ public sealed class UsersForm : Form
     }
 
     private UserAccount? SelectedUser() =>
-        grid.CurrentRow?.DataBoundItem is UserGridRow row ? row.Source : null;
+        grid.CurrentRow?.DataBoundItem is UserGridRow row
+            ? row.Source
+            : null;
 
     private void SelectUser(int id)
     {
@@ -257,6 +331,7 @@ public sealed class UsersForm : Form
             {
                 row.Selected = true;
                 grid.CurrentCell = row.Cells[0];
+                UpdateContextButtons();
                 return;
             }
         }
@@ -271,16 +346,16 @@ public sealed class UsersForm : Form
             return "Locked";
 
         if (user.MustChangePassword)
-            return "Active — change password required";
+            return "Password Reset Required";
 
         return "Active";
     }
 
-    private static Button ActionButton(string text, int width) => new()
+    private static Button ActionButton(string text) => new()
     {
         Text = text,
         AutoSize = false,
-        Size = new Size(width, 40),
+        Size = new Size(150, 40),
         Margin = new Padding(0, 0, 10, 0)
     };
 }

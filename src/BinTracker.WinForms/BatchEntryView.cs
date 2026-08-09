@@ -5,18 +5,20 @@ namespace BinTracker.WinForms;
 
 public sealed class BatchEntryView : UserControl
 {
-    private sealed record PendingLine(
-        int CustomerId,
-        string CustomerCode,
-        string CustomerName,
+    private sealed record PreviewBalanceRow(
         int ContainerTypeId,
         string ContainerType,
-        int Quantity,
-        string? Reference,
-        string? Notes);
+        int CurrentBalance,
+        int PreviewBalance)
+    {
+        public string Current => MovementPositionMath.Format(CurrentBalance);
+        public string Preview => MovementPositionMath.Format(PreviewBalance);
+    }
 
     private readonly IMovementService movements;
     private readonly UserSession session;
+    private readonly ApplicationState appState;
+    private DraftMovementBatch Draft => appState.DraftBatch;
 
     private readonly DateTimePicker movementDate = new()
     {
@@ -99,7 +101,8 @@ public sealed class BatchEntryView : UserControl
     private readonly Label totals = new()
     {
         AutoSize = true,
-        Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold)
+        Font = new Font("Segoe UI Semibold", 11F, FontStyle.Bold),
+        Margin = new Padding(8, 10, 0, 0)
     };
 
     private readonly Label status = new()
@@ -109,15 +112,19 @@ public sealed class BatchEntryView : UserControl
         MaximumSize = new Size(900, 0)
     };
 
-    private readonly List<PendingLine> lines = [];
     private IReadOnlyList<MovementCustomerOption> customers = [];
     private IReadOnlyList<MovementContainerOption> containers = [];
     private MovementCustomerSummary? selectedCustomer;
+    private bool loadingDraft;
 
-    public BatchEntryView(IMovementService movements, UserSession session)
+    public BatchEntryView(
+        IMovementService movements,
+        UserSession session,
+        ApplicationState appState)
     {
         this.movements = movements;
         this.session = session;
+        this.appState = appState;
 
         Dock = DockStyle.Fill;
         AutoScaleMode = AutoScaleMode.Dpi;
@@ -125,61 +132,93 @@ public sealed class BatchEntryView : UserControl
         Font = new Font("Segoe UI", 10F);
 
         Build();
-
         Load += async (_, _) => await InitialiseAsync();
+    }
+
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (keyData == (Keys.Control | Keys.Enter))
+        {
+            _ = SaveBatchAsync();
+            return true;
+        }
+
+        return base.ProcessCmdKey(ref msg, keyData);
     }
 
     private void Build()
     {
         batchType.Items.Add(new BatchTypeOption(MovementType.In, "Returned (IN)"));
         batchType.Items.Add(new BatchTypeOption(MovementType.Out, "Taken (OUT)"));
-        batchType.SelectedIndex = 0;
 
         pending.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "Code",
-            DataPropertyName = nameof(PendingLine.CustomerCode),
-            Width = 120
+            DataPropertyName = nameof(DraftMovementLine.CustomerCode),
+            Width = 115
         });
         pending.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "Customer",
-            DataPropertyName = nameof(PendingLine.CustomerName),
+            DataPropertyName = nameof(DraftMovementLine.CustomerName),
             AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-            MinimumWidth = 180
+            MinimumWidth = 160
         });
         pending.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "Container",
-            DataPropertyName = nameof(PendingLine.ContainerType),
-            Width = 150
+            DataPropertyName = nameof(DraftMovementLine.ContainerType),
+            Width = 135
         });
         pending.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "Qty",
-            DataPropertyName = nameof(PendingLine.Quantity),
-            Width = 85
+            DataPropertyName = nameof(DraftMovementLine.Quantity),
+            Width = 70
         });
         pending.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "Reference",
-            DataPropertyName = nameof(PendingLine.Reference),
-            Width = 160
+            DataPropertyName = nameof(DraftMovementLine.Reference),
+            Width = 130
         });
 
         balances.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "Container",
-            DataPropertyName = nameof(MovementBalanceRow.ContainerType),
+            DataPropertyName = nameof(PreviewBalanceRow.ContainerType),
             AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-            MinimumWidth = 140
+            MinimumWidth = 120
         });
         balances.Columns.Add(new DataGridViewTextBoxColumn
         {
-            HeaderText = "Balance",
-            DataPropertyName = nameof(MovementBalanceRow.Position),
-            Width = 145
+            HeaderText = "Current",
+            DataPropertyName = nameof(PreviewBalanceRow.Current),
+            Width = 110
         });
+        balances.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "With Draft",
+            DataPropertyName = nameof(PreviewBalanceRow.Preview),
+            Width = 125
+        });
+
+        balances.CellFormatting += (_, e) =>
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex != 2)
+                return;
+
+            if (balances.Rows[e.RowIndex].DataBoundItem is not PreviewBalanceRow row)
+                return;
+
+            e.CellStyle.ForeColor =
+                row.PreviewBalance < 0 ? Color.ForestGreen :
+                row.PreviewBalance > 0 ? Color.Firebrick :
+                Color.DimGray;
+
+            if (row.PreviewBalance != row.CurrentBalance)
+                e.CellStyle.Font = new Font(balances.Font, FontStyle.Bold);
+        };
 
         var root = new TableLayoutPanel
         {
@@ -226,15 +265,38 @@ public sealed class BatchEntryView : UserControl
 
         var hint = new Label
         {
-            Text = "Enter all returns as one batch, then switch to Taken (OUT) for dispatches.",
+            Text = "Enter returns and dispatches as separate batches.",
             AutoSize = true,
             ForeColor = Color.DimGray,
-            MaximumSize = new Size(680, 0),
+            MaximumSize = new Size(520, 0),
             Margin = new Padding(22, 5, 0, 0)
         };
 
         layout.Controls.Add(hint);
         panel.Controls.Add(layout);
+
+        movementDate.ValueChanged += (_, _) =>
+        {
+            if (!loadingDraft)
+                Draft.MovementDate = DateOnly.FromDateTime(movementDate.Value.Date);
+        };
+
+        batchType.SelectionChangeCommitted += (_, _) =>
+        {
+            if (batchType.SelectedItem is not BatchTypeOption selected)
+                return;
+
+            if (Draft.HasLines && selected.Value != Draft.MovementType)
+            {
+                validation.Text = "Save or clear the current draft before changing between IN and OUT.";
+                SelectBatchType(Draft.MovementType);
+                return;
+            }
+
+            Draft.MovementType = selected.Value;
+            RefreshPreview();
+        };
+
         return panel;
     }
 
@@ -302,13 +364,34 @@ public sealed class BatchEntryView : UserControl
         form.SetColumnSpan(validation, 4);
 
         customerCode.Leave += async (_, _) => await ResolveCustomerAsync();
+
         customerCode.KeyDown += async (_, e) =>
         {
             if (e.KeyCode == Keys.Enter)
             {
                 e.SuppressKeyPress = true;
                 await ResolveCustomerAsync();
-                containerType.Focus();
+
+                if (selectedCustomer is not null)
+                    containerType.Focus();
+            }
+        };
+
+        quantity.KeyDown += async (_, e) =>
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                await AddLineAsync();
+            }
+        };
+
+        reference.KeyDown += async (_, e) =>
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                await AddLineAsync();
             }
         };
 
@@ -345,9 +428,9 @@ public sealed class BatchEntryView : UserControl
             WrapContents = true
         };
 
-        var add = ButtonOf("Add to Batch", 145);
-        var remove = ButtonOf("Remove Selected", 155);
-        var clear = ButtonOf("Clear Batch", 130);
+        var add = ButtonOf("Add to Batch");
+        var remove = ButtonOf("Remove Selected");
+        var clear = ButtonOf("Clear Batch");
 
         add.Click += async (_, _) => await AddLineAsync();
         remove.Click += (_, _) => RemoveSelected();
@@ -366,10 +449,17 @@ public sealed class BatchEntryView : UserControl
             WrapContents = false
         };
 
-        var save = ButtonOf("Save Batch", 145);
+        var save = ButtonOf("Save Batch");
         save.Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
         save.Click += async (_, _) => await SaveBatchAsync();
 
+        right.Controls.Add(new Label
+        {
+            Text = "Ctrl+Enter",
+            AutoSize = true,
+            ForeColor = Color.DimGray,
+            Margin = new Padding(0, 11, 10, 0)
+        });
         right.Controls.Add(save);
 
         bar.Controls.Add(left, 0, 0);
@@ -407,10 +497,10 @@ public sealed class BatchEntryView : UserControl
 
         layout.Controls.Add(new Label
         {
-            Text = "Positive = customer owes containers. CREDIT = they have returned more than recorded OUT.",
+            Text = "'With Draft' includes unsaved lines currently in this batch. CREDIT means more have been returned than recorded OUT.",
             AutoSize = true,
             ForeColor = Color.DimGray,
-            MaximumSize = new Size(420, 0),
+            MaximumSize = new Size(430, 0),
             Margin = new Padding(0, 12, 0, 8)
         }, 0, 2);
 
@@ -438,13 +528,39 @@ public sealed class BatchEntryView : UserControl
             customerCode.AutoCompleteSource = AutoCompleteSource.CustomSource;
             customerCode.AutoCompleteCustomSource = autocomplete;
 
+            loadingDraft = true;
+            movementDate.Value = Draft.MovementDate.ToDateTime(TimeOnly.MinValue);
+            SelectBatchType(Draft.MovementType);
+            loadingDraft = false;
+
             RefreshPendingGrid();
+
+            if (Draft.HasLines)
+            {
+                status.Text =
+                    $"Draft restored: {Draft.Lines.Count} line(s), {Draft.TotalQuantity} containers.";
+            }
+
             customerCode.Focus();
         }
         catch (Exception ex)
         {
             validation.Text = ex.Message;
         }
+    }
+
+    private void SelectBatchType(MovementType type)
+    {
+        for (var i = 0; i < batchType.Items.Count; i++)
+        {
+            if (batchType.Items[i] is BatchTypeOption option && option.Value == type)
+            {
+                batchType.SelectedIndex = i;
+                return;
+            }
+        }
+
+        batchType.SelectedIndex = 0;
     }
 
     private async Task ResolveCustomerAsync()
@@ -475,8 +591,44 @@ public sealed class BatchEntryView : UserControl
             $"{selectedCustomer.Code} — {selectedCustomer.Name}  •  " +
             (selectedCustomer.CustomerType == CustomerType.CashCod ? "Cash / COD" : "Account");
 
-        balances.DataSource = selectedCustomer.Balances.ToList();
+        RefreshPreview();
         status.Text = $"Ready: {selectedCustomer.Code}";
+    }
+
+    private void RefreshPreview()
+    {
+        if (selectedCustomer is null)
+        {
+            balances.DataSource = null;
+            return;
+        }
+
+        var rows = selectedCustomer.Balances
+            .Select(balance =>
+            {
+                var pendingQuantity = Draft.Lines
+                    .Where(x =>
+                        x.CustomerId == selectedCustomer.CustomerId &&
+                        x.ContainerTypeId == balance.ContainerTypeId)
+                    .Sum(x => x.Quantity);
+
+                var preview = balance.Balance;
+
+                if (pendingQuantity > 0)
+                    preview = MovementPositionMath.Apply(
+                        balance.Balance,
+                        Draft.MovementType,
+                        pendingQuantity);
+
+                return new PreviewBalanceRow(
+                    balance.ContainerTypeId,
+                    balance.ContainerType,
+                    balance.Balance,
+                    preview);
+            })
+            .ToList();
+
+        balances.DataSource = rows;
     }
 
     private async Task AddLineAsync()
@@ -498,7 +650,12 @@ public sealed class BatchEntryView : UserControl
             return;
         }
 
-        var line = new PendingLine(
+        Draft.MovementDate = DateOnly.FromDateTime(movementDate.Value.Date);
+
+        if (batchType.SelectedItem is BatchTypeOption type)
+            Draft.MovementType = type.Value;
+
+        Draft.Lines.Add(new DraftMovementLine(
             selectedCustomer.CustomerId,
             selectedCustomer.Code,
             selectedCustomer.Name,
@@ -506,35 +663,34 @@ public sealed class BatchEntryView : UserControl
             selectedContainer.Name,
             (int)quantity.Value,
             Clean(reference.Text),
-            Clean(notes.Text));
+            Clean(notes.Text)));
 
-        lines.Add(line);
         RefreshPendingGrid();
+        RefreshPreview();
 
         reference.Clear();
         notes.Clear();
         quantity.Value = 1;
 
-        customerCode.Clear();
-        customerInfo.Text = string.Empty;
-        balances.DataSource = null;
-        selectedCustomer = null;
-
+        customerCode.SelectAll();
         customerCode.Focus();
     }
 
     private void RemoveSelected()
     {
-        if (pending.CurrentRow?.DataBoundItem is not PendingLine line)
+        if (pending.CurrentRow?.DataBoundItem is not DraftMovementLine line)
             return;
 
-        lines.Remove(line);
+        Draft.Lines.Remove(line);
         RefreshPendingGrid();
+        RefreshPreview();
+
+        status.Text = "Draft line removed.";
     }
 
     private void ClearBatch()
     {
-        if (lines.Count == 0)
+        if (!Draft.HasLines)
             return;
 
         if (MessageBox.Show(
@@ -544,39 +700,39 @@ public sealed class BatchEntryView : UserControl
                 MessageBoxIcon.Question) != DialogResult.Yes)
             return;
 
-        lines.Clear();
+        Draft.Clear();
+
+        loadingDraft = true;
+        movementDate.Value = Draft.MovementDate.ToDateTime(TimeOnly.MinValue);
+        SelectBatchType(Draft.MovementType);
+        loadingDraft = false;
+
         RefreshPendingGrid();
-        status.Text = "Batch cleared.";
+        RefreshPreview();
+
+        status.Text = "Draft batch cleared.";
     }
 
     private async Task SaveBatchAsync()
     {
         validation.Text = string.Empty;
 
-        if (lines.Count == 0)
+        if (!Draft.HasLines)
         {
             validation.Text = "Add at least one movement before saving the batch.";
             customerCode.Focus();
             return;
         }
 
-        if (batchType.SelectedItem is not BatchTypeOption type)
-        {
-            validation.Text = "Select a batch type.";
-            return;
-        }
-
-        var direction = type.Value == MovementType.In
+        var direction = Draft.MovementType == MovementType.In
             ? "Returned (IN)"
             : "Taken (OUT)";
 
-        var total = lines.Sum(x => x.Quantity);
-
         var answer = MessageBox.Show(
             $"Save this {direction} batch?\n\n" +
-            $"Lines: {lines.Count}\n" +
-            $"Total containers: {total}\n" +
-            $"Date: {movementDate.Value:dd/MM/yyyy}",
+            $"Lines: {Draft.Lines.Count}\n" +
+            $"Total containers: {Draft.TotalQuantity}\n" +
+            $"Date: {Draft.MovementDate:dd/MM/yyyy}",
             "Save Batch",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Question);
@@ -590,19 +746,34 @@ public sealed class BatchEntryView : UserControl
 
             var result = await movements.SaveBatchAsync(
                 new SaveMovementBatchRequest(
-                    DateOnly.FromDateTime(movementDate.Value.Date),
-                    type.Value,
+                    Draft.MovementDate,
+                    Draft.MovementType,
                     null,
-                    lines.Select(x => new MovementBatchLine(
-                        x.CustomerId,
-                        x.ContainerTypeId,
-                        x.Quantity,
-                        x.Reference,
-                        x.Notes))
-                    .ToList()));
+                    Draft.Lines
+                        .Select(x => new MovementBatchLine(
+                            x.CustomerId,
+                            x.ContainerTypeId,
+                            x.Quantity,
+                            x.Reference,
+                            x.Notes))
+                        .ToList()));
 
-            lines.Clear();
+            Draft.Clear();
+
+            loadingDraft = true;
+            movementDate.Value = Draft.MovementDate.ToDateTime(TimeOnly.MinValue);
+            SelectBatchType(Draft.MovementType);
+            loadingDraft = false;
+
             RefreshPendingGrid();
+
+            if (selectedCustomer is not null)
+            {
+                selectedCustomer = await movements.GetCustomerSummaryByCodeAsync(
+                    selectedCustomer.Code);
+
+                RefreshPreview();
+            }
 
             status.Text =
                 $"Saved batch #{result.BatchId}: {result.LineCount} line(s), " +
@@ -623,11 +794,11 @@ public sealed class BatchEntryView : UserControl
     private void RefreshPendingGrid()
     {
         pending.DataSource = null;
-        pending.DataSource = lines.ToList();
+        pending.DataSource = Draft.Lines.ToList();
 
-        totals.Text = lines.Count == 0
-            ? "No unsaved movements"
-            : $"{lines.Count} line(s)  •  {lines.Sum(x => x.Quantity)} containers";
+        totals.Text = Draft.HasLines
+            ? $"{Draft.Lines.Count} line(s)  •  {Draft.TotalQuantity} containers"
+            : "No unsaved movements";
     }
 
     private static string? Clean(string? value) =>
@@ -657,11 +828,11 @@ public sealed class BatchEntryView : UserControl
         Height = 1
     };
 
-    private static Button ButtonOf(string text, int width) => new()
+    private static Button ButtonOf(string text) => new()
     {
         Text = text,
         AutoSize = false,
-        Size = new Size(width, 42),
+        Size = new Size(150, 42),
         Margin = new Padding(0, 0, 10, 0)
     };
 

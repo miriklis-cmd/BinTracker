@@ -52,8 +52,8 @@ public sealed class CustomersView : UserControl
     private void Build()
     {
         var split = new TableLayoutPanel { Dock=DockStyle.Fill, ColumnCount=2, RowCount=1, Padding=new Padding(0), Margin=new Padding(0) };
-        split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38));
-        split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 62));
+        split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34));
+        split.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 66));
 
         var left = new TableLayoutPanel { Dock=DockStyle.Fill, RowCount=3, ColumnCount=1, Padding=new Padding(0,0,14,0) };
         left.RowStyles.Add(new RowStyle(SizeType.AutoSize)); left.RowStyles.Add(new RowStyle(SizeType.AutoSize)); left.RowStyles.Add(new RowStyle(SizeType.Percent,100));
@@ -117,9 +117,51 @@ public sealed class CustomersView : UserControl
 
     private Control BuildMovements()
     {
-        var box=Section("Recent movement history", movements, 260);
-        movements.Columns.Add("Date","Date"); movements.Columns.Add("Direction","Direction"); movements.Columns.Add("Type","Container Type"); movements.Columns.Add("Quantity","Qty"); movements.Columns.Add("Reference","Reference"); movements.Columns.Add("User","Entered By");
-        movements.Columns[2].AutoSizeMode=DataGridViewAutoSizeColumnMode.Fill;
+        var box = Section("Recent movement history", movements, 260);
+
+        movements.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            Name = "Date",
+            HeaderText = "Date",
+            Width = 82
+        });
+
+        movements.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            Name = "Direction",
+            HeaderText = "Direction",
+            Width = 105
+        });
+
+        movements.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            Name = "Type",
+            HeaderText = "Container Type",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+            MinimumWidth = 115
+        });
+
+        movements.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            Name = "Quantity",
+            HeaderText = "Qty",
+            Width = 58
+        });
+
+        movements.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            Name = "Reference",
+            HeaderText = "Reference",
+            Width = 105
+        });
+
+        movements.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            Name = "User",
+            HeaderText = "Entered By",
+            Width = 90
+        });
+
         return box;
     }
 

@@ -110,3 +110,12 @@
 - Added customer-code autocomplete and live customer balances.
 - Added movement unit/integration tests.
 - Added release test checklist.
+
+## 0.2.0-alpha.7.1
+- Added persistent in-memory Batch Entry drafts across navigation.
+- Added Current vs With Draft live balance preview.
+- Added Enter-on-Quantity/Reference and Ctrl+Enter keyboard workflow.
+- Dashboard now displays live saved movement totals.
+- Polished User Management colours, status wording and context-sensitive actions.
+- Improved Customer recent movement grid on smaller screens.
+- Added application version display and Known Issues.

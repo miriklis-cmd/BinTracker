@@ -19,10 +19,7 @@ public sealed record MovementBalanceRow(
     string ContainerType,
     int Balance)
 {
-    public string Position =>
-        Balance > 0 ? $"{Balance} OUT" :
-        Balance < 0 ? $"{Math.Abs(Balance)} CREDIT" :
-        "Even";
+    public string Position => MovementPositionMath.Format(Balance);
 }
 
 public sealed record MovementCustomerSummary(
@@ -50,6 +47,57 @@ public sealed record SaveMovementBatchResult(
     int LineCount,
     int TotalQuantity);
 
+public sealed record OperationalDashboardSummary(
+    int ReturnedToday,
+    int TakenToday,
+    int Outstanding,
+    int RequiresAttention);
+
+public sealed record DraftMovementLine(
+    int CustomerId,
+    string CustomerCode,
+    string CustomerName,
+    int ContainerTypeId,
+    string ContainerType,
+    int Quantity,
+    string? Reference,
+    string? Notes);
+
+public sealed class DraftMovementBatch
+{
+    public DateOnly MovementDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    public MovementType MovementType { get; set; } = MovementType.In;
+    public List<DraftMovementLine> Lines { get; } = [];
+
+    public int TotalQuantity => Lines.Sum(x => x.Quantity);
+    public bool HasLines => Lines.Count > 0;
+
+    public void Clear()
+    {
+        Lines.Clear();
+        MovementDate = DateOnly.FromDateTime(DateTime.Today);
+        MovementType = MovementType.In;
+    }
+}
+
+public sealed class ApplicationState
+{
+    public DraftMovementBatch DraftBatch { get; } = new();
+}
+
+public static class MovementPositionMath
+{
+    public static int Apply(int openingBalance, MovementType movementType, int quantity) =>
+        movementType == MovementType.Out
+            ? openingBalance + quantity
+            : openingBalance - quantity;
+
+    public static string Format(int balance) =>
+        balance > 0 ? $"{balance} OUT" :
+        balance < 0 ? $"{Math.Abs(balance)} CREDIT" :
+        "Even";
+}
+
 public interface IMovementService
 {
     Task<IReadOnlyList<MovementCustomerOption>> GetActiveCustomersAsync(
@@ -64,6 +112,10 @@ public interface IMovementService
 
     Task<SaveMovementBatchResult> SaveBatchAsync(
         SaveMovementBatchRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<OperationalDashboardSummary> GetDashboardSummaryAsync(
+        DateOnly date,
         CancellationToken cancellationToken = default);
 }
 
@@ -279,6 +331,63 @@ internal sealed class MovementService(
             batch.Id,
             request.Lines.Count,
             totalQuantity);
+    }
+
+    public async Task<OperationalDashboardSummary> GetDashboardSummaryAsync(
+        DateOnly date,
+        CancellationToken cancellationToken = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+
+        var today = await db.BinMovements
+            .AsNoTracking()
+            .Where(x => x.MovementDate == date)
+            .GroupBy(x => x.MovementType)
+            .Select(g => new { Type = g.Key, Quantity = g.Sum(x => x.Quantity) })
+            .ToListAsync(cancellationToken);
+
+        var returned = today
+            .Where(x => x.Type == MovementType.In)
+            .Sum(x => x.Quantity);
+
+        var taken = today
+            .Where(x => x.Type == MovementType.Out)
+            .Sum(x => x.Quantity);
+
+        var positions = await db.BinMovements
+            .AsNoTracking()
+            .GroupBy(x => new { x.CustomerId, x.ContainerTypeId })
+            .Select(g => new
+            {
+                g.Key.CustomerId,
+                Balance = g.Sum(x =>
+                    x.MovementType == MovementType.Out
+                        ? x.Quantity
+                        : -x.Quantity)
+            })
+            .ToListAsync(cancellationToken);
+
+        var outstanding = positions
+            .Where(x => x.Balance > 0)
+            .Sum(x => x.Balance);
+
+        var settings = await db.ApplicationSettings
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
+
+        var threshold = settings?.AttentionQuantityThreshold ?? 20;
+
+        var requiresAttention = positions
+            .Where(x => x.Balance > threshold)
+            .Select(x => x.CustomerId)
+            .Distinct()
+            .Count();
+
+        return new OperationalDashboardSummary(
+            returned,
+            taken,
+            outstanding,
+            requiresAttention);
     }
 
     private static string? Clean(string? value) =>
