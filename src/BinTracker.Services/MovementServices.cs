@@ -47,6 +47,19 @@ public sealed record SaveMovementBatchResult(
     int LineCount,
     int TotalQuantity);
 
+public sealed record SaveSingleMovementRequest(
+    DateOnly MovementDate,
+    MovementType MovementType,
+    int CustomerId,
+    int ContainerTypeId,
+    int Quantity,
+    string? Reference,
+    string? Notes);
+
+public sealed record SaveSingleMovementResult(
+    long MovementId,
+    int NewBalance);
+
 public sealed record OperationalDashboardSummary(
     int ReturnedToday,
     int TakenToday,
@@ -112,6 +125,10 @@ public interface IMovementService
 
     Task<SaveMovementBatchResult> SaveBatchAsync(
         SaveMovementBatchRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<SaveSingleMovementResult> SaveSingleAsync(
+        SaveSingleMovementRequest request,
         CancellationToken cancellationToken = default);
 
     Task<OperationalDashboardSummary> GetDashboardSummaryAsync(
@@ -331,6 +348,103 @@ internal sealed class MovementService(
             batch.Id,
             request.Lines.Count,
             totalQuantity);
+    }
+
+    public async Task<SaveSingleMovementResult> SaveSingleAsync(
+        SaveSingleMovementRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!session.IsAuthenticated)
+            throw new UnauthorizedAccessException("You must be logged in to record movements.");
+
+        if (session.Role == UserRole.Viewer)
+            throw new UnauthorizedAccessException("Viewer accounts cannot record movements.");
+
+        if (request.MovementDate > DateOnly.FromDateTime(DateTime.Today))
+            throw new ArgumentException("Movement date cannot be in the future.");
+
+        if (request.Quantity <= 0)
+            throw new ArgumentException("Movement quantity must be greater than zero.");
+
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+
+        var customer = await db.Customers
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == request.CustomerId && x.IsActive, cancellationToken)
+            ?? throw new InvalidOperationException("The customer is missing or inactive.");
+
+        var container = await db.ContainerTypes
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == request.ContainerTypeId && x.IsActive, cancellationToken)
+            ?? throw new InvalidOperationException("The container type is missing or inactive.");
+
+        var openingBalance = await db.BinMovements
+            .AsNoTracking()
+            .Where(x =>
+                x.CustomerId == request.CustomerId &&
+                x.ContainerTypeId == request.ContainerTypeId)
+            .SumAsync(
+                x => x.MovementType == MovementType.Out
+                    ? x.Quantity
+                    : -x.Quantity,
+                cancellationToken);
+
+        var movement = new BinMovement
+        {
+            MovementDate = request.MovementDate,
+            MovementType = request.MovementType,
+            Source = MovementSource.Manual,
+            CustomerId = request.CustomerId,
+            ContainerTypeId = request.ContainerTypeId,
+            Quantity = request.Quantity,
+            ReferenceNumber = Clean(request.Reference),
+            Notes = Clean(request.Notes),
+            CreatedBy = session.Username,
+            CreatedUtc = DateTime.UtcNow
+        };
+
+        db.BinMovements.Add(movement);
+        await db.SaveChangesAsync(cancellationToken);
+
+        var newBalance = MovementPositionMath.Apply(
+            openingBalance,
+            request.MovementType,
+            request.Quantity);
+
+        var direction = request.MovementType == MovementType.In
+            ? "IN (Returned)"
+            : "OUT (Taken)";
+
+        db.AuditEvents.Add(new AuditEvent
+        {
+            TimestampUtc = DateTime.UtcNow,
+            UserId = session.UserId,
+            Username = session.Username,
+            Action = "MOVEMENT_RECORDED",
+            EntityType = "BinMovement",
+            EntityId = movement.Id.ToString(),
+            Description =
+                $"{direction} manual movement recorded: {request.Quantity} {container.Name} for {customer.CustomerCode ?? customer.Name}.",
+            AfterValues = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                movement.MovementDate,
+                Direction = direction,
+                Customer = customer.CustomerCode ?? customer.Name,
+                Container = container.Name,
+                movement.Quantity,
+                movement.ReferenceNumber,
+                NewPosition = MovementPositionMath.Format(newBalance)
+            }),
+            ComputerName = Environment.MachineName,
+            SessionId = session.SessionId,
+            Succeeded = true
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return new SaveSingleMovementResult(movement.Id, newBalance);
     }
 
     public async Task<OperationalDashboardSummary> GetDashboardSummaryAsync(

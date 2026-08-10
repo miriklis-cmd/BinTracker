@@ -89,9 +89,15 @@ public sealed class CustomersView : UserControl
         // pushed below the visible client area on smaller displays.
         // The details area should consume only the height required by its controls.
         // The remaining height is then shared between the two operational grids.
-        right.RowStyles.Add(new RowStyle(SizeType.Absolute, 360F));
-        right.RowStyles.Add(new RowStyle(SizeType.Percent, 38F));
-        right.RowStyles.Add(new RowStyle(SizeType.Percent, 62F));
+        // The customer editor needs enough fixed height for the action row
+        // (Save Customer / Deactivate / Customer Statement). At 360 px that
+        // final row was clipped on the laptop DPI setting.
+        right.RowStyles.Add(new RowStyle(SizeType.Absolute, 405F));
+
+        // Keep Current Position useful, but give most of the remaining space
+        // to Recent Movement History.
+        right.RowStyles.Add(new RowStyle(SizeType.Percent, 36F));
+        right.RowStyles.Add(new RowStyle(SizeType.Percent, 64F));
         right.Controls.Add(BuildDetails(),0,0);
         right.Controls.Add(BuildBalances(),0,1);
         right.Controls.Add(BuildMovements(),0,2);
@@ -352,7 +358,7 @@ public sealed class CustomersView : UserControl
     private void SelectRow(int id){ foreach(DataGridViewRow row in customerGrid.Rows) if(Convert.ToInt32(row.Cells[0].Value)==id){ row.Selected=true; customerGrid.CurrentCell=row.Cells[1]; break; } }
     private static void AddRow(TableLayoutPanel f,int row,string l1,Control c1,string l2,Control c2){ f.Controls.Add(LabelFor(l1),0,row); f.Controls.Add(c1,1,row); f.Controls.Add(LabelFor(l2),2,row); f.Controls.Add(c2,3,row); }
     private static Label LabelFor(string text)=>new(){Text=text,AutoSize=true,Anchor=AnchorStyles.Left,Margin=new Padding(0,7,10,7),ForeColor=Color.FromArgb(70,80,95)};
-    private static TextBox Field(bool multiline=false)=>new(){Dock=DockStyle.Fill,Multiline=multiline,Height=multiline?58:30,Margin=new Padding(0,4,14,4)};
+    private static TextBox Field(bool multiline=false)=>new(){Dock=DockStyle.Fill,Multiline=multiline,Height=multiline?52:30,Margin=new Padding(0,4,14,4)};
     private static DataGridView Grid()=>new(){Dock=DockStyle.Fill,AllowUserToAddRows=false,AllowUserToDeleteRows=false,ReadOnly=true,MultiSelect=false,SelectionMode=DataGridViewSelectionMode.FullRowSelect,AutoGenerateColumns=false,RowHeadersVisible=false,BackgroundColor=Color.White,BorderStyle=BorderStyle.FixedSingle,AutoSizeRowsMode=DataGridViewAutoSizeRowsMode.AllCells,ShowCellToolTips=false};
     private static Panel Section(string heading, Control child)
     {

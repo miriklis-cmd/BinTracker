@@ -17,7 +17,7 @@ public sealed class MainForm : Form
     private readonly IAuthenticationService auth;
     private readonly IMovementService movements;
     private readonly ApplicationState appState;
-    private const string ApplicationVersion = "v0.2.0-alpha.7.2.13";
+    private const string ApplicationVersion = "v0.2.0-alpha.8.0.3";
 
     /// <summary>
     /// True when the user deliberately chose Logout rather than closing
@@ -72,7 +72,7 @@ public sealed class MainForm : Form
 
         side.Controls.Add(Nav("nav_settings", "Settings", ShowSettings));
         side.Controls.Add(Nav("nav_reports", "Reports", () => Placeholder("Reports", "Report generation will record the user, filters, dates and export format in the audit trail.")));
-        side.Controls.Add(Nav("nav_single", "Single Entry", () => Placeholder("Single Entry", "Record one IN (Returned) or OUT (Taken) movement.")));
+        side.Controls.Add(Nav("nav_single", "Single Entry", ShowSingleEntry));
         side.Controls.Add(Nav("nav_batch", "Batch Entry", ShowBatchEntry));
         side.Controls.Add(Nav("nav_customers", "Customers", ShowCustomers));
         side.Controls.Add(Nav("nav_dashboard", "Dashboard", ShowDashboard));
@@ -356,6 +356,13 @@ public sealed class MainForm : Form
         SetPage("Customers");
         content.AutoScroll = false;
         content.Controls.Add(new CustomersView(customers, session, statementReports));
+    }
+
+    private void ShowSingleEntry()
+    {
+        SetPage("Single Entry");
+        content.AutoScroll = false;
+        content.Controls.Add(new SingleEntryView(movements, session));
     }
 
 

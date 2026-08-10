@@ -170,3 +170,16 @@
 
 ## 0.2.0-alpha.7.2.13
 - Replaced problematic image rendering for password eye and Logout with DPI-safe custom WinForms drawing.
+
+## 0.2.0-alpha.8.0
+- Implemented the full Single Entry manual movement workflow.
+- Added manual-movement service persistence and audit logging.
+
+## 0.2.0-alpha.8.0.1
+- Fixed Customer action buttons being clipped below the visible details area.
+
+## 0.2.0-alpha.8.0.2
+- Cleaned up Single Entry text alignment and removed redundant Ready status.
+
+## 0.2.0-alpha.8.0.3
+- Single Entry now fully resets after a successful save.

@@ -87,3 +87,48 @@
 - [ ] Logout icon and caption are vertically centred
 - [ ] Logout returns to Login correctly
 - [ ] Left navigation icons are unchanged
+
+## Alpha 8.0 — Single Entry
+- [ ] Open Single Entry: real screen appears, not placeholder text
+- [ ] Customer code autocomplete works
+- [ ] Invalid customer is rejected
+- [ ] Quantity starts blank
+- [ ] Returned preview changes `After Save` correctly
+- [ ] Taken preview changes `After Save` correctly
+- [ ] Save confirmation shows correct customer/direction/container/quantity/date
+- [ ] Save movement succeeds
+- [ ] Position refreshes immediately after save
+- [ ] Quantity/reference/notes clear after save
+- [ ] Dashboard totals update when Dashboard is reopened
+- [ ] Customer recent movement history includes the manual movement
+- [ ] Audit Trail contains MOVEMENT_RECORDED
+- [ ] Viewer cannot save a Single Entry movement
+- [ ] Ctrl+Enter saves
+
+## Alpha 8.0.1 — Customer action buttons
+- [ ] Save Customer is visible
+- [ ] Deactivate / Reactivate is visible
+- [ ] Customer Statement is visible
+- [ ] Active/Inactive customer status is visible
+- [ ] Current Position remains usable
+- [ ] Recent Movement History remains visible and scrollable
+- [ ] No large blank band returns between Customer details and Current Position
+
+## Alpha 8.0.2 — Single Entry polish
+- [ ] Resolved customer summary aligns with the input controls
+- [ ] No `Ready: customer` message appears after customer lookup
+- [ ] Successful save still shows meaningful confirmation/status feedback
+
+## Alpha 8.0.3 — Single Entry reset
+- [ ] Save a valid Single Entry movement
+- [ ] Customer code clears
+- [ ] Customer summary clears
+- [ ] Container resets to first type
+- [ ] Quantity returns to blank
+- [ ] Reference clears
+- [ ] Notes clears
+- [ ] Direction resets to Returned (IN)
+- [ ] Date resets to today
+- [ ] Customer-position preview clears
+- [ ] Focus returns to Customer code
+- [ ] Previous save confirmation remains visible
