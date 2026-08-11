@@ -1,27 +1,15 @@
 # BinTracker Database
 
-BinTracker currently uses SQLite with Entity Framework Core.
+## ApplicationSettings business information
 
-## Main domain concepts
+The singleton `ApplicationSettings` row also stores configurable Business Information:
 
-- Customer
-- ContainerType
-- BinMovement
-- MovementBatch
-- UserAccount
-- AuditEvent
-- ApplicationSetting
+- BusinessName
+- TradingName
+- Abn
+- Address
+- Phone
+- Email
+- DefaultReportHeader
 
-## Balance convention
-
-- OUT increases a customer's outstanding position.
-- IN decreases it.
-- Positive balance = OUT.
-- Negative balance = CREDIT.
-- Zero = Even.
-
-## Operational principle
-
-Committed movements are append-oriented operational records. UI previews should not write movements until the user explicitly saves the batch.
-
-This document should be expanded before beta with the complete schema, keys, indexes and migration strategy.
+Schema migration v8 adds these columns to existing SQLite databases without replacing the settings row.

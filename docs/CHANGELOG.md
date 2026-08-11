@@ -183,3 +183,25 @@
 
 ## 0.2.0-alpha.8.0.3
 - Single Entry now fully resets after a successful save.
+
+## 0.2.0-alpha.9.0
+- Added Reports hub and two-page duplex Market Floor Sheet.
+- Added date-based B/Fwd / Out / In / Total calculation.
+- Added Account/Cash front and reverse grouping plus special-container summary.
+
+## 0.2.0-alpha.9.0.1
+- Corrected Market Floor Sheet to A4 portrait on both sides.
+- Fixed clipped Generate & Open button.
+
+## 0.3.0-alpha.1
+- Added configurable Container Type master data and management UI.
+- Added SQLite schema migration v7 without changing existing container IDs.
+- Market Floor Sheet now uses explicit special-container metadata.
+
+## v0.3.0-alpha.2
+- Future-proofed SQLite migration tests by deriving the expected latest schema version.
+- Added Container Type master-data migration regression coverage.
+
+## v0.3.0-alpha.3
+- Added Business Information master data and report-header integration.
+- Added SQLite schema migration v8 and related tests/documentation.

@@ -1,27 +1,53 @@
-# BinTracker Known Business Rules
+# BinTracker Business Rules
 
-- IN means Returned.
-- OUT means Taken.
-- Customers can return more containers than they have taken; the excess is credit.
-- Balances are maintained separately for each container type.
-- Blue Bin is the normal/default bin type.
-- Initial container types are Blue Bin, Small Bin, Yellow Bin, Bulk Bin, and CHEP Pallet.
-- Container types are configurable and may be added later.
-- Customer code is the primary business identifier.
-- Customer codes are unique without regard to case.
-- Customer codes are displayed in uppercase.
-- Customers are classified as Account or Cash / COD.
-- Daily movement entry is commonly performed in separate IN and OUT batches.
-- Friday is the normal collections/reminder day, but reminders may be run earlier when required.
-- Excel migration must recognise `(Y)`, `(Bulk)`, and `(Chep)` as container-type markers.
-- Excel brought-forward balances become opening positions during cut-over.
-- Daily downstairs paperwork includes an outstanding summary and movement/balance detail.
-- Customer statements must explain how a current balance was reached.
+This document records application behaviour independently of implementation details.
 
-- Passwords do not expire periodically.
-- Five failed login attempts lock an account by default; an administrator unlocks it.
-- Administrator password resets force the user to choose a new password at next login.
+## Customers
 
-- A saved batch has one movement direction: Returned (IN) or Taken (OUT).
-- Daily data entry normally records returns and dispatches as separate batches.
-- OUT increases the customer's outstanding position; IN reduces it and may create credit.
+- Customer codes are unique case-insensitively.
+- Positive balances mean the customer owes containers.
+- Negative balances mean CREDIT.
+- Historical records remain valid when customers are deactivated.
+
+## Container Types
+
+- Container Types are master data.
+- Display Order controls operational selection ordering.
+- System Code is a stable internal identifier and does not change after creation.
+- A type referenced by movement history is preserved; deactivate it rather than deleting its history.
+- Dashboard Colour is presentation metadata and does not describe the physical colour of the container.
+- Special Floor Report Container determines whether the type appears in the separate special-container section.
+
+## Movements
+
+- OUT increases the customer position.
+- IN decreases the customer position.
+- Single Entry saves one manual movement.
+- Batch Entry saves its movements atomically.
+
+## Market Floor Sheet
+
+- Output is A4 portrait.
+- Front and reverse must each remain one page.
+- Front: Account customers owing occupy two columns.
+- Front: Cash/COD customers owing occupy the third column.
+- All customer credits appear under the Cash/COD section.
+- Special Floor Report Containers appear in the separate special-container section.
+- Reverse: Account customers are on the left.
+- Reverse: Cash/COD customers are on the right.
+- Reverse columns are Buyer / Out / In / B/Fwd / Total.
+- B/Fwd includes all regular-container movements before the selected report date.
+- Total = B/Fwd + OUT - IN.
+- Negative totals display as CREDIT.
+
+## Business Information
+
+- Business Information is administrator-maintained master data.
+- Project documentation remains business-neutral.
+- Default Report Header overrides Trading Name for report headings.
+- Trading Name overrides Business Name for display/report identity when no explicit report header exists.
+- Business Information changes are audited.
+
+## Audit
+
+Important security, master-data and movement changes create audit events.

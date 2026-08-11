@@ -11,11 +11,13 @@ public interface ICustomerStatementReportService
 
 internal sealed class CustomerStatementReportService(
     ICustomerService customers,
-    IAuditService audit) : ICustomerStatementReportService
+    IAuditService audit,
+    IBusinessInformationService businessInformation) : ICustomerStatementReportService
 {
     public async Task GeneratePdfAsync(int customerId, DateOnly fromDate, DateOnly toDate, string outputPath, CancellationToken cancellationToken = default)
     {
         var data = await customers.GetStatementAsync(customerId, fromDate, toDate, cancellationToken);
+        var business = await businessInformation.GetAsync(cancellationToken);
         QuestPDF.Settings.License = LicenseType.Community;
 
         Document.Create(document =>
@@ -28,7 +30,7 @@ internal sealed class CustomerStatementReportService(
 
                 page.Header().Column(header =>
                 {
-                    header.Item().Text("BinTracker - Customer Statement").FontSize(18).SemiBold();
+                    header.Item().Text($"{business.ReportHeader} - Customer Statement").FontSize(18).SemiBold();
                     header.Item().PaddingTop(4).Text($"{data.CustomerCode} - {data.CustomerName}").FontSize(13).SemiBold();
                     header.Item().Text($"Statement period: {data.FromDate:dd/MM/yyyy} to {data.ToDate:dd/MM/yyyy}");
                     header.Item().Text($"Generated: {DateTime.Now:dd/MM/yyyy HH:mm}").FontColor(Colors.Grey.Darken1);

@@ -132,3 +132,67 @@
 - [ ] Customer-position preview clears
 - [ ] Focus returns to Customer code
 - [ ] Previous save confirmation remains visible
+
+## Alpha 9.0 — Market Floor Sheet
+- [ ] Reports screen opens
+- [ ] Market Floor Sheet can be generated for today
+- [ ] PDF has exactly 2 pages
+- [ ] Page 1: Account owing appears only in first two columns
+- [ ] Page 1: Cash owing appears only in right column
+- [ ] Page 1: credits appear below Cash owing
+- [ ] Page 1: CHEP/LOSCAM/pallet balances appear in special block
+- [ ] Page 1 fits one A4 landscape page
+- [ ] Page 2: Account customers are left
+- [ ] Page 2: Cash customers are right
+- [ ] Page 2: Out equals selected day's OUT movements
+- [ ] Page 2: In equals selected day's IN movements
+- [ ] Page 2: B/Fwd equals position before selected day
+- [ ] Page 2: Total = B/Fwd + Out - In
+- [ ] Negative Total prints as `x CREDIT`
+- [ ] Historic date can be regenerated
+- [ ] Audit Trail records MARKET_FLOOR_REPORT_GENERATED
+
+## Alpha 9.0.1 — Market Floor portrait print
+- [ ] `Generate & Open` caption is fully visible
+- [ ] PDF page 1 is A4 portrait
+- [ ] PDF page 2 is A4 portrait
+- [ ] Page 1 remains exactly one page
+- [ ] Page 2 remains exactly one page
+- [ ] Front account/cash/credit sections remain readable
+- [ ] Reverse Account and Cash columns remain readable
+- [ ] Duplex printing produces front + reverse on one physical A4 sheet
+
+## v0.3.0-alpha.1 — Container Types
+- [ ] Settings → Container Types opens for Administrator
+- [ ] Existing Blue/Small/Yellow/Bulk/CHEP records remain present after migration
+- [ ] Existing movements/balances are unchanged
+- [ ] Add a new container type
+- [ ] Duplicate name is rejected
+- [ ] Duplicate short code is rejected
+- [ ] Rename a container and confirm movement history remains linked
+- [ ] Change display order and confirm Batch/Single Entry dropdown ordering changes
+- [ ] Deactivate type and confirm it disappears from new-entry dropdowns
+- [ ] Reactivate type and confirm it returns
+- [ ] Mark/unmark Special Floor Report Container
+- [ ] Usage statistics populate
+- [ ] Audit Trail records create/update/deactivate/reactivate actions
+
+## v0.3.0-alpha.2
+- [ ] Build succeeds with zero warnings
+- [ ] All unit tests pass
+- [ ] All integration tests pass
+- [ ] Existing database opens/upgrades normally
+- [ ] Settings > Container Types still opens
+- [ ] CHEP remains marked Special Floor Report Container
+
+## v0.3.0-alpha.3 — Business Information
+- [ ] Build succeeds with zero warnings
+- [ ] All tests pass
+- [ ] Settings > Business Information opens for Administrator
+- [ ] Business Information saves and reloads
+- [ ] Empty fields are accepted
+- [ ] Audit Trail records BUSINESS_INFORMATION_UPDATED
+- [ ] Customer Statement uses Default Report Header when configured
+- [ ] Market Floor Sheet uses Default Report Header when configured
+- [ ] Trading Name is used when Default Report Header is blank
+- [ ] BinTracker fallback is used when all identity fields are blank

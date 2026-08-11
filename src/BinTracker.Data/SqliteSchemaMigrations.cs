@@ -16,7 +16,9 @@ internal static class SqliteSchemaMigrations
         new(3, "Reminder delivery history", ApplyV3Async),
         new(4, "Customer type and Blue Bin terminology", ApplyV4Async),
         new(5, "Case-insensitive customer code index", ApplyV5Async),
-        new(6, "Password self-service and account lockout", ApplyV6Async)
+        new(6, "Password self-service and account lockout", ApplyV6Async),
+        new(7, "Container type master data", ApplyV7Async),
+        new(8, "Business information master data", ApplyV8Async)
     ];
 
     private static async Task ApplyV1Async(BinTrackerDbContext db)
@@ -145,6 +147,107 @@ internal static class SqliteSchemaMigrations
         await AddUserColumnIfMissingAsync(db, "IsLocked", "INTEGER NOT NULL DEFAULT 0");
         await AddUserColumnIfMissingAsync(db, "LockedUtc", "TEXT NULL");
         await AddSettingsColumnIfMissingAsync(db, "MaxFailedLoginAttempts", "INTEGER NOT NULL DEFAULT 5");
+    }
+
+    private static async Task ApplyV7Async(BinTrackerDbContext db)
+    {
+        await AddContainerColumnIfMissingAsync(db, "ShortCode", "TEXT NOT NULL DEFAULT ''");
+        await AddContainerColumnIfMissingAsync(db, "SystemCode", "TEXT NOT NULL DEFAULT ''");
+        await AddContainerColumnIfMissingAsync(db, "Notes", "TEXT NULL");
+        await AddContainerColumnIfMissingAsync(db, "IsSpecialFloorReportContainer", "INTEGER NOT NULL DEFAULT 0");
+        await AddContainerColumnIfMissingAsync(db, "DashboardColour", "TEXT NULL");
+
+        // Existing alpha databases keep the original IDs referenced by every
+        // movement. We only enrich those records with stable master-data codes.
+        await db.Database.ExecuteSqlRawAsync("""
+            UPDATE ContainerTypes SET ShortCode='BLUE',   SystemCode='BLUE_BIN'    WHERE Id=1 AND ShortCode='';
+            UPDATE ContainerTypes SET ShortCode='SMALL',  SystemCode='SMALL_BIN'   WHERE Id=2 AND ShortCode='';
+            UPDATE ContainerTypes SET ShortCode='YELLOW', SystemCode='YELLOW_BIN'  WHERE Id=3 AND ShortCode='';
+            UPDATE ContainerTypes SET ShortCode='BULK',   SystemCode='BULK_BIN'    WHERE Id=4 AND ShortCode='';
+            UPDATE ContainerTypes SET ShortCode='CHEP',   SystemCode='CHEP_PALLET', IsSpecialFloorReportContainer=1 WHERE Id=5 AND ShortCode='';
+            """);
+
+        // Any custom rows that pre-date this migration still receive stable,
+        // deterministic values without changing their primary key.
+        await db.Database.ExecuteSqlRawAsync("""
+            UPDATE ContainerTypes
+            SET ShortCode = 'CT' || Id
+            WHERE ShortCode = '';
+            UPDATE ContainerTypes
+            SET SystemCode = 'CONTAINER_' || Id
+            WHERE SystemCode = '';
+            """);
+
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_ContainerTypes_ShortCode ON ContainerTypes (ShortCode COLLATE NOCASE);");
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_ContainerTypes_SystemCode ON ContainerTypes (SystemCode COLLATE NOCASE);");
+    }
+
+    private static async Task ApplyV8Async(BinTrackerDbContext db)
+    {
+        await AddBusinessInfoColumnIfMissingAsync(db, "BusinessName");
+        await AddBusinessInfoColumnIfMissingAsync(db, "TradingName");
+        await AddBusinessInfoColumnIfMissingAsync(db, "Abn");
+        await AddBusinessInfoColumnIfMissingAsync(db, "Address");
+        await AddBusinessInfoColumnIfMissingAsync(db, "Phone");
+        await AddBusinessInfoColumnIfMissingAsync(db, "Email");
+        await AddBusinessInfoColumnIfMissingAsync(db, "DefaultReportHeader");
+    }
+
+    private static async Task AddBusinessInfoColumnIfMissingAsync(
+        BinTrackerDbContext db,
+        string column)
+    {
+        var existing = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ApplicationSettings') WHERE name = {0}",
+                column)
+            .ToListAsync();
+
+        if (existing.Count != 0)
+            return;
+
+        var sql = column switch
+        {
+            "BusinessName" => "ALTER TABLE ApplicationSettings ADD COLUMN BusinessName TEXT NULL;",
+            "TradingName" => "ALTER TABLE ApplicationSettings ADD COLUMN TradingName TEXT NULL;",
+            "Abn" => "ALTER TABLE ApplicationSettings ADD COLUMN Abn TEXT NULL;",
+            "Address" => "ALTER TABLE ApplicationSettings ADD COLUMN Address TEXT NULL;",
+            "Phone" => "ALTER TABLE ApplicationSettings ADD COLUMN Phone TEXT NULL;",
+            "Email" => "ALTER TABLE ApplicationSettings ADD COLUMN Email TEXT NULL;",
+            "DefaultReportHeader" => "ALTER TABLE ApplicationSettings ADD COLUMN DefaultReportHeader TEXT NULL;",
+            _ => throw new InvalidOperationException("Unsupported business information schema column.")
+        };
+
+        await db.Database.ExecuteSqlRawAsync(sql);
+    }
+
+    private static async Task AddContainerColumnIfMissingAsync(
+        BinTrackerDbContext db,
+        string column,
+        string definition)
+    {
+        var existing = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ContainerTypes') WHERE name = {0}",
+                column)
+            .ToListAsync();
+
+        if (existing.Count != 0)
+            return;
+
+        var sql = column switch
+        {
+            "ShortCode" => "ALTER TABLE ContainerTypes ADD COLUMN ShortCode TEXT NOT NULL DEFAULT '';",
+            "SystemCode" => "ALTER TABLE ContainerTypes ADD COLUMN SystemCode TEXT NOT NULL DEFAULT '';",
+            "Notes" => "ALTER TABLE ContainerTypes ADD COLUMN Notes TEXT NULL;",
+            "IsSpecialFloorReportContainer" => "ALTER TABLE ContainerTypes ADD COLUMN IsSpecialFloorReportContainer INTEGER NOT NULL DEFAULT 0;",
+            "DashboardColour" => "ALTER TABLE ContainerTypes ADD COLUMN DashboardColour TEXT NULL;",
+            _ => throw new InvalidOperationException("Unsupported container type schema column.")
+        };
+
+        await db.Database.ExecuteSqlRawAsync(sql);
     }
 
     private static async Task AddColumnIfMissingAsync(

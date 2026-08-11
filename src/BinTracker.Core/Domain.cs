@@ -34,8 +34,13 @@ public sealed class ContainerType
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string ShortCode { get; set; } = string.Empty;
+    public string SystemCode { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public string? Notes { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsSpecialFloorReportContainer { get; set; }
+    public string? DashboardColour { get; set; }
     public int DisplayOrder { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
@@ -81,6 +86,16 @@ public sealed class ApplicationSettings
     public int AttentionAgeDays { get; set; } = 7;
     public int BackupRetentionCount { get; set; } = 30;
     public int MaxFailedLoginAttempts { get; set; } = 5;
+
+    // Business identity is configurable master data. Keeping it here means
+    // reports and future communications share one authoritative source.
+    public string? BusinessName { get; set; }
+    public string? TradingName { get; set; }
+    public string? Abn { get; set; }
+    public string? Address { get; set; }
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    public string? DefaultReportHeader { get; set; }
 }
 
 public sealed class UserAccount

@@ -43,3 +43,7 @@ Customer Management is now functional from the left navigation.
 ## v0.2.0-alpha.2
 
 Customer codes are now the primary visible identifier in Customer Management. Select a customer and use **Customer Statement** to generate an audited PDF for a chosen period.
+
+## Master data
+
+Administrators can manage container types and Business Information from Settings. Business Information provides the shared identity used by report headers without hard-coding company details into the application or repository.

@@ -36,13 +36,20 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
         {
             e.ToTable("ContainerTypes");
             e.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            e.Property(x => x.ShortCode).HasMaxLength(30).IsRequired();
+            e.Property(x => x.SystemCode).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(500);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.DashboardColour).HasMaxLength(50);
             e.HasIndex(x => x.Name).IsUnique();
+            e.HasIndex(x => x.ShortCode).IsUnique();
+            e.HasIndex(x => x.SystemCode).IsUnique();
             e.HasData(
-                new ContainerType { Id=1, Name="Blue Bin", Description="Standard blue reusable bin", IsActive=true, DisplayOrder=1, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
-                new ContainerType { Id=2, Name="Small Bin", Description="Small reusable bin", IsActive=true, DisplayOrder=2, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
-                new ContainerType { Id=3, Name="Yellow Bin", Description="Yellow reusable bin", IsActive=true, DisplayOrder=3, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
-                new ContainerType { Id=4, Name="Bulk Bin", Description="Large bulk bin", IsActive=true, DisplayOrder=4, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
-                new ContainerType { Id=5, Name="CHEP Pallet", Description="CHEP pallet", IsActive=true, DisplayOrder=5, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch });
+                new ContainerType { Id=1, Name="Blue Bin", ShortCode="BLUE", SystemCode="BLUE_BIN", Description="Standard blue reusable bin", IsActive=true, IsSpecialFloorReportContainer=false, DisplayOrder=1, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
+                new ContainerType { Id=2, Name="Small Bin", ShortCode="SMALL", SystemCode="SMALL_BIN", Description="Small reusable bin", IsActive=true, IsSpecialFloorReportContainer=false, DisplayOrder=2, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
+                new ContainerType { Id=3, Name="Yellow Bin", ShortCode="YELLOW", SystemCode="YELLOW_BIN", Description="Yellow reusable bin", IsActive=true, IsSpecialFloorReportContainer=false, DisplayOrder=3, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
+                new ContainerType { Id=4, Name="Bulk Bin", ShortCode="BULK", SystemCode="BULK_BIN", Description="Large bulk bin", IsActive=true, IsSpecialFloorReportContainer=false, DisplayOrder=4, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
+                new ContainerType { Id=5, Name="CHEP Pallet", ShortCode="CHEP", SystemCode="CHEP_PALLET", Description="CHEP pallet", IsActive=true, IsSpecialFloorReportContainer=true, DisplayOrder=5, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch });
         });
 
         b.Entity<MovementBatch>(e =>
@@ -62,9 +69,24 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
             e.HasIndex(x => new { x.CustomerId, x.ContainerTypeId, x.MovementDate });
         });
 
-        b.Entity<ApplicationSettings>().HasData(new ApplicationSettings
+        b.Entity<ApplicationSettings>(e =>
         {
-            Id=1, AttentionQuantityThreshold=20, AttentionAgeDays=7, BackupRetentionCount=30, MaxFailedLoginAttempts=5
+            e.Property(x => x.BusinessName).HasMaxLength(200);
+            e.Property(x => x.TradingName).HasMaxLength(200);
+            e.Property(x => x.Abn).HasMaxLength(50);
+            e.Property(x => x.Address).HasMaxLength(500);
+            e.Property(x => x.Phone).HasMaxLength(80);
+            e.Property(x => x.Email).HasMaxLength(200);
+            e.Property(x => x.DefaultReportHeader).HasMaxLength(200);
+
+            e.HasData(new ApplicationSettings
+            {
+                Id=1,
+                AttentionQuantityThreshold=20,
+                AttentionAgeDays=7,
+                BackupRetentionCount=30,
+                MaxFailedLoginAttempts=5
+            });
         });
 
         b.Entity<UserAccount>(e =>

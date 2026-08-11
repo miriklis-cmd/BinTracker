@@ -17,7 +17,10 @@ public sealed class MainForm : Form
     private readonly IAuthenticationService auth;
     private readonly IMovementService movements;
     private readonly ApplicationState appState;
-    private const string ApplicationVersion = "v0.2.0-alpha.8.0.3";
+    private readonly IMarketFloorReportService marketFloorReports;
+    private readonly IContainerTypeService containerTypes;
+    private readonly IBusinessInformationService businessInformation;
+    private const string ApplicationVersion = "v0.3.0-alpha.3";
 
     /// <summary>
     /// True when the user deliberately chose Logout rather than closing
@@ -33,7 +36,10 @@ public sealed class MainForm : Form
         ICustomerStatementReportService statementReports,
         IAuthenticationService auth,
         IMovementService movements,
-        ApplicationState appState)
+        ApplicationState appState,
+        IMarketFloorReportService marketFloorReports,
+        IContainerTypeService containerTypes,
+        IBusinessInformationService businessInformation)
     {
         this.session = session;
         this.users = users;
@@ -43,6 +49,9 @@ public sealed class MainForm : Form
         this.auth = auth;
         this.movements = movements;
         this.appState = appState;
+        this.marketFloorReports = marketFloorReports;
+        this.containerTypes = containerTypes;
+        this.businessInformation = businessInformation;
 
         Text = $"BinTracker - {session.DisplayName}";
         StartPosition = FormStartPosition.CenterScreen;
@@ -71,7 +80,7 @@ public sealed class MainForm : Form
         };
 
         side.Controls.Add(Nav("nav_settings", "Settings", ShowSettings));
-        side.Controls.Add(Nav("nav_reports", "Reports", () => Placeholder("Reports", "Report generation will record the user, filters, dates and export format in the audit trail.")));
+        side.Controls.Add(Nav("nav_reports", "Reports", ShowReports));
         side.Controls.Add(Nav("nav_single", "Single Entry", ShowSingleEntry));
         side.Controls.Add(Nav("nav_batch", "Batch Entry", ShowBatchEntry));
         side.Controls.Add(Nav("nav_customers", "Customers", ShowCustomers));
@@ -366,6 +375,13 @@ public sealed class MainForm : Form
     }
 
 
+    private void ShowReports()
+    {
+        SetPage("Reports");
+        content.AutoScroll = true;
+        content.Controls.Add(new ReportsView(marketFloorReports));
+    }
+
     private void ShowSettings()
     {
         SetPage("Settings");
@@ -442,7 +458,7 @@ public sealed class MainForm : Form
 
         var description = new Label
         {
-            Text = "Manage authorised users and inspect the audit trail.",
+            Text = "Manage authorised users, container types, business information and inspect the audit trail.",
             AutoSize = true,
             ForeColor = Color.FromArgb(80, 90, 105),
             MaximumSize = new Size(900, 0),
@@ -480,6 +496,34 @@ public sealed class MainForm : Form
                 form.ShowDialog(this);
             };
 
+            var containerTypesButton = new Button
+            {
+                Text = "Container Types",
+                AutoSize = false,
+                Size = new Size(165, 44),
+                Margin = new Padding(0, 0, 12, 0)
+            };
+
+            containerTypesButton.Click += (_, _) =>
+            {
+                using var form = new ContainerTypesForm(containerTypes);
+                form.ShowDialog(this);
+            };
+
+            var businessInformationButton = new Button
+            {
+                Text = "Business Information",
+                AutoSize = false,
+                Size = new Size(180, 44),
+                Margin = new Padding(0, 0, 12, 0)
+            };
+
+            businessInformationButton.Click += (_, _) =>
+            {
+                using var form = new BusinessInformationForm(businessInformation);
+                form.ShowDialog(this);
+            };
+
             var auditButton = new Button
             {
                 Text = "View Audit Trail",
@@ -495,13 +539,15 @@ public sealed class MainForm : Form
             };
 
             actions.Controls.Add(usersButton);
+            actions.Controls.Add(containerTypesButton);
+            actions.Controls.Add(businessInformationButton);
             actions.Controls.Add(auditButton);
         }
         else
         {
             actions.Controls.Add(new Label
             {
-                Text = "Administrator access is required for user and audit controls.",
+                Text = "Administrator access is required for user, container type, business information and audit controls.",
                 AutoSize = true,
                 ForeColor = Color.Firebrick,
                 MaximumSize = new Size(720, 0),

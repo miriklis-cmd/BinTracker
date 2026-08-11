@@ -509,6 +509,9 @@ public static class ServiceSetup
         services.AddScoped<IBalanceService, BalanceService>();
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<ICustomerStatementReportService, CustomerStatementReportService>();
+        services.AddScoped<IContainerTypeService, ContainerTypeService>();
+        services.AddScoped<IBusinessInformationService, BusinessInformationService>();
+        services.AddScoped<IMarketFloorReportService, MarketFloorReportService>();
         services.AddScoped<IMovementService, MovementService>();
         return services;
     }

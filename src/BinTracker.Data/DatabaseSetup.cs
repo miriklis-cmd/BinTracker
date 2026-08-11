@@ -16,6 +16,16 @@ public static class DatabaseSetup
 
     public static string StatusText => DatabaseConfiguration.GetStatusText(Settings);
 
+    /// <summary>
+    /// The schema version a fully upgraded SQLite database should be on.
+    /// Keeping this derived from the migration catalogue avoids hard-coded
+    /// version numbers in tests and upgrade diagnostics.
+    /// </summary>
+    public static int LatestSchemaVersion =>
+        SqliteSchemaMigrations.All.Count == 0
+            ? 0
+            : SqliteSchemaMigrations.All.Max(x => x.Version);
+
     public static IServiceCollection AddBinTrackerData(this IServiceCollection services)
     {
         var settings = Settings;
