@@ -1,4 +1,4 @@
-# BinTracker v0.1.0-alpha.3
+# BinTracker v0.4.0-alpha.7
 
 This release adds local authentication, roles, user administration, and an append-only audit trail.
 
@@ -37,13 +37,21 @@ PostgreSQL is the planned central database before simultaneous multi-PC deployme
 The PostgreSQL provider is not enabled yet, so this release has no extra server/install requirement.
 
 
-## v0.2.0-alpha.1
+## v0.4.0-alpha.7
 Customer Management is now functional from the left navigation.
 
-## v0.2.0-alpha.2
+## v0.4.0-alpha.7
 
 Customer codes are now the primary visible identifier in Customer Management. Select a customer and use **Customer Statement** to generate an audited PDF for a chosen period.
 
 ## Master data
 
 Administrators can manage container types and Business Information from Settings. Business Information provides the shared identity used by report headers without hard-coding company details into the application or repository.
+
+## Excel import
+
+The Import Wizard currently supports read-only analysis of `.xlsm` and `.xlsx` workbooks. Database merge/replace execution will be enabled after workbook matching rules are validated.
+
+## Versioning
+
+The BinTracker release version is defined once in `Directory.Build.props`. The application and `Build-BinTracker.bat` derive their displayed version from that value. See `docs/Versioning.md`.

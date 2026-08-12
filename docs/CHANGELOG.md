@@ -205,3 +205,36 @@
 ## v0.3.0-alpha.3
 - Added Business Information master data and report-header integration.
 - Added SQLite schema migration v8 and related tests/documentation.
+
+## v0.3.0-alpha.4
+- Fixed Business Information Settings button alignment/caption fit.
+- Fixed clipped Save/Close buttons in the Business Information dialog.
+- Cleared MainForm CA1859 analyzer messages using concrete private UI types.
+
+## v0.4.0-alpha.1
+- Added first Excel Import Wizard stage: safe workbook analysis and candidate preview.
+
+## v0.4.0-alpha.2
+- Fixed Excel Import analysis build errors caused by ClosedXML cell coordinate API usage.
+- Removed nullable SourceCell warning.
+
+## v0.4.0-alpha.3
+- Rebuilt the Excel Import Wizard layout to prevent clipped controls and match the approved workflow.
+
+## v0.4.0-alpha.4
+- Matched Import Wizard progress styling to the approved design.
+- Added View all worksheets and removed duplicate Analyse action.
+- Added legacy B/Fwd + IN/OUT snapshot analysis model.
+
+## v0.4.0-alpha.5
+- Fixed Import Wizard clipping at the progress indicator, worksheet controls and analysis summary.
+- Added unique-customer versus occurrence counts.
+
+## v0.4.0-alpha.6
+- Centralised application/build versioning in Directory.Build.props.
+- Build-BinTracker.bat now clearly prints the release version at start and completion.
+
+## v0.4.0-alpha.7
+- Added Import Wizard duplicate diagnostics dialog and concise warning panel.
+- Fixed Business Information Save/Close alignment and increased Address height.
+- Audited KNOWN-ISSUES.md and separated technical debt / future enhancements.

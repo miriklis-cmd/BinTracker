@@ -28,8 +28,8 @@ public sealed class BusinessInformationForm : Form
         Text = "Business Information";
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(760, 620);
-        MinimumSize = new Size(650, 540);
+        ClientSize = new Size(760, 690);
+        MinimumSize = new Size(680, 620);
         BackColor = Color.FromArgb(245, 247, 250);
         Font = new Font("Segoe UI", 10F);
 
@@ -39,26 +39,37 @@ public sealed class BusinessInformationForm : Form
 
     private void Build()
     {
+        // This remains a separate modal dialog. AutoScroll plus an auto-sized
+        // card prevents the bottom action buttons from being clipped at 125% /
+        // 150% Windows display scaling.
         var outer = new Panel
         {
             Dock = DockStyle.Fill,
+            AutoScroll = true,
             Padding = new Padding(22),
             BackColor = Color.FromArgb(245, 247, 250)
         };
 
         var card = new Panel
         {
-            Dock = DockStyle.Fill,
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            MinimumSize = new Size(680, 0),
             BackColor = Color.White,
-            Padding = new Padding(24)
+            Padding = new Padding(24),
+            Margin = Padding.Empty
         };
 
         var form = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 2,
-            RowCount = 0
+            RowCount = 0,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
 
         form.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180F));
@@ -77,8 +88,8 @@ public sealed class BusinessInformationForm : Form
         form.Controls.Add(new Label
         {
             Text =
-                "Trading name is used as the display name when supplied. " +
-                "Default report header can override that wording on printed reports.",
+                "Trading name is used on reports when supplied. " +
+                "Default report header is optional and replaces that heading if you want different wording.",
             AutoSize = true,
             ForeColor = Color.DimGray,
             MaximumSize = new Size(500, 0),
@@ -89,20 +100,29 @@ public sealed class BusinessInformationForm : Form
         form.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         form.Controls.Add(validation, 1, validationRow);
 
-        var actions = new FlowLayoutPanel
+        // Use a fixed-row table rather than FlowLayoutPanel so both action
+        // buttons share the exact same top/bottom coordinates at every DPI.
+        var actions = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
-            FlowDirection = FlowDirection.LeftToRight,
-            Margin = new Padding(0, 18, 0, 0)
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 2,
+            RowCount = 1,
+            Margin = new Padding(0, 18, 0, 18),
+            Padding = Padding.Empty
         };
+        actions.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130F));
+        actions.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120F));
+        actions.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
 
         var save = new Button
         {
             Text = "Save",
             AutoSize = false,
-            Size = new Size(120, 42),
-            Margin = new Padding(0, 0, 10, 0)
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 0, 10, 0),
+            TextAlign = ContentAlignment.MiddleCenter
         };
         save.Click += async (_, _) => await SaveAsync();
 
@@ -110,12 +130,14 @@ public sealed class BusinessInformationForm : Form
         {
             Text = "Close",
             AutoSize = false,
-            Size = new Size(120, 42)
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            TextAlign = ContentAlignment.MiddleCenter
         };
         close.Click += (_, _) => Close();
 
-        actions.Controls.Add(save);
-        actions.Controls.Add(close);
+        actions.Controls.Add(save, 0, 0);
+        actions.Controls.Add(close, 1, 0);
 
         var actionRow = form.RowCount++;
         form.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -195,6 +217,6 @@ public sealed class BusinessInformationForm : Form
     {
         Dock = DockStyle.Fill,
         Multiline = multiline,
-        Height = multiline ? 70 : 30
+        Height = multiline ? 90 : 30
     };
 }

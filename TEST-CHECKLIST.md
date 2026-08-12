@@ -196,3 +196,114 @@
 - [ ] Market Floor Sheet uses Default Report Header when configured
 - [ ] Trading Name is used when Default Report Header is blank
 - [ ] BinTracker fallback is used when all identity fields are blank
+
+## v0.3.0-alpha.4 — Settings UI polish
+- [ ] Settings administration buttons have matching vertical text alignment
+- [ ] Business Information caption is fully visible
+- [ ] Business Information opens in its own window
+- [ ] Save and Close are visible at 100% Windows scaling
+- [ ] Save and Close are visible/scrollable at 125% and 150% scaling
+- [ ] Business Information saves successfully
+- [ ] Visual Studio shows no CA1859 messages for MainForm.cs lines previously reported
+
+## v0.4.0-alpha.1 — Excel Import Analysis
+- [ ] Build succeeds with zero warnings
+- [ ] All unit/integration tests pass
+- [ ] Settings > Import Excel opens
+- [ ] `.xlsm` workbook can be selected
+- [ ] `.xlsx` workbook can be selected
+- [ ] Analyse does not modify Customers
+- [ ] Analyse does not modify Movements
+- [ ] Worksheet list shows expected Excel sheets
+- [ ] Buyer columns are detected
+- [ ] Account candidates are identified from account source sheets
+- [ ] Cash/COD candidates are identified from cash source sheets
+- [ ] Duplicate candidate warning is understandable
+- [ ] Audit Trail records IMPORT_WORKBOOK_ANALYSED
+- [ ] Import execution button remains disabled in this analysis-only build
+
+## v0.4.0-alpha.2 — Import build regression
+- [ ] Build succeeds with zero warnings
+- [ ] All automated tests pass
+- [ ] Settings > Import Excel opens
+- [ ] Workbook analysis still lists worksheet names
+- [ ] Buyer source-cell addresses are populated
+- [ ] No database data is changed by Analyse
+
+## v0.4.0-alpha.3 — Import Wizard layout
+- [ ] Build succeeds with zero warnings
+- [ ] All automated tests pass
+- [ ] Import Excel opens in its own resizable window
+- [ ] Title and explanatory text are fully visible
+- [ ] Browse button is visible
+- [ ] Analyse button is visible
+- [ ] Workbook path field is visible and selectable
+- [ ] Analyse / Map / Review / Import step indicator is fully visible
+- [ ] Workbook structure table headers are fully readable
+- [ ] Customer candidate table headers are fully readable
+- [ ] Read-only notice is fully visible
+- [ ] Analyse button works after selecting an .xlsm workbook
+- [ ] Analyse button works after selecting an .xlsx workbook
+- [ ] Next remains disabled in this analysis-only build
+- [ ] Cancel closes the wizard
+- [ ] Controls remain usable at 100%, 125% and 150% Windows display scaling
+- [ ] Window can be resized smaller and scrollbars appear instead of clipping controls
+- [ ] No customer/movement data is modified by Analyse
+
+## v0.4.0-alpha.4 — Import Wizard polish / snapshot analysis
+- [ ] Build succeeds with zero warnings
+- [ ] All automated tests pass
+- [ ] Step numbers are circles, not squares
+- [ ] Horizontal line connects steps 1-4
+- [ ] Only one Analyse button is present
+- [ ] View all worksheets button is visible
+- [ ] View all worksheets shows every detected worksheet
+- [ ] Next starts disabled
+- [ ] Next enables after successful Analyse
+- [ ] Analysis summary shows worksheet/customer/snapshot counts
+- [ ] Reverse-side style Buyer/Out/In/B-Fwd/Total rows are detected
+- [ ] B/Fwd + OUT - IN calculates expected Total
+- [ ] CREDIT values remain negative internally
+- [ ] Excel Total mismatch is detectable
+- [ ] Analyse still performs no database import/write
+
+## v0.4.0-alpha.5 — Import Wizard clipping fixes
+- [ ] Build succeeds with zero warnings
+- [ ] All automated tests pass
+- [ ] Wizard progress indicator subtitles are fully visible
+- [ ] Progress circles and connecting line are fully visible
+- [ ] View all worksheets caption is fully visible
+- [ ] View all worksheets opens correctly
+- [ ] Workbook analysed success text is fully visible
+- [ ] Analysis details show Worksheets / Unique customers / Occurrences / B/Fwd-daily rows
+- [ ] Long warnings wrap/scroll instead of being cut off
+- [ ] Candidate section is visible without excessive scrolling at 100% scaling
+- [ ] Layout remains usable at 125% and 150% Windows scaling
+- [ ] Unique customer count is case-insensitive
+- [ ] Analyse still makes no database changes
+
+## v0.4.0-alpha.6 — Centralised versioning
+- [ ] Build-BinTracker.bat starts with `Version : v0.4.0-alpha.6`
+- [ ] Build succeeds with zero warnings
+- [ ] All automated tests pass
+- [ ] Successful build banner shows `BinTracker v0.4.0-alpha.6`
+- [ ] Failed build banner also shows the current version
+- [ ] BinTracker status bar shows `v0.4.0-alpha.6`
+- [ ] MainForm.cs contains no hard-coded release version
+- [ ] Directory.Build.props is the release version source of truth
+
+## v0.4.0-alpha.7 — Duplicate diagnostics / Business Information polish
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.7
+- [ ] Build succeeds with zero warnings
+- [ ] All automated tests pass
+- [ ] Import duplicate warning is concise and fully visible
+- [ ] View duplicates... button is fully visible
+- [ ] View duplicates dialog opens after analysis
+- [ ] Duplicate dialog shows Customer / Occurrences / Worksheet / Cell / Type / Classification
+- [ ] Duplicate dialog explains report/validation repetitions are handled in Map
+- [ ] Business Information Save and Close buttons have identical vertical position/height
+- [ ] Save and Close remain aligned at 100%, 125% and 150% scaling
+- [ ] Address field comfortably fits a multi-line postal address
+- [ ] Business Information still saves/reloads correctly
+- [ ] KNOWN-ISSUES.md reflects current v0.4.0-alpha.7 status
+- [ ] TECH-DEBT.md contains engineering cleanup rather than active defects

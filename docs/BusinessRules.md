@@ -51,3 +51,11 @@ This document records application behaviour independently of implementation deta
 ## Audit
 
 Important security, master-data and movement changes create audit events.
+
+## Legacy import cutover
+
+- Legacy spreadsheets may contain only B/Fwd plus one day's IN/OUT.
+- B/Fwd represents opening position, not a physical movement that occurred on the cutover day.
+- Cutover-day IN/OUT are retained as real movements.
+- The workbook's Total is validation data and must not be imported as a second balance.
+- Total must reconcile as `B/Fwd + OUT - IN`; mismatches require review.

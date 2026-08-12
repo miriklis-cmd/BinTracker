@@ -20,7 +20,7 @@ public sealed class MainForm : Form
     private readonly IMarketFloorReportService marketFloorReports;
     private readonly IContainerTypeService containerTypes;
     private readonly IBusinessInformationService businessInformation;
-    private const string ApplicationVersion = "v0.3.0-alpha.3";
+    private readonly IExcelImportService excelImport;
 
     /// <summary>
     /// True when the user deliberately chose Logout rather than closing
@@ -39,7 +39,8 @@ public sealed class MainForm : Form
         ApplicationState appState,
         IMarketFloorReportService marketFloorReports,
         IContainerTypeService containerTypes,
-        IBusinessInformationService businessInformation)
+        IBusinessInformationService businessInformation,
+        IExcelImportService excelImport)
     {
         this.session = session;
         this.users = users;
@@ -52,6 +53,7 @@ public sealed class MainForm : Form
         this.marketFloorReports = marketFloorReports;
         this.containerTypes = containerTypes;
         this.businessInformation = businessInformation;
+        this.excelImport = excelImport;
 
         Text = $"BinTracker - {session.DisplayName}";
         StartPosition = FormStartPosition.CenterScreen;
@@ -169,7 +171,7 @@ public sealed class MainForm : Form
 
         status.Items.Add(new ToolStripStatusLabel
         {
-            Text = $"BinTracker {ApplicationVersion}"
+            Text = $"BinTracker {AppVersion.Display}"
         });
 
         status.Items.Add(new ToolStripStatusLabel
@@ -407,7 +409,7 @@ public sealed class MainForm : Form
         content.Controls.Add(page);
     }
 
-    private Control BuildProfileSettingsSection()
+    private Panel BuildProfileSettingsSection()
     {
         var section = SettingsSection("My Profile");
 
@@ -452,13 +454,13 @@ public sealed class MainForm : Form
         return WrapSettingsSection(section);
     }
 
-    private Control BuildAdministrationSettingsSection()
+    private Panel BuildAdministrationSettingsSection()
     {
         var section = SettingsSection("Administration");
 
         var description = new Label
         {
-            Text = "Manage authorised users, container types, business information and inspect the audit trail.",
+            Text = "Manage authorised users, container types, business information, Excel import and inspect the audit trail.",
             AutoSize = true,
             ForeColor = Color.FromArgb(80, 90, 105),
             MaximumSize = new Size(900, 0),
@@ -487,7 +489,9 @@ public sealed class MainForm : Form
                 Text = "Manage Users",
                 AutoSize = false,
                 Size = new Size(165, 44),
-                Margin = new Padding(0, 0, 12, 0)
+                Margin = new Padding(0, 0, 12, 0),
+                TextAlign = ContentAlignment.MiddleCenter,
+                UseCompatibleTextRendering = false
             };
 
             usersButton.Click += (_, _) =>
@@ -501,7 +505,9 @@ public sealed class MainForm : Form
                 Text = "Container Types",
                 AutoSize = false,
                 Size = new Size(165, 44),
-                Margin = new Padding(0, 0, 12, 0)
+                Margin = new Padding(0, 0, 12, 0),
+                TextAlign = ContentAlignment.MiddleCenter,
+                UseCompatibleTextRendering = false
             };
 
             containerTypesButton.Click += (_, _) =>
@@ -514,8 +520,10 @@ public sealed class MainForm : Form
             {
                 Text = "Business Information",
                 AutoSize = false,
-                Size = new Size(180, 44),
-                Margin = new Padding(0, 0, 12, 0)
+                Size = new Size(210, 44),
+                Margin = new Padding(0, 0, 12, 0),
+                TextAlign = ContentAlignment.MiddleCenter,
+                UseCompatibleTextRendering = false
             };
 
             businessInformationButton.Click += (_, _) =>
@@ -524,12 +532,30 @@ public sealed class MainForm : Form
                 form.ShowDialog(this);
             };
 
+            var importExcelButton = new Button
+            {
+                Text = "Import Excel",
+                AutoSize = false,
+                Size = new Size(165, 44),
+                Margin = new Padding(0, 0, 12, 0),
+                TextAlign = ContentAlignment.MiddleCenter,
+                UseCompatibleTextRendering = false
+            };
+
+            importExcelButton.Click += (_, _) =>
+            {
+                using var form = new ExcelImportForm(excelImport);
+                form.ShowDialog(this);
+            };
+
             var auditButton = new Button
             {
                 Text = "View Audit Trail",
                 AutoSize = false,
                 Size = new Size(165, 44),
-                Margin = new Padding(0)
+                Margin = new Padding(0),
+                TextAlign = ContentAlignment.MiddleCenter,
+                UseCompatibleTextRendering = false
             };
 
             auditButton.Click += (_, _) =>
@@ -541,6 +567,7 @@ public sealed class MainForm : Form
             actions.Controls.Add(usersButton);
             actions.Controls.Add(containerTypesButton);
             actions.Controls.Add(businessInformationButton);
+            actions.Controls.Add(importExcelButton);
             actions.Controls.Add(auditButton);
         }
         else
@@ -617,7 +644,7 @@ public sealed class MainForm : Form
         }, 1, row);
     }
 
-    private static Panel WrapSettingsSection(Control child)
+    private static Panel WrapSettingsSection(TableLayoutPanel child)
     {
         var panel = new Panel
         {

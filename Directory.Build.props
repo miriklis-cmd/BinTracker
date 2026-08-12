@@ -3,5 +3,15 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+
+    <!--
+      Single source of truth for the BinTracker release version.
+      Update this value once per release; the application, build script,
+      assemblies and future packaging all derive their version from here.
+    -->
+    <Version>0.4.0-alpha.7</Version>
+    <AssemblyVersion>0.4.0.0</AssemblyVersion>
+    <FileVersion>0.4.0.0</FileVersion>
+    <InformationalVersion>0.4.0-alpha.7</InformationalVersion>
   </PropertyGroup>
 </Project>
