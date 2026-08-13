@@ -1,391 +1,200 @@
 # BinTracker Roadmap
 
-## Sprint 12 — Master Data
+Current planning baseline: **v0.4.0-alpha.19.8.1**
 
-- [x] Container Type master data
-- [x] Future-proof migration version tests
-- [x] Business Information
-- [ ] Complete hands-on Container Type / Business Information testing
-- [ ] Final Sprint 12 polish
+This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
-## Sprint 13 — Excel Import Wizard
+## Priority 0 — close data-integrity risks before more features
 
-- Workbook analysis
-- Fresh database / Merge / Replace modes
-- Customer matching
-- Container Type mapping
-- Movement import and duplicate protection
-- Preview and import log
+### 1. Finish Excel Import safety and provenance
 
-## Sprint 14 — Reports
+The importer is functionally implemented and has been exercised against the current production Excel workbook. Analyse, Map, Review, customer decisions, container mapping, balance reconciliation and transactional Step 4 execution are working.
 
-- Validate Market Floor Sheet against imported production-scale data
-- Movement History
-- Outstanding Containers
-- Daily / Monthly summaries
-- Customer Statement polish
+Remaining:
 
-## Sprint 15/16 — Operator polish and production preparation
+- [ ] **Forced-failure rollback verification** — deliberately cause a Step 4 failure after writes have begun and prove that no partial customer, movement or ImportRun changes survive.
+- [ ] **Add `BinMovement.ImportRunId`** (nullable FK) so import-generated movements have relational provenance rather than only `IMPORT-<id>` text/reference metadata.
+- [ ] **Changed-workbook / same-cutover workflow** — detect a different workbook fingerprint for a previously imported cutover date and offer Review Differences / Replace-Correct Previous Import / Cancel. Never provide a blind “import again anyway”.
+- [ ] **Import Run history/details UI** — show source file, SHA-256, cutover date, user, counts, status and generated records.
+- [ ] Add a useful transactional failure report showing the row/customer/container that stopped execution.
+- [ ] Re-test exact re-import after the provenance changes.
 
-- Batch Entry workflow polish
-- Dashboard improvements
-- Backup / Restore
-- Installer and deployment
-- Production acceptance testing
+Already implemented:
 
-## Sprint 13 progress
+- [x] workbook analysis and worksheet classification;
+- [x] Source-only import planning;
+- [x] normalized customer matching;
+- [x] Create / Skip new-customer decisions;
+- [x] existing-customer match confirmation/override;
+- [x] default Blue, Yellow and Bulk legacy parsing;
+- [x] unknown-container mapping;
+- [x] authoritative B/Fwd reconciliation;
+- [x] transactional customer creation/opening adjustments/OUT/IN;
+- [x] ImportRun + SHA-256 exact re-import protection;
+- [x] live-database revalidation immediately before commit;
+- [x] workbook-changed-after-preflight protection;
+- [x] transaction rollback implementation;
+- [x] production-workbook end-to-end import testing.
 
-- [x] Excel workbook read-only analysis
-- [x] `.xlsm` / `.xlsx` support
-- [x] worksheet/candidate preview
-- [x] structural warnings and duplicate candidate warnings
-- [ ] database comparison
-- [ ] customer merge preview
-- [ ] container mapping
-- [ ] movement import
-- [ ] duplicate movement protection
-- [ ] Fresh / Merge / Replace execution modes
+### 2. Protect unsaved customer edits
 
-## Post-v1.0 ideas
+- [ ] Track dirty state for all editable customer fields.
+- [ ] Prompt **Save / Discard / Cancel** when switching customer, searching/filtering away, starting New Customer, navigating away, logging out or closing the application.
+- [ ] Save button should clearly indicate when changes are pending.
+- [ ] Add regression tests where practical.
 
-### Custom Report Designer
-Allow businesses to build database-backed reports by selecting data fields, filters, grouping, sorting, page orientation and layout.
+This is a direct data-loss/usability issue and should be completed before further Customer features.
 
-### Legacy Excel report template / report-layout import
-Explore allowing a user to nominate an Excel sheet as a legacy report layout. BinTracker would analyse the layout and help reproduce the familiar report from live BinTracker data. This must remain separate from data import: report/output sheets should not be treated as authoritative source data.
+## Priority 1 — finish the core operational product
 
-### Customer-list-only import mode
-Allow a business to import **customer master data without balances or movements**.
+### 3. Reports
 
-Typical sources:
-- a single-column list of customer names;
-- customer code + name;
-- CSV/XLSX customer master lists;
-- a custom workbook where the business wants to establish customers first and begin container tracking from zero.
+Implemented:
 
-The wizard should explicitly ask for import intent:
-- Customers only;
-- Customers + opening balances;
-- Full migration (customers + balances + movements).
+- [x] Customer Statement PDF with container-by-container running balances.
+- [x] Market Floor Sheet, front + reverse.
+- [x] Market Floor Account/Cash rules, Account-only separate credit section and special containers.
+- [x] Blue implicit / Yellow explicit floor reporting.
+- [x] import opening adjustments treated as B/Fwd rather than physical daily movement.
+- [x] adaptive Market Floor sizing using the current real workbook.
+- [x] Market Floor generation auditing.
 
-Customer-only mode must reuse the same matching/normalisation/merge-preview rules but must not require container mapping, B/Fwd, OUT/IN or balance reconciliation.
+Still required:
 
-### Import Profiles
-Support multiple workbook adapters/profiles:
-- legacy/custom workbook profiles;
-- standard BinTracker import template;
-- configurable custom mapping for other businesses.
+- [ ] **Outstanding Containers report** — current outstanding position by customer/container, filterable and exportable/printable.
+- [ ] **Daily Movements report** — movement detail for a selected day, including direction, container, customer, reference, source and user.
+- [ ] **Movement History report** — date range + customer/container/source filters.
+- [ ] **Monthly Summary** — monthly OUT, IN, net movement and useful customer/container breakdowns.
+- [ ] **Daily Print Pack** required by the Functional Specification: Outstanding Summary + Movement Detail.
+- [ ] Review whether Daily/Weekly/Monthly query/reporting needs on-screen tables in addition to PDF output.
+- [ ] Add CSV/Excel export where operationally useful.
+- [ ] Stress-test Market Floor with a genuinely high Yellow-bin day; adaptive sizing is accepted for now but remains a real-world validation item.
 
-### v0.4.0-alpha.19.8 progress
-- [x] Separate Analyse page
-- [x] Separate Map page
-- [x] Source / Validation / Report / Ignore worksheet classification
-- [x] Source-only customer candidate preview
-- [ ] Review plan generation
-- [ ] Customer/database matching
-- [ ] Container mapping
-- [ ] Transactional import execution
+### 4. Dashboard
 
-### v0.4.0-alpha.19.8 progress
-- [x] Review page
-- [x] Existing customer-code matching
-- [x] New candidate detection
-- [x] Customer type mismatch detection
-- [x] Source-sheet conflict detection
-- [x] Source snapshot reconciliation summary
-- [ ] New-customer action/name confirmation
-- [ ] Container mapping
-- [ ] Transactional Import stage
+Current dashboard is only the first operational summary: Returned Today, Taken Today, Outstanding and Requires Attention.
 
-### v0.4.0-alpha.19.8 progress
-- [x] Conservative customer-code/name normalizer
-- [x] Explainable automatic match reasons
-- [x] `S & J` / `S&J` normalized matching
-- [x] `(Y)` -> Yellow Bin legacy resolution
-- [x] `(Bulk)` -> Bulk Bin legacy resolution
-- [ ] Customer create/merge confirmation actions
-- [ ] Full container mapping / unresolved-container handling
-- [ ] Transactional Import
+Required dashboard pass:
 
-### v0.4.0-alpha.19.8 progress
-- [x] Developer database backup
-- [x] Stage/load an existing BinTracker test database safely on restart
-- [x] Start fresh test database with automatic pre-reset backup
-- [x] Re-import safety rules documented
-- [ ] ImportRun / source fingerprint persistence
-- [ ] Source-row provenance for import-generated positions/movements
-- [ ] Exact re-import blocking
-- [ ] Changed-workbook same-cutover difference workflow
+- [ ] Validate the meaning of each headline metric and make container/customer scope clear.
+- [ ] Make **Requires Attention** useful, not only quantity-threshold based.
+- [ ] Add actionable customer/container attention list with drill-through.
+- [ ] Add recent movement/activity panel.
+- [ ] Add useful by-container summary (Blue / Yellow / special types as appropriate).
+- [ ] Make dashboard cards/actions clickable where they naturally lead to Customers or Reports.
+- [ ] Decide whether ageing / “days outstanding” belongs on the dashboard and define the business rule before implementing it.
+- [ ] Review layout at production DPI and typical 4am floor/office use.
 
-### v0.4.0-alpha.19.8 progress
-- [x] Authoritative Excel B/Fwd reconciliation planner
-- [x] Existing-balance vs Excel-target preview
-- [x] Preserve cutover-day OUT/IN in projected result
-- [ ] Default/unprefixed legacy container mapping
-- [ ] Customer create/merge confirmation
-- [ ] ImportRun/source provenance
-- [ ] Transactional execution
+### 5. Movement correction / reversal
 
-### v0.4.0-alpha.19.8 progress
-- [x] Fix BalanceService SQLite translation crash
-- [x] Add real SQLite balance-service regression test
-- [ ] Customer create/merge confirmation
-- [ ] Default/unprefixed legacy container mapping
-- [ ] ImportRun/source provenance and re-import protection
-- [ ] Transactional Import execution
+- [ ] Add controlled correction/reversal workflow for saved movements.
+- [ ] Never silently edit/delete the original movement.
+- [ ] Preserve original + reversal/correction linkage and audit trail.
+- [ ] Decide roles permitted to reverse/correct.
 
-### v0.4.0-alpha.19.8 progress
-- [x] Unprefixed legacy customer -> Blue Bin default
-- [x] Known explicit token resolution
-- [x] Unknown explicit token hard blocker
-- [x] Container inference reason visible in Review
-- [ ] UI workflow to map unknown tokens to existing/new Container Types
-- [ ] Customer create/merge confirmation
-- [ ] ImportRun/source provenance
-- [ ] Transactional Import
+## Priority 2 — communications
 
-### v0.4.0-alpha.19.8 progress
-- [x] UI workflow to map unknown legacy container tokens
-- [x] Map token to existing Container Type
-- [x] Open Container Type management and refresh choices
-- [x] Recalculate Review after mappings
-- [ ] Persist aliases inside future Import Profiles
-- [ ] Customer create/merge confirmation
-- [ ] ImportRun/source provenance
-- [ ] Transactional Import
+### 6. Email and SMS reminders
 
-### v0.4.0-alpha.19.8 progress
-- [x] Editable proposed names for new customers
-- [x] Explicit Create / Skip decisions
-- [x] Selected / all bulk actions
-- [x] Decisions retained across wizard navigation
-- [x] Unconfirmed customers block reconciliation
-- [x] Skipped customers excluded without blocking
-- [x] Unit and reconciliation tests
-- [ ] Existing-customer match override/confirmation
-- [ ] ImportRun/source provenance
-- [ ] Transactional Import
+Groundwork already exists:
 
-### v0.4.0-alpha.19.8 progress
-- [x] Existing-customer match confirmation
-- [x] Existing-customer match override
-- [x] Existing-match decisions retained across wizard navigation
-- [x] Unconfirmed existing matches block readiness
-- [x] Developer dialog newline fix
-- [x] Customer bulk-button clipping fix
-- [ ] ImportRun/source provenance
-- [ ] Exact re-import blocking
-- [ ] Transactional Step 4 Import
+- customer `AllowEmailReminders`, `AllowSmsReminders` and `ReminderOptOut`;
+- `ReminderDelivery` persistence model with channel, destination, status, provider response and outstanding snapshot.
 
-### v0.4.0-alpha.19.8 progress
-- [x] ImportRun/source provenance schema
-- [x] SHA-256 source workbook fingerprint
-- [x] Exact completed-workbook re-import detection
-- [x] Step 4 preflight screen
-- [x] Existing match first-row/inactive display fix
-- [x] Human-readable match decision labels
-- [ ] Transactional customer creation
-- [ ] Transactional opening adjustments
-- [ ] Transactional daily OUT/IN movements
-- [ ] Commit completed ImportRun
-- [ ] Full rollback on failure
+Still required:
 
-### v0.4.0-alpha.19.8 progress
-- [x] Review balance grid vertical layout fix
-- [x] Step 3 → Step 4 readiness gate fix
-- [x] Centralised Review readiness policy
-- [ ] Transactional customer creation
-- [ ] Transactional opening adjustments
-- [ ] Transactional daily OUT/IN movements
-- [ ] Commit completed ImportRun
-- [ ] Full rollback on failure
+- [ ] Define reminder business rules: who gets reminded, trigger/age/quantity thresholds and manual vs automatic sending.
+- [ ] Email provider integration.
+- [ ] SMS provider integration.
+- [ ] Administrator provider/credential configuration with secrets stored securely.
+- [ ] Email and SMS templates.
+- [ ] Manual send from Customer screen.
+- [ ] Bulk/automatic reminder run.
+- [ ] Respect per-customer Email/SMS/Opt-out settings.
+- [ ] Delivery history UI.
+- [ ] Pending / Sent / Failed / Skipped lifecycle.
+- [ ] Retry/error handling without duplicate sends.
+- [ ] Audit reminder runs and sends.
+- [ ] Decide whether statements can be attached/linked in email reminders.
 
-### v0.4.0-alpha.19.8 progress
-- [x] Root-cause fix for collapsed Review tab region
-- [x] Customer Matches fills remaining Step 3 height
-- [x] Balance Reconciliation fills remaining Step 3 height
-- [ ] Transactional customer creation
-- [ ] Transactional opening adjustments
-- [ ] Transactional daily OUT/IN movements
-- [ ] Commit completed ImportRun
-- [ ] Full rollback on failure
+## Priority 3 — production hardening before v1.0
 
-### v0.4.0-alpha.19.8 progress
-- [x] Practical Balance Reconciliation viewing area
-- [x] Full-size reconciliation viewer
-- [x] Cutover math regression coverage
-- [x] Workbook-lock crash hardening
-- [ ] Transactional customer creation
-- [ ] Transactional opening adjustments
-- [ ] Transactional daily OUT/IN movements
-- [ ] Commit completed ImportRun
-- [ ] Full rollback on failure
+### 7. Production backup / restore / recovery
 
-### v0.4.0-alpha.19.8 progress
-- [x] Review summary metric-card redesign
-- [x] Review action-row redesign
-- [x] Persistent large reconciliation viewer action
-- [x] Larger normal reconciliation area
-- [x] Reconciliation formula context in headers
-- [x] Password eye / eye-slash artwork
-- [ ] Transactional customer creation
-- [ ] Transactional opening adjustments
-- [ ] Transactional daily OUT/IN movements
-- [ ] Commit completed ImportRun
-- [ ] Full rollback on failure
+Developer Database tools are not the production solution.
 
-### v0.4.0-alpha.19.8 progress
-- [x] Concise Balance Reconciliation headers
-- [x] Summary-card clipping fix
-- [x] Mockup icon set implemented as DPI-safe vectors
-- [x] Review action icons aligned with metric cards
-- [ ] Transactional customer creation
-- [ ] Transactional opening adjustments
-- [ ] Transactional daily OUT/IN movements
-- [ ] Commit completed ImportRun
-- [ ] Full rollback on failure
+- [ ] User-facing production backup.
+- [ ] Restore workflow with confirmation and validation.
+- [ ] Automatic backup before database/schema upgrade.
+- [ ] Retention policy.
+- [ ] Recovery documentation and restore test.
+- [ ] Detect/report corrupt or inaccessible SQLite database cleanly.
 
-### v0.4.0-alpha.19.8 progress
-- [x] Approved Review raster icon assets
-- [x] Review action button clipping fix
-- [x] Resolve container before customer confirmation blocker
-- [x] Calculate opening/projected preview before customer confirmation blocker
-- [x] CLAMMS Blue/Bulk/Yellow regression coverage
-- [ ] Transactional customer creation
-- [ ] Transactional opening adjustments
-- [ ] Transactional daily OUT/IN movements
-- [ ] Commit completed ImportRun
-- [ ] Full rollback on failure
+### 8. Security and reliability review
 
-### v0.4.0-alpha.19.8 progress
-- [x] Approved original-mockup icon artwork used directly
-- [x] Bold primary / grey secondary metric typography
-- [x] Review button pending counts
-- [x] Full View balance reconciliation larger label
-- [x] Wider Review wizard
-- [ ] Transactional customer creation
-- [ ] Transactional opening adjustments
-- [ ] Transactional daily OUT/IN movements
-- [ ] Commit completed ImportRun
-- [ ] Full rollback on failure
+- [ ] Full authorization review across every write/admin action.
+- [ ] Secrets/credential storage review before Email/SMS.
+- [ ] SQLite transaction/concurrency review.
+- [ ] Database integrity constraints and migration audit.
+- [ ] Error logging suitable for support without leaking passwords/secrets/customer-sensitive data.
+- [ ] Crash/restart behaviour review.
+- [ ] Release build (`Release`, not only `Debug`) acceptance testing.
+- [ ] High-DPI regression pass at 100%, 125% and 150%.
 
-### v0.4.0-alpha.19.8 progress
-- [x] Simplified Review metric cards
-- [x] Map container button/icon clipping fix
-- [x] Reconciliation action clipping fix
-- [x] xUnit warning cleanup
-- [x] Analyse warning alignment cleanup
-- [ ] Transactional customer creation
-- [ ] Transactional opening adjustments
-- [ ] Transactional daily OUT/IN movements
-- [ ] Commit completed ImportRun
-- [ ] Full rollback on failure
+### 9. Installer, upgrades and deployment
 
-### v0.4.0-alpha.19.8 progress
-- [x] Duplicate Analyse warning icon fix
-- [x] Container icon inset/cropping fix
-- [x] Map container button spacing fix
-- [x] Consistent Review secondary metrics
-- [ ] Transactional customer creation
-- [ ] Transactional opening adjustments
-- [ ] Transactional daily OUT/IN movements
-- [ ] Commit completed ImportRun
-- [ ] Full rollback on failure
+- [ ] Windows installer/package.
+- [ ] Upgrade path that preserves database/configuration.
+- [ ] Versioned upgrade/rollback guidance.
+- [ ] Decide signing strategy for distributed builds.
+- [ ] Production configuration location and permissions review.
 
-### v0.4.0-alpha.19.8 progress
-- [x] Transactional confirmed customer creation
-- [x] Transactional opening adjustments
-- [x] Transactional cutover-day OUT movements
-- [x] Transactional cutover-day IN movements
-- [x] Completed ImportRun written atomically
-- [x] Exact SHA re-import re-check inside transaction
-- [x] Workbook-change-after-preflight guard
-- [x] Import audit event
-- [x] Full transaction rollback on execution failure
-- [ ] Production-scale validation against full legacy workbook
-- [ ] Changed-workbook same-cutover replacement workflow
-- [ ] Import-run history/details UI
-- [ ] Explicit BinMovement.ImportRunId FK
+### 10. Multi-computer architecture
 
-### v0.4.0-alpha.19.8 progress
-- [x] Market Floor opening-adjustment semantics
-- [x] Cash/COD credit placement
-- [x] Two-page Market Floor pagination
-- [x] Adaptive front-page readability sizing
-- [x] Statement adjustment labelling
-- [x] Stale Import-disabled Review wording removed
-- [x] Analyse duplicate warning icon removed
-- [x] First-run administrator button alignment
-- [ ] Revalidate generated Market Floor PDF against imported production-like data
-- [ ] Revalidate Zahos statement after adjustment labelling
-- [ ] Continue alpha.19 importer end-to-end verification
+Current SQLite deployment is single-PC oriented.
 
+Before simultaneous multi-computer production use:
 
-### v0.4.0-alpha.19.8 progress
-- [x] Case-insensitive customer search
-- [x] Customer grid/detail async-selection synchronisation
-- [x] Clear detail pane on zero search results
-- [x] Larger Market Floor front typography
-- [x] Cash/COD CREDIT one-line formatting
-- [ ] Re-render Market Floor and validate two-page fit
-- [ ] Re-test searches: zahos, big, no-match
+- [ ] Decide whether PostgreSQL remains the target central provider.
+- [ ] Implement/test central database provider.
+- [ ] Concurrency and locking tests.
+- [ ] Connection/configuration deployment.
+- [ ] Backup/restore strategy for central database.
 
-### v0.4.0-alpha.19.8 progress
-- [x] Cash/COD CREDIT values kept on one line
-- [x] Reverse CREDIT values kept on one line
-- [x] Reverse Total column widened
-- [x] Front-page typography increased
-- [x] Reverse-side typography increased
-- [ ] Verify generated report remains exactly 2 pages
-- [ ] Verify KHALID / HO / HP / JUST / KEVIN CREDIT labels do not wrap
+## Priority 4 — UI cleanup
 
-### v0.4.0-alpha.19.8 progress
-- [x] Page 1 regular container separation
-- [x] Reverse-side regular container separation
-- [x] Explicit Bin column on front sheet
-- [x] Explicit Bin column on reverse sheet
-- [x] Default Blue row retained for customers with no movement history
-- [ ] Re-render full production-like sheet and verify two-page fit
-- [ ] Verify CLAMMS displays Blue 10 / Yellow 45 / Bulk 1
-- [ ] Verify other multi-container customers
+Do after the functional/data-integrity items above unless a defect blocks use.
 
-### v0.4.0-alpha.19.8 progress
-- [x] Blue implicit on front Market Floor
-- [x] Blue implicit on reverse Market Floor
-- [x] Yellow/Bulk shown inline with buyer
-- [x] Bulk treated as operational floor bin
-- [x] Dedicated Bin column removed
-- [x] Front font policy tightened to restore one-page front
-- [x] Reverse-side font increased slightly with recovered width
-- [ ] Verify generated report is exactly 2 pages
-- [ ] Verify CLAMMS front shows CLAMMS / CLAMMS (Yellow) / CLAMMS (Bulk)
-- [ ] Verify CLAMMS reverse shows separate Blue/Yellow/Bulk positions
+- [ ] Import Review action icons are still too small/cropped, especially container-related actions.
+- [ ] Match approved Review mockup rounded metric tiles.
+- [ ] Final password-eye/logout artwork polish.
+- [ ] General consistency pass for spacing, button sizing and high DPI.
+- [ ] Complete hands-on Container Type / Business Information UI validation.
 
-### v0.4.0-alpha.19.8 progress
-- [x] Bulk restored to Special Containers
-- [x] Special-container flag authoritative
-- [x] Dynamic front-page font based on actual daily row count
-- [x] Dynamic front-page cell padding
-- [x] Dynamic section spacing
-- [x] Extra Yellow rows automatically increase layout density
-- [ ] Verify current production workbook generates exactly 2 pages
-- [ ] Stress-test a synthetic/high-Yellow day for one-page front
+## Before v1.0 acceptance
 
-### v0.4.0-alpha.19.8 progress
-- [x] Wider Cash/CREDIT front column
-- [x] Wider Cash/CREDIT Total fields
-- [x] More aggressive normal-day front sizing
-- [x] Fully dynamic reverse-side font
-- [x] Fully dynamic reverse-side row padding
-- [x] Fully dynamic reverse heading/top spacing
-- [x] Yellow rows automatically affect both pages
-- [ ] Verify current real workbook remains exactly 2 pages
-- [ ] Verify no Cash/CREDIT wrapping
-- [ ] Stress-test higher Yellow-row counts
+- [ ] Clean build with zero warnings.
+- [ ] Full automated suite passes.
+- [ ] Fresh install → first administrator → customer setup → movements → reports → backup/restore acceptance test.
+- [ ] Fresh database → real Excel import → balances/reports validation.
+- [ ] Forced import rollback test passes.
+- [ ] Exact and changed-workbook re-import tests pass.
+- [ ] Movement reversal/correction workflow validated.
+- [ ] Core reports completed.
+- [ ] Dashboard operational pass completed.
+- [ ] Production backup/restore validated.
+- [ ] Security/hardening review completed.
+- [ ] Installer/upgrade tested.
 
-### v0.4.0-alpha.19.8 progress
-- [x] Fix alpha.19.7 reverse pagination regression
-- [x] Cap reverse normal-day font at known one-page 8.0pt maximum
-- [x] Count likely wrapped rows when choosing reverse density
-- [x] Widen reverse Total column to reduce CREDIT wrapping
-- [ ] Verify latest real workbook returns to exactly 2 PDF pages
+## Post-v1.0 / commercial roadmap
+
+- Customer-list-only import mode.
+- Reusable Import Profiles and standard BinTracker import template.
+- Opt-in fuzzy customer-match suggestions, never automatic fuzzy merge.
+- Custom Report Designer.
+- Legacy/custom report-template import.
+- iPhone application.
+- Android application.
+- Hosted/cloud or centrally managed deployment option.
+- Licensing/activation and commercial support tooling.
+- Product onboarding/import wizard for new businesses.

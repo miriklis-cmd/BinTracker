@@ -1,15 +1,20 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.19.8
+## v0.4.0-alpha.19.8.1
 
-### Reverse-side one-page correction
-Alpha.19.7 incorrectly selected reverse sizing from raw row count and increased the normal-day reverse font to 8.4pt. The real workbook demonstrated that wrapped CREDIT rows made the physical height larger than the row count predicted.
+### Documentation / project-status reset
 
-Alpha.19.8:
-- caps reverse normal-day type at the 8.0pt size already proven to fit in alpha.19.6;
-- estimates physical rendered-line load rather than only counting records;
-- treats likely long-buyer and CREDIT wrapping as additional vertical load;
-- progressively reduces font and padding as that load rises;
-- gives the reverse Total column more width to prevent CREDIT wrapping in the first place.
+No functional application behaviour is intentionally changed in this maintenance pass.
 
-The front-page improvements from alpha.19.7 are retained.
+Documentation was audited against the current alpha.19.8 codebase and cleaned up:
+
+- Roadmap replaced with a current priority-ordered plan.
+- Stale importer read-only documentation removed.
+- Known Issues reduced to active limitations.
+- Technical Debt de-duplicated and contradictory historical notes removed.
+- Test Checklist replaced with a current acceptance checklist.
+- Functional Specification expanded for Dashboard, reports, Email/SMS, import safety and production recovery.
+- README updated to describe the actual current product.
+- Old per-alpha release-note files removed; historical release detail remains in `docs/CHANGELOG.md`.
+
+Highest current priorities are Import rollback/re-import provenance, unsaved customer-edit protection, Reports, Dashboard, Email/SMS and production hardening.

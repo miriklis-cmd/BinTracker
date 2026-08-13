@@ -1,285 +1,78 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.19.8**
+Current release: **v0.4.0-alpha.19.8.1**
 
-This file tracks current defects, incomplete production-critical behaviour, and limitations that a tester/operator needs to know about. Planned enhancements belong in `docs/Roadmap.md`; engineering cleanup belongs in `TECH-DEBT.md`.
+This file contains current defects/limitations that affect testing or production readiness. Completed history is in `docs/CHANGELOG.md`; future features are in `docs/Roadmap.md`; engineering cleanup is in `TECH-DEBT.md`.
 
-## High priority — before v1.0
+## High priority
 
-### Excel Import Wizard transactional execution is newly enabled
-**Status:** Alpha validation required  
-**Area:** Import
+### Import rollback is implemented but still needs deliberate failure verification
+**Area:** Import / Data integrity
 
-Step 4 now performs the confirmed import inside one SQLite transaction:
-- creates explicitly confirmed new customers;
-- uses explicitly confirmed existing-customer targets;
-- writes opening adjustments so BinTracker reaches Excel B/Fwd;
-- writes the workbook OUT and IN as real cutover-day movements;
-- records a completed ImportRun/source fingerprint;
-- rolls the whole transaction back if any line fails.
+Step 4 runs inside a SQLite transaction and failure paths are intended to roll back the entire import. We have not yet completed the explicit acceptance test that forces a mid-import failure and proves no partial customers, movements or completed ImportRun survive.
 
-Remaining work before v1.0:
-- production-scale validation against the full legacy workbook;
-- changed-workbook/same-cutover replacement workflow;
-- polished import-run history/error reporting;
-- explicit relational ImportRunId provenance on generated movements (currently traceable by import reference/notes).
+### Changed-workbook / same-cutover re-import is not implemented
+**Area:** Import / Data integrity
 
-### Sheet classification is implemented in Map but not yet persisted/executed
-**Status:** In progress  
-**Area:** Import
+Exact identical workbooks are blocked using SHA-256. A modified workbook representing the same cutover date can have a different fingerprint. BinTracker still needs a controlled Review Differences / Replace-Correct workflow. It must never offer a blind duplicate import.
 
-The Map page now classifies worksheets as Source, Validation, Report or Ignore and defaults the current legacy workbook sensibly (`Update Account` / `Update Cash` as Source; derived report sheets away from import). The classification currently exists only within the open wizard session.
+### Import-generated movements do not yet have a relational `ImportRunId`
+**Area:** Import / Database
 
-Remaining work:
-- validate/confirm classification rules against the real workbook;
-- persist the selected mapping into the Review step;
-- use only Source sheets during actual import;
-- include Validation/Report sheets as reconciliation aids only.
+Generated movements are currently traceable using `IMPORT-<run id>` references and notes. Add a nullable ImportRun FK before the replacement/correction workflow so provenance is reliable and queryable.
 
-### Changed-workbook re-import/replacement workflow is not implemented
-**Status:** Exact re-import protection implemented; replacement workflow required before v1.0  
-**Area:** Import / Data Integrity
-
-Completed imports now record an ImportRun and SHA-256 source fingerprint, and exact completed-workbook re-imports are blocked both during preflight and again inside the write transaction. Generated movements are tagged with the ImportRun reference in `ReferenceNumber` / notes.
-
-A changed workbook representing the same cutover date still needs an explicit difference/replacement workflow rather than simply inserting another copy.
-
-See `docs/ReimportSafety.md`.
-
-### Review decisions gate transactional Import
-**Status:** Implemented / validation required  
-**Area:** Import
-
-Review compares Source-sheet customers against the current BinTracker database and blocks Step 4 until customer decisions, existing-match confirmations, container mappings and reconciliation are resolved. Step 4 revalidates these rules against the live database immediately before the transaction is committed.
-
-### Legacy opening-position execution
-**Status:** Implemented / validation required  
-**Area:** Import
-
-Review and Step 4 use:
-
-`Opening adjustment = Excel B/Fwd - current BinTracker balance`
-
-then:
-
-`Projected = current + opening adjustment + OUT - IN`
-
-Positive opening adjustments are written as Adjustment/OUT movements; negative adjustments as Adjustment/IN movements. The legacy daily OUT/IN values are then written as ExcelImport movements. All are committed atomically with the ImportRun.
-
-### Market Floor Sheet needs final production validation
-**Status:** Fixes implemented / validation required  
-**Area:** Reports
-
-Real imported data exposed three report rules that are now corrected:
-- same-day import opening adjustments contribute to B/Fwd, not daily OUT/IN;
-- Cash/COD credits remain in the Cash section; only Account credits use the separate CREDIT block;
-- reverse-side Account customers are split across two columns with Cash/COD in a third so the report stays front + back rather than spilling to a third page.
-
-The front page now uses adaptive typography based on row load for better page utilisation/readability.
-
-### Customer search/list/detail desynchronisation
-**Status:** Fixed / validation required  
+### Customer edits can be lost when navigating away
 **Area:** Customers
 
-Lowercase searches such as `zahos` / `big` could return no visible rows because SQLite matching was case-sensitive, while asynchronous SelectionChanged events left an unrelated previous customer visible in the detail pane. Search is now explicitly case-insensitive and selection events are suppressed during grid reload.
+Editing a customer and then selecting/searching/navigating away without pressing Save discards the changes. Add dirty-state tracking with **Save / Discard / Cancel** protection.
 
-### Market Floor regular-container positions were aggregated
-**Status:** Fixed / validation required  
+## Medium priority — production readiness
+
+### Reports catalogue is incomplete
 **Area:** Reports
 
-The Market Floor Sheet previously summed all non-special container types into one customer total. This was unsafe operationally: for example CLAMMS showed `56`, while the real position was Blue 10 + Yellow 45 + Bulk 1. Page 1 and the reverse side now carry an explicit Bin column and keep each regular container in its own row.
+Only Market Floor and Customer Statement are implemented. Outstanding Containers, Daily Movements, Movement History, Monthly Summary and the Daily Print Pack remain to be built.
 
-## Medium priority — before production acceptance
-
-### Batch Entry draft is not crash/power-loss persistent
-**Status:** Known limitation  
-**Area:** Batch Entry
-
-Unsaved draft lines survive navigation and logout/login within the running application, but they are not persisted to disk. A crash, power loss or forced process termination loses the draft.
-
-### Movement correction/reversal workflow is not implemented
-**Status:** Planned before/around production acceptance  
-**Area:** Movements / Audit
-
-Saved movements are auditable, but there is not yet a dedicated operator/admin workflow for correcting an erroneous movement while preserving the original entry and reversal trail.
-
-### Dashboard attention logic is quantity-focused
-**Status:** Partial implementation  
+### Dashboard is still the first-pass operational dashboard
 **Area:** Dashboard
 
-`Requires Attention` currently focuses on configured outstanding quantity. More nuanced age-based attention logic remains to be completed/validated.
+It shows Returned Today, Taken Today, Outstanding and Requires Attention. Requires Attention is quantity-focused and there is no drill-down/recent activity/operational attention list yet.
 
-### Production Backup / Restore and deployment are not complete
-**Status:** Planned before v1.0  
+### Email/SMS controls are preferences only
+**Area:** Communications
+
+Customer reminder preferences and the `ReminderDelivery` persistence model exist, but no real Email or SMS provider/send workflow has been implemented.
+
+### Movement correction/reversal workflow is missing
+**Area:** Movements / Audit
+
+Saved movements are auditable but there is no controlled workflow to reverse/correct an entry while preserving the original.
+
+### Production Backup / Restore is missing
 **Area:** Operations
 
-Developer-only SQLite backup/load/fresh-database tools now exist for import testing. A polished production backup/restore workflow, retention policy, installer/deployment packaging and production upgrade guidance are still not complete.
+Developer Database Backup/Load/Fresh tools are for testing only. A production-safe user backup/restore/recovery workflow is still required.
 
-## Low priority / cosmetic
+### Batch Entry draft does not survive crash/power loss
+**Area:** Batch Entry
 
-### Password eye and Logout artwork is functional but not final
-**Status:** Accepted for now  
-**Area:** UI
+Drafts survive in-app navigation and logout/login within the running process, but not process termination or power loss.
 
-The controls work correctly, but the current custom-drawn artwork was accepted as functional rather than final visual polish.
+### Multi-computer production use is not supported yet
+**Area:** Deployment
 
-### Import Review icon/tile polish remains
-**Status:** Deferred to next UI cleanup pass  
-**Area:** UI
+SQLite is currently configured for local single-PC operation. A central provider/concurrency strategy is required for simultaneous multi-computer use.
 
-The importer is functionally usable, but the approved Review mockup is not yet matched perfectly:
-- Containers tile and Map container action icon can still appear too small/cropped;
-- action icons are smaller than the approved mockup;
-- Review metric tiles still use square rather than rounded corners.
+## Validation watch items
 
-This is intentionally deferred while transactional import execution is completed.
+### Market Floor high-Yellow-day stress test
+The current real workbook produces the intended two-page front/reverse report and is accepted for now. Revisit adaptive sizing when a genuinely high Yellow-bin day occurs.
 
-## Recently resolved
+### Customer search regression
+The Zahos/BIG search/list-detail synchronization bug is fixed but should remain in normal regression testing.
 
-- Fixed alpha.19.7 reverse-side pagination regression: reverse sizing now uses estimated rendered-line load, including likely buyer/`CREDIT` wraps, and is capped at the 8.0pt size already proven to fit the real workbook in alpha.19.6. Reverse Total also receives more horizontal width to reduce wrapping at source.
+## Cosmetic / deferred
 
-- Market Floor front right-hand Cash/CREDIT column is wider than the two Account columns, and Cash/CREDIT tables reserve more width for Total so `CREDIT` values stop wrapping while buyer names retain usable space.
-- Front-page normal-day sizing is more aggressive: the current real-data density uses substantially larger type and row padding to consume previously wasted vertical whitespace, while dense-day fallbacks remain in place.
-- Reverse-side layout is now fully data-driven too. Account/Cash printed row counts determine reverse font size, cell padding, heading padding and top spacing; extra Yellow rows therefore automatically compact page 2 before it can spill.
-
-- Bulk Bin is restored to the Special Containers block. `IsSpecialFloorReportContainer` is authoritative; the previous alpha.19.5 exception for Bulk was incorrect.
-- Market Floor front-page sizing is now driven by the actual rendered row load for the selected day. Additional Yellow rows immediately increase the load and automatically reduce font size, row padding and section spacing in graduated steps.
-- On lighter days the report automatically uses larger text; dense days progressively compact down to a guarded minimum instead of spilling the front sheet onto another page.
-
-- Market Floor no longer prints `Blue` because Blue is the standard/default floor bin. Non-standard operational bins are shown inline with the buyer, e.g. `CLAMMS (Yellow)` and `CLAMMS (Bulk)`.
-- Bulk Bin is now treated as an operational floor bin rather than being pushed into the Special Containers block; Blue/Yellow/Bulk are all represented in the normal floor workflow.
-- Removing the dedicated Bin column recovered substantial width on both pages and eliminates narrow-column wrapping such as `Yello/w`, `Ou/t` and `B/Fwd` fragmentation.
-- Front-page adaptive type was reduced only enough to restore the required single-page front after alpha.19.4 spilled onto a second front page; reverse-side type remains large and gains width from the removed Bin column.
-
-- Market Floor no longer aggregates Blue/Yellow/Bulk/other regular containers into a single customer total. Page 1 now shows Buyer + Bin + Total and page 2 shows Buyer + Bin + OUT/IN/B/Fwd/Total.
-- Reverse-side zero-history customers retain one default Blue row, while additional non-Blue rows appear only where that customer actually has container history, limiting page growth.
-
-- Market Floor front Cash/COD totals and reverse-side totals now reserve substantially more horizontal space; quantity + `CREDIT` is treated as one unbroken value so labels such as KHALID `12 CREDIT` do not wrap.
-- Market Floor typography was increased again after the real two-page PDF showed ample safe whitespace. Page-one margins are tighter and reverse-side base text is larger as well.
-
-- Customer search now matches code/name case-insensitively and suppresses async grid-selection races; the detail pane is always tied to a visible filtered row, or cleared when there are no matches.
-- Market Floor front-page font policy was increased after the two-page production-like render still showed substantial unused space; readability is now prioritised more aggressively.
-- Cash/COD credit totals use a non-breaking separator and a wider Total column so values such as `38 CREDIT` stay on one line.
-
-- Review warning copy no longer says Import is disabled; Step 4 is live and unresolved items now tell the operator to resolve blockers before continuing.
-- Analyse duplicate warning triangle was still present because the dynamic warning text embedded its own icon; only the dedicated warning icon remains.
-- First-run administrator Cancel/Create buttons now use a fixed footer grid so both buttons align to the same baseline and height.
-- Market Floor same-day import opening adjustments now count as B/Fwd rather than physical daily OUT/IN.
-- Market Floor Cash/COD credits remain in the Cash area; the separate CREDIT block is Account-only.
-- Market Floor reverse side now uses two Account columns plus one Cash/COD column to keep the report to two physical pages.
-- Customer movement history/statements now label import adjustment rows as Opening adjustment (OUT/IN), rather than OUT (Taken)/IN (Returned).
-
-- Step 4 transactional execution is now enabled: confirmed customer creation, opening adjustments, cutover-day OUT/IN movements, completed ImportRun recording and atomic rollback are implemented.
-- Step 4 now revalidates the workbook SHA-256 immediately before writing and re-checks exact re-import protection inside the transaction.
-
-- Analyse warning showed two exclamation-triangle icons because both the dynamic text and warning layout supplied one; the text no longer embeds its own icon.
-- Container summary/action icons could crop against their image bounds; icon loading now preserves transparent inset space and the Map container action has extra width/padding.
-- Review-card secondary grey text was inconsistent and sometimes repeated the card subject awkwardly; all six cards now use explicit concise secondary metrics.
-
-- Review cards were still overcrowded at normal DPI; they now use one strong primary metric plus one short secondary label.
-- Review action buttons, especially Map container and the reconciliation viewer, could clip icon/text; widths, icon sizing, padding and button height are now explicit.
-- Three xUnit2031 warnings in reconciliation tests were removed by using Assert.Single predicate overloads.
-- Analyse warning layout now keeps warning text aligned beside the warning icon instead of allowing wrapped text to begin beneath the triangle.
-
-- Review summary now uses the actual icon artwork extracted from the approved original mockup rather than recreated approximations.
-- Review cards now match the mockup information hierarchy: primary values are bold/dark and secondary values are smaller grey text.
-- Review action buttons now include pending counts and the full `View balance reconciliation larger...` label, with wider fixed sizing so text cannot clip.
-
-- Review icons are now embedded raster PNG assets matching the approved mockup style; the runtime vector icon renderer has been removed.
-- Review action buttons were too narrow for icon + label at normal DPI; widths/heights/padding are now explicit.
-- Reconciliation applied customer-confirmation blocking before container resolution and cutover maths, causing pending rows (including CLAMMS Blue/Bulk/Yellow) to show blank containers and em-dashes for opening adjustment/projected. Container resolution and preview maths now run before the confirmation blocker is applied.
-
-- Balance Reconciliation headers repeated the formula already shown above the grid, making headers excessively tall; headers are now concise again.
-- Step 3 metric cards could clip at normal DPI because the summary ribbon was too short; the ribbon is taller and has more internal icon/text space.
-- Alpha.18.5 used Unicode stand-ins for Review icons instead of the approved mockup icon set; Review now uses custom-drawn database, people, check-circle, person-plus, container, scales and expand icons matching the mockup semantics.
-
-- Step 3 Review summary was information-dense and consumed too much scanning effort; it now uses six compact visual metric cards and a simplified action row.
-- The Balance Reconciliation larger-view action was easy to miss at the bottom of the tab; it is now a persistent top-level Review action and the normal reconciliation grid gets more height.
-- Password visibility toggle artwork has been updated to the requested filled eye / eye-slash convention.
-
-- Step 4 preflight could terminate BinTracker with an unhandled `IOException` when Excel/another process held the workbook open; it now returns safely to Review with a retry message.
-- Balance Reconciliation remained too cramped for practical review even after the collapse fix; Review summary/header were compacted and a full-size reconciliation viewer was added.
-
-- Step 3 Customer Matches / Balance Reconciliation card inherited `AutoSize=true` from the generic Card helper, collapsing the tab/grid area to roughly one visible row despite `Dock=Fill`.
-
-- Alpha.18.1 evaluated Step 3 readiness before local `blockers` and `reconciliation` variables were declared, causing two CS0841 WinForms build errors.
-
-- Step 3 Balance Reconciliation was vertically clipped at the bottom of the Review page.
-- Step 3 could remain unable to advance to Step 4 even when all customer/container decisions were resolved and reconciliation was fully ready.
-
-- Existing-customer match dialog could show a blank proposed customer when the matched record was inactive; inactive matches are now visible and labelled.
-- Existing-match decision values displayed raw enum names such as `AcceptMatch`; UI now uses `Accept match` / `Override match`.
-- Import had no durable source provenance or exact-file re-import detection; ImportRuns schema and SHA-256 preflight are now in place.
-
-- Developer database staging/restart dialog rendered literal `\\n` sequences instead of line breaks.
-- Confirm New Customers bulk-action button text was clipped.
-- Automatic existing-customer matches had no explicit confirmation/override workflow; Review now requires confirmation before Import readiness.
-
-- Fresh-database reconciliation test still expected `NewCustomerPendingConfirmation` after an explicit Create decision; expected status is now `Ready`.
-
-- Fresh-database reconciliation unit test still assumed pre-alpha.16 automatic new-customer inclusion; it now supplies an explicit Create decision.
-
-- Alpha.16 customer-decision reconciliation used a conditionally assigned local variable and failed Services compilation with CS0165.
-
-- New customers had no explicit Create/Skip confirmation workflow; Review now supports editable names, Create/Skip decisions, bulk actions and retained wizard state.
-
-- Alpha.15 packaged the manual container-mapping calls without the `containerTokenMappings` wizard-state field, causing nine WinForms CS0103 build errors.
-
-- Unknown legacy container tokens could be detected but not resolved inside the Import Wizard; Review now supports manual token-to-Container-Type mapping.
-
-- Unprefixed legacy rows were treated as unresolved containers; they now default to standard Blue Bin.
-- Unknown explicit bracket/container tokens could not be distinguished from missing hints; they are now hard blockers requiring mapping.
-
-- Step 3 Review still required horizontal scrolling after alpha.13.5; wizard widened and Review/Reconciliation grids now use fill sizing with wrapped values.
-- Developer Database Tools still clipped actions at normal DPI; dialog widened/tallened and action column expanded.
-
-- Step 3 Review columns and row values were clipped at normal window size.
-- Developer Database Tools content was clipped vertically and hid actions.
-- BalanceService integration tests emitted xUnit2031 analyzer warnings.
-
-
-- `BalanceService` follow-up ID filtering triggered a `ReadOnlySpan<int>` EF parameter-extraction failure; small customer/container lookup tables are now loaded directly after balance aggregation.
-
-- Import Review crashed when `BalanceService` used an EF Core/SQLite-untranslatable navigation `GroupBy` projection; aggregation now uses scalar IDs in SQL and resolves display names after materialisation.
-
-- Review matched normalized customer variants but still emitted separate rows (`S & J` and `(Bulk) S&J`); grouping now uses the normalized customer key before matching.
-
-- Review legacy-variant tooltip used invalid `DataGridViewRow` API and failed the WinForms build.
-
-- Existing BinTracker balances could have been interpreted as additive during migration; Review now plans target reconciliation to Excel B/Fwd/Total.
-
-- Developer import testing required manual database-file management; Settings now provides Backup / Load / Fresh test database tools.
-
-- Legacy spacing/punctuation variants could create duplicate customer candidates (`S & J` vs `S&J`).
-- Review grid required horizontal scrolling and clipped Existing customer/type details.
-- Legacy `(Y)` container hint displayed as raw `Y` instead of Yellow Bin.
-
-
-- Legacy Buyer prefixes were incorrectly treated as part of the customer identity (for example `(Bulk) Clamms`).
-- Review status `Existing — match` text clipping.
-
-- Map classification combo display/state loss after Back navigation.
-
-- Review unit-test target-typed `new()` compile failure.
-
-The following older issues are no longer active and should not be treated as current defects:
-
-- Customer lower-panel whitespace/clipping.
-- Customer action buttons disappearing.
-- Recent Movement History date/direction width.
-- Page title text clipping.
-- Logout caption clipping/functionality.
-- Single Entry alignment/reset-after-save.
-- Business Information bottom button clipping.
-- Excel Import Wizard missing Browse/Analyse controls.
-- Duplicate Analyse button in Import Wizard.
-- Import Wizard stepper square-number styling.
-- Build migration tests hard-coded to schema version 6.
-- ClosedXML row/column compile errors.
-- Hard-coded app/build release version.
-- Import Wizard Analyse footer clipping after analysis.
-- Import Wizard progress subtitle descender clipping.
-- Map Suggested reason truncation for default legacy mappings.
-- Oversized Business Information Close button.
-
-Resolved details remain available in `docs/CHANGELOG.md` and release notes.
+- Import Review action icons remain smaller/cropped compared with the approved mockup, particularly container-related icons.
+- Review metric tiles do not yet have the approved rounded corners.
+- Password eye / Logout artwork is functional but not final visual polish.

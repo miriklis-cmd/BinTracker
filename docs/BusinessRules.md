@@ -27,18 +27,14 @@ This document records application behaviour independently of implementation deta
 
 ## Market Floor Sheet
 
-- Output is A4 portrait.
-- Front and reverse must each remain one page.
-- Front: Account customers owing occupy two columns.
-- Front: Cash/COD customers owing occupy the third column.
-- All customer credits appear under the Cash/COD section.
-- Special Floor Report Containers appear in the separate special-container section.
-- Reverse: Account customers are on the left.
-- Reverse: Cash/COD customers are on the right.
-- Reverse columns are Buyer / Out / In / B/Fwd / Total.
-- B/Fwd includes all regular-container movements before the selected report date.
-- Total = B/Fwd + OUT - IN.
-- Negative totals display as CREDIT.
+- Blue Bin is the standard/default floor bin and is implicit on the printed floor sheet.
+- Non-standard regular bins (for example Yellow) are shown explicitly and are never aggregated into Blue.
+- `IsSpecialFloorReportContainer` determines which configured container types appear in Special Containers.
+- Cash/COD credits remain in the Cash/COD area.
+- Account credits appear in the separate CREDIT area.
+- Import `Adjustment` movements contribute to B/Fwd/opening position, not physical daily OUT/IN.
+- Front and reverse pages adapt typography/spacing to the actual rendered row load and target exactly two physical A4 pages.
+- The report is operationally read from around 4am, so use the largest type that safely fits.
 
 ## Business Information
 

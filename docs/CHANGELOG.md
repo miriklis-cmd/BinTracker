@@ -434,3 +434,10 @@
 
 ## v0.4.0-alpha.19.8
 - Corrected reverse-side pagination using rendered-line-aware adaptive sizing.
+
+## v0.4.0-alpha.19.8.1
+- Audited and reset project documentation against the current codebase.
+- Replaced stale Roadmap alpha-progress accumulation with current priority order.
+- Cleaned Known Issues and Technical Debt.
+- Updated Import Wizard/Re-import Safety/Functional Specification/Testing/README.
+- Consolidated release documentation by deleting obsolete per-alpha release-note files; historical details remain in this changelog.

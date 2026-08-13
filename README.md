@@ -1,61 +1,94 @@
-# BinTracker v0.4.0-alpha.19.8
+# BinTracker v0.4.0-alpha.19.8.1
 
-This release adds local authentication, roles, user administration, and an append-only audit trail.
+BinTracker is a .NET 8 Windows desktop application for tracking reusable container movements, customer/container balances, operational reporting and audited business activity.
 
-## First launch
+## Current functional areas
 
-1. Open `BinTracker.sln`.
-2. Build and press F5.
-3. Create the first administrator account when prompted.
-4. Log in using that account.
+- Local authentication, roles and user administration.
+- Append-only audit trail.
+- Customer management with Account / Cash-COD classification.
+- Configurable Container Types.
+- Batch Entry and Single Entry IN/OUT movements.
+- Container-specific balances and customer movement history.
+- PDF Customer Statements.
+- Two-page Market Floor report.
+- Configurable Business Information/report identity.
+- Transactional legacy Excel Import Wizard with Analyse, Map, Review, balance reconciliation and Step 4 execution.
+- ImportRun SHA-256 exact-reimport protection.
+- Developer database backup/load/fresh tools for testing.
 
-Passwords must be at least 10 characters and include uppercase, lowercase, and a number.
+## Important current limitations
 
-## Audit coverage
+See `KNOWN-ISSUES.md` and `docs/Roadmap.md`.
 
-The audit table now records successful and failed logins, logout, initial administrator creation, new users, user activation/deactivation, machine name, session ID, success/failure and before/after values where applicable.
+Most important remaining items include:
 
-The audit service is ready to record customer changes, movements, batch reversals, settings, backups/restores, Excel imports/exports, and generated reports as those features are implemented.
+- forced-failure Import rollback verification;
+- changed-workbook/same-cutover replacement workflow;
+- relational ImportRun provenance;
+- unsaved customer-edit protection;
+- remaining operational reports;
+- dashboard operational pass;
+- real Email/SMS reminder delivery;
+- movement correction/reversal;
+- production backup/restore;
+- installer/deployment/security hardening.
 
-Existing Alpha 2 data is preserved. Startup performs an idempotent database upgrade that adds the security tables if they do not exist.
+## Excel Import
 
+The Import Wizard supports `.xlsm` and `.xlsx` legacy migration.
 
-## Multi-computer note
+Current workflow:
 
-This alpha currently stores SQLite data locally under `%LOCALAPPDATA%`. Do not use separate installations as a shared multi-user production system yet. A central database provider will be added before multi-computer deployment.
+1. **Analyse** workbook.
+2. **Map** sheets as Source / Validation / Report / Ignore.
+3. **Review** customer matches, create/skip decisions and container mappings.
+4. Reconcile Excel B/Fwd against current BinTracker balance.
+5. **Import** transactionally.
 
+The workbook's B/Fwd is treated as the authoritative cutover opening position. Cutover-day OUT and IN remain real movements. Exact completed-workbook re-import is blocked using SHA-256.
 
-## Database deployment strategy
+Changed workbooks representing the same cutover date still require a controlled correction/replacement workflow before v1.0.
 
-BinTracker currently uses SQLite for fast single-PC development and testing.
+## Database
 
-Database access is now isolated in `BinTracker.Data` and configured through:
+SQLite is currently used for single-PC operation and development. Configuration is under the local application data area.
 
-`%LOCALAPPDATA%\BinTracker\database.json`
-
-PostgreSQL is the planned central database before simultaneous multi-PC deployment.
-The PostgreSQL provider is not enabled yet, so this release has no extra server/install requirement.
-
-
-## v0.4.0-alpha.19.8
-Customer Management is now functional from the left navigation.
-
-## v0.4.0-alpha.19.8
-
-Customer codes are now the primary visible identifier in Customer Management. Select a customer and use **Customer Statement** to generate an audited PDF for a chosen period.
-
-## Master data
-
-Administrators can manage container types and Business Information from Settings. Business Information provides the shared identity used by report headers without hard-coding company details into the application or repository.
-
-## Excel import
-
-The Import Wizard currently supports read-only analysis of `.xlsm` and `.xlsx` workbooks. Database merge/replace execution will be enabled after workbook matching rules are validated.
-
-## Versioning
-
-The BinTracker release version is defined once in `Directory.Build.props`. The application and `Build-BinTracker.bat` derive their displayed version from that value. See `docs/Versioning.md`.
+Do **not** deploy separate SQLite installations as a simultaneous shared multi-user system. A central database architecture is still required for that scenario.
 
 ## Developer database testing
 
-Administrators can use **Settings > Developer Tools > Developer Database** to back up the current SQLite database, stage/load another test database, or restart with a fresh database. Load/Fresh operations are restart-based so the live SQLite file is never replaced while application database contexts may be active.
+Administrators can use:
+
+**Settings → Developer Tools → Developer Database**
+
+to back up the current SQLite test database, stage/load a previous database on restart, or restart with a fresh database.
+
+These tools are intended for development/import testing and are not the final production Backup/Restore workflow.
+
+## Build
+
+From PowerShell:
+
+```powershell
+.\Build-BinTracker.bat
+```
+
+A valid local build requires successful restore, build and automated tests.
+
+## Documentation
+
+- `docs/Roadmap.md` — current priority plan.
+- `KNOWN-ISSUES.md` — active defects/limitations.
+- `TECH-DEBT.md` — engineering debt.
+- `TEST-CHECKLIST.md` — current acceptance checklist.
+- `docs/FunctionalSpecification.md` — functional requirements.
+- `docs/BusinessRules.md` — core rules.
+- `docs/ImportWizard.md` — importer behaviour.
+- `docs/ReimportSafety.md` — import idempotency/correction rules.
+- `docs/CHANGELOG.md` — historical release changes.
+- `docs/RELEASE-NOTES.md` — current release notes.
+
+## Versioning
+
+The application version is defined in `Directory.Build.props`.
