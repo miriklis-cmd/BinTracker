@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.19.6**
+Current release: **v0.4.0-alpha.19.8**
 
 This file tracks current defects, incomplete production-critical behaviour, and limitations that a tester/operator needs to know about. Planned enhancements belong in `docs/Roadmap.md`; engineering cleanup belongs in `TECH-DEBT.md`.
 
@@ -135,6 +135,12 @@ The importer is functionally usable, but the approved Review mockup is not yet m
 This is intentionally deferred while transactional import execution is completed.
 
 ## Recently resolved
+
+- Fixed alpha.19.7 reverse-side pagination regression: reverse sizing now uses estimated rendered-line load, including likely buyer/`CREDIT` wraps, and is capped at the 8.0pt size already proven to fit the real workbook in alpha.19.6. Reverse Total also receives more horizontal width to reduce wrapping at source.
+
+- Market Floor front right-hand Cash/CREDIT column is wider than the two Account columns, and Cash/CREDIT tables reserve more width for Total so `CREDIT` values stop wrapping while buyer names retain usable space.
+- Front-page normal-day sizing is more aggressive: the current real-data density uses substantially larger type and row padding to consume previously wasted vertical whitespace, while dense-day fallbacks remain in place.
+- Reverse-side layout is now fully data-driven too. Account/Cash printed row counts determine reverse font size, cell padding, heading padding and top spacing; extra Yellow rows therefore automatically compact page 2 before it can spill.
 
 - Bulk Bin is restored to the Special Containers block. `IsSpecialFloorReportContainer` is authoritative; the previous alpha.19.5 exception for Bulk was incorrect.
 - Market Floor front-page sizing is now driven by the actual rendered row load for the selected day. Additional Yellow rows immediately increase the load and automatically reduce font size, row padding and section spacing in graduated steps.

@@ -950,3 +950,26 @@
 - [ ] Front page does not spill onto a second front page
 - [ ] CREDIT values remain on one line
 - [ ] Reverse side remains one page
+
+## v0.4.0-alpha.19.7
+- [ ] Build reports v0.4.0-alpha.19.7
+- [ ] Zero warnings
+- [ ] All tests pass
+- [ ] Latest real workbook produces exactly 2 pages
+- [ ] Page 1 uses more vertical space than alpha.19.6
+- [ ] Cash buyer totals do not wrap
+- [ ] Account CREDIT totals do not wrap
+- [ ] HO / HP / JUST / KEVIN / KHALID / PHAM CREDIT remain one line
+- [ ] Page 2 remains one page
+- [ ] Extra Yellow rows automatically reduce reverse font
+- [ ] Extra Yellow rows automatically reduce reverse padding/spacing
+- [ ] Bulk remains in Special Containers
+
+## v0.4.0-alpha.19.8
+- [ ] Build reports v0.4.0-alpha.19.8
+- [ ] All automated tests pass
+- [ ] Latest real workbook PDF is exactly 2 pages
+- [ ] Front page retains alpha.19.7 appearance
+- [ ] Reverse is exactly one page
+- [ ] KHALID / FATBUOY / PHAM / HO / HP / KEVIN CREDIT values do not force page 3
+- [ ] Extra Yellow rows lower reverse density before overflow

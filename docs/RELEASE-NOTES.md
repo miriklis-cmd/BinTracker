@@ -1,23 +1,15 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.19.6
+## v0.4.0-alpha.19.8
 
-### Bulk classification corrected
-Bulk Bin remains a special container. Market Floor now follows the configured `IsSpecialFloorReportContainer` flag without a Bulk exception.
+### Reverse-side one-page correction
+Alpha.19.7 incorrectly selected reverse sizing from raw row count and increased the normal-day reverse font to 8.4pt. The real workbook demonstrated that wrapped CREDIT rows made the physical height larger than the row count predicted.
 
-### Dynamic Market Floor front-page layout
-The front page now sizes itself from the actual row count for that report date.
+Alpha.19.8:
+- caps reverse normal-day type at the 8.0pt size already proven to fit in alpha.19.6;
+- estimates physical rendered-line load rather than only counting records;
+- treats likely long-buyer and CREDIT wrapping as additional vertical load;
+- progressively reduces font and padding as that load rises;
+- gives the reverse Total column more width to prevent CREDIT wrapping in the first place.
 
-The algorithm considers:
-- Account owing rows after Blue/Yellow separation;
-- Cash/COD rows;
-- Account credit rows;
-- Special-container rows.
-
-As the busiest column grows, BinTracker progressively reduces:
-- font size;
-- row padding;
-- section spacing;
-- content-top spacing.
-
-On light days it automatically uses larger text. On unusually busy days, including days with many Yellow-bin rows, it becomes progressively more compact to preserve a single front A4 page.
+The front-page improvements from alpha.19.7 are retained.

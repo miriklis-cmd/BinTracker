@@ -49,6 +49,9 @@ These are engineering improvements, not current user-facing defects.
 - Add a standard BinTracker import template/profile for future customers.
 
 ## Reports
+- Reverse Market Floor pagination must be based on estimated rendered-line load, not raw row count: long buyer labels and CREDIT totals can create extra physical lines and therefore must affect the density tier.
+- Market Floor front columns need not be equal width. The Cash/CREDIT column requires extra horizontal capacity for `nn CREDIT`; favour a wider right column rather than wrapping operational values.
+- Market Floor reverse layout must be computed from actual printed rows exactly like the front. Additional Yellow/non-standard rows must automatically reduce reverse font/padding/spacing before page 2 can overflow.
 - Market Floor special-container classification follows `IsSpecialFloorReportContainer`; the configured flag is authoritative. Bulk is a special container in the production configuration.
 - Market Floor front layout must be computed from the actual rows for that report date. More Yellow/non-standard rows must automatically lower font/padding/spacing so page 1 remains a single physical A4 page; lighter days should reclaim that capacity as larger text.
 - Market Floor semantics: Blue is the standard/default bin and should be implicit in the printed layout. Show non-standard operational bins inline with the buyer (`Buyer (Yellow)`, `Buyer (Bulk)`) rather than consuming a dedicated Bin column.

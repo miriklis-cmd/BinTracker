@@ -76,7 +76,7 @@ Support multiple workbook adapters/profiles:
 - standard BinTracker import template;
 - configurable custom mapping for other businesses.
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Separate Analyse page
 - [x] Separate Map page
 - [x] Source / Validation / Report / Ignore worksheet classification
@@ -86,7 +86,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Container mapping
 - [ ] Transactional import execution
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Review page
 - [x] Existing customer-code matching
 - [x] New candidate detection
@@ -97,7 +97,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Container mapping
 - [ ] Transactional Import stage
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Conservative customer-code/name normalizer
 - [x] Explainable automatic match reasons
 - [x] `S & J` / `S&J` normalized matching
@@ -107,7 +107,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Full container mapping / unresolved-container handling
 - [ ] Transactional Import
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Developer database backup
 - [x] Stage/load an existing BinTracker test database safely on restart
 - [x] Start fresh test database with automatic pre-reset backup
@@ -117,7 +117,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Exact re-import blocking
 - [ ] Changed-workbook same-cutover difference workflow
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Authoritative Excel B/Fwd reconciliation planner
 - [x] Existing-balance vs Excel-target preview
 - [x] Preserve cutover-day OUT/IN in projected result
@@ -126,7 +126,7 @@ Support multiple workbook adapters/profiles:
 - [ ] ImportRun/source provenance
 - [ ] Transactional execution
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Fix BalanceService SQLite translation crash
 - [x] Add real SQLite balance-service regression test
 - [ ] Customer create/merge confirmation
@@ -134,7 +134,7 @@ Support multiple workbook adapters/profiles:
 - [ ] ImportRun/source provenance and re-import protection
 - [ ] Transactional Import execution
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Unprefixed legacy customer -> Blue Bin default
 - [x] Known explicit token resolution
 - [x] Unknown explicit token hard blocker
@@ -144,7 +144,7 @@ Support multiple workbook adapters/profiles:
 - [ ] ImportRun/source provenance
 - [ ] Transactional Import
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] UI workflow to map unknown legacy container tokens
 - [x] Map token to existing Container Type
 - [x] Open Container Type management and refresh choices
@@ -154,7 +154,7 @@ Support multiple workbook adapters/profiles:
 - [ ] ImportRun/source provenance
 - [ ] Transactional Import
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Editable proposed names for new customers
 - [x] Explicit Create / Skip decisions
 - [x] Selected / all bulk actions
@@ -166,7 +166,7 @@ Support multiple workbook adapters/profiles:
 - [ ] ImportRun/source provenance
 - [ ] Transactional Import
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Existing-customer match confirmation
 - [x] Existing-customer match override
 - [x] Existing-match decisions retained across wizard navigation
@@ -177,7 +177,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Exact re-import blocking
 - [ ] Transactional Step 4 Import
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] ImportRun/source provenance schema
 - [x] SHA-256 source workbook fingerprint
 - [x] Exact completed-workbook re-import detection
@@ -190,7 +190,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Review balance grid vertical layout fix
 - [x] Step 3 → Step 4 readiness gate fix
 - [x] Centralised Review readiness policy
@@ -200,7 +200,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Root-cause fix for collapsed Review tab region
 - [x] Customer Matches fills remaining Step 3 height
 - [x] Balance Reconciliation fills remaining Step 3 height
@@ -210,7 +210,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Practical Balance Reconciliation viewing area
 - [x] Full-size reconciliation viewer
 - [x] Cutover math regression coverage
@@ -221,7 +221,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Review summary metric-card redesign
 - [x] Review action-row redesign
 - [x] Persistent large reconciliation viewer action
@@ -234,7 +234,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Concise Balance Reconciliation headers
 - [x] Summary-card clipping fix
 - [x] Mockup icon set implemented as DPI-safe vectors
@@ -245,7 +245,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Approved Review raster icon assets
 - [x] Review action button clipping fix
 - [x] Resolve container before customer confirmation blocker
@@ -257,7 +257,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Approved original-mockup icon artwork used directly
 - [x] Bold primary / grey secondary metric typography
 - [x] Review button pending counts
@@ -269,7 +269,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Simplified Review metric cards
 - [x] Map container button/icon clipping fix
 - [x] Reconciliation action clipping fix
@@ -281,7 +281,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Duplicate Analyse warning icon fix
 - [x] Container icon inset/cropping fix
 - [x] Map container button spacing fix
@@ -292,7 +292,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Transactional confirmed customer creation
 - [x] Transactional opening adjustments
 - [x] Transactional cutover-day OUT movements
@@ -307,7 +307,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Import-run history/details UI
 - [ ] Explicit BinMovement.ImportRunId FK
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Market Floor opening-adjustment semantics
 - [x] Cash/COD credit placement
 - [x] Two-page Market Floor pagination
@@ -321,7 +321,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Continue alpha.19 importer end-to-end verification
 
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Case-insensitive customer search
 - [x] Customer grid/detail async-selection synchronisation
 - [x] Clear detail pane on zero search results
@@ -330,7 +330,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Re-render Market Floor and validate two-page fit
 - [ ] Re-test searches: zahos, big, no-match
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Cash/COD CREDIT values kept on one line
 - [x] Reverse CREDIT values kept on one line
 - [x] Reverse Total column widened
@@ -339,7 +339,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Verify generated report remains exactly 2 pages
 - [ ] Verify KHALID / HO / HP / JUST / KEVIN CREDIT labels do not wrap
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Page 1 regular container separation
 - [x] Reverse-side regular container separation
 - [x] Explicit Bin column on front sheet
@@ -349,7 +349,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Verify CLAMMS displays Blue 10 / Yellow 45 / Bulk 1
 - [ ] Verify other multi-container customers
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Blue implicit on front Market Floor
 - [x] Blue implicit on reverse Market Floor
 - [x] Yellow/Bulk shown inline with buyer
@@ -361,7 +361,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Verify CLAMMS front shows CLAMMS / CLAMMS (Yellow) / CLAMMS (Bulk)
 - [ ] Verify CLAMMS reverse shows separate Blue/Yellow/Bulk positions
 
-### v0.4.0-alpha.19.6 progress
+### v0.4.0-alpha.19.8 progress
 - [x] Bulk restored to Special Containers
 - [x] Special-container flag authoritative
 - [x] Dynamic front-page font based on actual daily row count
@@ -370,3 +370,22 @@ Support multiple workbook adapters/profiles:
 - [x] Extra Yellow rows automatically increase layout density
 - [ ] Verify current production workbook generates exactly 2 pages
 - [ ] Stress-test a synthetic/high-Yellow day for one-page front
+
+### v0.4.0-alpha.19.8 progress
+- [x] Wider Cash/CREDIT front column
+- [x] Wider Cash/CREDIT Total fields
+- [x] More aggressive normal-day front sizing
+- [x] Fully dynamic reverse-side font
+- [x] Fully dynamic reverse-side row padding
+- [x] Fully dynamic reverse heading/top spacing
+- [x] Yellow rows automatically affect both pages
+- [ ] Verify current real workbook remains exactly 2 pages
+- [ ] Verify no Cash/CREDIT wrapping
+- [ ] Stress-test higher Yellow-row counts
+
+### v0.4.0-alpha.19.8 progress
+- [x] Fix alpha.19.7 reverse pagination regression
+- [x] Cap reverse normal-day font at known one-page 8.0pt maximum
+- [x] Count likely wrapped rows when choosing reverse density
+- [x] Widen reverse Total column to reduce CREDIT wrapping
+- [ ] Verify latest real workbook returns to exactly 2 PDF pages

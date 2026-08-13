@@ -426,3 +426,11 @@
 - Restored Bulk to configured Special Containers.
 - Replaced fixed Market Floor front sizing with row-load-driven font/padding/spacing.
 - Added density response for high Yellow-bin days.
+
+## v0.4.0-alpha.19.7
+- Widened Market Floor Cash/CREDIT area.
+- Increased normal-day front-page size/spacing.
+- Added fully dynamic reverse-side density handling.
+
+## v0.4.0-alpha.19.8
+- Corrected reverse-side pagination using rendered-line-aware adaptive sizing.

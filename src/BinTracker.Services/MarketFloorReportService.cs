@@ -44,6 +44,12 @@ internal sealed record MarketFloorFrontLayout(
     float SectionPadding,
     float ContentTopPadding);
 
+internal sealed record MarketFloorReverseLayout(
+    float FontSize,
+    float CellVerticalPadding,
+    float HeadingPadding,
+    float ContentTopPadding);
+
 public interface IMarketFloorReportService
 {
     Task<MarketFloorReportData> GetAsync(
@@ -332,16 +338,31 @@ internal sealed class MarketFloorReportService(
                     var accountLeft = data.AccountOwing.Take(split).ToList();
                     var accountRight = data.AccountOwing.Skip(split).ToList();
 
-                    row.RelativeItem().PaddingRight(2).Element(c =>
-                        FrontBuyerTable(c, "ACCOUNT - OWING", accountLeft, frontLayout));
+                    row.RelativeItem(0.95f).PaddingRight(2).Element(c =>
+                        FrontBuyerTable(
+                            c,
+                            "ACCOUNT - OWING",
+                            accountLeft,
+                            frontLayout,
+                            2.0f));
 
-                    row.RelativeItem().PaddingHorizontal(1).Element(c =>
-                        FrontBuyerTable(c, "ACCOUNT - OWING", accountRight, frontLayout));
+                    row.RelativeItem(0.95f).PaddingHorizontal(1).Element(c =>
+                        FrontBuyerTable(
+                            c,
+                            "ACCOUNT - OWING",
+                            accountRight,
+                            frontLayout,
+                            2.0f));
 
-                    row.RelativeItem().PaddingLeft(2).Column(right =>
+                    row.RelativeItem(1.10f).PaddingLeft(2).Column(right =>
                     {
                         right.Item().Element(c =>
-                            FrontBuyerTable(c, "CASH - OWING", data.CashOwing, frontLayout));
+                            FrontBuyerTable(
+                                c,
+                                "CASH - OWING",
+                                data.CashOwing,
+                                frontLayout,
+                                3.0f));
 
                         right.Item()
                             .PaddingTop(frontLayout.SectionPadding)
@@ -370,45 +391,68 @@ internal sealed class MarketFloorReportService(
                 });
             });
 
-            // PAGE 2: existing reverse-side daily worksheet.
+            // PAGE 2: reverse-side daily worksheet.
             document.Page(page =>
             {
+                var reverseLayout = ReversePageLayout(data);
+
                 page.Size(PageSizes.A4);
-                page.Margin(12);
-                page.DefaultTextStyle(x => x.FontFamily("Arial").FontSize(8.0f));
+                page.Margin(10);
+                page.DefaultTextStyle(x =>
+                    x.FontFamily("Arial").FontSize(reverseLayout.FontSize));
 
                 page.Header().Column(header =>
                 {
                     header.Item().Text(business.ReportHeader)
-                        .FontSize(8).SemiBold();
+                        .FontSize(reverseLayout.FontSize).SemiBold();
+
                     header.Item().Row(row =>
                     {
-                        row.RelativeItem().Text("DAILY BIN MOVEMENT - REVERSE SIDE")
-                            .FontSize(11).SemiBold();
-                        row.ConstantItem(180).AlignRight()
+                        row.RelativeItem()
+                            .Text("DAILY BIN MOVEMENT - REVERSE SIDE")
+                            .FontSize(reverseLayout.FontSize + 3.0f)
+                            .SemiBold();
+
+                        row.ConstantItem(180)
+                            .AlignRight()
                             .Text(data.Date.ToString("dddd dd/MM/yyyy"))
-                            .FontSize(7.5f);
+                            .FontSize(reverseLayout.FontSize - 0.3f);
                     });
                 });
 
-                page.Content().PaddingTop(6).Row(row =>
+                page.Content()
+                    .PaddingTop(reverseLayout.ContentTopPadding)
+                    .Row(row =>
                 {
                     var accountSplit =
                         (int)Math.Ceiling(data.AccountDaily.Count / 2d);
 
                     var accountLeft =
                         data.AccountDaily.Take(accountSplit).ToList();
+
                     var accountRight =
                         data.AccountDaily.Skip(accountSplit).ToList();
 
                     row.RelativeItem().PaddingRight(2).Element(c =>
-                        ReverseTable(c, "ACCOUNT CUSTOMERS", accountLeft));
+                        ReverseTable(
+                            c,
+                            "ACCOUNT CUSTOMERS",
+                            accountLeft,
+                            reverseLayout));
 
                     row.RelativeItem().PaddingHorizontal(1).Element(c =>
-                        ReverseTable(c, "ACCOUNT CUSTOMERS", accountRight));
+                        ReverseTable(
+                            c,
+                            "ACCOUNT CUSTOMERS",
+                            accountRight,
+                            reverseLayout));
 
                     row.RelativeItem().PaddingLeft(2).Element(c =>
-                        ReverseTable(c, "CASH CUSTOMERS", data.CashDaily));
+                        ReverseTable(
+                            c,
+                            "CASH CUSTOMERS",
+                            data.CashDaily,
+                            reverseLayout));
                 });
 
                 page.Footer().Row(row =>
@@ -445,7 +489,8 @@ internal sealed class MarketFloorReportService(
         IContainer container,
         string heading,
         IReadOnlyList<MarketFloorFrontRow> rows,
-        MarketFloorFrontLayout layout)
+        MarketFloorFrontLayout layout,
+        float totalColumnWeight)
     {
         container.Column(column =>
         {
@@ -460,7 +505,7 @@ internal sealed class MarketFloorReportService(
                 table.ColumnsDefinition(columns =>
                 {
                     columns.RelativeColumn(5);
-                    columns.RelativeColumn(2);
+                    columns.RelativeColumn(totalColumnWeight);
                 });
 
                 FrontHeader(table, "Buyer", layout);
@@ -493,8 +538,8 @@ internal sealed class MarketFloorReportService(
         {
             table.ColumnsDefinition(columns =>
             {
-                columns.RelativeColumn(5);
-                columns.RelativeColumn(2);
+                columns.RelativeColumn(4.6f);
+                columns.RelativeColumn(3.4f);
             });
 
             foreach (var item in rows)
@@ -555,8 +600,9 @@ internal sealed class MarketFloorReportService(
     private static MarketFloorFrontLayout FrontPageLayout(
         MarketFloorReportData data)
     {
-        // The front page is generated from the actual rows for that day.
-        // Extra Yellow rows therefore increase the measured load immediately.
+        // Generate from the actual rendered rows for this day.
+        // Additional Yellow rows increase AccountOwing/CashOwing and therefore
+        // immediately increase measured density.
         var accountColumnLoad =
             (int)Math.Ceiling(data.AccountOwing.Count / 2d);
 
@@ -564,28 +610,26 @@ internal sealed class MarketFloorReportService(
             data.CashOwing.Count +
             data.Credits.Count +
             data.SpecialContainers.Count +
-            5; // section headings / visual spacing
+            5;
 
         var maxRows =
             Math.Max(
                 accountColumnLoad,
                 rightColumnLoad);
 
-        // Use large type on light days, then progressively reduce font,
-        // cell padding and section spacing as row count rises. This keeps
-        // the front sheet on one A4 page without permanently sacrificing
-        // readability on normal days.
+        // Use the page aggressively on normal days. Dense days progressively
+        // shrink font AND padding so the front remains one physical A4 page.
         return maxRows switch
         {
-            <= 30 => new(11.0f, 1.65f, 5.0f, 5.0f),
-            <= 34 => new(10.5f, 1.45f, 4.5f, 4.5f),
-            <= 38 => new(10.0f, 1.25f, 4.0f, 4.0f),
-            <= 42 => new(9.5f, 1.05f, 3.5f, 3.5f),
-            <= 46 => new(9.0f, 0.90f, 3.0f, 3.0f),
-            <= 50 => new(8.5f, 0.75f, 2.5f, 2.5f),
-            <= 54 => new(8.0f, 0.60f, 2.0f, 2.0f),
-            <= 58 => new(7.5f, 0.45f, 1.5f, 1.5f),
-            _ => new(7.0f, 0.30f, 1.0f, 1.0f)
+            <= 30 => new(12.6f, 2.35f, 6.0f, 5.0f),
+            <= 34 => new(12.0f, 2.10f, 5.5f, 4.5f),
+            <= 38 => new(11.2f, 1.80f, 5.0f, 4.0f),
+            <= 42 => new(10.4f, 1.50f, 4.3f, 3.5f),
+            <= 46 => new(9.6f, 1.20f, 3.6f, 3.0f),
+            <= 50 => new(8.9f, 0.95f, 3.0f, 2.5f),
+            <= 54 => new(8.2f, 0.75f, 2.4f, 2.0f),
+            <= 58 => new(7.6f, 0.55f, 1.8f, 1.5f),
+            _ => new(7.0f, 0.35f, 1.2f, 1.0f)
         };
     }
 
@@ -612,32 +656,107 @@ internal sealed class MarketFloorReportService(
             .PaddingHorizontal(2)
             .Text(text);
 
+    private static MarketFloorReverseLayout ReversePageLayout(
+        MarketFloorReportData data)
+    {
+        // The reverse must remain exactly one physical page. Raw row count is
+        // not sufficient because long labels and "nn CREDIT" totals can wrap
+        // and consume a second line. Estimate the actual rendered-line load
+        // for each of the three printed columns and size from the worst one.
+        var accountSplit =
+            (int)Math.Ceiling(data.AccountDaily.Count / 2d);
+
+        var accountLeft =
+            data.AccountDaily.Take(accountSplit).ToList();
+
+        var accountRight =
+            data.AccountDaily.Skip(accountSplit).ToList();
+
+        var maxRenderedLines =
+            new[]
+            {
+                ReverseRenderedLineLoad(accountLeft),
+                ReverseRenderedLineLoad(accountRight),
+                ReverseRenderedLineLoad(data.CashDaily)
+            }.Max();
+
+        // 19.6 proved 8.0pt / 0.55 padding fits the current real workbook.
+        // Never grow beyond that on the reverse. As printed-line load rises
+        // (including extra Yellow rows or wrapped CREDIT values), compact
+        // progressively before QuestPDF can paginate the table.
+        return maxRenderedLines switch
+        {
+            <= 74 => new(8.0f, 0.55f, 2.3f, 4.0f),
+            <= 80 => new(7.7f, 0.46f, 2.0f, 3.2f),
+            <= 86 => new(7.3f, 0.38f, 1.7f, 2.6f),
+            <= 92 => new(6.9f, 0.30f, 1.4f, 2.0f),
+            <= 100 => new(6.5f, 0.22f, 1.1f, 1.5f),
+            _ => new(6.0f, 0.14f, 0.8f, 1.0f)
+        };
+    }
+
+    private static int ReverseRenderedLineLoad(
+        IReadOnlyList<MarketFloorReverseRow> rows)
+    {
+        var lines = 2; // section heading + table header
+
+        foreach (var row in rows)
+        {
+            var buyer =
+                FloorBuyerLabel(
+                    row.Buyer,
+                    row.Container);
+
+            var total =
+                FormatTotal(row.Total);
+
+            // These are deliberately conservative. A line that is likely to
+            // wrap is charged as two before selecting the font/padding tier.
+            var buyerLines =
+                buyer.Length > 18 ? 2 : 1;
+
+            var totalLines =
+                total.Contains("CREDIT", StringComparison.OrdinalIgnoreCase) &&
+                total.Length >= 9
+                    ? 2
+                    : 1;
+
+            lines += Math.Max(buyerLines, totalLines);
+        }
+
+        return lines;
+    }
+
     private static void ReverseTable(
         IContainer container,
         string heading,
-        IReadOnlyList<MarketFloorReverseRow> rows)
+        IReadOnlyList<MarketFloorReverseRow> rows,
+        MarketFloorReverseLayout layout)
     {
         container.Column(column =>
         {
-            column.Item().Background(Colors.Grey.Lighten2).Padding(3)
-                .Text(heading).SemiBold();
+            column.Item()
+                .Background(Colors.Grey.Lighten2)
+                .Padding(layout.HeadingPadding)
+                .Text(heading)
+                .SemiBold();
 
             column.Item().Table(table =>
             {
                 table.ColumnsDefinition(columns =>
                 {
-                    columns.RelativeColumn(4.8f);
-                    columns.RelativeColumn(0.75f);
-                    columns.RelativeColumn(0.75f);
-                    columns.RelativeColumn(1.35f);
-                    columns.RelativeColumn(2.35f);
+                    columns.RelativeColumn(4.55f);
+                    columns.RelativeColumn(0.70f);
+                    columns.RelativeColumn(0.70f);
+                    columns.RelativeColumn(1.25f);
+                    columns.RelativeColumn(2.80f);
                 });
 
-                CompactHeader(table, "Buyer");
-                CompactHeader(table, "Out");
-                CompactHeader(table, "In");
-                CompactHeader(table, "B/Fwd");
-                CompactHeader(table, "Total");
+                CompactHeader(table, "Buyer", layout);
+                CompactHeader(table, "Out", layout);
+                CompactHeader(table, "In", layout);
+                CompactHeader(table, "B/Fwd", layout);
+                CompactHeader(table, "Total", layout);
 
                 foreach (var item in rows)
                 {
@@ -645,12 +764,13 @@ internal sealed class MarketFloorReportService(
                         table,
                         FloorBuyerLabel(
                             item.Buyer,
-                            item.Container));
+                            item.Container),
+                        layout);
 
-                    CompactCell(table, item.Out.ToString());
-                    CompactCell(table, item.In.ToString());
-                    CompactCell(table, item.BroughtForward.ToString());
-                    CompactCell(table, FormatTotal(item.Total));
+                    CompactCell(table, item.Out.ToString(), layout);
+                    CompactCell(table, item.In.ToString(), layout);
+                    CompactCell(table, item.BroughtForward.ToString(), layout);
+                    CompactCell(table, FormatTotal(item.Total), layout);
                 }
             });
         });
@@ -726,20 +846,26 @@ internal sealed class MarketFloorReportService(
             .Trim()
             .ToUpperInvariant();
 
-    private static void CompactHeader(TableDescriptor table, string text) =>
+    private static void CompactHeader(
+        TableDescriptor table,
+        string text,
+        MarketFloorReverseLayout layout) =>
         table.Cell()
             .Background(Colors.Grey.Lighten3)
             .BorderBottom(0.7f)
-            .PaddingVertical(0.7f)
+            .PaddingVertical(layout.CellVerticalPadding)
             .PaddingHorizontal(1)
             .Text(text)
             .SemiBold();
 
-    private static void CompactCell(TableDescriptor table, string text) =>
+    private static void CompactCell(
+        TableDescriptor table,
+        string text,
+        MarketFloorReverseLayout layout) =>
         table.Cell()
             .BorderBottom(0.35f)
             .BorderColor(Colors.Grey.Lighten1)
-            .PaddingVertical(0.55f)
+            .PaddingVertical(layout.CellVerticalPadding)
             .PaddingHorizontal(1)
             .Text(text);
 }
