@@ -1,23 +1,28 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.18.9**
+Current release: **v0.4.0-alpha.19.1**
 
 This file tracks current defects, incomplete production-critical behaviour, and limitations that a tester/operator needs to know about. Planned enhancements belong in `docs/Roadmap.md`; engineering cleanup belongs in `TECH-DEBT.md`.
 
 ## High priority — before v1.0
 
-### Excel Import Wizard is analysis-only
-**Status:** In progress  
+### Excel Import Wizard transactional execution is newly enabled
+**Status:** Alpha validation required  
 **Area:** Import
 
-The wizard can read `.xlsm` / `.xlsx`, analyse workbook structure, detect Buyer/customer occurrences, identify snapshot-style B/Fwd / OUT / IN / Total rows, and show duplicate diagnostics. It does **not** yet write customers, opening positions or movements to the database.
+Step 4 now performs the confirmed import inside one SQLite transaction:
+- creates explicitly confirmed new customers;
+- uses explicitly confirmed existing-customer targets;
+- writes opening adjustments so BinTracker reaches Excel B/Fwd;
+- writes the workbook OUT and IN as real cutover-day movements;
+- records a completed ImportRun/source fingerprint;
+- rolls the whole transaction back if any line fails.
 
-Remaining work:
-- customer merge/create decisions for new candidates;
-- container mapping;
-- opening-position execution model;
-- transactional Import step;
-- rollback/error report.
+Remaining work before v1.0:
+- production-scale validation against the full legacy workbook;
+- changed-workbook/same-cutover replacement workflow;
+- polished import-run history/error reporting;
+- explicit relational ImportRunId provenance on generated movements (currently traceable by import reference/notes).
 
 ### Sheet classification is implemented in Map but not yet persisted/executed
 **Status:** In progress  
@@ -31,32 +36,27 @@ Remaining work:
 - use only Source sheets during actual import;
 - include Validation/Report sheets as reconciliation aids only.
 
-### Re-import duplicate protection is not implemented
-**Status:** Required before Import can be enabled  
+### Changed-workbook re-import/replacement workflow is not implemented
+**Status:** Exact re-import protection implemented; replacement workflow required before v1.0  
 **Area:** Import / Data Integrity
 
-BinTracker must never silently apply the same legacy import twice. Before Step 4 is enabled, successful imports need Import Run/source-fingerprint tracking and import-generated movements/opening positions must be traceable to that run.
+Completed imports now record an ImportRun and SHA-256 source fingerprint, and exact completed-workbook re-imports are blocked both during preflight and again inside the write transaction. Generated movements are tagged with the ImportRun reference in `ReferenceNumber` / notes.
 
-Exact re-imports must be blocked by default. Changed workbooks representing the same cutover date must go through an explicit difference/replacement workflow rather than simply inserting another copy.
+A changed workbook representing the same cutover date still needs an explicit difference/replacement workflow rather than simply inserting another copy.
 
 See `docs/ReimportSafety.md`.
 
-### Review is read-only; Import execution remains disabled
-**Status:** In progress  
+### Review decisions gate transactional Import
+**Status:** Implemented / validation required  
 **Area:** Import
 
-Review now compares Source-sheet customers against the current BinTracker database and flags Existing, New, Type mismatch and Source conflict states. Matching ignores case, spacing and punctuation when an exact code match is unavailable. Legacy Buyer prefixes such as `(Bulk)` and `(Y)` are separated from customer identity; `(Bulk)` resolves to Bulk Bin and `(Y)` resolves to Yellow Bin when those container types exist.
+Review compares Source-sheet customers against the current BinTracker database and blocks Step 4 until customer decisions, existing-match confirmations, container mappings and reconciliation are resolved. Step 4 revalidates these rules against the live database immediately before the transaction is committed.
 
-Import remains intentionally disabled until:
-- new-customer names/actions are confirmed;
-- container types are mapped;
-- opening positions and cutover movements can be applied transactionally.
-
-### Legacy opening-position execution is not yet committed
-**Status:** Reconciliation planner implemented / database execution pending  
+### Legacy opening-position execution
+**Status:** Implemented / validation required  
 **Area:** Import
 
-Review now calculates:
+Review and Step 4 use:
 
 `Opening adjustment = Excel B/Fwd - current BinTracker balance`
 
@@ -64,13 +64,18 @@ then:
 
 `Projected = current + opening adjustment + OUT - IN`
 
-The projected result must reconcile to Excel. This prevents existing test/live balances from being blindly added on top of the workbook balance. Database writes remain disabled until re-import provenance, customer confirmation and remaining container mappings are complete.
+Positive opening adjustments are written as Adjustment/OUT movements; negative adjustments as Adjustment/IN movements. The legacy daily OUT/IN values are then written as ExcelImport movements. All are committed atomically with the ImportRun.
 
-### Market Floor Sheet needs production-scale validation
-**Status:** Pending real-data validation  
+### Market Floor Sheet needs final production validation
+**Status:** Fixes implemented / validation required  
 **Area:** Reports
 
-The two-page A4 portrait Market Floor Sheet exists, including Account/Cash grouping, credits, reverse-side B/Fwd and special containers. It still needs validation against the full legacy workbook dataset after import mapping is complete.
+Real imported data exposed three report rules that are now corrected:
+- same-day import opening adjustments contribute to B/Fwd, not daily OUT/IN;
+- Cash/COD credits remain in the Cash section; only Account credits use the separate CREDIT block;
+- reverse-side Account customers are split across two columns with Cash/COD in a third so the report stays front + back rather than spilling to a third page.
+
+The front page now uses adaptive typography based on row load for better page utilisation/readability.
 
 ## Medium priority — before production acceptance
 
@@ -106,7 +111,33 @@ Developer-only SQLite backup/load/fresh-database tools now exist for import test
 
 The controls work correctly, but the current custom-drawn artwork was accepted as functional rather than final visual polish.
 
+### Import Review icon/tile polish remains
+**Status:** Deferred to next UI cleanup pass  
+**Area:** UI
+
+The importer is functionally usable, but the approved Review mockup is not yet matched perfectly:
+- Containers tile and Map container action icon can still appear too small/cropped;
+- action icons are smaller than the approved mockup;
+- Review metric tiles still use square rather than rounded corners.
+
+This is intentionally deferred while transactional import execution is completed.
+
 ## Recently resolved
+
+- Review warning copy no longer says Import is disabled; Step 4 is live and unresolved items now tell the operator to resolve blockers before continuing.
+- Analyse duplicate warning triangle was still present because the dynamic warning text embedded its own icon; only the dedicated warning icon remains.
+- First-run administrator Cancel/Create buttons now use a fixed footer grid so both buttons align to the same baseline and height.
+- Market Floor same-day import opening adjustments now count as B/Fwd rather than physical daily OUT/IN.
+- Market Floor Cash/COD credits remain in the Cash area; the separate CREDIT block is Account-only.
+- Market Floor reverse side now uses two Account columns plus one Cash/COD column to keep the report to two physical pages.
+- Customer movement history/statements now label import adjustment rows as Opening adjustment (OUT/IN), rather than OUT (Taken)/IN (Returned).
+
+- Step 4 transactional execution is now enabled: confirmed customer creation, opening adjustments, cutover-day OUT/IN movements, completed ImportRun recording and atomic rollback are implemented.
+- Step 4 now revalidates the workbook SHA-256 immediately before writing and re-checks exact re-import protection inside the transaction.
+
+- Analyse warning showed two exclamation-triangle icons because both the dynamic text and warning layout supplied one; the text no longer embeds its own icon.
+- Container summary/action icons could crop against their image bounds; icon loading now preserves transparent inset space and the Map container action has extra width/padding.
+- Review-card secondary grey text was inconsistent and sometimes repeated the card subject awkwardly; all six cards now use explicit concise secondary metrics.
 
 - Review cards were still overcrowded at normal DPI; they now use one strong primary metric plus one short secondary label.
 - Review action buttons, especially Map container and the reconciliation viewer, could clip icon/text; widths, icon sizing, padding and button height are now explicit.

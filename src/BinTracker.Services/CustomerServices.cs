@@ -189,7 +189,13 @@ internal sealed class CustomerService(
             .Take(Math.Clamp(limit, 1, 1000))
             .Select(x => new CustomerMovementRow(
                 x.MovementDate,
-                x.MovementType == MovementType.In ? "IN (Returned)" : "OUT (Taken)",
+                x.Source == MovementSource.Adjustment
+                    ? (x.MovementType == MovementType.Out
+                        ? "Opening adjustment (OUT)"
+                        : "Opening adjustment (IN)")
+                    : (x.MovementType == MovementType.In
+                        ? "IN (Returned)"
+                        : "OUT (Taken)"),
                 x.ContainerType.Name,
                 x.Quantity,
                 x.ReferenceNumber,
@@ -207,7 +213,15 @@ internal sealed class CustomerService(
         var all = await db.BinMovements.AsNoTracking()
             .Where(x => x.CustomerId == customerId && x.MovementDate <= toDate)
             .OrderBy(x => x.MovementDate).ThenBy(x => x.Id)
-            .Select(x => new { x.ContainerTypeId, x.MovementDate, x.MovementType, x.Quantity, x.ReferenceNumber })
+            .Select(x => new
+            {
+                x.ContainerTypeId,
+                x.MovementDate,
+                x.MovementType,
+                x.Source,
+                x.Quantity,
+                x.ReferenceNumber
+            })
             .ToListAsync(cancellationToken);
 
         var sections = new List<CustomerStatementContainer>();
@@ -221,9 +235,17 @@ internal sealed class CustomerService(
             foreach (var movement in typed.Where(x => x.MovementDate >= fromDate))
             {
                 running += movement.MovementType == MovementType.Out ? movement.Quantity : -movement.Quantity;
+                var direction = movement.Source == MovementSource.Adjustment
+                    ? (movement.MovementType == MovementType.Out
+                        ? "Opening adjustment (OUT)"
+                        : "Opening adjustment (IN)")
+                    : (movement.MovementType == MovementType.Out
+                        ? "OUT (Taken)"
+                        : "IN (Returned)");
+
                 movements.Add(new CustomerStatementMovement(
                     movement.MovementDate,
-                    movement.MovementType == MovementType.Out ? "OUT (Taken)" : "IN (Returned)",
+                    direction,
                     movement.Quantity,
                     running,
                     movement.ReferenceNumber));

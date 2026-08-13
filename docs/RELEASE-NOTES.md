@@ -1,17 +1,19 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.18.9
+## v0.4.0-alpha.19.1
 
-### Review simplification
-- Simplified each Review metric card to one prominent value and one short secondary label.
-- Reduced metric-card icon size slightly while retaining the approved original mockup artwork.
-- Widened Confirm new, Confirm existing and Map container actions.
-- Fixed Map container icon/text clipping.
-- Replaced the overly long reconciliation action label with **Open reconciliation**.
-- Increased wizard width slightly for a more robust six-card layout.
+### Market Floor report corrections
+- Same-day import opening adjustments now contribute to B/Fwd and are excluded from physical daily OUT/IN.
+- Cash/COD credits remain in the Cash section.
+- Only Account-customer credits appear in the separate CREDIT section.
+- Reverse side now splits Account customers across two columns and puts Cash/COD in a third column, keeping the report to a front and back page.
+- Front-page font size adapts to row load for improved readability and page utilisation.
 
-### Build hygiene
-- Removed the three xUnit2031 warnings from reconciliation tests.
+### Customer statement / movement history
+- Adjustment-source movements now display as `Opening adjustment (OUT)` / `Opening adjustment (IN)`.
+- They are no longer described as `OUT (Taken)` / `IN (Returned)`.
 
-### Analyse warning alignment
-- Warning text now stays aligned beside the warning triangle instead of wrapping beneath it.
+### UI fixes
+- Review no longer says Import is disabled in this alpha.
+- Analyse warning now has exactly one triangle icon.
+- First-run Administrator footer buttons are aligned with fixed widths/heights.

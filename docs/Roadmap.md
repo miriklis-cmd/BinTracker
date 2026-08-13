@@ -76,7 +76,7 @@ Support multiple workbook adapters/profiles:
 - standard BinTracker import template;
 - configurable custom mapping for other businesses.
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Separate Analyse page
 - [x] Separate Map page
 - [x] Source / Validation / Report / Ignore worksheet classification
@@ -86,7 +86,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Container mapping
 - [ ] Transactional import execution
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Review page
 - [x] Existing customer-code matching
 - [x] New candidate detection
@@ -97,7 +97,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Container mapping
 - [ ] Transactional Import stage
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Conservative customer-code/name normalizer
 - [x] Explainable automatic match reasons
 - [x] `S & J` / `S&J` normalized matching
@@ -107,7 +107,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Full container mapping / unresolved-container handling
 - [ ] Transactional Import
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Developer database backup
 - [x] Stage/load an existing BinTracker test database safely on restart
 - [x] Start fresh test database with automatic pre-reset backup
@@ -117,7 +117,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Exact re-import blocking
 - [ ] Changed-workbook same-cutover difference workflow
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Authoritative Excel B/Fwd reconciliation planner
 - [x] Existing-balance vs Excel-target preview
 - [x] Preserve cutover-day OUT/IN in projected result
@@ -126,7 +126,7 @@ Support multiple workbook adapters/profiles:
 - [ ] ImportRun/source provenance
 - [ ] Transactional execution
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Fix BalanceService SQLite translation crash
 - [x] Add real SQLite balance-service regression test
 - [ ] Customer create/merge confirmation
@@ -134,7 +134,7 @@ Support multiple workbook adapters/profiles:
 - [ ] ImportRun/source provenance and re-import protection
 - [ ] Transactional Import execution
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Unprefixed legacy customer -> Blue Bin default
 - [x] Known explicit token resolution
 - [x] Unknown explicit token hard blocker
@@ -144,7 +144,7 @@ Support multiple workbook adapters/profiles:
 - [ ] ImportRun/source provenance
 - [ ] Transactional Import
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] UI workflow to map unknown legacy container tokens
 - [x] Map token to existing Container Type
 - [x] Open Container Type management and refresh choices
@@ -154,7 +154,7 @@ Support multiple workbook adapters/profiles:
 - [ ] ImportRun/source provenance
 - [ ] Transactional Import
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Editable proposed names for new customers
 - [x] Explicit Create / Skip decisions
 - [x] Selected / all bulk actions
@@ -166,7 +166,7 @@ Support multiple workbook adapters/profiles:
 - [ ] ImportRun/source provenance
 - [ ] Transactional Import
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Existing-customer match confirmation
 - [x] Existing-customer match override
 - [x] Existing-match decisions retained across wizard navigation
@@ -177,7 +177,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Exact re-import blocking
 - [ ] Transactional Step 4 Import
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] ImportRun/source provenance schema
 - [x] SHA-256 source workbook fingerprint
 - [x] Exact completed-workbook re-import detection
@@ -190,7 +190,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Review balance grid vertical layout fix
 - [x] Step 3 → Step 4 readiness gate fix
 - [x] Centralised Review readiness policy
@@ -200,7 +200,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Root-cause fix for collapsed Review tab region
 - [x] Customer Matches fills remaining Step 3 height
 - [x] Balance Reconciliation fills remaining Step 3 height
@@ -210,7 +210,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Practical Balance Reconciliation viewing area
 - [x] Full-size reconciliation viewer
 - [x] Cutover math regression coverage
@@ -221,7 +221,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Review summary metric-card redesign
 - [x] Review action-row redesign
 - [x] Persistent large reconciliation viewer action
@@ -234,7 +234,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Concise Balance Reconciliation headers
 - [x] Summary-card clipping fix
 - [x] Mockup icon set implemented as DPI-safe vectors
@@ -245,7 +245,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Approved Review raster icon assets
 - [x] Review action button clipping fix
 - [x] Resolve container before customer confirmation blocker
@@ -257,7 +257,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Approved original-mockup icon artwork used directly
 - [x] Bold primary / grey secondary metric typography
 - [x] Review button pending counts
@@ -269,7 +269,7 @@ Support multiple workbook adapters/profiles:
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
 
-### v0.4.0-alpha.18.9 progress
+### v0.4.0-alpha.19.1 progress
 - [x] Simplified Review metric cards
 - [x] Map container button/icon clipping fix
 - [x] Reconciliation action clipping fix
@@ -280,3 +280,42 @@ Support multiple workbook adapters/profiles:
 - [ ] Transactional daily OUT/IN movements
 - [ ] Commit completed ImportRun
 - [ ] Full rollback on failure
+
+### v0.4.0-alpha.19.1 progress
+- [x] Duplicate Analyse warning icon fix
+- [x] Container icon inset/cropping fix
+- [x] Map container button spacing fix
+- [x] Consistent Review secondary metrics
+- [ ] Transactional customer creation
+- [ ] Transactional opening adjustments
+- [ ] Transactional daily OUT/IN movements
+- [ ] Commit completed ImportRun
+- [ ] Full rollback on failure
+
+### v0.4.0-alpha.19.1 progress
+- [x] Transactional confirmed customer creation
+- [x] Transactional opening adjustments
+- [x] Transactional cutover-day OUT movements
+- [x] Transactional cutover-day IN movements
+- [x] Completed ImportRun written atomically
+- [x] Exact SHA re-import re-check inside transaction
+- [x] Workbook-change-after-preflight guard
+- [x] Import audit event
+- [x] Full transaction rollback on execution failure
+- [ ] Production-scale validation against full legacy workbook
+- [ ] Changed-workbook same-cutover replacement workflow
+- [ ] Import-run history/details UI
+- [ ] Explicit BinMovement.ImportRunId FK
+
+### v0.4.0-alpha.19.1 progress
+- [x] Market Floor opening-adjustment semantics
+- [x] Cash/COD credit placement
+- [x] Two-page Market Floor pagination
+- [x] Adaptive front-page readability sizing
+- [x] Statement adjustment labelling
+- [x] Stale Import-disabled Review wording removed
+- [x] Analyse duplicate warning icon removed
+- [x] First-run administrator button alignment
+- [ ] Revalidate generated Market Floor PDF against imported production-like data
+- [ ] Revalidate Zahos statement after adjustment labelling
+- [ ] Continue alpha.19 importer end-to-end verification

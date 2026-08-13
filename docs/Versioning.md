@@ -1,6 +1,6 @@
 # Versioning
 
-BinTracker uses semantic pre-release versions such as `0.4.0-alpha.18.9`.
+BinTracker uses semantic pre-release versions such as `0.4.0-alpha.18.10`.
 
 ## Single source of truth
 
@@ -9,7 +9,7 @@ The release version is defined in the repository root:
 `Directory.Build.props`
 
 ```xml
-<Version>0.4.0-alpha.18.9</Version>
+<Version>0.4.0-alpha.18.10</Version>
 ```
 
 The same value is used by:

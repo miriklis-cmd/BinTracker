@@ -93,35 +93,38 @@ public sealed class FirstRunAdminForm : Form
         AddControl(fields, error);
         scroll.Controls.Add(fields);
 
-        var actions = new FlowLayoutPanel
+        var actions = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             AutoSize = true,
-            FlowDirection = FlowDirection.RightToLeft,
-            WrapContents = false,
-            Padding = new Padding(0, 18, 0, 0)
+            ColumnCount = 3,
+            RowCount = 1,
+            Padding = new Padding(0, 18, 0, 0),
+            Margin = Padding.Empty
+        };
+        actions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        actions.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120F));
+        actions.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 210F));
+        actions.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
+
+        var cancel = new Button
+        {
+            Text = "Cancel",
+            Dock = DockStyle.Fill,
+            DialogResult = DialogResult.Cancel,
+            Margin = new Padding(0, 0, 10, 0)
         };
 
         var save = new Button
         {
             Text = "Create administrator",
-            AutoSize = true,
-            MinimumSize = new Size(190, 44),
-            Padding = new Padding(16, 0, 16, 0)
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty
         };
         save.Click += async (_, _) => await SaveAsync();
 
-        var cancel = new Button
-        {
-            Text = "Cancel",
-            AutoSize = true,
-            MinimumSize = new Size(110, 44),
-            DialogResult = DialogResult.Cancel,
-            Margin = new Padding(10, 0, 0, 0)
-        };
-
-        actions.Controls.Add(save);
-        actions.Controls.Add(cancel);
+        actions.Controls.Add(cancel, 1, 0);
+        actions.Controls.Add(save, 2, 0);
 
         root.Controls.Add(scroll, 0, 0);
         root.Controls.Add(actions, 0, 1);

@@ -375,3 +375,26 @@
 - Shortened reconciliation action to Open reconciliation.
 - Removed three xUnit2031 warnings.
 - Fixed Analyse warning hanging-indent layout.
+
+## v0.4.0-alpha.18.10
+- Removed duplicate Analyse warning icon.
+- Fixed container icon cropping in summary/action UI.
+- Standardised secondary grey Review-card metrics.
+
+## v0.4.0-alpha.19
+- Enabled real transactional Step 4 Excel import.
+- Added live database revalidation before execution.
+- Added confirmed new-customer creation.
+- Added opening adjustment and cutover OUT/IN persistence.
+- Added completed ImportRun/audit persistence.
+- Added workbook-change and exact-reimport execution guards.
+- Logged remaining importer icon/rounded-tile work as deferred UI polish.
+
+## v0.4.0-alpha.19.1
+- Corrected Market Floor handling of import opening adjustments.
+- Kept Cash/COD credits in Cash section; Account credits remain separate.
+- Restored Market Floor to front + back with three-column reverse layout.
+- Added adaptive front-page typography.
+- Differentiated opening adjustments in customer statement/history.
+- Removed stale Import-disabled copy and duplicate Analyse warning icon.
+- Fixed First Run Administrator button alignment.

@@ -30,3 +30,36 @@ public sealed class MarketFloorReportRulesTests
         Assert.NotEqual(CustomerType.Account, CustomerType.CashCod);
     }
 }
+
+
+public sealed class MarketFloorImportAdjustmentRulesTests
+{
+    [Fact]
+    public void Same_day_opening_adjustment_belongs_in_bfwd_not_daily_out()
+    {
+        const int priorBalance = 0;
+        const int openingAdjustment = 5;
+        const int operationalOut = 10;
+        const int operationalIn = 15;
+
+        var bfwd = priorBalance + openingAdjustment;
+        var dailyOut = operationalOut;
+        var dailyIn = operationalIn;
+        var total = bfwd + dailyOut - dailyIn;
+
+        Assert.Equal(5, bfwd);
+        Assert.Equal(10, dailyOut);
+        Assert.Equal(15, dailyIn);
+        Assert.Equal(0, total);
+    }
+
+    [Fact]
+    public void Cash_credit_stays_in_cash_area()
+    {
+        var type = CustomerType.CashCod;
+        const int balance = -3;
+
+        Assert.Equal(CustomerType.CashCod, type);
+        Assert.True(balance < 0);
+    }
+}

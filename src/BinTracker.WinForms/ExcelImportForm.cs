@@ -117,6 +117,7 @@ public sealed class ExcelImportForm : Form
         new(StringComparer.OrdinalIgnoreCase);
 
     private int currentStep = 1;
+    private string? step4ExpectedSha256;
 
     public ExcelImportForm(
         IExcelImportService service,
@@ -889,45 +890,37 @@ public sealed class ExcelImportForm : Form
         var existingUnconfirmedCount = ImportExistingCustomerDecisionPlanner.UnconfirmedCount(existingCustomerDecisions);
 
         reviewSourcePrimary.Text = $"{plan.SourceSheetCount:N0} sheets";
-        reviewSourceSecondary.Text = $"{plan.SnapshotRowCount:N0} rows";
+        reviewSourceSecondary.Text =
+            $"{plan.SnapshotRowCount:N0} balance rows";
 
-        reviewCustomersPrimary.Text = $"{plan.UniqueCustomerCount:N0}";
-        reviewCustomersSecondary.Text = "customers";
+        reviewCustomersPrimary.Text =
+            $"{plan.UniqueCustomerCount:N0} customers";
+        reviewCustomersSecondary.Text =
+            $"{plan.SnapshotTotalMismatchCount:N0} formula issues";
 
-        reviewExistingPrimary.Text = $"{existingConfirmedCount:N0} confirmed";
+        reviewExistingPrimary.Text =
+            $"{existingConfirmedCount:N0} confirmed";
         reviewExistingSecondary.Text =
-            existingUnconfirmedCount == 0
-                ? "all resolved"
-                : $"{existingUnconfirmedCount:N0} pending";
+            $"{existingUnconfirmedCount:N0} unconfirmed";
 
         reviewNewPrimary.Text =
             newUnconfirmedCount == 0
                 ? $"{newCreateCount:N0} created"
                 : $"{newUnconfirmedCount:N0} pending";
         reviewNewSecondary.Text =
-            newSkipCount == 0
-                ? "new customers"
-                : $"{newSkipCount:N0} skipped";
+            $"{newSkipCount:N0} skipped";
 
         reviewContainersPrimary.Text =
-            reconciliation.UnresolvedContainerCount == 0
-                ? "Mapped"
-                : $"{reconciliation.UnresolvedContainerCount:N0} to map";
+            $"{reconciliation.UnresolvedContainerCount:N0} to map";
         reviewContainersSecondary.Text =
-            containerTokenMappings.Count == 0
-                ? "containers"
-                : $"{containerTokenMappings.Count:N0} manual";
+            $"{containerTokenMappings.Count:N0} manual mappings";
 
         var reconciliationIssueCount =
             reconciliation.Rows.Count - reconciliation.ReadyCount;
         reviewReconciliationPrimary.Text =
-            reconciliationIssueCount == 0
-                ? $"{reconciliation.ReadyCount:N0} ready"
-                : $"{reconciliationIssueCount:N0} issues";
+            $"{reconciliation.ReadyCount:N0} ready";
         reviewReconciliationSecondary.Text =
-            reconciliationIssueCount == 0
-                ? "reconciliation"
-                : $"{reconciliation.ReadyCount:N0} ready";
+            $"{reconciliationIssueCount:N0} issues";
 
         var blockers = new List<string>();
 
@@ -968,9 +961,10 @@ public sealed class ExcelImportForm : Form
         nextButton.Enabled = ImportReviewReadiness.CanAdvanceToImport(blockers.Count, reconciliation);
 
         reviewWarning.Text = blockers.Count == 0
-            ? "No customer-code/type conflicts detected. Excel balances are treated as cutover targets, not amounts to add. " + "When every Review item is resolved, continue to Step 4 for import preflight and re-import checks."
+            ? "No customer-code/type conflicts detected. Excel balances are treated as cutover targets, not amounts to add. " +
+              "When every Review item is resolved, continue to Step 4 for import preflight and transactional import."
             : "⚠ Review required: " + string.Join("; ", blockers) +
-              ". Import remains disabled in this alpha.";
+              ". Resolve these items before continuing to Step 4.";
 
         var page = new TableLayoutPanel
         {
@@ -1229,7 +1223,7 @@ public sealed class ExcelImportForm : Form
         var mapContainers = ReviewActionButton(
             $"Map container ({containersPending:N0})",
             ReviewIconKind.Container,
-            245);
+            260);
         mapContainers.Click += async (_, _) => await MapContainerTokensAsync();
 
         actions.Controls.Add(confirmCustomers);
@@ -1256,16 +1250,16 @@ public sealed class ExcelImportForm : Form
         AutoSize = true,
         Font = new Font("Segoe UI Semibold", 10.5F, FontStyle.Bold),
         ForeColor = Color.FromArgb(20, 28, 40),
-        MaximumSize = new Size(185, 0),
+        MaximumSize = new Size(195, 0),
         Margin = Padding.Empty
     };
 
     private static Label ReviewMetricSecondary() => new()
     {
         AutoSize = true,
-        Font = new Font("Segoe UI", 9.5F),
+        Font = new Font("Segoe UI", 9F),
         ForeColor = Color.FromArgb(105, 110, 120),
-        MaximumSize = new Size(185, 0),
+        MaximumSize = new Size(195, 0),
         Margin = Padding.Empty
     };
 
@@ -1292,7 +1286,7 @@ public sealed class ExcelImportForm : Form
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48F));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 52F));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -1300,7 +1294,7 @@ public sealed class ExcelImportForm : Form
 
         var iconBox = new PictureBox
         {
-            Image = LoadReviewIcon(iconKind, new Size(38, 38)),
+            Image = LoadReviewIcon(iconKind, new Size(36, 36)),
             SizeMode = PictureBoxSizeMode.CenterImage,
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
@@ -1335,12 +1329,16 @@ public sealed class ExcelImportForm : Form
         int width)
     {
         var button = SecondaryButton(text, width);
-        button.Image = LoadReviewIcon(iconKind, new Size(16, 16));
+        button.Image = LoadReviewIcon(
+            iconKind,
+            iconKind == ReviewIconKind.Container
+                ? new Size(14, 14)
+                : new Size(16, 16));
         button.ImageAlign = ContentAlignment.MiddleLeft;
         button.TextAlign = ContentAlignment.MiddleCenter;
         button.UseVisualStyleBackColor = true;
         button.TextImageRelation = TextImageRelation.ImageBeforeText;
-        button.Padding = new Padding(12, 0, 12, 0);
+        button.Padding = new Padding(16, 0, 14, 0);
         button.AutoSize = false;
         button.Height = 44;
         return button;
@@ -1390,7 +1388,25 @@ public sealed class ExcelImportForm : Form
                 $"Embedded Review icon '{fileName}' could not be opened.");
         using var original = Image.FromStream(stream);
 
-        return new Bitmap(original, size);
+        // Preserve transparent breathing room around approved raster artwork.
+        // Stretching the source edge-to-edge can crop tall icons such as the bin.
+        var canvas = new Bitmap(size.Width, size.Height);
+        using var g = Graphics.FromImage(canvas);
+        g.Clear(Color.Transparent);
+        g.InterpolationMode =
+            System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+        g.PixelOffsetMode =
+            System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+
+        var inset = Math.Max(2, Math.Min(size.Width, size.Height) / 10);
+        var target = new Rectangle(
+            inset,
+            inset,
+            Math.Max(1, size.Width - (inset * 2)),
+            Math.Max(1, size.Height - (inset * 2)));
+
+        g.DrawImage(original, target);
+        return canvas;
     }
 
     private Control BuildReviewCustomerSection()
@@ -1700,7 +1716,7 @@ public sealed class ExcelImportForm : Form
 
                 parts.Add("The Map step will separate Source sheets from Validation/Report sheets.");
 
-                analyseWarningText.Text = "⚠ " + string.Join(" ", parts);
+                analyseWarningText.Text = string.Join(" ", parts);
             }
 
             nextButton.Enabled = true;
@@ -1780,9 +1796,11 @@ public sealed class ExcelImportForm : Form
         progress.ActiveStep = 4;
         progress.Invalidate();
 
+        step4ExpectedSha256 = preflight.Source.Sha256;
+
         backButton.Visible = true;
-        nextButton.Text = "Import";
-        nextButton.Enabled = false;
+        nextButton.Text = "Import now";
+        nextButton.Enabled = preflight.CanProceed;
 
         pageHost.Controls.Clear();
 
@@ -1857,8 +1875,9 @@ public sealed class ExcelImportForm : Form
         {
             AutoSize = true,
             Text =
-                "Step 4 now has source fingerprinting and exact re-import protection. " +
-                "The final transactional write is intentionally still disabled in this build while the execution transaction is completed.",
+                preflight.CanProceed
+                    ? "Ready for transactional import. BinTracker will re-check this fingerprint immediately before writing."
+                    : "Import is blocked because this exact workbook has already completed an import.",
             ForeColor = Color.DimGray,
             MaximumSize = new Size(1240, 0)
         }, 0, 5);
@@ -1871,8 +1890,11 @@ public sealed class ExcelImportForm : Form
         {
             AutoSize = true,
             Text =
-                "Next implementation pass: create confirmed customers, write opening adjustments and today's OUT/IN movements " +
-                "inside one SQLite transaction, record the ImportRun, and roll everything back if any line fails.",
+                preflight.CanProceed
+                    ? "Import now will create the confirmed new customers, reconcile each opening position to Excel B/Fwd, " +
+                      "then preserve today's OUT and IN movements. All database changes, including the ImportRun, are committed " +
+                      "together in one SQLite transaction. If any line fails, the entire import is rolled back."
+                    : "Go Back to Review or Cancel. Exact re-imports are blocked to prevent duplicate balances and movements.",
             MaximumSize = new Size(1240, 0),
             ForeColor = Color.FromArgb(45, 55, 70)
         });
@@ -1905,12 +1927,139 @@ public sealed class ExcelImportForm : Form
             return;
         }
 
-        MessageBox.Show(
+        if (currentStep == 4)
+        {
+            await ExecuteImportAsync();
+        }
+    }
+
+    private async Task ExecuteImportAsync()
+    {
+        if (analysis is null ||
+            string.IsNullOrWhiteSpace(step4ExpectedSha256))
+        {
+            MessageBox.Show(
+                this,
+                "Import preflight is no longer available. Return to Review and open Step 4 again.",
+                "Excel Import Wizard",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+            return;
+        }
+
+        var createCount =
+            ImportCustomerDecisionPlanner.CreateCount(
+                customerDecisions);
+
+        var answer = MessageBox.Show(
             this,
-            "Transactional import execution will be enabled in the next importer pass. No database data has been changed.",
-            "Excel Import Wizard",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information);
+            "BinTracker is ready to write this legacy workbook to the database.\n\n" +
+            $"Cutover date: {DateOnly.FromDateTime(DateTime.Today):dd/MM/yyyy}\n" +
+            $"New customers to create: {createCount:N0}\n\n" +
+            "Excel B/Fwd will become the authoritative opening position. " +
+            "The workbook's OUT and IN quantities will then be written as real movements.\n\n" +
+            "The entire operation is atomic: if any line fails, all import changes are rolled back.\n\n" +
+            "Proceed with Import now?",
+            "Confirm Excel Import",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning,
+            MessageBoxDefaultButton.Button2);
+
+        if (answer != DialogResult.Yes)
+            return;
+
+        try
+        {
+            UseWaitCursor = true;
+            nextButton.Enabled = false;
+            backButton.Enabled = false;
+            cancelButton.Enabled = false;
+
+            var result = await importExecutionService.ExecuteAsync(
+                new ImportExecutionRequest(
+                    analysis.FullPath,
+                    step4ExpectedSha256,
+                    analysis,
+                    CurrentMappings(),
+                    new Dictionary<string, int>(
+                        containerTokenMappings,
+                        StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, ImportCustomerDecision>(
+                        customerDecisions,
+                        StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, ImportExistingCustomerDecision>(
+                        existingCustomerDecisions,
+                        StringComparer.OrdinalIgnoreCase),
+                    DateOnly.FromDateTime(DateTime.Today)));
+
+            MessageBox.Show(
+                this,
+                $"Import completed successfully.\n\n" +
+                $"Import run: #{result.ImportRunId}\n" +
+                $"Customers created: {result.CreatedCustomers:N0}\n" +
+                $"Opening adjustments: {result.OpeningAdjustmentMovements:N0}\n" +
+                $"OUT movements: {result.OutMovements:N0}\n" +
+                $"IN movements: {result.InMovements:N0}\n" +
+                $"Total movements written: {result.MovementCount:N0}\n\n" +
+                "The source fingerprint has been recorded. An exact re-import of this workbook will now be blocked.",
+                "Excel Import Complete",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+
+            DialogResult = DialogResult.OK;
+            Close();
+        }
+        catch (IOException)
+        {
+            MessageBox.Show(
+                this,
+                "BinTracker could not read the workbook because it is open or locked. " +
+                "Close it in Excel, allow OneDrive to finish syncing, then try Import now again.\n\n" +
+                "No partial import was committed.",
+                "Workbook is in use",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            MessageBox.Show(
+                this,
+                ex.Message + "\n\nNo partial import was committed.",
+                "Import not allowed",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
+        catch (InvalidOperationException ex)
+        {
+            MessageBox.Show(
+                this,
+                ex.Message + "\n\nThe import transaction was not committed. Return to Review if a decision needs to be corrected.",
+                "Import stopped",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                this,
+                "The import failed and the transaction was rolled back.\n\n" +
+                ex.Message +
+                "\n\nNo partial import was committed.",
+                "Import failed",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+        finally
+        {
+            UseWaitCursor = false;
+
+            if (!IsDisposed)
+            {
+                backButton.Enabled = true;
+                cancelButton.Enabled = true;
+                nextButton.Enabled = true;
+            }
+        }
     }
 
     private void Back()
@@ -1948,6 +2097,7 @@ public sealed class ExcelImportForm : Form
         {
             filePath.Text = dialog.FileName;
             analysis = null;
+            step4ExpectedSha256 = null;
             mappingState.Clear();
         containerTokenMappings.Clear();
         customerDecisions.Clear();

@@ -3,6 +3,8 @@
 These are engineering improvements, not current user-facing defects.
 
 ## UI
+- Review card secondary text should be a concise secondary metric, not a repeated noun or status label. Keep primary and secondary meanings stable across states.
+- Approved raster icons must retain transparent inset space when scaled. Do not stretch icon artwork edge-to-edge into PictureBox/Button image bounds, especially tall container/bin artwork.
 - Review summary cards should contain one strong primary metric and one short secondary label; do not overload cards with multiple competing counts.
 - For approved visual assets, use the approved source artwork directly. Do not redraw or reinterpret icons after a mockup has been accepted. Metric cards should preserve the approved bold-primary / grey-secondary hierarchy.
 - Approved mockup icons are stored as embedded raster PNG assets. Do not recreate them with Unicode or runtime vector drawing; load the embedded assets and scale them for DPI.
@@ -18,6 +20,8 @@ These are engineering improvements, not current user-facing defects.
 - Consider centralising typography/spacing constants.
 
 ## Import
+- Transactional Excel execution must always rebuild Review/reconciliation from the live database immediately before writes; UI preview state alone is not authoritative.
+- Import-generated movements are currently linked to their ImportRun through `ReferenceNumber`/notes. Before v1.0, consider an explicit nullable `ImportRunId` FK on `BinMovements` for stronger relational provenance and easier replacement/rollback tooling.
 - Review blockers must not hide independently knowable preview data. Resolve container identity and calculate non-destructive cutover preview maths before applying customer confirmation status; only actual Import remains blocked.
 - Workbook lock/access failures are recoverable preflight conditions, not fatal exceptions. Keep Step 4 state unchanged until fingerprint preflight succeeds and never write anything before that point.
 - In `ShowReviewPageAsync`, compute reconciliation and the complete blocker list before assigning `nextButton.Enabled`; keep readiness assignment at the end of Review-state calculation.
@@ -44,6 +48,8 @@ These are engineering improvements, not current user-facing defects.
 - Add a standard BinTracker import template/profile for future customers.
 
 ## Reports
+- Market Floor report contains legacy workflow-specific placement rules: Cash/COD credits stay with Cash/COD, while Account credits use the separate CREDIT block. Keep this rule report-specific rather than changing core balance semantics.
+- Reports must classify movement semantics by `MovementSource` as well as `MovementType`. `Adjustment` movements change opening/book position and must not be presented as physical Taken/Returned activity.
 - Extract more reusable report layout primitives as the report catalogue grows.
 - Keep legacy report-layout inference separate from core report generation.
 

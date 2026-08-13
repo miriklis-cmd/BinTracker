@@ -814,3 +814,64 @@
 - [ ] Approved original mockup icon assets remain in use
 - [ ] Analyse warning wraps beside the triangle, not beneath it
 - [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.18.10 — warning/icon/secondary-text cleanup
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.18.10
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Analyse warning shows exactly one exclamation-triangle icon
+- [ ] Container summary icon is fully visible
+- [ ] Map container button icon is fully visible
+- [ ] Map container button label is fully visible
+- [ ] Source secondary reads balance rows
+- [ ] Customers secondary reads formula issues
+- [ ] Existing matches secondary reads unconfirmed count
+- [ ] New candidates secondary reads skipped count
+- [ ] Containers secondary reads manual mappings
+- [ ] Reconciliation secondary reads issues
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.19 — transactional import execution
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.19
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Use Developer -> Start Fresh Test Database before first real importer execution test
+- [ ] Complete Review decisions and mappings
+- [ ] Step 4 Import now button is enabled only when exact source was not previously completed
+- [ ] Import confirmation explains cutover date and atomic rollback
+- [ ] New confirmed customers are created once
+- [ ] Skipped new customers are not created
+- [ ] Confirmed existing matches use the selected BinTracker customer
+- [ ] Positive Opening adjustment produces Adjustment/OUT movement
+- [ ] Negative Opening adjustment produces Adjustment/IN movement
+- [ ] Excel OUT produces ExcelImport/OUT movement
+- [ ] Excel IN produces ExcelImport/IN movement
+- [ ] Final balances equal Excel target after import
+- [ ] ImportRun status is Completed
+- [ ] ImportRun CreatedCustomers and MovementCount are correct
+- [ ] Generated movement ReferenceNumber is IMPORT-<run id>
+- [ ] Exact same workbook is blocked on a second import
+- [ ] Modify workbook after Step 4 preflight: execution refuses and requests re-analysis
+- [ ] Force/observe an execution error: no partial customers/movements are retained
+- [ ] Audit trail contains EXCEL_IMPORT_COMPLETED
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+- [ ] Deferred UI note remains: container/action icon sizing and rounded Review tiles
+
+## v0.4.0-alpha.19.1 — report semantics and UI cleanup
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.19.1
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Analyse warning shows exactly one triangle
+- [ ] Review blocker message does not say Import is disabled in this alpha
+- [ ] First Run Administrator Cancel/Create buttons align on same baseline
+- [ ] Market Floor PDF is exactly 2 pages with current imported dataset
+- [ ] Front page uses larger/adaptive readable text without overflow
+- [ ] Cash/COD owing and credit customers appear together in Cash section
+- [ ] Account credits appear in separate CREDIT section
+- [ ] Same-day import Adjustment is included in B/Fwd
+- [ ] Same-day import Adjustment is excluded from daily OUT/IN
+- [ ] Zahos reverse row reads B/Fwd 5, OUT 10, IN 15, Total 0 for the imported example
+- [ ] Zahos statement labels the imported 5 as Opening adjustment (OUT)
+- [ ] Zahos statement labels physical 10 as OUT (Taken)
+- [ ] Zahos statement labels physical 15 as IN (Returned)
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed

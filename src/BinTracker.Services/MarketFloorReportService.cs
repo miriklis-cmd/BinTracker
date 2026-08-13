@@ -96,6 +96,7 @@ internal sealed class MarketFloorReportService(
                 x.ContainerTypeId,
                 x.MovementDate,
                 x.MovementType,
+                x.Source,
                 x.Quantity
             })
             .ToListAsync(cancellationToken);
@@ -112,11 +113,23 @@ internal sealed class MarketFloorReportService(
             {
                 var rows = regular.Where(x => x.CustomerId == customer.Id);
 
+                // Opening adjustments are bookkeeping/cutover position,
+                // not physical movements for the market-floor daily columns.
                 var bfwd = rows
-                    .Where(x => x.MovementDate < date)
-                    .Sum(x => x.MovementType == MovementType.Out ? x.Quantity : -x.Quantity);
+                    .Where(x =>
+                        x.MovementDate < date ||
+                        (x.MovementDate == date &&
+                         x.Source == MovementSource.Adjustment))
+                    .Sum(x =>
+                        x.MovementType == MovementType.Out
+                            ? x.Quantity
+                            : -x.Quantity);
 
-                var day = rows.Where(x => x.MovementDate == date).ToList();
+                var day = rows
+                    .Where(x =>
+                        x.MovementDate == date &&
+                        x.Source != MovementSource.Adjustment)
+                    .ToList();
 
                 var outs = day
                     .Where(x => x.MovementType == MovementType.Out)
@@ -153,15 +166,20 @@ internal sealed class MarketFloorReportService(
             .OrderBy(x => x.Buyer, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        // Cash/COD customers stay together in the Cash area whether they
+        // owe bins or are in credit. This mirrors the market-floor workflow.
         var cashOwing = front
-            .Where(x => x.CustomerType == CustomerType.CashCod && x.Total > 0)
+            .Where(x =>
+                x.CustomerType == CustomerType.CashCod &&
+                x.Total != 0)
             .OrderBy(x => x.Buyer, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        // As in the existing Excel floor sheet, all credits are together under
-        // the cash column, irrespective of whether the buyer is Account or Cash.
+        // Only Account-customer credits belong in the separate CREDIT block.
         var credits = front
-            .Where(x => x.Total < 0)
+            .Where(x =>
+                x.CustomerType == CustomerType.Account &&
+                x.Total < 0)
             .OrderBy(x => x.Buyer, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -207,24 +225,27 @@ internal sealed class MarketFloorReportService(
 
         Document.Create(document =>
         {
-            // PAGE 1: existing "Print This" concept.
+            // PAGE 1: front market-floor position sheet.
             document.Page(page =>
             {
+                var frontFontSize = FrontPageFontSize(data);
+
                 page.Size(PageSizes.A4);
                 page.Margin(12);
-                page.DefaultTextStyle(x => x.FontFamily("Arial").FontSize(6.8f));
+                page.DefaultTextStyle(x =>
+                    x.FontFamily("Arial").FontSize(frontFontSize));
 
                 page.Header().Column(header =>
                 {
                     header.Item().Text(business.ReportHeader)
-                        .FontSize(8).SemiBold();
+                        .FontSize(frontFontSize + 1.2f).SemiBold();
                     header.Item().Row(row =>
                     {
                     row.RelativeItem().Text("MARKET FLOOR BIN POSITION")
-                        .FontSize(11).SemiBold();
+                        .FontSize(frontFontSize + 4.2f).SemiBold();
                     row.ConstantItem(180).AlignRight()
                         .Text(data.Date.ToString("dddd dd/MM/yyyy"))
-                        .FontSize(7.5f);
+                        .FontSize(frontFontSize + 0.5f);
                     });
                 });
 
@@ -271,7 +292,7 @@ internal sealed class MarketFloorReportService(
             {
                 page.Size(PageSizes.A4);
                 page.Margin(12);
-                page.DefaultTextStyle(x => x.FontFamily("Arial").FontSize(6.6f));
+                page.DefaultTextStyle(x => x.FontFamily("Arial").FontSize(7.2f));
 
                 page.Header().Column(header =>
                 {
@@ -289,10 +310,21 @@ internal sealed class MarketFloorReportService(
 
                 page.Content().PaddingTop(6).Row(row =>
                 {
-                    row.RelativeItem().PaddingRight(3).Element(c =>
-                        ReverseTable(c, "ACCOUNT CUSTOMERS", data.AccountDaily));
+                    var accountSplit =
+                        (int)Math.Ceiling(data.AccountDaily.Count / 2d);
 
-                    row.RelativeItem().PaddingLeft(3).Element(c =>
+                    var accountLeft =
+                        data.AccountDaily.Take(accountSplit).ToList();
+                    var accountRight =
+                        data.AccountDaily.Skip(accountSplit).ToList();
+
+                    row.RelativeItem().PaddingRight(2).Element(c =>
+                        ReverseTable(c, "ACCOUNT CUSTOMERS", accountLeft));
+
+                    row.RelativeItem().PaddingHorizontal(1).Element(c =>
+                        ReverseTable(c, "ACCOUNT CUSTOMERS", accountRight));
+
+                    row.RelativeItem().PaddingLeft(2).Element(c =>
                         ReverseTable(c, "CASH CUSTOMERS", data.CashDaily));
                 });
 
@@ -344,13 +376,13 @@ internal sealed class MarketFloorReportService(
                     columns.RelativeColumn(1);
                 });
 
-                CompactHeader(table, "Buyer");
-                CompactHeader(table, "Total");
+                FrontHeader(table, "Buyer");
+                FrontHeader(table, "Total");
 
                 foreach (var item in rows)
                 {
-                    CompactCell(table, item.Buyer);
-                    CompactCell(table, item.Total.ToString());
+                    FrontCell(table, item.Buyer);
+                    FrontCell(table, FormatTotal(item.Total));
                 }
             });
         });
@@ -370,8 +402,8 @@ internal sealed class MarketFloorReportService(
 
             foreach (var item in rows)
             {
-                CompactCell(table, item.Buyer);
-                CompactCell(table, $"{Math.Abs(item.Total)} CREDIT");
+                FrontCell(table, item.Buyer);
+                FrontCell(table, $"{Math.Abs(item.Total)} CREDIT");
             }
         });
     }
@@ -398,17 +430,61 @@ internal sealed class MarketFloorReportService(
 
                 foreach (var item in rows)
                 {
-                    CompactCell(table, item.Buyer);
+                    FrontCell(table, item.Buyer);
 
                     var text = item.Balance > 0
                         ? $"{item.Balance} {ShortContainerName(item.Container)}"
                         : $"{Math.Abs(item.Balance)} {ShortContainerName(item.Container)} CREDIT";
 
-                    CompactCell(table, text);
+                    FrontCell(table, text);
                 }
             });
         });
     }
+
+    private static float FrontPageFontSize(
+        MarketFloorReportData data)
+    {
+        var accountColumns =
+            (int)Math.Ceiling(data.AccountOwing.Count / 2d);
+
+        var rightColumnLoad =
+            data.CashOwing.Count +
+            data.Credits.Count +
+            data.SpecialContainers.Count +
+            8; // section headings / spacing allowance
+
+        var maxRows = Math.Max(accountColumns, rightColumnLoad);
+
+        return maxRows switch
+        {
+            <= 34 => 9.4f,
+            <= 42 => 8.8f,
+            <= 50 => 8.1f,
+            _ => 7.3f
+        };
+    }
+
+    private static void FrontHeader(
+        TableDescriptor table,
+        string text) =>
+        table.Cell()
+            .Background(Colors.Grey.Lighten3)
+            .BorderBottom(0.8f)
+            .PaddingVertical(2.1f)
+            .PaddingHorizontal(2)
+            .Text(text)
+            .SemiBold();
+
+    private static void FrontCell(
+        TableDescriptor table,
+        string text) =>
+        table.Cell()
+            .BorderBottom(0.45f)
+            .BorderColor(Colors.Grey.Lighten1)
+            .PaddingVertical(1.8f)
+            .PaddingHorizontal(2)
+            .Text(text);
 
     private static void ReverseTable(
         IContainer container,
