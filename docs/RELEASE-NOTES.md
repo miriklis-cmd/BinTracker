@@ -1,16 +1,17 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.18.6
+## v0.4.0-alpha.18.9
 
-### Review polish
-- Simplified Balance Reconciliation headers back to concise labels because the full cutover formula is already explained directly above the grid.
-- Increased the Review metric-card ribbon height and icon/text spacing to prevent clipping.
-- Replaced the alpha.18.5 Unicode placeholder icons with custom-drawn vector icons matching the approved mockup semantics:
-  - Source — database stack
-  - Customers — people
-  - Existing matches — check-circle
-  - New candidates — person-plus
-  - Containers — container/bin
-  - Reconciliation — scales
-  - View larger — expand
-- Review action buttons now use the same icon family as their corresponding metric cards.
+### Review simplification
+- Simplified each Review metric card to one prominent value and one short secondary label.
+- Reduced metric-card icon size slightly while retaining the approved original mockup artwork.
+- Widened Confirm new, Confirm existing and Map container actions.
+- Fixed Map container icon/text clipping.
+- Replaced the overly long reconciliation action label with **Open reconciliation**.
+- Increased wizard width slightly for a more robust six-card layout.
+
+### Build hygiene
+- Removed the three xUnit2031 warnings from reconciliation tests.
+
+### Analyse warning alignment
+- Warning text now stays aligned beside the warning triangle instead of wrapping beneath it.

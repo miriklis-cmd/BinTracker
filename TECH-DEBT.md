@@ -3,6 +3,9 @@
 These are engineering improvements, not current user-facing defects.
 
 ## UI
+- Review summary cards should contain one strong primary metric and one short secondary label; do not overload cards with multiple competing counts.
+- For approved visual assets, use the approved source artwork directly. Do not redraw or reinterpret icons after a mockup has been accepted. Metric cards should preserve the approved bold-primary / grey-secondary hierarchy.
+- Approved mockup icons are stored as embedded raster PNG assets. Do not recreate them with Unicode or runtime vector drawing; load the embedded assets and scale them for DPI.
 - Do not use Unicode glyphs as substitutes for designed UI icons. Use BinTracker-owned vector drawing helpers so icon appearance is DPI-safe, predictable and independent of installed fonts.
 - Keep high-density wizard summaries scannable with compact metric cards rather than multi-line diagnostic prose; reserve vertical space for the primary review grid.
 - Do not use the generic AutoSize `Card()` behaviour for fill/remaining-space regions such as Step 3 Review tabs. Explicitly set `AutoSize=false` before `Dock=Fill` for those containers.
@@ -15,6 +18,7 @@ These are engineering improvements, not current user-facing defects.
 - Consider centralising typography/spacing constants.
 
 ## Import
+- Review blockers must not hide independently knowable preview data. Resolve container identity and calculate non-destructive cutover preview maths before applying customer confirmation status; only actual Import remains blocked.
 - Workbook lock/access failures are recoverable preflight conditions, not fatal exceptions. Keep Step 4 state unchanged until fingerprint preflight succeeds and never write anything before that point.
 - In `ShowReviewPageAsync`, compute reconciliation and the complete blocker list before assigning `nextButton.Enabled`; keep readiness assignment at the end of Review-state calculation.
 - Keep Step 3 readiness in `ImportReviewReadiness` rather than duplicating button-enable logic in WinForms; all blockers and reconciliation state must flow through one policy.

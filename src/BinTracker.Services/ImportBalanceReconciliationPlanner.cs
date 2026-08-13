@@ -115,6 +115,9 @@ public static class ImportBalanceReconciliationPlanner
                 continue;
             }
 
+            ImportBalanceReconciliationStatus customerStatus =
+                ImportBalanceReconciliationStatus.Ready;
+
             if (customer.Status == ImportCustomerReviewStatus.New)
             {
                 ImportCustomerDecision? decision = null;
@@ -126,21 +129,15 @@ public static class ImportBalanceReconciliationPlanner
                         out decision);
                 }
 
+                if (decision?.Action == ImportCustomerDecisionAction.Skip)
+                    continue;
+
                 if (decision is null ||
                     decision.Action == ImportCustomerDecisionAction.Unconfirmed)
                 {
-                    rows.Add(CreateBlocked(
-                        snapshot,
-                        ImportBalanceReconciliationStatus.NewCustomerPendingConfirmation,
-                        string.Empty,
-                        null,
-                        0,
-                        customer));
-                    continue;
+                    customerStatus =
+                        ImportBalanceReconciliationStatus.NewCustomerPendingConfirmation;
                 }
-
-                if (decision.Action == ImportCustomerDecisionAction.Skip)
-                    continue;
             }
 
             if (customer.Status == ImportCustomerReviewStatus.Existing &&
@@ -150,27 +147,30 @@ public static class ImportBalanceReconciliationPlanner
                     customer.CustomerCode,
                     out var existingDecision);
 
-                if (existingDecision is null ||
-                    existingDecision.Action == ImportExistingCustomerDecisionAction.Unconfirmed ||
-                    !existingDecision.CustomerId.HasValue)
+                if (existingDecision is not null &&
+                    existingDecision.Action !=
+                        ImportExistingCustomerDecisionAction.Unconfirmed &&
+                    existingDecision.CustomerId.HasValue)
                 {
-                    rows.Add(CreateBlocked(
-                        snapshot,
-                        ImportBalanceReconciliationStatus.ExistingCustomerPendingConfirmation,
-                        string.Empty,
-                        null,
-                        0,
-                        customer));
-                    continue;
+                    customer = customer with
+                    {
+                        ExistingCustomerId = existingDecision.CustomerId,
+                        ExistingCustomerName = existingDecision.CustomerName
+                    };
                 }
-
-                customer = customer with
+                else
                 {
-                    ExistingCustomerId = existingDecision.CustomerId,
-                    ExistingCustomerName = existingDecision.CustomerName
-                };
+                    // Keep the automatically proposed existing match for
+                    // preview-only current-balance maths, but still block
+                    // Import until the operator explicitly confirms/overrides it.
+                    customerStatus =
+                        ImportBalanceReconciliationStatus.ExistingCustomerPendingConfirmation;
+                }
             }
 
+            // Container identity is independent of customer confirmation.
+            // Resolve it before applying customer-decision blockers so Review
+            // can still show e.g. CLAMMS Blue / Bulk / Yellow clearly.
             var resolution = LegacyContainerHintResolver.Resolve(
                 snapshot.ContainerHint,
                 containerTypes,
@@ -211,31 +211,41 @@ public static class ImportBalanceReconciliationPlanner
                 continue;
             }
 
-            if (!snapshot.TotalMatches)
-            {
-                rows.Add(CreateBlocked(
-                    snapshot,
-                    ImportBalanceReconciliationStatus.ExcelTotalMismatch,
-                    resolution.DisplayName,
-                    resolution.ContainerTypeId,
-                    currentBalance,
-                    customer,
-                    resolution.Reason));
-                continue;
-            }
-
             var outQuantity = snapshot.Out ?? 0;
             var inQuantity = snapshot.In ?? 0;
-            var openingAdjustment = snapshot.BroughtForward.Value - currentBalance;
+            var openingAdjustment =
+                snapshot.BroughtForward.Value - currentBalance;
             var projected =
                 currentBalance +
                 openingAdjustment +
                 outQuantity -
                 inQuantity;
+            var target =
+                snapshot.ExcelTotal ??
+                snapshot.CalculatedTotal;
 
-            var target = snapshot.ExcelTotal ?? snapshot.CalculatedTotal;
-
-            var status = ImportBalanceReconciliationStatus.Ready;
+            if (!snapshot.TotalMatches)
+            {
+                rows.Add(new ImportBalanceReconciliationRow(
+                    customer.CustomerCode,
+                    customer.ExistingCustomerId,
+                    customer.ExistingCustomerName,
+                    resolution.DisplayName,
+                    snapshot.ContainerHint?.Trim() ?? string.Empty,
+                    resolution.ContainerTypeId,
+                    currentBalance,
+                    snapshot.BroughtForward,
+                    outQuantity,
+                    inQuantity,
+                    target,
+                    openingAdjustment,
+                    projected,
+                    ImportBalanceReconciliationStatus.ExcelTotalMismatch,
+                    resolution.Reason,
+                    snapshot.Worksheet,
+                    snapshot.SourceRow));
+                continue;
+            }
 
             rows.Add(new ImportBalanceReconciliationRow(
                 customer.CustomerCode,
@@ -251,7 +261,7 @@ public static class ImportBalanceReconciliationPlanner
                 target,
                 openingAdjustment,
                 projected,
-                status,
+                customerStatus,
                 resolution.Reason,
                 snapshot.Worksheet,
                 snapshot.SourceRow));

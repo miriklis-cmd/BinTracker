@@ -228,7 +228,9 @@ public sealed class ImportBalanceReconciliationPlannerTests
 
         var row = Assert.Single(result.Rows);
 
-        Assert.Null(row.OpeningAdjustment);
+        Assert.Equal(10, row.OpeningAdjustment);
+        Assert.Equal(11, row.ProjectedBalance);
+        Assert.Equal("Blue Bin", row.Container);
         Assert.Equal(
             ImportBalanceReconciliationStatus.NewCustomerPendingConfirmation,
             row.Status);
@@ -253,9 +255,65 @@ public sealed class ImportBalanceReconciliationPlannerTests
                 StringComparer.OrdinalIgnoreCase));
 
         var row = Assert.Single(result.Rows);
+        Assert.Equal("Blue Bin", row.Container);
+        Assert.Equal(5, row.OpeningAdjustment);
+        Assert.Equal(6, row.ProjectedBalance);
         Assert.Equal(
             ImportBalanceReconciliationStatus.ExistingCustomerPendingConfirmation,
             row.Status);
+    }
+
+    [Fact]
+    public void Pending_clamms_rows_still_show_blue_bulk_yellow_and_preview_math()
+    {
+        var analysis = Analysis(
+            new ImportSnapshotCandidate(
+                "Update Account", "Clamms", CustomerType.Account, null,
+                Out: 0, In: 0, BroughtForward: 5, ExcelTotal: 5, SourceRow: "50"),
+            new ImportSnapshotCandidate(
+                "Update Account", "Clamms", CustomerType.Account, "Bulk",
+                Out: 2, In: 1, BroughtForward: 20, ExcelTotal: 21, SourceRow: "51"),
+            new ImportSnapshotCandidate(
+                "Update Account", "Clamms", CustomerType.Account, "Y",
+                Out: 1, In: 3, BroughtForward: 8, ExcelTotal: 6, SourceRow: "52"));
+
+        var result = ImportBalanceReconciliationPlanner.Build(
+            analysis,
+            SourceMapping,
+            CustomerPlan(7, "Clamms", ImportCustomerReviewStatus.Existing),
+            Containers,
+            [
+                new BalanceRow(7, "Clamms Seafood", 1, "Blue Bin", 2),
+                new BalanceRow(7, "Clamms Seafood", 4, "Bulk Bin", 11),
+                new BalanceRow(7, "Clamms Seafood", 3, "Yellow Bin", 4)
+            ],
+            null,
+            null,
+            new Dictionary<string, ImportExistingCustomerDecision>(
+                StringComparer.OrdinalIgnoreCase));
+
+        Assert.Equal(3, result.Rows.Count);
+
+        var blue = Assert.Single(result.Rows, x => x.Container == "Blue Bin");
+        Assert.Equal(3, blue.OpeningAdjustment);
+        Assert.Equal(5, blue.ProjectedBalance);
+        Assert.Contains("defaulted to standard Blue Bin", blue.ContainerReason);
+
+        var bulk = Assert.Single(result.Rows, x => x.Container == "Bulk Bin");
+        Assert.Equal(9, bulk.OpeningAdjustment);
+        Assert.Equal(21, bulk.ProjectedBalance);
+        Assert.Equal("Bulk", bulk.ContainerToken);
+
+        var yellow = Assert.Single(result.Rows, x => x.Container == "Yellow Bin");
+        Assert.Equal(4, yellow.OpeningAdjustment);
+        Assert.Equal(6, yellow.ProjectedBalance);
+        Assert.Equal("Y", yellow.ContainerToken);
+
+        Assert.All(
+            result.Rows,
+            row => Assert.Equal(
+                ImportBalanceReconciliationStatus.ExistingCustomerPendingConfirmation,
+                row.Status));
     }
 
     [Fact]

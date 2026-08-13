@@ -357,3 +357,21 @@
 - Simplified reconciliation column headers.
 - Fixed metric-card clipping.
 - Replaced Unicode Review icons with custom-drawn mockup-matching vector icons.
+
+## v0.4.0-alpha.18.7
+- Replaced Review runtime vectors with embedded raster PNG icons matching the approved mockup style.
+- Fixed clipped Review action buttons.
+- Fixed reconciliation ordering so pending CLAMMS Blue/Bulk/Yellow rows retain container identity and cutover preview maths.
+
+## v0.4.0-alpha.18.8
+- Replaced recreated Review icons with artwork extracted from the approved original mockup.
+- Matched bold-primary / grey-secondary metric-card typography.
+- Added counts to Review actions and widened the large reconciliation action.
+- Increased Review wizard width.
+
+## v0.4.0-alpha.18.9
+- Simplified Review metric cards.
+- Fixed Review action-button/icon clipping.
+- Shortened reconciliation action to Open reconciliation.
+- Removed three xUnit2031 warnings.
+- Fixed Analyse warning hanging-indent layout.

@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.18.6**
+Current release: **v0.4.0-alpha.18.9**
 
 This file tracks current defects, incomplete production-critical behaviour, and limitations that a tester/operator needs to know about. Planned enhancements belong in `docs/Roadmap.md`; engineering cleanup belongs in `TECH-DEBT.md`.
 
@@ -107,6 +107,19 @@ Developer-only SQLite backup/load/fresh-database tools now exist for import test
 The controls work correctly, but the current custom-drawn artwork was accepted as functional rather than final visual polish.
 
 ## Recently resolved
+
+- Review cards were still overcrowded at normal DPI; they now use one strong primary metric plus one short secondary label.
+- Review action buttons, especially Map container and the reconciliation viewer, could clip icon/text; widths, icon sizing, padding and button height are now explicit.
+- Three xUnit2031 warnings in reconciliation tests were removed by using Assert.Single predicate overloads.
+- Analyse warning layout now keeps warning text aligned beside the warning icon instead of allowing wrapped text to begin beneath the triangle.
+
+- Review summary now uses the actual icon artwork extracted from the approved original mockup rather than recreated approximations.
+- Review cards now match the mockup information hierarchy: primary values are bold/dark and secondary values are smaller grey text.
+- Review action buttons now include pending counts and the full `View balance reconciliation larger...` label, with wider fixed sizing so text cannot clip.
+
+- Review icons are now embedded raster PNG assets matching the approved mockup style; the runtime vector icon renderer has been removed.
+- Review action buttons were too narrow for icon + label at normal DPI; widths/heights/padding are now explicit.
+- Reconciliation applied customer-confirmation blocking before container resolution and cutover maths, causing pending rows (including CLAMMS Blue/Bulk/Yellow) to show blank containers and em-dashes for opening adjustment/projected. Container resolution and preview maths now run before the confirmation blocker is applied.
 
 - Balance Reconciliation headers repeated the formula already shown above the grid, making headers excessively tall; headers are now concise again.
 - Step 3 metric cards could clip at normal DPI because the summary ribbon was too short; the ribbon is taller and has more internal icon/text space.

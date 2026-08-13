@@ -764,3 +764,53 @@
 - [ ] Balance headers are concise: Customer, Container, Current, B/Fwd, OUT, IN, Excel target, Opening adjustment, Projected, Status, Container rule
 - [ ] Full cutover formula remains visible above the reconciliation grid
 - [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.18.7 — raster icons / reconciliation preview fix
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.18.7
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Review summary icons match approved mockup style and are raster PNG assets
+- [ ] Confirm new button icon and full text are visible
+- [ ] Confirm existing button icon and full text are visible
+- [ ] Map container button icon and full text are visible
+- [ ] View reconciliation larger icon and full text are visible
+- [ ] Before customer confirmation, CLAMMS has separate Blue Bin / Bulk Bin / Yellow Bin reconciliation rows
+- [ ] Blue CLAMMS row says no legacy token -> standard Blue Bin
+- [ ] Bulk CLAMMS row shows legacy token Bulk -> Bulk Bin
+- [ ] Yellow CLAMMS row shows legacy token Y -> Yellow Bin
+- [ ] Pending confirmation rows still show Opening adjustment
+- [ ] Pending confirmation rows still show Projected
+- [ ] Pending confirmation status still blocks Step 4
+- [ ] Confirming customer changes status to Ready without changing the preview maths
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.18.8 — approved mockup fidelity
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.18.8
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Six Review icons visually match the ORIGINAL MOCKUP comparison image
+- [ ] Icons are the extracted approved raster assets, not runtime vectors or Unicode
+- [ ] Primary metric value is bold/dark
+- [ ] Secondary metric value is smaller grey text
+- [ ] Confirm new button shows count and full label
+- [ ] Confirm existing button shows count and full label
+- [ ] Map container button shows count and full label
+- [ ] View balance reconciliation larger... shows the entire label
+- [ ] Buttons are not clipped at 100% DPI
+- [ ] Buttons are not clipped at 125% DPI
+- [ ] Six cards fit without clipping at the wizard minimum width
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.18.9 — Review simplification/button cleanup
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.18.9
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] New card title/value do not wrap or clip at 100% DPI
+- [ ] Container card icon and values are fully visible
+- [ ] Confirm new button icon and text are fully visible
+- [ ] Confirm existing button icon and text are fully visible
+- [ ] Map container button icon and text are fully visible
+- [ ] Open reconciliation button icon and text are fully visible
+- [ ] Approved original mockup icon assets remain in use
+- [ ] Analyse warning wraps beside the triangle, not beneath it
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed

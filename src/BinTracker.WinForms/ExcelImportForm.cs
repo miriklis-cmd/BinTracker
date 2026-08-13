@@ -84,12 +84,18 @@ public sealed class ExcelImportForm : Form
         MaximumSize = new Size(1260, 0)
     };
 
-    private readonly Label reviewSourceMetric = ReviewMetricValue();
-    private readonly Label reviewCustomersMetric = ReviewMetricValue();
-    private readonly Label reviewExistingMetric = ReviewMetricValue();
-    private readonly Label reviewNewMetric = ReviewMetricValue();
-    private readonly Label reviewContainersMetric = ReviewMetricValue();
-    private readonly Label reviewReconciliationMetric = ReviewMetricValue();
+    private readonly Label reviewSourcePrimary = ReviewMetricPrimary();
+    private readonly Label reviewSourceSecondary = ReviewMetricSecondary();
+    private readonly Label reviewCustomersPrimary = ReviewMetricPrimary();
+    private readonly Label reviewCustomersSecondary = ReviewMetricSecondary();
+    private readonly Label reviewExistingPrimary = ReviewMetricPrimary();
+    private readonly Label reviewExistingSecondary = ReviewMetricSecondary();
+    private readonly Label reviewNewPrimary = ReviewMetricPrimary();
+    private readonly Label reviewNewSecondary = ReviewMetricSecondary();
+    private readonly Label reviewContainersPrimary = ReviewMetricPrimary();
+    private readonly Label reviewContainersSecondary = ReviewMetricSecondary();
+    private readonly Label reviewReconciliationPrimary = ReviewMetricPrimary();
+    private readonly Label reviewReconciliationSecondary = ReviewMetricSecondary();
 
     private readonly Label mappingSummary = new()
     {
@@ -128,8 +134,8 @@ public sealed class ExcelImportForm : Form
         Text = "Excel Import Wizard";
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(1380, 900);
-        MinimumSize = new Size(1260, 820);
+        ClientSize = new Size(1540, 930);
+        MinimumSize = new Size(1420, 850);
         BackColor = Color.FromArgb(245, 247, 250);
         Font = new Font("Segoe UI", 10F);
         FormBorderStyle = FormBorderStyle.Sizable;
@@ -354,7 +360,32 @@ public sealed class ExcelImportForm : Form
         layout.Controls.Add(buttons, 0, 3);
 
         analyseWarningPanel.Controls.Clear();
-        analyseWarningPanel.Controls.Add(analyseWarningText);
+
+        var analyseWarningLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 2,
+            RowCount = 1,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+        analyseWarningLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        analyseWarningLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+        analyseWarningLayout.Controls.Add(new Label
+        {
+            Text = "⚠",
+            AutoSize = true,
+            ForeColor = Color.FromArgb(150, 95, 0),
+            Margin = new Padding(0, 0, 6, 0)
+        }, 0, 0);
+
+        analyseWarningText.Margin = Padding.Empty;
+        analyseWarningText.MaximumSize = new Size(1120, 0);
+        analyseWarningLayout.Controls.Add(analyseWarningText, 1, 0);
+
+        analyseWarningPanel.Controls.Add(analyseWarningLayout);
         layout.Controls.Add(analyseWarningPanel, 0, 4);
 
         // The enabled Next button is the continuation cue. Keeping this
@@ -857,19 +888,46 @@ public sealed class ExcelImportForm : Form
         var existingConfirmedCount = ImportExistingCustomerDecisionPlanner.ConfirmedCount(existingCustomerDecisions);
         var existingUnconfirmedCount = ImportExistingCustomerDecisionPlanner.UnconfirmedCount(existingCustomerDecisions);
 
-        reviewSourceMetric.Text =
-            $"{plan.SourceSheetCount:N0} sheets\n{plan.SnapshotRowCount:N0} balance rows";
-        reviewCustomersMetric.Text =
-            $"{plan.UniqueCustomerCount:N0} unique\n{plan.SnapshotTotalMismatchCount:N0} formula issues";
-        reviewExistingMetric.Text =
-            $"{existingConfirmedCount:N0} confirmed\n{existingUnconfirmedCount:N0} unconfirmed";
-        reviewNewMetric.Text =
-            $"{newCreateCount:N0} create\n{newSkipCount:N0} skip · {newUnconfirmedCount:N0} unconfirmed";
-        reviewContainersMetric.Text =
-            $"{reconciliation.UnresolvedContainerCount:N0} to map\n{containerTokenMappings.Count:N0} manual mappings";
-        reviewReconciliationMetric.Text =
-            $"{reconciliation.ReadyCount:N0} ready\n" +
-            $"{reconciliation.Rows.Count - reconciliation.ReadyCount:N0} issues";
+        reviewSourcePrimary.Text = $"{plan.SourceSheetCount:N0} sheets";
+        reviewSourceSecondary.Text = $"{plan.SnapshotRowCount:N0} rows";
+
+        reviewCustomersPrimary.Text = $"{plan.UniqueCustomerCount:N0}";
+        reviewCustomersSecondary.Text = "customers";
+
+        reviewExistingPrimary.Text = $"{existingConfirmedCount:N0} confirmed";
+        reviewExistingSecondary.Text =
+            existingUnconfirmedCount == 0
+                ? "all resolved"
+                : $"{existingUnconfirmedCount:N0} pending";
+
+        reviewNewPrimary.Text =
+            newUnconfirmedCount == 0
+                ? $"{newCreateCount:N0} created"
+                : $"{newUnconfirmedCount:N0} pending";
+        reviewNewSecondary.Text =
+            newSkipCount == 0
+                ? "new customers"
+                : $"{newSkipCount:N0} skipped";
+
+        reviewContainersPrimary.Text =
+            reconciliation.UnresolvedContainerCount == 0
+                ? "Mapped"
+                : $"{reconciliation.UnresolvedContainerCount:N0} to map";
+        reviewContainersSecondary.Text =
+            containerTokenMappings.Count == 0
+                ? "containers"
+                : $"{containerTokenMappings.Count:N0} manual";
+
+        var reconciliationIssueCount =
+            reconciliation.Rows.Count - reconciliation.ReadyCount;
+        reviewReconciliationPrimary.Text =
+            reconciliationIssueCount == 0
+                ? $"{reconciliation.ReadyCount:N0} ready"
+                : $"{reconciliationIssueCount:N0} issues";
+        reviewReconciliationSecondary.Text =
+            reconciliationIssueCount == 0
+                ? "reconciliation"
+                : $"{reconciliation.ReadyCount:N0} ready";
 
         var blockers = new List<string>();
 
@@ -927,7 +985,13 @@ public sealed class ExcelImportForm : Form
         page.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
         page.Controls.Add(BuildReviewHeader(), 0, 0);
-        page.Controls.Add(BuildReviewSummaryCard(), 0, 1);
+        page.Controls.Add(
+            BuildReviewSummaryCard(
+                newUnconfirmedCount,
+                existingUnconfirmedCount,
+                reconciliation.UnresolvedContainerCount),
+            0,
+            1);
 
         var reviewSection = BuildReviewCustomerSection();
         reviewSection.Dock = DockStyle.Fill;
@@ -1083,7 +1147,7 @@ public sealed class ExcelImportForm : Form
         return card;
     }
 
-    private Control BuildReviewSummaryCard()
+    private Control BuildReviewSummaryCard(int newPending, int existingPending, int containersPending)
     {
         var card = Card(new Padding(12, 7, 12, 7));
 
@@ -1100,7 +1164,7 @@ public sealed class ExcelImportForm : Form
         {
             Dock = DockStyle.Top,
             AutoSize = false,
-            Height = 112,
+            Height = 142,
             ColumnCount = 6,
             RowCount = 1,
             Margin = Padding.Empty,
@@ -1111,17 +1175,17 @@ public sealed class ExcelImportForm : Form
             metrics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16.6667F));
 
         metrics.Controls.Add(
-            ReviewMetricCard(ReviewIconKind.Database, Color.SeaGreen, "Source", reviewSourceMetric), 0, 0);
+            ReviewMetricCard(ReviewIconKind.Database, "Source", reviewSourcePrimary, reviewSourceSecondary), 0, 0);
         metrics.Controls.Add(
-            ReviewMetricCard(ReviewIconKind.People, Color.RoyalBlue, "Customers", reviewCustomersMetric), 1, 0);
+            ReviewMetricCard(ReviewIconKind.People, "Customers", reviewCustomersPrimary, reviewCustomersSecondary), 1, 0);
         metrics.Controls.Add(
-            ReviewMetricCard(ReviewIconKind.CheckCircle, Color.ForestGreen, "Existing matches", reviewExistingMetric), 2, 0);
+            ReviewMetricCard(ReviewIconKind.CheckCircle, "Existing matches", reviewExistingPrimary, reviewExistingSecondary), 2, 0);
         metrics.Controls.Add(
-            ReviewMetricCard(ReviewIconKind.PersonPlus, Color.DarkOrange, "New candidates", reviewNewMetric), 3, 0);
+            ReviewMetricCard(ReviewIconKind.PersonPlus, "New candidates", reviewNewPrimary, reviewNewSecondary), 3, 0);
         metrics.Controls.Add(
-            ReviewMetricCard(ReviewIconKind.Container, Color.MediumPurple, "Containers", reviewContainersMetric), 4, 0);
+            ReviewMetricCard(ReviewIconKind.Container, "Containers", reviewContainersPrimary, reviewContainersSecondary), 4, 0);
         metrics.Controls.Add(
-            ReviewMetricCard(ReviewIconKind.Scales, Color.FromArgb(25, 95, 190), "Reconciliation", reviewReconciliationMetric), 5, 0);
+            ReviewMetricCard(ReviewIconKind.Scales, "Reconciliation", reviewReconciliationPrimary, reviewReconciliationSecondary), 5, 0);
 
         root.Controls.Add(metrics, 0, 0);
 
@@ -1132,6 +1196,7 @@ public sealed class ExcelImportForm : Form
         {
             Dock = DockStyle.Top,
             AutoSize = true,
+            MinimumSize = new Size(0, 46),
             ColumnCount = 2,
             Margin = Padding.Empty,
             Padding = Padding.Empty
@@ -1150,24 +1215,21 @@ public sealed class ExcelImportForm : Form
         };
 
         var confirmCustomers = ReviewActionButton(
-            "Confirm new",
+            $"Confirm new ({newPending:N0})",
             ReviewIconKind.PersonPlus,
-            Color.DarkOrange,
-            175);
+            245);
         confirmCustomers.Click += async (_, _) => await ConfirmNewCustomersAsync();
 
         var confirmMatches = ReviewActionButton(
-            "Confirm existing",
+            $"Confirm existing ({existingPending:N0})",
             ReviewIconKind.CheckCircle,
-            Color.ForestGreen,
-            190);
+            260);
         confirmMatches.Click += async (_, _) => await ConfirmExistingMatchesAsync();
 
         var mapContainers = ReviewActionButton(
-            "Map container",
+            $"Map container ({containersPending:N0})",
             ReviewIconKind.Container,
-            Color.MediumPurple,
-            175);
+            245);
         mapContainers.Click += async (_, _) => await MapContainerTokensAsync();
 
         actions.Controls.Add(confirmCustomers);
@@ -1175,10 +1237,9 @@ public sealed class ExcelImportForm : Form
         actions.Controls.Add(mapContainers);
 
         var larger = ReviewActionButton(
-            "View reconciliation larger...",
+            "Open reconciliation",
             ReviewIconKind.Expand,
-            Color.FromArgb(25, 95, 190),
-            245);
+            250);
         larger.Margin = Padding.Empty;
         larger.Click += (_, _) => ShowReconciliationLarge();
 
@@ -1190,26 +1251,35 @@ public sealed class ExcelImportForm : Form
         return card;
     }
 
-    private static Label ReviewMetricValue() => new()
+    private static Label ReviewMetricPrimary() => new()
     {
         AutoSize = true,
         Font = new Font("Segoe UI Semibold", 10.5F, FontStyle.Bold),
-        ForeColor = Color.FromArgb(30, 38, 50),
-        MaximumSize = new Size(175, 0),
+        ForeColor = Color.FromArgb(20, 28, 40),
+        MaximumSize = new Size(185, 0),
+        Margin = Padding.Empty
+    };
+
+    private static Label ReviewMetricSecondary() => new()
+    {
+        AutoSize = true,
+        Font = new Font("Segoe UI", 9.5F),
+        ForeColor = Color.FromArgb(105, 110, 120),
+        MaximumSize = new Size(185, 0),
         Margin = Padding.Empty
     };
 
     private static Control ReviewMetricCard(
         ReviewIconKind iconKind,
-        Color iconColor,
         string title,
-        Label value)
+        Label primary,
+        Label secondary)
     {
         var panel = new Panel
         {
             Dock = DockStyle.Fill,
-            Margin = new Padding(4, 3, 4, 3),
-            Padding = new Padding(10, 9, 8, 8),
+            Margin = new Padding(5, 4, 5, 4),
+            Padding = new Padding(12, 10, 10, 10),
             BackColor = Color.White,
             BorderStyle = BorderStyle.FixedSingle
         };
@@ -1218,18 +1288,19 @@ public sealed class ExcelImportForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 2,
-            RowCount = 2,
+            RowCount = 3,
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42F));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48F));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
         var iconBox = new PictureBox
         {
-            Image = DrawReviewIcon(iconKind, iconColor, new Size(32, 32)),
+            Image = LoadReviewIcon(iconKind, new Size(38, 38)),
             SizeMode = PictureBoxSizeMode.CenterImage,
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
@@ -1237,19 +1308,22 @@ public sealed class ExcelImportForm : Form
         };
 
         layout.Controls.Add(iconBox, 0, 0);
-        layout.SetRowSpan(iconBox, 2);
+        layout.SetRowSpan(iconBox, 3);
 
         layout.Controls.Add(new Label
         {
             Text = title,
             AutoSize = true,
             Font = new Font("Segoe UI", 9F),
-            ForeColor = Color.FromArgb(70, 80, 95),
-            Margin = new Padding(3, 0, 0, 2)
+            ForeColor = Color.FromArgb(48, 55, 70),
+            Margin = new Padding(4, 0, 0, 1)
         }, 1, 0);
 
-        value.Margin = new Padding(3, 0, 0, 0);
-        layout.Controls.Add(value, 1, 1);
+        primary.Margin = new Padding(4, 0, 0, 4);
+        secondary.Margin = new Padding(4, 0, 0, 0);
+
+        layout.Controls.Add(primary, 1, 1);
+        layout.Controls.Add(secondary, 1, 2);
 
         panel.Controls.Add(layout);
         return panel;
@@ -1258,14 +1332,17 @@ public sealed class ExcelImportForm : Form
     private static Button ReviewActionButton(
         string text,
         ReviewIconKind iconKind,
-        Color iconColor,
         int width)
     {
         var button = SecondaryButton(text, width);
-        button.Image = DrawReviewIcon(iconKind, iconColor, new Size(18, 18));
+        button.Image = LoadReviewIcon(iconKind, new Size(16, 16));
         button.ImageAlign = ContentAlignment.MiddleLeft;
+        button.TextAlign = ContentAlignment.MiddleCenter;
+        button.UseVisualStyleBackColor = true;
         button.TextImageRelation = TextImageRelation.ImageBeforeText;
-        button.Padding = new Padding(8, 0, 8, 0);
+        button.Padding = new Padding(12, 0, 12, 0);
+        button.AutoSize = false;
+        button.Height = 44;
         return button;
     }
 
@@ -1280,111 +1357,40 @@ public sealed class ExcelImportForm : Form
         Expand
     }
 
-    private static Bitmap DrawReviewIcon(
+    private static Bitmap LoadReviewIcon(
         ReviewIconKind kind,
-        Color color,
         Size size)
     {
-        var bitmap = new Bitmap(size.Width, size.Height);
-        using var g = Graphics.FromImage(bitmap);
-        g.SmoothingMode =
-            System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        g.Clear(Color.Transparent);
-
-        using var pen = new Pen(color, 2F)
+        var fileName = kind switch
         {
-            StartCap = System.Drawing.Drawing2D.LineCap.Round,
-            EndCap = System.Drawing.Drawing2D.LineCap.Round,
-            LineJoin = System.Drawing.Drawing2D.LineJoin.Round
+            ReviewIconKind.Database => "review-source.png",
+            ReviewIconKind.People => "review-customers.png",
+            ReviewIconKind.CheckCircle => "review-existing.png",
+            ReviewIconKind.PersonPlus => "review-new.png",
+            ReviewIconKind.Container => "review-container.png",
+            ReviewIconKind.Scales => "review-reconciliation.png",
+            ReviewIconKind.Expand => "review-expand.png",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };
-        using var brush = new SolidBrush(color);
 
-        var w = size.Width;
-        var h = size.Height;
+        var assembly = typeof(ExcelImportForm).Assembly;
+        var resourceName = assembly
+            .GetManifestResourceNames()
+            .FirstOrDefault(x =>
+                x.EndsWith(
+                    $".Assets.{fileName}",
+                    StringComparison.OrdinalIgnoreCase));
 
-        switch (kind)
-        {
-            case ReviewIconKind.Database:
-            {
-                var x = 5F; var y = 5F; var ew = w - 10F; var eh = 7F;
-                g.FillEllipse(brush, x, y, ew, eh);
-                g.DrawArc(pen, x, y + 5F, ew, eh, 0, 180);
-                g.DrawArc(pen, x, y + 11F, ew, eh, 0, 180);
-                g.DrawArc(pen, x, y + 17F, ew, eh, 0, 180);
-                g.DrawLine(pen, x, y + 8F, x, y + 21F);
-                g.DrawLine(pen, x + ew, y + 8F, x + ew, y + 21F);
-                break;
-            }
+        if (resourceName is null)
+            throw new InvalidOperationException(
+                $"Embedded Review icon '{fileName}' was not found.");
 
-            case ReviewIconKind.People:
-            {
-                g.FillEllipse(brush, 7, 6, 8, 8);
-                g.FillEllipse(brush, 17, 7, 7, 7);
-                g.DrawArc(pen, 4, 14, 15, 12, 185, 170);
-                g.DrawArc(pen, 14, 15, 13, 11, 185, 170);
-                break;
-            }
+        using var stream = assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException(
+                $"Embedded Review icon '{fileName}' could not be opened.");
+        using var original = Image.FromStream(stream);
 
-            case ReviewIconKind.CheckCircle:
-            {
-                g.DrawEllipse(pen, 4, 4, w - 8, h - 8);
-                using var checkPen = new Pen(color, 2.8F)
-                {
-                    StartCap = System.Drawing.Drawing2D.LineCap.Round,
-                    EndCap = System.Drawing.Drawing2D.LineCap.Round
-                };
-                g.DrawLines(
-                    checkPen,
-                    [new PointF(8, 16), new PointF(13, 21), new PointF(24, 10)]);
-                break;
-            }
-
-            case ReviewIconKind.PersonPlus:
-            {
-                g.FillEllipse(brush, 6, 5, 9, 9);
-                g.DrawArc(pen, 3, 14, 16, 12, 185, 170);
-                g.DrawLine(pen, 23, 11, 23, 23);
-                g.DrawLine(pen, 17, 17, 29, 17);
-                break;
-            }
-
-            case ReviewIconKind.Container:
-            {
-                g.DrawRectangle(pen, 6, 9, 20, 15);
-                g.DrawLine(pen, 9, 9, 11, 5);
-                g.DrawLine(pen, 23, 9, 21, 5);
-                g.DrawLine(pen, 5, 9, 27, 9);
-                g.DrawLine(pen, 10, 24, 10, 27);
-                g.DrawLine(pen, 22, 24, 22, 27);
-                break;
-            }
-
-            case ReviewIconKind.Scales:
-            {
-                g.DrawLine(pen, 16, 5, 16, 25);
-                g.DrawLine(pen, 8, 9, 24, 9);
-                g.DrawLine(pen, 8, 9, 4, 18);
-                g.DrawLine(pen, 24, 9, 28, 18);
-                g.DrawArc(pen, 1, 15, 8, 8, 0, 180);
-                g.DrawArc(pen, 23, 15, 8, 8, 0, 180);
-                g.DrawLine(pen, 10, 26, 22, 26);
-                break;
-            }
-
-            case ReviewIconKind.Expand:
-            {
-                g.DrawLine(pen, 7, 13, 7, 7);
-                g.DrawLine(pen, 7, 7, 13, 7);
-                g.DrawLine(pen, 7, 7, 14, 14);
-
-                g.DrawLine(pen, 25, 19, 25, 25);
-                g.DrawLine(pen, 25, 25, 19, 25);
-                g.DrawLine(pen, 25, 25, 18, 18);
-                break;
-            }
-        }
-
-        return bitmap;
+        return new Bitmap(original, size);
     }
 
     private Control BuildReviewCustomerSection()
