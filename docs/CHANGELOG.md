@@ -324,3 +324,17 @@
 - Added existing-customer match confirmation and override.
 - Fixed Developer Database Tools newline rendering.
 - Fixed clipped new-customer bulk-action buttons.
+
+## v0.4.0-alpha.18
+- Added ImportRuns provenance schema and SHA-256 exact re-import preflight.
+- Added Step 4 Import preflight screen.
+- Fixed blank inactive existing-customer match display.
+- Humanised existing-match decision labels.
+
+## v0.4.0-alpha.18.1
+- Fixed clipped Balance Reconciliation area.
+- Fixed Step 3 readiness gate preventing advancement to Step 4 after a fully resolved review.
+- Centralised Review readiness policy.
+
+## v0.4.0-alpha.18.2
+- Fixed Review readiness source ordering that caused CS0841 compilation failure.

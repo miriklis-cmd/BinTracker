@@ -1,4 +1,4 @@
-# BinTracker v0.4.0-alpha.17
+# BinTracker v0.4.0-alpha.18.2
 
 This release adds local authentication, roles, user administration, and an append-only audit trail.
 
@@ -37,10 +37,10 @@ PostgreSQL is the planned central database before simultaneous multi-PC deployme
 The PostgreSQL provider is not enabled yet, so this release has no extra server/install requirement.
 
 
-## v0.4.0-alpha.17
+## v0.4.0-alpha.18.2
 Customer Management is now functional from the left navigation.
 
-## v0.4.0-alpha.17
+## v0.4.0-alpha.18.2
 
 Customer codes are now the primary visible identifier in Customer Management. Select a customer and use **Customer Statement** to generate an audited PDF for a chosen period.
 

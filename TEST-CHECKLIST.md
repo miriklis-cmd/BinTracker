@@ -662,3 +662,43 @@
 - [ ] Confirmed existing match can become Ready
 - [ ] Container mapping does not erase customer decisions
 - [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.18 — Step 4 provenance/preflight
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.18
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Existing matched customer appears in first row even if inactive
+- [ ] Inactive customer is labelled `(inactive)`
+- [ ] Decision shows `Accept match`, not `AcceptMatch`
+- [ ] Decision shows `Override match`, not `OverrideMatch`
+- [ ] Review → Import opens Step 4
+- [ ] Step 4 shows workbook SHA-256
+- [ ] Step 4 shows file size and modified timestamp
+- [ ] ImportRuns schema migration v9 applies to existing database
+- [ ] Exact previously completed workbook is detected from SHA-256
+- [ ] No customer or movement writes occur yet
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.18.1 — Review readiness/layout
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.18.1
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Balance Reconciliation grid is fully visible at 100% DPI
+- [ ] Bottom rows/status/container rule are not clipped
+- [ ] Review with 0 new-customer unconfirmed, 0 existing-match unconfirmed, 0 container mappings, and no reconciliation blockers enables Import
+- [ ] Import button advances to Step 4
+- [ ] Any blocker disables Import
+- [ ] Step 4 still performs SHA-256 provenance preflight
+- [ ] No database writes occur yet
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.18.2 — Review readiness compile fix
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.18.2
+- [ ] BinTracker.WinForms compiles
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Fully resolved Review enables Import
+- [ ] Import advances to Step 4
+- [ ] Any Review blocker disables Import
+- [ ] Balance Reconciliation remains fully visible
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed

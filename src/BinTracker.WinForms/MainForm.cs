@@ -21,6 +21,7 @@ public sealed class MainForm : Form
     private readonly IContainerTypeService containerTypes;
     private readonly IBusinessInformationService businessInformation;
     private readonly IExcelImportService excelImport;
+    private readonly IImportExecutionService importExecution;
     private readonly IBalanceService balances;
     private readonly IDeveloperDatabaseService developerDatabase;
 
@@ -44,6 +45,7 @@ public sealed class MainForm : Form
         IContainerTypeService containerTypes,
         IBusinessInformationService businessInformation,
         IExcelImportService excelImport,
+        IImportExecutionService importExecution,
         IBalanceService balances,
         IDeveloperDatabaseService developerDatabase)
     {
@@ -59,6 +61,7 @@ public sealed class MainForm : Form
         this.containerTypes = containerTypes;
         this.businessInformation = businessInformation;
         this.excelImport = excelImport;
+        this.importExecution = importExecution;
         this.balances = balances;
         this.developerDatabase = developerDatabase;
 
@@ -559,7 +562,8 @@ public sealed class MainForm : Form
                     excelImport,
                     customers,
                     containerTypes,
-                    balances);
+                    balances,
+                    importExecution);
                 form.ShowDialog(this);
             };
 

@@ -117,11 +117,12 @@ public sealed class ExistingCustomerMatchForm : Form
             DisplayStyle = DataGridViewComboBoxDisplayStyle.DropDownButton
         };
         customerColumn.DataSource = customers
-            .Where(x => x.IsActive)
             .OrderBy(x => x.CustomerCode, StringComparer.OrdinalIgnoreCase)
             .Select(x => new CustomerChoice(
                 x.Id,
-                $"{x.CustomerCode} — {x.Name}",
+                x.IsActive
+                    ? $"{x.CustomerCode} — {x.Name}"
+                    : $"{x.CustomerCode} — {x.Name} (inactive)",
                 x.CustomerCode,
                 x.Name))
             .ToList();
@@ -135,9 +136,9 @@ public sealed class ExistingCustomerMatchForm : Form
             MinimumWidth = 150
         };
         decisionColumn.Items.AddRange(
-            ImportExistingCustomerDecisionAction.Unconfirmed,
-            ImportExistingCustomerDecisionAction.AcceptMatch,
-            ImportExistingCustomerDecisionAction.OverrideMatch);
+            "Unconfirmed",
+            "Accept match",
+            "Override match");
         grid.Columns.Add(decisionColumn);
 
         grid.DataError += (_, _) => { };
@@ -159,7 +160,7 @@ public sealed class ExistingCustomerMatchForm : Form
                 row.CustomerCode,
                 row.MatchReason,
                 decision.CustomerId,
-                decision.Action);
+                DecisionText(decision.Action));
 
             grid.Rows[index].Tag = row;
         }
@@ -226,13 +227,13 @@ public sealed class ExistingCustomerMatchForm : Form
     private void SetSelected(ImportExistingCustomerDecisionAction action)
     {
         foreach (DataGridViewRow row in grid.SelectedRows)
-            row.Cells["Decision"].Value = action;
+            row.Cells["Decision"].Value = DecisionText(action);
     }
 
     private void SetAll(ImportExistingCustomerDecisionAction action)
     {
         foreach (DataGridViewRow row in grid.Rows)
-            row.Cells["Decision"].Value = action;
+            row.Cells["Decision"].Value = DecisionText(action);
     }
 
     private void SaveRows()
@@ -248,13 +249,8 @@ public sealed class ExistingCustomerMatchForm : Form
                 ? (int?)null
                 : Convert.ToInt32(row.Cells["Customer"].Value);
 
-            var action = row.Cells["Decision"].Value is ImportExistingCustomerDecisionAction typed
-                ? typed
-                : Enum.TryParse<ImportExistingCustomerDecisionAction>(
-                    row.Cells["Decision"].Value?.ToString(),
-                    out var parsed)
-                    ? parsed
-                    : ImportExistingCustomerDecisionAction.Unconfirmed;
+            var action = ParseDecision(
+                row.Cells["Decision"].Value?.ToString());
 
             if (!customerId.HasValue)
                 action = ImportExistingCustomerDecisionAction.Unconfirmed;
@@ -279,6 +275,24 @@ public sealed class ExistingCustomerMatchForm : Form
                 selected?.Name ?? string.Empty);
         }
     }
+
+    private static string DecisionText(
+        ImportExistingCustomerDecisionAction action) =>
+        action switch
+        {
+            ImportExistingCustomerDecisionAction.AcceptMatch => "Accept match",
+            ImportExistingCustomerDecisionAction.OverrideMatch => "Override match",
+            _ => "Unconfirmed"
+        };
+
+    private static ImportExistingCustomerDecisionAction ParseDecision(
+        string? value) =>
+        value switch
+        {
+            "Accept match" => ImportExistingCustomerDecisionAction.AcceptMatch,
+            "Override match" => ImportExistingCustomerDecisionAction.OverrideMatch,
+            _ => ImportExistingCustomerDecisionAction.Unconfirmed
+        };
 
     private static Button Btn(string text, int width) => new()
     {

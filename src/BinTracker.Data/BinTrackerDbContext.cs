@@ -13,6 +13,7 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
     public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<ReminderDelivery> ReminderDeliveries => Set<ReminderDelivery>();
+    public DbSet<ImportRun> ImportRuns => Set<ImportRun>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -109,6 +110,20 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
             e.Property(x => x.ProviderResponse).HasMaxLength(2000);
             e.HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.CustomerId, x.CreatedUtc });
+        });
+
+        b.Entity<ImportRun>(e =>
+        {
+            e.ToTable("ImportRuns");
+            e.Property(x => x.SourceFileName).HasMaxLength(260).IsRequired();
+            e.Property(x => x.SourceFullPath).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.SourceSha256).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            e.Property(x => x.Username).HasMaxLength(100).IsRequired();
+            e.Property(x => x.SessionId).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.HasIndex(x => x.SourceSha256);
+            e.HasIndex(x => x.CompletedUtc);
         });
 
         b.Entity<AuditEvent>(e =>

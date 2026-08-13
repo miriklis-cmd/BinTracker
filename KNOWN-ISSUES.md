@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.17**
+Current release: **v0.4.0-alpha.18.2**
 
 This file tracks current defects, incomplete production-critical behaviour, and limitations that a tester/operator needs to know about. Planned enhancements belong in `docs/Roadmap.md`; engineering cleanup belongs in `TECH-DEBT.md`.
 
@@ -107,6 +107,15 @@ Developer-only SQLite backup/load/fresh-database tools now exist for import test
 The controls work correctly, but the current custom-drawn artwork was accepted as functional rather than final visual polish.
 
 ## Recently resolved
+
+- Alpha.18.1 evaluated Step 3 readiness before local `blockers` and `reconciliation` variables were declared, causing two CS0841 WinForms build errors.
+
+- Step 3 Balance Reconciliation was vertically clipped at the bottom of the Review page.
+- Step 3 could remain unable to advance to Step 4 even when all customer/container decisions were resolved and reconciliation was fully ready.
+
+- Existing-customer match dialog could show a blank proposed customer when the matched record was inactive; inactive matches are now visible and labelled.
+- Existing-match decision values displayed raw enum names such as `AcceptMatch`; UI now uses `Accept match` / `Override match`.
+- Import had no durable source provenance or exact-file re-import detection; ImportRuns schema and SHA-256 preflight are now in place.
 
 - Developer database staging/restart dialog rendered literal `\\n` sequences instead of line breaks.
 - Confirm New Customers bulk-action button text was clipped.

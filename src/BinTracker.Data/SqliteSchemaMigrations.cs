@@ -18,7 +18,8 @@ internal static class SqliteSchemaMigrations
         new(5, "Case-insensitive customer code index", ApplyV5Async),
         new(6, "Password self-service and account lockout", ApplyV6Async),
         new(7, "Container type master data", ApplyV7Async),
-        new(8, "Business information master data", ApplyV8Async)
+        new(8, "Business information master data", ApplyV8Async),
+        new(9, "Excel import provenance", ApplyV9Async)
     ];
 
     private static async Task ApplyV1Async(BinTrackerDbContext db)
@@ -193,6 +194,35 @@ internal static class SqliteSchemaMigrations
         await AddBusinessInfoColumnIfMissingAsync(db, "Phone");
         await AddBusinessInfoColumnIfMissingAsync(db, "Email");
         await AddBusinessInfoColumnIfMissingAsync(db, "DefaultReportHeader");
+    }
+
+    private static async Task ApplyV9Async(BinTrackerDbContext db)
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS ImportRuns (
+                Id INTEGER NOT NULL CONSTRAINT PK_ImportRuns PRIMARY KEY AUTOINCREMENT,
+                SourceFileName TEXT NOT NULL,
+                SourceFullPath TEXT NOT NULL,
+                SourceSha256 TEXT NOT NULL,
+                SourceLength INTEGER NOT NULL,
+                SourceLastWriteUtc TEXT NOT NULL,
+                StartedUtc TEXT NOT NULL,
+                CompletedUtc TEXT NULL,
+                Status TEXT NOT NULL,
+                CreatedCustomers INTEGER NOT NULL DEFAULT 0,
+                MovementCount INTEGER NOT NULL DEFAULT 0,
+                UserId INTEGER NULL,
+                Username TEXT NOT NULL,
+                SessionId TEXT NOT NULL,
+                Notes TEXT NULL
+            );
+            """);
+
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE INDEX IF NOT EXISTS IX_ImportRuns_SourceSha256 ON ImportRuns (SourceSha256);");
+
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE INDEX IF NOT EXISTS IX_ImportRuns_CompletedUtc ON ImportRuns (CompletedUtc);");
     }
 
     private static async Task AddBusinessInfoColumnIfMissingAsync(

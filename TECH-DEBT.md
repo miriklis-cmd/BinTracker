@@ -12,6 +12,9 @@ These are engineering improvements, not current user-facing defects.
 - Consider centralising typography/spacing constants.
 
 ## Import
+- In `ShowReviewPageAsync`, compute reconciliation and the complete blocker list before assigning `nextButton.Enabled`; keep readiness assignment at the end of Review-state calculation.
+- Keep Step 3 readiness in `ImportReviewReadiness` rather than duplicating button-enable logic in WinForms; all blockers and reconciliation state must flow through one policy.
+- Exact re-import protection uses SHA-256 workbook fingerprints recorded in ImportRuns. Future import profiles/transform versions should add a parser/profile version to provenance so semantic reprocessing can be distinguished from accidental duplicate import.
 - Existing-customer match decisions are wizard-session state in alpha.17. Transactional Import must consume the reviewed target CustomerId and must not recompute matching at execution time.
 - Tests that create new customers must provide the same explicit decision state required by the wizard; avoid fixtures that bypass Create/Skip confirmation semantics.
 - Keep reconciliation decision lookup branches explicit; avoid compact `TryGetValue` expressions that obscure definite-assignment and null/unconfirmed handling.

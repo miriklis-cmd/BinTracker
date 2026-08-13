@@ -79,6 +79,25 @@ public sealed class BinMovement
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
 
+public sealed class ImportRun
+{
+    public long Id { get; set; }
+    public string SourceFileName { get; set; } = string.Empty;
+    public string SourceFullPath { get; set; } = string.Empty;
+    public string SourceSha256 { get; set; } = string.Empty;
+    public long SourceLength { get; set; }
+    public DateTime SourceLastWriteUtc { get; set; }
+    public DateTime StartedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? CompletedUtc { get; set; }
+    public string Status { get; set; } = "Pending";
+    public int CreatedCustomers { get; set; }
+    public int MovementCount { get; set; }
+    public int? UserId { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string SessionId { get; set; } = string.Empty;
+    public string? Notes { get; set; }
+}
+
 public sealed class ApplicationSettings
 {
     public int Id { get; set; } = 1;

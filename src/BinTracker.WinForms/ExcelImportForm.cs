@@ -8,6 +8,7 @@ public sealed class ExcelImportForm : Form
     private readonly ICustomerService customerService;
     private readonly IContainerTypeService containerTypeService;
     private readonly IBalanceService balanceService;
+    private readonly IImportExecutionService importExecutionService;
 
     private readonly Panel pageHost = new()
     {
@@ -108,12 +109,14 @@ public sealed class ExcelImportForm : Form
         IExcelImportService service,
         ICustomerService customerService,
         IContainerTypeService containerTypeService,
-        IBalanceService balanceService)
+        IBalanceService balanceService,
+        IImportExecutionService importExecutionService)
     {
         this.service = service;
         this.customerService = customerService;
         this.containerTypeService = containerTypeService;
         this.balanceService = balanceService;
+        this.importExecutionService = importExecutionService;
 
         Text = "Excel Import Wizard";
         StartPosition = FormStartPosition.CenterParent;
@@ -741,7 +744,6 @@ public sealed class ExcelImportForm : Form
 
         backButton.Visible = true;
         nextButton.Text = "Import >";
-        nextButton.Enabled = false; // Database execution remains deliberately disabled.
 
         pageHost.Controls.Clear();
 
@@ -895,8 +897,10 @@ public sealed class ExcelImportForm : Form
             blockers.Add(
                 $"{reconciliation.ExcelMismatchCount:N0} balance row(s) fail Excel Total reconciliation");
 
+        nextButton.Enabled = ImportReviewReadiness.CanAdvanceToImport(blockers.Count, reconciliation);
+
         reviewWarning.Text = blockers.Count == 0
-            ? "No customer-code/type conflicts detected. Excel balances are treated as cutover targets, not amounts to add. Import remains disabled until the remaining confirmation/re-import safeguards are complete."
+            ? "No customer-code/type conflicts detected. Excel balances are treated as cutover targets, not amounts to add. " + "When every Review item is resolved, continue to Step 4 for import preflight and re-import checks."
             : "⚠ Review required: " + string.Join("; ", blockers) +
               ". Import remains disabled in this alpha.";
 
@@ -1352,6 +1356,122 @@ public sealed class ExcelImportForm : Form
         }
     }
 
+    private async Task ShowImportPageAsync()
+    {
+        if (analysis is null)
+            return;
+
+        currentStep = 4;
+        progress.ActiveStep = 4;
+        progress.Invalidate();
+
+        backButton.Visible = true;
+        nextButton.Text = "Import";
+        nextButton.Enabled = false;
+
+        pageHost.Controls.Clear();
+
+        var preflight = await importExecutionService.PreflightAsync(
+            analysis.FullPath);
+
+        var page = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            Padding = Padding.Empty
+        };
+        page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        page.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+        var header = Card(new Padding(20, 14, 20, 14));
+        header.Controls.Add(new Label
+        {
+            Text = "Import workbook",
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold)
+        });
+
+        var statusCard = Card(new Padding(20, 16, 20, 16));
+        var statusLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 1,
+            RowCount = 6
+        };
+
+        statusLayout.Controls.Add(SectionHeading("Source provenance"), 0, 0);
+        statusLayout.Controls.Add(new Label
+        {
+            AutoSize = true,
+            Text = $"Workbook: {preflight.Source.FileName}",
+            Margin = new Padding(0, 8, 0, 2)
+        }, 0, 1);
+        statusLayout.Controls.Add(new Label
+        {
+            AutoSize = true,
+            Text = $"SHA-256: {preflight.Source.Sha256}",
+            Font = new Font("Consolas", 9F),
+            MaximumSize = new Size(1260, 0)
+        }, 0, 2);
+        statusLayout.Controls.Add(new Label
+        {
+            AutoSize = true,
+            Text = $"Size: {preflight.Source.Length:N0} bytes    Modified: {preflight.Source.LastWriteUtc.ToLocalTime():g}",
+            Margin = new Padding(0, 2, 0, 8)
+        }, 0, 3);
+
+        var duplicateText = preflight.ExactWorkbookPreviouslyImported
+            ? $"⚠ This exact workbook was already imported in run #{preflight.PreviousImportRunId} on " +
+              $"{preflight.PreviousCompletedUtc?.ToLocalTime():g} by {preflight.PreviousUsername}. " +
+              "Exact re-import is blocked."
+            : "✓ This exact workbook has not previously been recorded as a completed import.";
+
+        statusLayout.Controls.Add(new Label
+        {
+            AutoSize = true,
+            Text = duplicateText,
+            ForeColor = preflight.ExactWorkbookPreviouslyImported
+                ? Color.DarkOrange
+                : Color.FromArgb(20, 115, 70),
+            MaximumSize = new Size(1240, 0),
+            Margin = new Padding(0, 8, 0, 8)
+        }, 0, 4);
+
+        statusLayout.Controls.Add(new Label
+        {
+            AutoSize = true,
+            Text =
+                "Step 4 now has source fingerprinting and exact re-import protection. " +
+                "The final transactional write is intentionally still disabled in this build while the execution transaction is completed.",
+            ForeColor = Color.DimGray,
+            MaximumSize = new Size(1240, 0)
+        }, 0, 5);
+
+        statusCard.Controls.Add(statusLayout);
+
+        var body = Card(new Padding(20, 16, 20, 16));
+        body.Dock = DockStyle.Fill;
+        body.Controls.Add(new Label
+        {
+            AutoSize = true,
+            Text =
+                "Next implementation pass: create confirmed customers, write opening adjustments and today's OUT/IN movements " +
+                "inside one SQLite transaction, record the ImportRun, and roll everything back if any line fails.",
+            MaximumSize = new Size(1240, 0),
+            ForeColor = Color.FromArgb(45, 55, 70)
+        });
+
+        page.Controls.Add(header, 0, 0);
+        page.Controls.Add(statusCard, 0, 1);
+        page.Controls.Add(body, 0, 2);
+
+        pageHost.Controls.Add(page);
+    }
+
     private async Task NextAsync()
     {
         if (currentStep == 1)
@@ -1367,9 +1487,15 @@ public sealed class ExcelImportForm : Form
             return;
         }
 
+        if (currentStep == 3)
+        {
+            await ShowImportPageAsync();
+            return;
+        }
+
         MessageBox.Show(
             this,
-            "Import execution is not enabled yet. This Review page is read-only and no database data has been changed.",
+            "Transactional import execution will be enabled in the next importer pass. No database data has been changed.",
             "Excel Import Wizard",
             MessageBoxButtons.OK,
             MessageBoxIcon.Information);
@@ -1385,7 +1511,15 @@ public sealed class ExcelImportForm : Form
         }
 
         if (currentStep == 3)
+        {
             ShowMapPage();
+            return;
+        }
+
+        if (currentStep == 4)
+        {
+            _ = ShowReviewPageAsync();
+        }
     }
 
     private void Browse()
