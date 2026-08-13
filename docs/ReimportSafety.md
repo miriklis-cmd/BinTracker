@@ -2,69 +2,43 @@
 
 ## Current status
 
-Exact completed-workbook re-import protection is implemented.
+Exact duplicate protection and changed-workbook/same-cutover correction are implemented.
 
-Every Import Run records source metadata including SHA-256 fingerprint. Step 4 checks the fingerprint during preflight and again inside the write transaction.
+An exact completed SHA-256 remains blocked. A different workbook fingerprint for a cutover date with a completed ImportRun enters correction mode instead of normal import.
 
-A blind exact duplicate import is therefore blocked.
+## Correction review
 
-## Remaining problem: changed workbook, same cutover
+Step 4 shows the previous run, previous/proposed movement counts and changed customer/container net effects. The operator must explicitly continue to **Replace/Correct**. There is no blind “import again anyway” action.
 
-A workbook can change while still representing the same business cutover date. Its SHA-256 will be different, so fingerprint-only duplicate protection is not enough.
+## Replacement safety boundary
 
-Before v1.0 BinTracker must detect prior Import Runs for the same import profile/cutover date and require an explicit correction workflow.
+`BinMovement.ImportRunId` is the authoritative boundary.
 
-Allowed choices should be:
+The replacement transaction:
 
-- **Cancel**
-- **Review differences**
-- **Replace/correct previous import**
+1. validates the changed workbook and previous completed run;
+2. rebuilds reconciliation from legitimate movement history **strictly before the cutover date**, excluding the prior ImportRun;
+3. preserves same-day/later Manual, Batch and all other non-prior-import movements outside the workbook correction;
+4. removes only movements whose `ImportRunId` equals the previous run;
+5. keeps customer records, including customers originally created by the old import;
+6. marks the old run `Replaced`;
+7. creates a new run with `ReplacesImportRunId` pointing to the old run;
+8. writes corrected movements linked to the new run;
+9. commits all changes atomically.
 
-There must never be a generic **Import again anyway** action.
+Keeping customer records is intentional because legitimate activity may already reference them.
 
-## Provenance now implemented
+## Structural metadata
 
-Import-generated `BinMovement` rows now have a nullable relational `ImportRunId` FK.
+Migration V11 adds `CutoverDate` and `ReplacesImportRunId` to ImportRun plus lookup indexes. Earlier alpha.19 cutover dates are conservatively backfilled from the stable `Cutover date yyyy-MM-dd` Notes prefix.
 
-Rules:
+## Rollback
 
-- Adjustment/ExcelImport rows created by Step 4 link to the ImportRun that created them.
-- Manual/Batch movements remain `ImportRunId = NULL`.
-- migration V10 backfills eligible alpha.19.x import rows only when they have `Adjustment`/`ExcelImport` source, a strict `IMPORT-<numeric id>` reference and a matching ImportRun.
-- legitimate operator movements are never inferred into an ImportRun merely because their free-text reference resembles an import.
+Correction uses the same verified SQLite transaction boundary as normal Import. The existing forced-failure regression continues to protect atomicity.
 
-This gives the changed-workbook replacement workflow a safe record boundary to build on.
 
-## Replacement design requirement
+## Why the baseline is pre-cutover
 
-A replacement transaction should:
+A correction can happen after operators have already entered legitimate activity on the cutover date or later. Those movements are subsequent real activity and must not change the corrected Excel opening adjustment.
 
-1. load prior ImportRun-generated records;
-2. calculate proposed differences;
-3. show the operator what will change;
-4. require explicit confirmation;
-5. reverse/remove/replace only the prior import-generated records in a controlled transaction;
-6. write a new ImportRun/audit trail linking the correction to the prior run;
-7. roll back everything on failure.
-
-## Rollback verification
-
-Rollback is covered by deterministic SQLite integration testing. The test injects a failure after the final `SaveChangesAsync` and before `CommitAsync`, after the pending/completed ImportRun state, created customer, generated movements and completion audit have all been flushed into the open transaction.
-
-After the forced failure the test verifies:
-
-- no imported customer survives;
-- no imported movement survives;
-- no ImportRun survives;
-- no `EXCEL_IMPORT_COMPLETED` audit survives;
-- the exact same workbook fingerprint remains eligible for retry.
-
-## Developer testing
-
-`Settings → Developer Tools → Developer Database` supports:
-
-- fresh database first-import testing;
-- restored populated database matching/re-import testing;
-- repeated controlled scenarios.
-
-It is development tooling, not the production Backup/Restore feature.
+The corrected workbook therefore rebuilds from history strictly before the cutover. After the old ImportRun movements are replaced, legitimate same-day/later activity remains on top of the corrected imported position.

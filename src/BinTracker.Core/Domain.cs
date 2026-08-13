@@ -95,6 +95,8 @@ public sealed class ImportRun
     public string SourceSha256 { get; set; } = string.Empty;
     public long SourceLength { get; set; }
     public DateTime SourceLastWriteUtc { get; set; }
+    public DateOnly? CutoverDate { get; set; }
+    public long? ReplacesImportRunId { get; set; }
     public DateTime StartedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedUtc { get; set; }
     public string Status { get; set; } = "Pending";

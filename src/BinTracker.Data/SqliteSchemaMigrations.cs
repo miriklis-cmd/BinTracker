@@ -20,7 +20,8 @@ internal static class SqliteSchemaMigrations
         new(7, "Container type master data", ApplyV7Async),
         new(8, "Business information master data", ApplyV8Async),
         new(9, "Excel import provenance", ApplyV9Async),
-        new(10, "Import movement relational provenance", ApplyV10Async)
+        new(10, "Import movement relational provenance", ApplyV10Async),
+        new(11, "Import cutover and replacement chain", ApplyV11Async)
     ];
 
     private static async Task ApplyV1Async(BinTrackerDbContext db)
@@ -268,6 +269,47 @@ internal static class SqliteSchemaMigrations
                   WHERE ImportRuns.Id =
                       CAST(substr(BinMovements.ReferenceNumber, 8) AS INTEGER)
               );
+            """);
+    }
+
+    private static async Task ApplyV11Async(BinTrackerDbContext db)
+    {
+        var columns = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ImportRuns')")
+            .ToListAsync();
+
+        if (!columns.Contains(
+                "CutoverDate",
+                StringComparer.OrdinalIgnoreCase))
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE ImportRuns ADD COLUMN CutoverDate TEXT NULL;");
+        }
+
+        if (!columns.Contains(
+                "ReplacesImportRunId",
+                StringComparer.OrdinalIgnoreCase))
+        {
+            await db.Database.ExecuteSqlRawAsync("""
+                ALTER TABLE ImportRuns
+                ADD COLUMN ReplacesImportRunId INTEGER NULL
+                    REFERENCES ImportRuns(Id) ON DELETE RESTRICT;
+                """);
+        }
+
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE INDEX IF NOT EXISTS IX_ImportRuns_CutoverDate ON ImportRuns (CutoverDate);");
+
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_ImportRuns_ReplacesImportRunId ON ImportRuns (ReplacesImportRunId) WHERE ReplacesImportRunId IS NOT NULL;");
+
+        // Earlier alpha.19 runs already wrote this stable note prefix.
+        await db.Database.ExecuteSqlRawAsync("""
+            UPDATE ImportRuns
+            SET CutoverDate = substr(Notes, 14, 10)
+            WHERE CutoverDate IS NULL
+              AND Notes GLOB 'Cutover date [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].*';
             """);
     }
 

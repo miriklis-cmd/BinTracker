@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.19.10**
+Current baseline: **v0.4.0-alpha.19.11.1**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.19.10.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.19.11.1.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -27,7 +27,7 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [ ] Workbook changed after Step 4 preflight is rejected.
 - [x] **Automated forced failure after final SaveChanges rolls back customer, movements, ImportRun and completion audit; exact-source retry remains allowed.**
 - [x] Every generated import movement links to the correct ImportRun; Manual movement regression remains NULL.
-- [ ] After replacement work: changed workbook / same cutover requires explicit difference/correction workflow.
+- [x] Changed workbook / same cutover is detected, compared and explicitly Replace/Corrected; prior linked movements are replaced while same-day and later Manual movements are preserved outside the corrected cutover baseline.
 
 - [ ] Optional manual forced-failure acceptance before v1.0 release sign-off.
 

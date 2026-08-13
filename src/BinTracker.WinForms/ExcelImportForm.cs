@@ -118,6 +118,8 @@ public sealed class ExcelImportForm : Form
 
     private int currentStep = 1;
     private string? step4ExpectedSha256;
+    private long? step4PreviousImportRunId;
+    private bool step4RequiresReplacement;
 
     public ExcelImportForm(
         IExcelImportService service,
@@ -1797,9 +1799,16 @@ public sealed class ExcelImportForm : Form
         progress.Invalidate();
 
         step4ExpectedSha256 = preflight.Source.Sha256;
+        step4PreviousImportRunId =
+            preflight.PreviousCutoverRun?.ImportRunId;
+        step4RequiresReplacement =
+            preflight.RequiresReplacement;
 
         backButton.Visible = true;
-        nextButton.Text = "Import now";
+        nextButton.Text =
+            preflight.RequiresReplacement
+                ? "Review correction"
+                : "Import now";
         nextButton.Enabled = preflight.CanProceed;
 
         pageHost.Controls.Clear();
@@ -1875,9 +1884,11 @@ public sealed class ExcelImportForm : Form
         {
             AutoSize = true,
             Text =
-                preflight.CanProceed
-                    ? "Ready for transactional import. BinTracker will re-check this fingerprint immediately before writing."
-                    : "Import is blocked because this exact workbook has already completed an import.",
+                !preflight.CanProceed
+                    ? "Import is blocked because this exact workbook has already completed an import."
+                    : preflight.RequiresReplacement
+                        ? $"A different workbook is already recorded for this cutover date (run #{preflight.PreviousCutoverRun!.ImportRunId}). BinTracker will require an explicit correction review; it will not stack another import on top."
+                        : "Ready for transactional import. BinTracker will re-check this fingerprint immediately before writing.",
             ForeColor = Color.DimGray,
             MaximumSize = new Size(1240, 0)
         }, 0, 5);
@@ -1933,6 +1944,36 @@ public sealed class ExcelImportForm : Form
         }
     }
 
+    private ImportExecutionRequest BuildExecutionRequest(
+        ImportExecutionMode mode,
+        long? previousImportRunId)
+    {
+        if (analysis is null ||
+            string.IsNullOrWhiteSpace(step4ExpectedSha256))
+        {
+            throw new InvalidOperationException(
+                "Import preflight is no longer available.");
+        }
+
+        return new ImportExecutionRequest(
+            analysis.FullPath,
+            step4ExpectedSha256,
+            analysis,
+            CurrentMappings(),
+            new Dictionary<string, int>(
+                containerTokenMappings,
+                StringComparer.OrdinalIgnoreCase),
+            new Dictionary<string, ImportCustomerDecision>(
+                customerDecisions,
+                StringComparer.OrdinalIgnoreCase),
+            new Dictionary<string, ImportExistingCustomerDecision>(
+                existingCustomerDecisions,
+                StringComparer.OrdinalIgnoreCase),
+            DateOnly.FromDateTime(DateTime.Today),
+            mode,
+            previousImportRunId);
+    }
+
     private async Task ExecuteImportAsync()
     {
         if (analysis is null ||
@@ -1947,19 +1988,97 @@ public sealed class ExcelImportForm : Form
             return;
         }
 
+        if (step4RequiresReplacement)
+        {
+            if (!step4PreviousImportRunId.HasValue)
+            {
+                MessageBox.Show(
+                    this,
+                    "The previous Import Run can no longer be identified. Return to Review and reopen Step 4.",
+                    "Correction unavailable",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                var comparison =
+                    await importExecutionService.CompareReplacementAsync(
+                        BuildExecutionRequest(
+                            ImportExecutionMode.ReplacePreviousCutover,
+                            step4PreviousImportRunId));
+
+                var sample = comparison.Differences
+                    .Take(12)
+                    .Select(x =>
+                        $"{x.CustomerCode} / {x.Container}: " +
+                        $"{x.PreviousNetEffect:+#;-#;0} → {x.ProposedNetEffect:+#;-#;0} " +
+                        $"(Δ {x.Difference:+#;-#;0})")
+                    .ToList();
+
+                var detail = sample.Count == 0
+                    ? "No net customer/container position differences were detected, although the workbook fingerprint changed."
+                    : string.Join(Environment.NewLine, sample);
+
+                if (comparison.Differences.Count > sample.Count)
+                {
+                    detail += Environment.NewLine +
+                        $"… plus {comparison.Differences.Count - sample.Count:N0} more changed position(s).";
+                }
+
+                var review = MessageBox.Show(
+                    this,
+                    $"Previous run: #{comparison.PreviousRun.ImportRunId} ({comparison.PreviousRun.SourceFileName})" +
+                    Environment.NewLine +
+                    $"Previous movements: {comparison.PreviousMovementCount:N0}" +
+                    Environment.NewLine +
+                    $"Proposed movements: {comparison.ProposedMovementCount:N0}" +
+                    Environment.NewLine +
+                    $"Changed positions: {comparison.ChangedPositionCount:N0}" +
+                    Environment.NewLine + Environment.NewLine +
+                    detail +
+                    Environment.NewLine + Environment.NewLine +
+                    "Continue to the final Replace/Correct confirmation?",
+                    "Review Import Correction",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning,
+                    MessageBoxDefaultButton.Button2);
+
+                if (review != DialogResult.Yes)
+                    return;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    this,
+                    "The correction comparison could not be built." +
+                    Environment.NewLine + Environment.NewLine +
+                    ex.Message,
+                    "Correction review failed",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+        }
+
         var createCount =
             ImportCustomerDecisionPlanner.CreateCount(
                 customerDecisions);
 
         var answer = MessageBox.Show(
             this,
-            "BinTracker is ready to write this legacy workbook to the database.\n\n" +
+            (step4RequiresReplacement
+                ? "BinTracker is ready to REPLACE/CORRECT the previous import for this cutover date.\n\n"
+                : "BinTracker is ready to write this legacy workbook to the database.\n\n") +
             $"Cutover date: {DateOnly.FromDateTime(DateTime.Today):dd/MM/yyyy}\n" +
             $"New customers to create: {createCount:N0}\n\n" +
             "Excel B/Fwd will become the authoritative opening position. " +
             "The workbook's OUT and IN quantities will then be written as real movements.\n\n" +
             "The entire operation is atomic: if any line fails, all import changes are rolled back.\n\n" +
-            "Proceed with Import now?",
+            (step4RequiresReplacement
+                ? "Only movements linked to the previous Import Run will be replaced. Manual/Batch movements and customer records are preserved.\n\nProceed with Replace/Correct now?"
+                : "Proceed with Import now?"),
             "Confirm Excel Import",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning,
@@ -1976,21 +2095,11 @@ public sealed class ExcelImportForm : Form
             cancelButton.Enabled = false;
 
             var result = await importExecutionService.ExecuteAsync(
-                new ImportExecutionRequest(
-                    analysis.FullPath,
-                    step4ExpectedSha256,
-                    analysis,
-                    CurrentMappings(),
-                    new Dictionary<string, int>(
-                        containerTokenMappings,
-                        StringComparer.OrdinalIgnoreCase),
-                    new Dictionary<string, ImportCustomerDecision>(
-                        customerDecisions,
-                        StringComparer.OrdinalIgnoreCase),
-                    new Dictionary<string, ImportExistingCustomerDecision>(
-                        existingCustomerDecisions,
-                        StringComparer.OrdinalIgnoreCase),
-                    DateOnly.FromDateTime(DateTime.Today)));
+                BuildExecutionRequest(
+                    step4RequiresReplacement
+                        ? ImportExecutionMode.ReplacePreviousCutover
+                        : ImportExecutionMode.NewImport,
+                    step4PreviousImportRunId));
 
             MessageBox.Show(
                 this,
@@ -2098,6 +2207,8 @@ public sealed class ExcelImportForm : Form
             filePath.Text = dialog.FileName;
             analysis = null;
             step4ExpectedSha256 = null;
+            step4PreviousImportRunId = null;
+            step4RequiresReplacement = false;
             mappingState.Clear();
         containerTokenMappings.Clear();
         customerDecisions.Clear();

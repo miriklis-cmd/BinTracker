@@ -82,6 +82,7 @@
 - BT-IMPORT-008: Exact completed-workbook re-import is blocked.
 - BT-IMPORT-009: Changed-workbook/same-cutover correction must be explicit and must not duplicate prior imported movements.
 - BT-IMPORT-010: Import-generated movements must link relationally to the Import Run that created them; non-import movements remain unlinked.
+- BT-IMPORT-011: Same-cutover correction must calculate the corrected import from pre-cutover legitimate history and preserve same-day/later non-import activity on top.
 
 ## Backup / Recovery
 

@@ -55,3 +55,10 @@ Important security, master-data and movement changes create audit events.
 - Cutover-day IN/OUT are retained as real movements.
 - The workbook's Total is validation data and must not be imported as a second balance.
 - Total must reconcile as `B/Fwd + OUT - IN`; mismatches require review.
+
+
+## Import Correction
+
+- Same-cutover correction reconstructs the workbook position from legitimate movement history strictly before the cutover date.
+- Movements linked to the previous ImportRun are excluded/replaced.
+- Manual/Batch activity on the cutover date or later is subsequent real activity and remains on top of the corrected imported position.

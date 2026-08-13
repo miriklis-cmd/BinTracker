@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.19.10**
+Current planning baseline: **v0.4.0-alpha.19.11.1**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -14,7 +14,7 @@ Remaining:
 
 - [x] **Forced-failure rollback verification** — integration test now forces failure after the final `SaveChangesAsync` but before `CommitAsync` and verifies that customer, movements, ImportRun and completion audit all disappear; exact-source retry remains allowed.
 - [x] **`BinMovement.ImportRunId` relational provenance** — nullable FK + index implemented; all new import Adjustment/ExcelImport movements link to their ImportRun, while Manual/Batch rows remain unlinked. Migration V10 safely backfills eligible alpha.19.x `IMPORT-<id>` rows.
-- [ ] **Changed-workbook / same-cutover workflow** — detect a different workbook fingerprint for a previously imported cutover date and offer Review Differences / Replace-Correct Previous Import / Cancel. Never provide a blind “import again anyway”.
+- [x] **Changed-workbook / same-cutover workflow** — structural CutoverDate detects a changed completed workbook for the same date; Step 4 shows a comparison and requires explicit Replace/Correct. Reconciliation reconstructs the pre-cutover baseline, replaces only prior ImportRun-linked movements, and preserves same-day/later Manual/Batch activity on top of the corrected workbook position.
 - [ ] **Import Run history/details UI** — show source file, SHA-256, cutover date, user, counts, status and generated records.
 - [ ] Add a useful transactional failure report showing the row/customer/container that stopped execution.
 - [x] Re-test exact re-import after provenance changes through the existing integration suite.

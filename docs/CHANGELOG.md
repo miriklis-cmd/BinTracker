@@ -455,3 +455,18 @@
 - Added SQLite schema migration V10 with conservative alpha.19.x provenance backfill.
 - Added provenance and migration regression tests.
 - Reconciled Roadmap, Known Issues, Technical Debt, Test Checklist and importer documentation.
+
+## v0.4.0-alpha.19.11
+- Added ImportRun CutoverDate and ReplacesImportRunId metadata.
+- Added same-cutover changed-workbook detection and correction comparison.
+- Added atomic replacement of only prior ImportRun-linked movements.
+- Preserved Manual/Batch movements and customer records.
+- Added migration V11 and correction regression coverage.
+- Reconciled current importer documentation.
+
+## v0.4.0-alpha.19.11.1
+- Fixed same-cutover replacement baseline absorbing post-cutover Manual activity.
+- Replacement reconciliation now uses legitimate history strictly before CutoverDate.
+- Preserves same-day and later Manual/Batch activity on top of corrected import.
+- Strengthened replacement integration regression for same-day and next-day Manual movements.
+- Reconciled current-state documentation with corrected replacement semantics.

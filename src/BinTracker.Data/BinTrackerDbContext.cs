@@ -131,6 +131,10 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
             e.Property(x => x.Notes).HasMaxLength(2000);
             e.HasIndex(x => x.SourceSha256);
             e.HasIndex(x => x.CompletedUtc);
+            e.HasIndex(x => x.CutoverDate);
+            e.HasIndex(x => x.ReplacesImportRunId)
+                .IsUnique()
+                .HasFilter("ReplacesImportRunId IS NOT NULL");
         });
 
         b.Entity<AuditEvent>(e =>

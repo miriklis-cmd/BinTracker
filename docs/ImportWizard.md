@@ -129,7 +129,6 @@ A different workbook for the same cutover date still needs the controlled differ
 
 ## Remaining importer work before v1.0
 
-- changed-workbook/same-cutover difference/correction workflow;
 - Import Run history/details UI;
 - improved execution failure report;
 - deferred Review icon/rounded-card polish.
@@ -141,3 +140,7 @@ A different workbook for the same cutover date still needs the controlled differ
 - Reusable Import Profiles.
 - Standard BinTracker import template.
 - Optional fuzzy-match suggestions requiring explicit operator approval.
+
+## Changed-workbook correction
+
+A changed fingerprint for an already-completed cutover date enters correction mode. Step 4 reviews the net differences and requires explicit Replace/Correct confirmation. The previous import is removed from the reconciliation baseline. The correction baseline uses legitimate history strictly before the cutover date, so same-day/later Manual/Batch activity remains on top rather than being absorbed into the corrected Excel opening position.

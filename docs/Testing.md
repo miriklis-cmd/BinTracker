@@ -12,7 +12,7 @@ Business-rule and regression coverage includes customer identity, balances, impo
 
 `tests/BinTracker.IntegrationTests`
 
-Database-backed coverage includes schema upgrades, movement/balance behaviour and transactional importer behaviour, including transaction-boundary failure injection proving full rollback before commit and relational ImportRunId provenance.
+Database-backed coverage includes schema upgrades, movement/balance behaviour and transactional importer behaviour, including transaction-boundary failure injection, relational ImportRunId provenance, and same-cutover replacement preserving same-day/later Manual activity outside the corrected baseline.
 
 ## Regression rule
 

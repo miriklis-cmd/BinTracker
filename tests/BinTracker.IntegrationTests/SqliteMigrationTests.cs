@@ -328,4 +328,36 @@ public sealed class SqliteMigrationTests
         Assert.Null(rows[1].ImportRunId);
     }
 
+
+    [Fact]
+    public async Task Import_cutover_replacement_migration_adds_metadata()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<BinTrackerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var db = new BinTrackerDbContext(options);
+        await db.Database.EnsureCreatedAsync();
+        await DatabaseSetup.InitializeSqliteAsync(db);
+
+        var columns = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ImportRuns')")
+            .ToListAsync();
+
+        Assert.Contains("CutoverDate", columns);
+        Assert.Contains("ReplacesImportRunId", columns);
+
+        var indexes = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_index_list('ImportRuns')")
+            .ToListAsync();
+
+        Assert.Contains("IX_ImportRuns_CutoverDate", indexes);
+        Assert.Contains("IX_ImportRuns_ReplacesImportRunId", indexes);
+    }
+
 }

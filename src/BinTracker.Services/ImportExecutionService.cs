@@ -12,14 +12,35 @@ public sealed record ImportSourceFingerprint(
     long Length,
     DateTime LastWriteUtc);
 
+public sealed record ImportCutoverRunSummary(
+    long ImportRunId,
+    DateOnly CutoverDate,
+    string SourceFileName,
+    string SourceSha256,
+    DateTime? CompletedUtc,
+    string Username,
+    int CreatedCustomers,
+    int MovementCount);
+
 public sealed record ImportPreflightResult(
     ImportSourceFingerprint Source,
     bool ExactWorkbookPreviouslyImported,
     long? PreviousImportRunId,
     DateTime? PreviousCompletedUtc,
-    string? PreviousUsername)
+    string? PreviousUsername,
+    ImportCutoverRunSummary? PreviousCutoverRun)
 {
     public bool CanProceed => !ExactWorkbookPreviouslyImported;
+
+    public bool RequiresReplacement =>
+        !ExactWorkbookPreviouslyImported &&
+        PreviousCutoverRun is not null;
+}
+
+public enum ImportExecutionMode
+{
+    NewImport = 0,
+    ReplacePreviousCutover = 1
 }
 
 public sealed record ImportExecutionRequest(
@@ -30,7 +51,27 @@ public sealed record ImportExecutionRequest(
     IReadOnlyDictionary<string, int> ContainerTokenMappings,
     IReadOnlyDictionary<string, ImportCustomerDecision> CustomerDecisions,
     IReadOnlyDictionary<string, ImportExistingCustomerDecision> ExistingCustomerDecisions,
-    DateOnly CutoverDate);
+    DateOnly CutoverDate,
+    ImportExecutionMode Mode = ImportExecutionMode.NewImport,
+    long? PreviousImportRunId = null);
+
+public sealed record ImportReplacementDifference(
+    string CustomerCode,
+    string Container,
+    int PreviousNetEffect,
+    int ProposedNetEffect)
+{
+    public int Difference => ProposedNetEffect - PreviousNetEffect;
+}
+
+public sealed record ImportReplacementComparison(
+    ImportCutoverRunSummary PreviousRun,
+    int PreviousMovementCount,
+    int ProposedMovementCount,
+    IReadOnlyList<ImportReplacementDifference> Differences)
+{
+    public int ChangedPositionCount => Differences.Count;
+}
 
 public sealed record ImportExecutionResult(
     long ImportRunId,
@@ -65,6 +106,11 @@ public interface IImportExecutionService
 {
     Task<ImportPreflightResult> PreflightAsync(
         string filePath,
+        DateOnly? cutoverDate = null,
+        CancellationToken cancellationToken = default);
+
+    Task<ImportReplacementComparison> CompareReplacementAsync(
+        ImportExecutionRequest request,
         CancellationToken cancellationToken = default);
 
     Task<ImportExecutionResult> ExecuteAsync(
@@ -80,6 +126,7 @@ internal sealed class ImportExecutionService(
 {
     public async Task<ImportPreflightResult> PreflightAsync(
         string filePath,
+        DateOnly? cutoverDate = null,
         CancellationToken cancellationToken = default)
     {
         var fingerprint = await FingerprintAsync(
@@ -103,12 +150,167 @@ internal sealed class ImportExecutionService(
             })
             .FirstOrDefaultAsync(cancellationToken);
 
+        ImportCutoverRunSummary? previousCutover = null;
+
+        if (cutoverDate.HasValue)
+        {
+            previousCutover = await db.ImportRuns
+                .AsNoTracking()
+                .Where(x =>
+                    x.CutoverDate == cutoverDate.Value &&
+                    x.Status == "Completed")
+                .OrderByDescending(x => x.CompletedUtc)
+                .Select(x => new ImportCutoverRunSummary(
+                    x.Id,
+                    x.CutoverDate!.Value,
+                    x.SourceFileName,
+                    x.SourceSha256,
+                    x.CompletedUtc,
+                    x.Username,
+                    x.CreatedCustomers,
+                    x.MovementCount))
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+
         return new ImportPreflightResult(
             fingerprint,
             previous is not null,
             previous?.Id,
             previous?.CompletedUtc,
-            previous?.Username);
+            previous?.Username,
+            previousCutover);
+    }
+
+    public async Task<ImportReplacementComparison> CompareReplacementAsync(
+        ImportExecutionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        RequireAdministrator();
+
+        if (request.Mode != ImportExecutionMode.ReplacePreviousCutover ||
+            !request.PreviousImportRunId.HasValue)
+        {
+            throw new InvalidOperationException(
+                "Replacement comparison requires a previous Import Run.");
+        }
+
+        await using var db =
+            await factory.CreateDbContextAsync(cancellationToken);
+
+        var previous = await db.ImportRuns
+            .AsNoTracking()
+            .Where(x =>
+                x.Id == request.PreviousImportRunId.Value &&
+                x.CutoverDate == request.CutoverDate &&
+                x.Status == "Completed")
+            .Select(x => new ImportCutoverRunSummary(
+                x.Id,
+                x.CutoverDate!.Value,
+                x.SourceFileName,
+                x.SourceSha256,
+                x.CompletedUtc,
+                x.Username,
+                x.CreatedCustomers,
+                x.MovementCount))
+            .SingleOrDefaultAsync(cancellationToken)
+            ?? throw new InvalidOperationException(
+                "The previous completed Import Run is no longer available.");
+
+        var plan = await BuildReplacementPlanAsync(
+            db,
+            request,
+            previous.ImportRunId,
+            cancellationToken);
+
+        var previousRows = await db.BinMovements
+            .AsNoTracking()
+            .Where(x => x.ImportRunId == previous.ImportRunId)
+            .Select(x => new
+            {
+                CustomerCode = x.Customer.CustomerCode ?? string.Empty,
+                Container = x.ContainerType.Name,
+                x.MovementType,
+                x.Quantity
+            })
+            .ToListAsync(cancellationToken);
+
+        var previousEffects = previousRows
+            .GroupBy(x => ReplacementKey(
+                x.CustomerCode,
+                NormalizeContainerLabel(x.Container)))
+            .ToDictionary(
+                g => g.Key,
+                g => new
+                {
+                    CustomerCode = g.First().CustomerCode,
+                    Container = NormalizeContainerLabel(g.First().Container),
+                    Net = g.Sum(x =>
+                        x.MovementType == MovementType.Out
+                            ? x.Quantity
+                            : -x.Quantity)
+                },
+                StringComparer.OrdinalIgnoreCase);
+
+        var proposedRows = plan.Reconciliation.Rows
+            .Where(x =>
+                x.IsReady &&
+                x.ContainerTypeId.HasValue)
+            .ToList();
+
+        var proposedEffects = proposedRows
+            .GroupBy(x => ReplacementKey(
+                x.CustomerCode,
+                x.Container))
+            .ToDictionary(
+                g => g.Key,
+                g => new
+                {
+                    CustomerCode = g.First().CustomerCode,
+                    Container = g.First().Container,
+                    Net = g.Sum(x =>
+                        (x.OpeningAdjustment ?? 0) +
+                        x.ExcelOut -
+                        x.ExcelIn)
+                },
+                StringComparer.OrdinalIgnoreCase);
+
+        var keys = previousEffects.Keys
+            .Concat(proposedEffects.Keys)
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        var differences = new List<ImportReplacementDifference>();
+
+        foreach (var key in keys)
+        {
+            previousEffects.TryGetValue(key, out var oldValue);
+            proposedEffects.TryGetValue(key, out var newValue);
+
+            var previousNet = oldValue?.Net ?? 0;
+            var proposedNet = newValue?.Net ?? 0;
+
+            if (previousNet == proposedNet)
+                continue;
+
+            differences.Add(new ImportReplacementDifference(
+                newValue?.CustomerCode ?? oldValue!.CustomerCode,
+                newValue?.Container ?? oldValue!.Container,
+                previousNet,
+                proposedNet));
+        }
+
+        var proposedMovementCount = proposedRows.Sum(x =>
+            ((x.OpeningAdjustment ?? 0) != 0 ? 1 : 0) +
+            (x.ExcelOut > 0 ? 1 : 0) +
+            (x.ExcelIn > 0 ? 1 : 0));
+
+        return new ImportReplacementComparison(
+            previous,
+            previousRows.Count,
+            proposedMovementCount,
+            differences
+                .OrderBy(x => x.CustomerCode, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(x => x.Container, StringComparer.OrdinalIgnoreCase)
+                .ToList());
     }
 
     public async Task<ImportExecutionResult> ExecuteAsync(
@@ -163,6 +365,54 @@ internal sealed class ImportExecutionService(
                 "Exact re-import is blocked.");
         }
 
+        ImportRun? previousRun = null;
+
+        if (request.Mode == ImportExecutionMode.ReplacePreviousCutover)
+        {
+            if (!request.PreviousImportRunId.HasValue)
+            {
+                throw new InvalidOperationException(
+                    "Replacement requires a previous Import Run.");
+            }
+
+            previousRun = await db.ImportRuns
+                .SingleOrDefaultAsync(
+                    x =>
+                        x.Id == request.PreviousImportRunId.Value &&
+                        x.CutoverDate == request.CutoverDate &&
+                        x.Status == "Completed",
+                    cancellationToken)
+                ?? throw new InvalidOperationException(
+                    "The previous completed Import Run is no longer eligible for replacement.");
+
+            var competingCompletedRun = await db.ImportRuns.AnyAsync(
+                x =>
+                    x.CutoverDate == request.CutoverDate &&
+                    x.Status == "Completed" &&
+                    x.Id != previousRun.Id,
+                cancellationToken);
+
+            if (competingCompletedRun)
+            {
+                throw new InvalidOperationException(
+                    "Another completed Import Run now exists for this cutover date. Return to Review and reopen Step 4.");
+            }
+        }
+        else
+        {
+            var sameCutoverExists = await db.ImportRuns.AnyAsync(
+                x =>
+                    x.CutoverDate == request.CutoverDate &&
+                    x.Status == "Completed",
+                cancellationToken);
+
+            if (sameCutoverExists)
+            {
+                throw new InvalidOperationException(
+                    "A completed Import Run already exists for this cutover date. Use Replace/Correct instead of importing again.");
+            }
+        }
+
         var existingCustomers = await db.Customers
             .AsNoTracking()
             .OrderBy(x => x.CustomerCode)
@@ -189,8 +439,26 @@ internal sealed class ImportExecutionService(
                 0))
             .ToListAsync(cancellationToken);
 
-        var totals = await db.BinMovements
+        var balanceQuery = db.BinMovements
             .AsNoTracking()
+            .AsQueryable();
+
+        if (previousRun is not null)
+        {
+            var previousId = previousRun.Id;
+
+            // Same-cutover correction must reconstruct the workbook position
+            // from history that existed before the cutover. Legitimate
+            // operator activity on/after the cutover stays in the database
+            // but must not be absorbed into the corrected Excel adjustment.
+            balanceQuery = balanceQuery.Where(
+                x =>
+                    x.MovementDate < request.CutoverDate &&
+                    (x.ImportRunId == null ||
+                     x.ImportRunId != previousId));
+        }
+
+        var totals = await balanceQuery
             .GroupBy(x => new
             {
                 x.CustomerId,
@@ -245,6 +513,8 @@ internal sealed class ImportExecutionService(
             SourceSha256 = fingerprint.Sha256,
             SourceLength = fingerprint.Length,
             SourceLastWriteUtc = fingerprint.LastWriteUtc,
+            CutoverDate = request.CutoverDate,
+            ReplacesImportRunId = previousRun?.Id,
             StartedUtc = now,
             Status = "Pending",
             UserId = session.UserId,
@@ -377,6 +647,20 @@ internal sealed class ImportExecutionService(
             createdCustomers++;
         }
 
+        if (previousRun is not null)
+        {
+            var previousMovements = await db.BinMovements
+                .Where(x => x.ImportRunId == previousRun.Id)
+                .ToListAsync(cancellationToken);
+
+            db.BinMovements.RemoveRange(previousMovements);
+
+            previousRun.Status = "Replaced";
+            previousRun.Notes =
+                (previousRun.Notes ?? string.Empty).TrimEnd() +
+                $" Replaced by corrected import run #{run.Id}.";
+        }
+
         var openingCount = 0;
         var outCount = 0;
         var inCount = 0;
@@ -492,11 +776,15 @@ internal sealed class ImportExecutionService(
             TimestampUtc = DateTime.UtcNow,
             UserId = session.UserId,
             Username = session.Username,
-            Action = "EXCEL_IMPORT_COMPLETED",
+            Action = previousRun is null
+                ? "EXCEL_IMPORT_COMPLETED"
+                : "EXCEL_IMPORT_REPLACED",
             EntityType = "ImportRun",
             EntityId = run.Id.ToString(),
             Description =
-                $"Imported '{fingerprint.FileName}' as run #{run.Id}: " +
+                (previousRun is null
+                    ? $"Imported '{fingerprint.FileName}' as run #{run.Id}: "
+                    : $"Replaced import run #{previousRun.Id} with '{fingerprint.FileName}' as run #{run.Id}: ") +
                 $"{createdCustomers} customer(s), " +
                 $"{openingCount} opening adjustment(s), " +
                 $"{outCount} OUT movement(s), " +
@@ -525,6 +813,117 @@ internal sealed class ImportExecutionService(
             outCount,
             inCount,
             movementCount);
+    }
+
+    private sealed record ReplacementPlan(
+        ImportBalanceReconciliationPlan Reconciliation);
+
+    private async Task<ReplacementPlan> BuildReplacementPlanAsync(
+        BinTrackerDbContext db,
+        ImportExecutionRequest request,
+        long previousImportRunId,
+        CancellationToken cancellationToken)
+    {
+        var existingCustomers = await db.Customers
+            .AsNoTracking()
+            .OrderBy(x => x.CustomerCode)
+            .Select(x => new CustomerListRow(
+                x.Id,
+                x.Name,
+                x.CustomerCode ?? string.Empty,
+                x.CustomerType,
+                x.IsActive,
+                0))
+            .ToListAsync(cancellationToken);
+
+        var containerTypes = await db.ContainerTypes
+            .AsNoTracking()
+            .OrderBy(x => x.DisplayOrder)
+            .ThenBy(x => x.Name)
+            .Select(x => new ContainerTypeListRow(
+                x.Id,
+                x.Name,
+                x.ShortCode,
+                x.DisplayOrder,
+                x.IsActive,
+                x.IsSpecialFloorReportContainer,
+                0))
+            .ToListAsync(cancellationToken);
+
+        var totals = await db.BinMovements
+            .AsNoTracking()
+            .Where(x =>
+                x.MovementDate < request.CutoverDate &&
+                (x.ImportRunId == null ||
+                 x.ImportRunId != previousImportRunId))
+            .GroupBy(x => new
+            {
+                x.CustomerId,
+                x.ContainerTypeId
+            })
+            .Select(g => new
+            {
+                g.Key.CustomerId,
+                g.Key.ContainerTypeId,
+                Balance = g.Sum(x =>
+                    x.MovementType == MovementType.Out
+                        ? x.Quantity
+                        : -x.Quantity)
+            })
+            .ToListAsync(cancellationToken);
+
+        var balances = totals
+            .Select(x => new BalanceRow(
+                x.CustomerId,
+                string.Empty,
+                x.ContainerTypeId,
+                string.Empty,
+                x.Balance))
+            .ToList();
+
+        var review = ExcelImportReviewPlanner.Build(
+            request.Analysis,
+            request.Mappings,
+            existingCustomers);
+
+        ValidateDecisions(review, request);
+
+        var reconciliation =
+            ImportBalanceReconciliationPlanner.Build(
+                request.Analysis,
+                request.Mappings,
+                review,
+                containerTypes,
+                balances,
+                request.ContainerTokenMappings,
+                request.CustomerDecisions,
+                request.ExistingCustomerDecisions);
+
+        ValidateReadiness(review, reconciliation);
+
+        return new ReplacementPlan(reconciliation);
+    }
+
+    private static string ReplacementKey(
+        string customerCode,
+        string container) =>
+        $"{CustomerNameNormalizer.ComparisonKey(customerCode)}|" +
+        container.Trim().ToUpperInvariant();
+
+    private static string NormalizeContainerLabel(string name)
+    {
+        if (name.Equals("Blue Bin", StringComparison.OrdinalIgnoreCase))
+            return "Blue";
+        if (name.Equals("Yellow Bin", StringComparison.OrdinalIgnoreCase))
+            return "Yellow";
+        if (name.Equals("Bulk Bin", StringComparison.OrdinalIgnoreCase))
+            return "Bulk";
+
+        return name.EndsWith(
+                " Bin",
+                StringComparison.OrdinalIgnoreCase)
+            ? name[..^4].Trim()
+            : name;
     }
 
     private static void ValidateDecisions(

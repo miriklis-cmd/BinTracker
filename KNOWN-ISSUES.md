@@ -1,15 +1,10 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.19.10**
+Current release: **v0.4.0-alpha.19.11.1**
 
 This file contains current defects/limitations that affect testing or production readiness. Completed history is in `docs/CHANGELOG.md`; future features are in `docs/Roadmap.md`; engineering cleanup is in `TECH-DEBT.md`.
 
 ## High priority
-
-### Changed-workbook / same-cutover re-import is not implemented
-**Area:** Import / Data integrity
-
-Exact identical workbooks are blocked using SHA-256. A modified workbook representing the same cutover date can have a different fingerprint. BinTracker still needs a controlled Review Differences / Replace-Correct workflow. It must never offer a blind duplicate import.
 
 ### Customer edits can be lost when navigating away
 **Area:** Customers
