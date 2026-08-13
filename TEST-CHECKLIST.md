@@ -814,3 +814,19 @@
 - [ ] Approved original mockup icon assets remain in use
 - [ ] Analyse warning wraps beside the triangle, not beneath it
 - [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.18.10 — warning/icon/secondary-text cleanup
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.18.10
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Analyse warning shows exactly one exclamation-triangle icon
+- [ ] Container summary icon is fully visible
+- [ ] Map container button icon is fully visible
+- [ ] Map container button label is fully visible
+- [ ] Source secondary reads balance rows
+- [ ] Customers secondary reads formula issues
+- [ ] Existing matches secondary reads unconfirmed count
+- [ ] New candidates secondary reads skipped count
+- [ ] Containers secondary reads manual mappings
+- [ ] Reconciliation secondary reads issues
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed

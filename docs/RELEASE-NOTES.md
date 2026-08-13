@@ -1,17 +1,17 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.18.9
+## v0.4.0-alpha.18.10
 
-### Review simplification
-- Simplified each Review metric card to one prominent value and one short secondary label.
-- Reduced metric-card icon size slightly while retaining the approved original mockup artwork.
-- Widened Confirm new, Confirm existing and Map container actions.
-- Fixed Map container icon/text clipping.
-- Replaced the overly long reconciliation action label with **Open reconciliation**.
-- Increased wizard width slightly for a more robust six-card layout.
+### Review polish
+- Removed the duplicate Analyse warning triangle.
+- Preserved transparent inset space around approved Review raster icons.
+- Reduced the container action icon slightly and widened/padded Map container.
+- Standardised all six Review cards to a primary metric plus a concise grey secondary metric.
 
-### Build hygiene
-- Removed the three xUnit2031 warnings from reconciliation tests.
-
-### Analyse warning alignment
-- Warning text now stays aligned beside the warning triangle instead of wrapping beneath it.
+### Review card wording
+- Source: sheets / balance rows
+- Customers: customers / formula issues
+- Existing matches: confirmed / unconfirmed
+- New candidates: pending or created / skipped
+- Containers: to map / manual mappings
+- Reconciliation: ready / issues

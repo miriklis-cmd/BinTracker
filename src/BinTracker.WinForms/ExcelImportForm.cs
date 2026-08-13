@@ -889,45 +889,37 @@ public sealed class ExcelImportForm : Form
         var existingUnconfirmedCount = ImportExistingCustomerDecisionPlanner.UnconfirmedCount(existingCustomerDecisions);
 
         reviewSourcePrimary.Text = $"{plan.SourceSheetCount:N0} sheets";
-        reviewSourceSecondary.Text = $"{plan.SnapshotRowCount:N0} rows";
+        reviewSourceSecondary.Text =
+            $"{plan.SnapshotRowCount:N0} balance rows";
 
-        reviewCustomersPrimary.Text = $"{plan.UniqueCustomerCount:N0}";
-        reviewCustomersSecondary.Text = "customers";
+        reviewCustomersPrimary.Text =
+            $"{plan.UniqueCustomerCount:N0} customers";
+        reviewCustomersSecondary.Text =
+            $"{plan.SnapshotTotalMismatchCount:N0} formula issues";
 
-        reviewExistingPrimary.Text = $"{existingConfirmedCount:N0} confirmed";
+        reviewExistingPrimary.Text =
+            $"{existingConfirmedCount:N0} confirmed";
         reviewExistingSecondary.Text =
-            existingUnconfirmedCount == 0
-                ? "all resolved"
-                : $"{existingUnconfirmedCount:N0} pending";
+            $"{existingUnconfirmedCount:N0} unconfirmed";
 
         reviewNewPrimary.Text =
             newUnconfirmedCount == 0
                 ? $"{newCreateCount:N0} created"
                 : $"{newUnconfirmedCount:N0} pending";
         reviewNewSecondary.Text =
-            newSkipCount == 0
-                ? "new customers"
-                : $"{newSkipCount:N0} skipped";
+            $"{newSkipCount:N0} skipped";
 
         reviewContainersPrimary.Text =
-            reconciliation.UnresolvedContainerCount == 0
-                ? "Mapped"
-                : $"{reconciliation.UnresolvedContainerCount:N0} to map";
+            $"{reconciliation.UnresolvedContainerCount:N0} to map";
         reviewContainersSecondary.Text =
-            containerTokenMappings.Count == 0
-                ? "containers"
-                : $"{containerTokenMappings.Count:N0} manual";
+            $"{containerTokenMappings.Count:N0} manual mappings";
 
         var reconciliationIssueCount =
             reconciliation.Rows.Count - reconciliation.ReadyCount;
         reviewReconciliationPrimary.Text =
-            reconciliationIssueCount == 0
-                ? $"{reconciliation.ReadyCount:N0} ready"
-                : $"{reconciliationIssueCount:N0} issues";
+            $"{reconciliation.ReadyCount:N0} ready";
         reviewReconciliationSecondary.Text =
-            reconciliationIssueCount == 0
-                ? "reconciliation"
-                : $"{reconciliation.ReadyCount:N0} ready";
+            $"{reconciliationIssueCount:N0} issues";
 
         var blockers = new List<string>();
 
@@ -1229,7 +1221,7 @@ public sealed class ExcelImportForm : Form
         var mapContainers = ReviewActionButton(
             $"Map container ({containersPending:N0})",
             ReviewIconKind.Container,
-            245);
+            260);
         mapContainers.Click += async (_, _) => await MapContainerTokensAsync();
 
         actions.Controls.Add(confirmCustomers);
@@ -1256,16 +1248,16 @@ public sealed class ExcelImportForm : Form
         AutoSize = true,
         Font = new Font("Segoe UI Semibold", 10.5F, FontStyle.Bold),
         ForeColor = Color.FromArgb(20, 28, 40),
-        MaximumSize = new Size(185, 0),
+        MaximumSize = new Size(195, 0),
         Margin = Padding.Empty
     };
 
     private static Label ReviewMetricSecondary() => new()
     {
         AutoSize = true,
-        Font = new Font("Segoe UI", 9.5F),
+        Font = new Font("Segoe UI", 9F),
         ForeColor = Color.FromArgb(105, 110, 120),
-        MaximumSize = new Size(185, 0),
+        MaximumSize = new Size(195, 0),
         Margin = Padding.Empty
     };
 
@@ -1292,7 +1284,7 @@ public sealed class ExcelImportForm : Form
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48F));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 52F));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -1300,7 +1292,7 @@ public sealed class ExcelImportForm : Form
 
         var iconBox = new PictureBox
         {
-            Image = LoadReviewIcon(iconKind, new Size(38, 38)),
+            Image = LoadReviewIcon(iconKind, new Size(36, 36)),
             SizeMode = PictureBoxSizeMode.CenterImage,
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
@@ -1335,12 +1327,16 @@ public sealed class ExcelImportForm : Form
         int width)
     {
         var button = SecondaryButton(text, width);
-        button.Image = LoadReviewIcon(iconKind, new Size(16, 16));
+        button.Image = LoadReviewIcon(
+            iconKind,
+            iconKind == ReviewIconKind.Container
+                ? new Size(14, 14)
+                : new Size(16, 16));
         button.ImageAlign = ContentAlignment.MiddleLeft;
         button.TextAlign = ContentAlignment.MiddleCenter;
         button.UseVisualStyleBackColor = true;
         button.TextImageRelation = TextImageRelation.ImageBeforeText;
-        button.Padding = new Padding(12, 0, 12, 0);
+        button.Padding = new Padding(16, 0, 14, 0);
         button.AutoSize = false;
         button.Height = 44;
         return button;
@@ -1390,7 +1386,25 @@ public sealed class ExcelImportForm : Form
                 $"Embedded Review icon '{fileName}' could not be opened.");
         using var original = Image.FromStream(stream);
 
-        return new Bitmap(original, size);
+        // Preserve transparent breathing room around approved raster artwork.
+        // Stretching the source edge-to-edge can crop tall icons such as the bin.
+        var canvas = new Bitmap(size.Width, size.Height);
+        using var g = Graphics.FromImage(canvas);
+        g.Clear(Color.Transparent);
+        g.InterpolationMode =
+            System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+        g.PixelOffsetMode =
+            System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+
+        var inset = Math.Max(2, Math.Min(size.Width, size.Height) / 10);
+        var target = new Rectangle(
+            inset,
+            inset,
+            Math.Max(1, size.Width - (inset * 2)),
+            Math.Max(1, size.Height - (inset * 2)));
+
+        g.DrawImage(original, target);
+        return canvas;
     }
 
     private Control BuildReviewCustomerSection()

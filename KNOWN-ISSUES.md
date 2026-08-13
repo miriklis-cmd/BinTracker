@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.18.9**
+Current release: **v0.4.0-alpha.18.10**
 
 This file tracks current defects, incomplete production-critical behaviour, and limitations that a tester/operator needs to know about. Planned enhancements belong in `docs/Roadmap.md`; engineering cleanup belongs in `TECH-DEBT.md`.
 
@@ -107,6 +107,10 @@ Developer-only SQLite backup/load/fresh-database tools now exist for import test
 The controls work correctly, but the current custom-drawn artwork was accepted as functional rather than final visual polish.
 
 ## Recently resolved
+
+- Analyse warning showed two exclamation-triangle icons because both the dynamic text and warning layout supplied one; the text no longer embeds its own icon.
+- Container summary/action icons could crop against their image bounds; icon loading now preserves transparent inset space and the Map container action has extra width/padding.
+- Review-card secondary grey text was inconsistent and sometimes repeated the card subject awkwardly; all six cards now use explicit concise secondary metrics.
 
 - Review cards were still overcrowded at normal DPI; they now use one strong primary metric plus one short secondary label.
 - Review action buttons, especially Map container and the reconciliation viewer, could clip icon/text; widths, icon sizing, padding and button height are now explicit.

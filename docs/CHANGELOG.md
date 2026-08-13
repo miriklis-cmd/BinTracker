@@ -375,3 +375,8 @@
 - Shortened reconciliation action to Open reconciliation.
 - Removed three xUnit2031 warnings.
 - Fixed Analyse warning hanging-indent layout.
+
+## v0.4.0-alpha.18.10
+- Removed duplicate Analyse warning icon.
+- Fixed container icon cropping in summary/action UI.
+- Standardised secondary grey Review-card metrics.

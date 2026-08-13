@@ -3,6 +3,8 @@
 These are engineering improvements, not current user-facing defects.
 
 ## UI
+- Review card secondary text should be a concise secondary metric, not a repeated noun or status label. Keep primary and secondary meanings stable across states.
+- Approved raster icons must retain transparent inset space when scaled. Do not stretch icon artwork edge-to-edge into PictureBox/Button image bounds, especially tall container/bin artwork.
 - Review summary cards should contain one strong primary metric and one short secondary label; do not overload cards with multiple competing counts.
 - For approved visual assets, use the approved source artwork directly. Do not redraw or reinterpret icons after a mockup has been accepted. Metric cards should preserve the approved bold-primary / grey-secondary hierarchy.
 - Approved mockup icons are stored as embedded raster PNG assets. Do not recreate them with Unicode or runtime vector drawing; load the embedded assets and scale them for DPI.
