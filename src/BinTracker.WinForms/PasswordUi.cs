@@ -73,38 +73,64 @@ internal static class PasswordUi
         {
             base.OnPaint(e);
 
-            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            e.Graphics.SmoothingMode =
+                System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-            using var pen = new Pen(Color.FromArgb(42, 57, 79), 1.8F);
-            using var pupil = new SolidBrush(Color.FromArgb(42, 57, 79));
-
+            var navy = Color.FromArgb(30, 61, 112);
             var cx = ClientRectangle.Width / 2F;
             var cy = ClientRectangle.Height / 2F;
-            var eyeWidth = 20F;
-            var eyeHeight = 11F;
+            var eyeWidth = 22F;
+            var eyeHeight = 14F;
 
             var left = cx - eyeWidth / 2F;
             var right = cx + eyeWidth / 2F;
             var top = cy - eyeHeight / 2F;
             var bottom = cy + eyeHeight / 2F;
 
-            using var upper = new System.Drawing.Drawing2D.GraphicsPath();
-            upper.AddBezier(left, cy, cx - 5F, top, cx + 5F, top, right, cy);
+            using var eyePath = new System.Drawing.Drawing2D.GraphicsPath();
+            eyePath.AddBezier(
+                left, cy,
+                cx - 6F, top - 1F,
+                cx + 6F, top - 1F,
+                right, cy);
+            eyePath.AddBezier(
+                right, cy,
+                cx + 6F, bottom + 1F,
+                cx - 6F, bottom + 1F,
+                left, cy);
+            eyePath.CloseFigure();
 
-            using var lower = new System.Drawing.Drawing2D.GraphicsPath();
-            lower.AddBezier(left, cy, cx - 5F, bottom, cx + 5F, bottom, right, cy);
+            using var eyeBrush = new SolidBrush(navy);
+            e.Graphics.FillPath(eyeBrush, eyePath);
 
-            e.Graphics.DrawPath(pen, upper);
-            e.Graphics.DrawPath(pen, lower);
-            e.Graphics.FillEllipse(pupil, cx - 2.6F, cy - 2.6F, 5.2F, 5.2F);
+            using var white = new SolidBrush(Color.White);
+            e.Graphics.FillEllipse(white, cx - 5.1F, cy - 5.1F, 10.2F, 10.2F);
 
+            using var pupil = new SolidBrush(navy);
+            e.Graphics.FillEllipse(pupil, cx - 2.8F, cy - 2.8F, 5.6F, 5.6F);
+
+            // Hidden password = normal eye ("show password").
+            // Visible password = eye with slash ("hide password").
             if (showing)
             {
-                using var slashPen = new Pen(Color.FromArgb(42, 57, 79), 1.8F);
-                e.Graphics.DrawLine(
-                    slashPen,
-                    left + 1F, top - 1F,
-                    right - 1F, bottom + 1F);
+                using var underlay = new Pen(Color.White, 4.6F)
+                {
+                    StartCap = System.Drawing.Drawing2D.LineCap.Square,
+                    EndCap = System.Drawing.Drawing2D.LineCap.Square
+                };
+                using var slash = new Pen(navy, 2.8F)
+                {
+                    StartCap = System.Drawing.Drawing2D.LineCap.Square,
+                    EndCap = System.Drawing.Drawing2D.LineCap.Square
+                };
+
+                var x1 = left + 1F;
+                var y1 = bottom + 3F;
+                var x2 = right - 1F;
+                var y2 = top - 3F;
+
+                e.Graphics.DrawLine(underlay, x1, y1, x2, y2);
+                e.Graphics.DrawLine(slash, x1, y1, x2, y2);
             }
         }
     }

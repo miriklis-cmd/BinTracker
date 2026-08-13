@@ -338,3 +338,22 @@
 
 ## v0.4.0-alpha.18.2
 - Fixed Review readiness source ordering that caused CS0841 compilation failure.
+
+## v0.4.0-alpha.18.3
+- Fixed root cause of collapsed Step 3 Review grids by disabling AutoSize on the fill-region card.
+
+## v0.4.0-alpha.18.4
+- Enlarged Balance Reconciliation and added a full-size viewer.
+- Added targeted cutover-math regression tests.
+- Made Step 4 workbook-lock/access failures recoverable instead of fatal.
+
+## v0.4.0-alpha.18.5
+- Redesigned Step 3 Import Review summary into six metric cards.
+- Rearranged Review actions and made the large reconciliation viewer persistently visible.
+- Increased the primary reconciliation grid area and clarified formula headers.
+- Updated password visibility eye / eye-slash artwork.
+
+## v0.4.0-alpha.18.6
+- Simplified reconciliation column headers.
+- Fixed metric-card clipping.
+- Replaced Unicode Review icons with custom-drawn mockup-matching vector icons.

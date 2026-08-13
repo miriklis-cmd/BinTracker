@@ -702,3 +702,65 @@
 - [ ] Any Review blocker disables Import
 - [ ] Balance Reconciliation remains fully visible
 - [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.18.3 — Review fill-layout fix
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.18.3
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Step 3 Customer Matches shows multiple visible data rows
+- [ ] Step 3 Balance Reconciliation shows multiple visible data rows
+- [ ] Balance Reconciliation grid uses the available height down to the wizard footer
+- [ ] Switching between Customer Matches and Balance Reconciliation does not collapse either grid
+- [ ] Resize wizard taller: Review grid grows
+- [ ] Resize wizard shorter to minimum: Review grid remains usable with vertical scrolling
+- [ ] Import remains enabled when Review is fully resolved
+- [ ] Import advances to Step 4
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.18.4 — reconciliation/math/file-lock hardening
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.18.4
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Balance Reconciliation shows several rows in normal wizard size
+- [ ] View balance reconciliation larger opens a large read-only grid
+- [ ] Zahos example: Current 0, B/Fwd 5, OUT 10, IN 15 => Adjustment +5, Projected 0
+- [ ] Existing Current 20, B/Fwd 12, OUT 4, IN 1 => Adjustment -8, Projected 15
+- [ ] Formula remains B/Fwd + OUT - IN for Excel target
+- [ ] Open workbook in Excel before Step 4: BinTracker shows warning and does not crash
+- [ ] After closing workbook, clicking Import again reaches Step 4
+- [ ] No data is written on locked-file preflight failure
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.18.5 — Review redesign / password icons
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.18.5
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Review summary displays six metric cards in one row
+- [ ] Metric values correctly reflect Review state after Confirm/Map actions
+- [ ] Confirm new / Confirm existing / Map container actions remain usable
+- [ ] View reconciliation larger is visible without scrolling
+- [ ] Balance Reconciliation receives most of the remaining Step 3 height
+- [ ] Multiple reconciliation rows are visible at normal wizard size
+- [ ] Large reconciliation viewer still opens and shows all current rows
+- [ ] Reconciliation headers explain Current/B/Fwd/OUT/IN/target/adjustment/projected context
+- [ ] Hidden password uses normal eye
+- [ ] Visible password uses eye-with-slash
+- [ ] Password toggle remains keyboard/accessibility safe
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.18.6 — Review icons/header/card polish
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.18.6
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Metric cards are not vertically clipped at 100% DPI
+- [ ] Metric cards are not vertically clipped at 125% DPI
+- [ ] Source uses database-stack icon
+- [ ] Customers uses people icon
+- [ ] Existing matches uses check-circle icon
+- [ ] New candidates uses person-plus icon
+- [ ] Containers uses container/bin icon
+- [ ] Reconciliation uses scales icon
+- [ ] Review action buttons use corresponding vector icons
+- [ ] Balance headers are concise: Customer, Container, Current, B/Fwd, OUT, IN, Excel target, Opening adjustment, Projected, Status, Container rule
+- [ ] Full cutover formula remains visible above the reconciliation grid
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed

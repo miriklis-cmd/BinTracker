@@ -84,6 +84,13 @@ public sealed class ExcelImportForm : Form
         MaximumSize = new Size(1260, 0)
     };
 
+    private readonly Label reviewSourceMetric = ReviewMetricValue();
+    private readonly Label reviewCustomersMetric = ReviewMetricValue();
+    private readonly Label reviewExistingMetric = ReviewMetricValue();
+    private readonly Label reviewNewMetric = ReviewMetricValue();
+    private readonly Label reviewContainersMetric = ReviewMetricValue();
+    private readonly Label reviewReconciliationMetric = ReviewMetricValue();
+
     private readonly Label mappingSummary = new()
     {
         AutoSize = true,
@@ -252,8 +259,8 @@ public sealed class ExcelImportForm : Form
         {
             Text = "Analyse workbook",
             AutoSize = true,
-            Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 5)
+            Font = new Font("Segoe UI Semibold", 17F, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 3)
         }, 0, 0);
 
         layout.Controls.Add(new Label
@@ -399,7 +406,7 @@ public sealed class ExcelImportForm : Form
 
     private Control BuildMapHeader()
     {
-        var card = Card(new Padding(20, 14, 20, 14));
+        var card = Card(new Padding(18, 9, 18, 9));
 
         var layout = new TableLayoutPanel
         {
@@ -844,22 +851,25 @@ public sealed class ExcelImportForm : Form
                 item.ContainerReason);
         }
 
-        reviewSummary.Text =
-            $"Source sheets: {plan.SourceSheetCount:N0}    " +
-            $"Unique Source customers: {plan.UniqueCustomerCount:N0}    " +
-            $"Existing matches: {plan.ExistingCount:N0}    " +
-            $"New candidates: {plan.NewCount:N0}" + Environment.NewLine +
-            $"Source B/Fwd / daily rows: {plan.SnapshotRowCount:N0}    " +
-            $"Formula mismatches: {plan.SnapshotTotalMismatchCount:N0}" + Environment.NewLine +
-            $"New customer decisions: {ImportCustomerDecisionPlanner.CreateCount(customerDecisions):N0} create    " +
-            $"{ImportCustomerDecisionPlanner.SkipCount(customerDecisions):N0} skip    " +
-            $"{ImportCustomerDecisionPlanner.UnconfirmedCount(customerDecisions):N0} unconfirmed" + Environment.NewLine +
-            $"Existing match decisions: {ImportExistingCustomerDecisionPlanner.ConfirmedCount(existingCustomerDecisions):N0} confirmed    " +
-            $"{ImportExistingCustomerDecisionPlanner.UnconfirmedCount(existingCustomerDecisions):N0} unconfirmed" + Environment.NewLine +
-            $"Balance reconciliation: {reconciliation.ReadyCount:N0} ready    " +
-            $"{reconciliation.NewCustomerPendingCount:N0} new-customer pending    " +
-            $"{reconciliation.UnresolvedContainerCount:N0} container mapping required    " +
-            $"{containerTokenMappings.Count:N0} manual token mapping(s)";
+        var newCreateCount = ImportCustomerDecisionPlanner.CreateCount(customerDecisions);
+        var newSkipCount = ImportCustomerDecisionPlanner.SkipCount(customerDecisions);
+        var newUnconfirmedCount = ImportCustomerDecisionPlanner.UnconfirmedCount(customerDecisions);
+        var existingConfirmedCount = ImportExistingCustomerDecisionPlanner.ConfirmedCount(existingCustomerDecisions);
+        var existingUnconfirmedCount = ImportExistingCustomerDecisionPlanner.UnconfirmedCount(existingCustomerDecisions);
+
+        reviewSourceMetric.Text =
+            $"{plan.SourceSheetCount:N0} sheets\n{plan.SnapshotRowCount:N0} balance rows";
+        reviewCustomersMetric.Text =
+            $"{plan.UniqueCustomerCount:N0} unique\n{plan.SnapshotTotalMismatchCount:N0} formula issues";
+        reviewExistingMetric.Text =
+            $"{existingConfirmedCount:N0} confirmed\n{existingUnconfirmedCount:N0} unconfirmed";
+        reviewNewMetric.Text =
+            $"{newCreateCount:N0} create\n{newSkipCount:N0} skip · {newUnconfirmedCount:N0} unconfirmed";
+        reviewContainersMetric.Text =
+            $"{reconciliation.UnresolvedContainerCount:N0} to map\n{containerTokenMappings.Count:N0} manual mappings";
+        reviewReconciliationMetric.Text =
+            $"{reconciliation.ReadyCount:N0} ready\n" +
+            $"{reconciliation.Rows.Count - reconciliation.ReadyCount:N0} issues";
 
         var blockers = new List<string>();
 
@@ -918,7 +928,10 @@ public sealed class ExcelImportForm : Form
 
         page.Controls.Add(BuildReviewHeader(), 0, 0);
         page.Controls.Add(BuildReviewSummaryCard(), 0, 1);
-        page.Controls.Add(BuildReviewCustomerSection(), 0, 2);
+
+        var reviewSection = BuildReviewCustomerSection();
+        reviewSection.Dock = DockStyle.Fill;
+        page.Controls.Add(reviewSection, 0, 2);
 
         pageHost.Controls.Add(page);
     }
@@ -1038,7 +1051,7 @@ public sealed class ExcelImportForm : Form
 
     private Control BuildReviewHeader()
     {
-        var card = Card(new Padding(20, 14, 20, 14));
+        var card = Card(new Padding(18, 8, 18, 8));
 
         var layout = new TableLayoutPanel
         {
@@ -1072,95 +1085,368 @@ public sealed class ExcelImportForm : Form
 
     private Control BuildReviewSummaryCard()
     {
-        var card = Card(new Padding(18, 12, 18, 12));
+        var card = Card(new Padding(12, 7, 12, 7));
 
-        var layout = new TableLayoutPanel
+        var root = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             ColumnCount = 1,
-            RowCount = 4
+            RowCount = 3,
+            Margin = Padding.Empty
         };
 
-        layout.Controls.Add(SectionHeading("Import summary"), 0, 0);
-        reviewSummary.Margin = new Padding(0, 6, 0, 0);
-        layout.Controls.Add(reviewSummary, 0, 1);
+        var metrics = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = false,
+            Height = 112,
+            ColumnCount = 6,
+            RowCount = 1,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
 
-        reviewWarning.Margin = new Padding(0, 8, 0, 0);
-        layout.Controls.Add(reviewWarning, 0, 2);
+        for (var i = 0; i < 6; i++)
+            metrics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16.6667F));
+
+        metrics.Controls.Add(
+            ReviewMetricCard(ReviewIconKind.Database, Color.SeaGreen, "Source", reviewSourceMetric), 0, 0);
+        metrics.Controls.Add(
+            ReviewMetricCard(ReviewIconKind.People, Color.RoyalBlue, "Customers", reviewCustomersMetric), 1, 0);
+        metrics.Controls.Add(
+            ReviewMetricCard(ReviewIconKind.CheckCircle, Color.ForestGreen, "Existing matches", reviewExistingMetric), 2, 0);
+        metrics.Controls.Add(
+            ReviewMetricCard(ReviewIconKind.PersonPlus, Color.DarkOrange, "New candidates", reviewNewMetric), 3, 0);
+        metrics.Controls.Add(
+            ReviewMetricCard(ReviewIconKind.Container, Color.MediumPurple, "Containers", reviewContainersMetric), 4, 0);
+        metrics.Controls.Add(
+            ReviewMetricCard(ReviewIconKind.Scales, Color.FromArgb(25, 95, 190), "Reconciliation", reviewReconciliationMetric), 5, 0);
+
+        root.Controls.Add(metrics, 0, 0);
+
+        reviewWarning.Margin = new Padding(2, 4, 0, 3);
+        root.Controls.Add(reviewWarning, 0, 1);
+
+        var actionRow = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 2,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+        actionRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        actionRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
         var actions = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             FlowDirection = FlowDirection.LeftToRight,
-            Margin = new Padding(0, 10, 0, 0)
+            WrapContents = false,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
-        var confirmCustomers = SecondaryButton("Confirm new customers...", 205);
+
+        var confirmCustomers = ReviewActionButton(
+            "Confirm new",
+            ReviewIconKind.PersonPlus,
+            Color.DarkOrange,
+            175);
         confirmCustomers.Click += async (_, _) => await ConfirmNewCustomersAsync();
-        actions.Controls.Add(confirmCustomers);
 
-        var confirmMatches = SecondaryButton("Confirm existing matches...", 215);
+        var confirmMatches = ReviewActionButton(
+            "Confirm existing",
+            ReviewIconKind.CheckCircle,
+            Color.ForestGreen,
+            190);
         confirmMatches.Click += async (_, _) => await ConfirmExistingMatchesAsync();
-        actions.Controls.Add(confirmMatches);
 
-        var mapContainers = SecondaryButton("Map container tokens...", 190);
+        var mapContainers = ReviewActionButton(
+            "Map container",
+            ReviewIconKind.Container,
+            Color.MediumPurple,
+            175);
         mapContainers.Click += async (_, _) => await MapContainerTokensAsync();
-        actions.Controls.Add(mapContainers);
-        layout.Controls.Add(actions, 0, 3);
 
-        card.Controls.Add(layout);
+        actions.Controls.Add(confirmCustomers);
+        actions.Controls.Add(confirmMatches);
+        actions.Controls.Add(mapContainers);
+
+        var larger = ReviewActionButton(
+            "View reconciliation larger...",
+            ReviewIconKind.Expand,
+            Color.FromArgb(25, 95, 190),
+            245);
+        larger.Margin = Padding.Empty;
+        larger.Click += (_, _) => ShowReconciliationLarge();
+
+        actionRow.Controls.Add(actions, 0, 0);
+        actionRow.Controls.Add(larger, 1, 0);
+        root.Controls.Add(actionRow, 0, 2);
+
+        card.Controls.Add(root);
         return card;
+    }
+
+    private static Label ReviewMetricValue() => new()
+    {
+        AutoSize = true,
+        Font = new Font("Segoe UI Semibold", 10.5F, FontStyle.Bold),
+        ForeColor = Color.FromArgb(30, 38, 50),
+        MaximumSize = new Size(175, 0),
+        Margin = Padding.Empty
+    };
+
+    private static Control ReviewMetricCard(
+        ReviewIconKind iconKind,
+        Color iconColor,
+        string title,
+        Label value)
+    {
+        var panel = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(4, 3, 4, 3),
+            Padding = new Padding(10, 9, 8, 8),
+            BackColor = Color.White,
+            BorderStyle = BorderStyle.FixedSingle
+        };
+
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 2,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 42F));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+        var iconBox = new PictureBox
+        {
+            Image = DrawReviewIcon(iconKind, iconColor, new Size(32, 32)),
+            SizeMode = PictureBoxSizeMode.CenterImage,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            TabStop = false
+        };
+
+        layout.Controls.Add(iconBox, 0, 0);
+        layout.SetRowSpan(iconBox, 2);
+
+        layout.Controls.Add(new Label
+        {
+            Text = title,
+            AutoSize = true,
+            Font = new Font("Segoe UI", 9F),
+            ForeColor = Color.FromArgb(70, 80, 95),
+            Margin = new Padding(3, 0, 0, 2)
+        }, 1, 0);
+
+        value.Margin = new Padding(3, 0, 0, 0);
+        layout.Controls.Add(value, 1, 1);
+
+        panel.Controls.Add(layout);
+        return panel;
+    }
+
+    private static Button ReviewActionButton(
+        string text,
+        ReviewIconKind iconKind,
+        Color iconColor,
+        int width)
+    {
+        var button = SecondaryButton(text, width);
+        button.Image = DrawReviewIcon(iconKind, iconColor, new Size(18, 18));
+        button.ImageAlign = ContentAlignment.MiddleLeft;
+        button.TextImageRelation = TextImageRelation.ImageBeforeText;
+        button.Padding = new Padding(8, 0, 8, 0);
+        return button;
+    }
+
+    private enum ReviewIconKind
+    {
+        Database,
+        People,
+        CheckCircle,
+        PersonPlus,
+        Container,
+        Scales,
+        Expand
+    }
+
+    private static Bitmap DrawReviewIcon(
+        ReviewIconKind kind,
+        Color color,
+        Size size)
+    {
+        var bitmap = new Bitmap(size.Width, size.Height);
+        using var g = Graphics.FromImage(bitmap);
+        g.SmoothingMode =
+            System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        g.Clear(Color.Transparent);
+
+        using var pen = new Pen(color, 2F)
+        {
+            StartCap = System.Drawing.Drawing2D.LineCap.Round,
+            EndCap = System.Drawing.Drawing2D.LineCap.Round,
+            LineJoin = System.Drawing.Drawing2D.LineJoin.Round
+        };
+        using var brush = new SolidBrush(color);
+
+        var w = size.Width;
+        var h = size.Height;
+
+        switch (kind)
+        {
+            case ReviewIconKind.Database:
+            {
+                var x = 5F; var y = 5F; var ew = w - 10F; var eh = 7F;
+                g.FillEllipse(brush, x, y, ew, eh);
+                g.DrawArc(pen, x, y + 5F, ew, eh, 0, 180);
+                g.DrawArc(pen, x, y + 11F, ew, eh, 0, 180);
+                g.DrawArc(pen, x, y + 17F, ew, eh, 0, 180);
+                g.DrawLine(pen, x, y + 8F, x, y + 21F);
+                g.DrawLine(pen, x + ew, y + 8F, x + ew, y + 21F);
+                break;
+            }
+
+            case ReviewIconKind.People:
+            {
+                g.FillEllipse(brush, 7, 6, 8, 8);
+                g.FillEllipse(brush, 17, 7, 7, 7);
+                g.DrawArc(pen, 4, 14, 15, 12, 185, 170);
+                g.DrawArc(pen, 14, 15, 13, 11, 185, 170);
+                break;
+            }
+
+            case ReviewIconKind.CheckCircle:
+            {
+                g.DrawEllipse(pen, 4, 4, w - 8, h - 8);
+                using var checkPen = new Pen(color, 2.8F)
+                {
+                    StartCap = System.Drawing.Drawing2D.LineCap.Round,
+                    EndCap = System.Drawing.Drawing2D.LineCap.Round
+                };
+                g.DrawLines(
+                    checkPen,
+                    [new PointF(8, 16), new PointF(13, 21), new PointF(24, 10)]);
+                break;
+            }
+
+            case ReviewIconKind.PersonPlus:
+            {
+                g.FillEllipse(brush, 6, 5, 9, 9);
+                g.DrawArc(pen, 3, 14, 16, 12, 185, 170);
+                g.DrawLine(pen, 23, 11, 23, 23);
+                g.DrawLine(pen, 17, 17, 29, 17);
+                break;
+            }
+
+            case ReviewIconKind.Container:
+            {
+                g.DrawRectangle(pen, 6, 9, 20, 15);
+                g.DrawLine(pen, 9, 9, 11, 5);
+                g.DrawLine(pen, 23, 9, 21, 5);
+                g.DrawLine(pen, 5, 9, 27, 9);
+                g.DrawLine(pen, 10, 24, 10, 27);
+                g.DrawLine(pen, 22, 24, 22, 27);
+                break;
+            }
+
+            case ReviewIconKind.Scales:
+            {
+                g.DrawLine(pen, 16, 5, 16, 25);
+                g.DrawLine(pen, 8, 9, 24, 9);
+                g.DrawLine(pen, 8, 9, 4, 18);
+                g.DrawLine(pen, 24, 9, 28, 18);
+                g.DrawArc(pen, 1, 15, 8, 8, 0, 180);
+                g.DrawArc(pen, 23, 15, 8, 8, 0, 180);
+                g.DrawLine(pen, 10, 26, 22, 26);
+                break;
+            }
+
+            case ReviewIconKind.Expand:
+            {
+                g.DrawLine(pen, 7, 13, 7, 7);
+                g.DrawLine(pen, 7, 7, 13, 7);
+                g.DrawLine(pen, 7, 7, 14, 14);
+
+                g.DrawLine(pen, 25, 19, 25, 25);
+                g.DrawLine(pen, 25, 25, 19, 25);
+                g.DrawLine(pen, 25, 25, 18, 18);
+                break;
+            }
+        }
+
+        return bitmap;
     }
 
     private Control BuildReviewCustomerSection()
     {
-        var card = Card(new Padding(14, 12, 14, 14));
+        var card = Card(new Padding(4, 3, 4, 4));
+        card.AutoSize = false;
+        card.AutoSizeMode = AutoSizeMode.GrowOnly;
         card.Dock = DockStyle.Fill;
+        card.Margin = Padding.Empty;
 
         var tabs = new TabControl
         {
             Dock = DockStyle.Fill,
-            Font = Font
+            Font = Font,
+            MinimumSize = new Size(0, 420),
+            Margin = Padding.Empty
         };
 
         var customerTab = new TabPage("Customer matches")
         {
             BackColor = Color.White,
-            Padding = new Padding(8)
+            Padding = new Padding(4)
         };
 
         reviewGrid.Dock = DockStyle.Fill;
+        reviewGrid.MinimumSize = new Size(0, 360);
         customerTab.Controls.Add(reviewGrid);
 
         var balanceTab = new TabPage("Balance reconciliation")
         {
             BackColor = Color.White,
-            Padding = new Padding(8)
+            Padding = new Padding(4)
         };
 
         var balanceLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 2
+            RowCount = 2,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
         balanceLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         balanceLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-        balanceLayout.Controls.Add(new Label
+        var explanation = new Label
         {
             Text =
-                "Excel is authoritative at cutover. BinTracker reconciles the opening position to B/Fwd, " +
-                "then preserves that day's OUT and IN as real movements. Projected must equal Excel.",
+                "Excel is authoritative at cutover. Opening adjustment = B/Fwd - Current.  " +
+                "Projected = Current + Opening adjustment + OUT - IN = Excel target.",
             AutoSize = true,
             ForeColor = Color.DimGray,
             MaximumSize = new Size(1260, 0),
-            Margin = new Padding(0, 0, 0, 8)
-        }, 0, 0);
+            Margin = new Padding(0, 0, 0, 4)
+        };
+
+        balanceLayout.Controls.Add(explanation, 0, 0);
 
         reconciliationGrid.Dock = DockStyle.Fill;
+        reconciliationGrid.MinimumSize = new Size(0, 360);
         balanceLayout.Controls.Add(reconciliationGrid, 0, 1);
+
         balanceTab.Controls.Add(balanceLayout);
 
         tabs.TabPages.Add(customerTab);
@@ -1168,6 +1454,79 @@ public sealed class ExcelImportForm : Form
 
         card.Controls.Add(tabs);
         return card;
+    }
+
+    private void ShowReconciliationLarge()
+    {
+        using var form = new Form
+        {
+            Text = "Balance Reconciliation",
+            StartPosition = FormStartPosition.CenterParent,
+            AutoScaleMode = AutoScaleMode.Dpi,
+            ClientSize = new Size(1380, 760),
+            MinimumSize = new Size(1100, 620),
+            BackColor = Color.White,
+            Font = Font
+        };
+
+        var root = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            Padding = new Padding(14)
+        };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        root.Controls.Add(new Label
+        {
+            Text =
+                "Projected = Current + Opening adjustment + OUT - IN. " +
+                "Opening adjustment = B/Fwd - Current. Projected must equal Excel target.",
+            AutoSize = true,
+            ForeColor = Color.DimGray,
+            Margin = new Padding(0, 0, 0, 8)
+        }, 0, 0);
+
+        var grid = Grid();
+        grid.ScrollBars = ScrollBars.Both;
+        grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+        grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+        grid.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
+        grid.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.True;
+        grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+
+        foreach (DataGridViewColumn source in reconciliationGrid.Columns)
+        {
+            grid.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                HeaderText = source.HeaderText,
+                FillWeight = source.FillWeight,
+                MinimumWidth = source.MinimumWidth
+            });
+        }
+
+        foreach (DataGridViewRow sourceRow in reconciliationGrid.Rows)
+        {
+            if (sourceRow.IsNewRow) continue;
+            var values = sourceRow.Cells
+                .Cast<DataGridViewCell>()
+                .Select(x => x.Value)
+                .ToArray();
+            grid.Rows.Add(values);
+        }
+
+        root.Controls.Add(grid, 0, 1);
+
+        var close = SecondaryButton("Close", 110);
+        close.Anchor = AnchorStyles.Right;
+        close.Click += (_, _) => form.Close();
+        root.Controls.Add(close, 0, 2);
+
+        form.Controls.Add(root);
+        form.ShowDialog(this);
     }
 
     private void ConfigureReviewGrid()
@@ -1251,14 +1610,14 @@ public sealed class ExcelImportForm : Form
             DataGridViewColumnHeadersHeightSizeMode.AutoSize;
 
         reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Customer", FillWeight = 125, MinimumWidth = 140 });
-        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Container", FillWeight = 100, MinimumWidth = 120 });
-        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Current", FillWeight = 65, MinimumWidth = 75 });
-        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "B/Fwd", FillWeight = 65, MinimumWidth = 75 });
-        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "OUT", FillWeight = 55, MinimumWidth = 65 });
-        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "IN", FillWeight = 55, MinimumWidth = 65 });
-        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Excel target", FillWeight = 80, MinimumWidth = 90 });
-        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Opening adjustment", FillWeight = 95, MinimumWidth = 110 });
-        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Projected", FillWeight = 80, MinimumWidth = 90 });
+        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Container", FillWeight = 78, MinimumWidth = 90 });
+        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Current", FillWeight = 64, MinimumWidth = 72 });
+        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "B/Fwd", FillWeight = 64, MinimumWidth = 72 });
+        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "OUT", FillWeight = 52, MinimumWidth = 60 });
+        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "IN", FillWeight = 52, MinimumWidth = 60 });
+        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Excel target", FillWeight = 100, MinimumWidth = 120 });
+        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Opening adjustment", FillWeight = 88, MinimumWidth = 105 });
+        reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Projected", FillWeight = 76, MinimumWidth = 90 });
         reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Status", FillWeight = 105, MinimumWidth = 130 });
         reconciliationGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Container rule", FillWeight = 145, MinimumWidth = 180 });
     }
@@ -1361,6 +1720,56 @@ public sealed class ExcelImportForm : Form
         if (analysis is null)
             return;
 
+        ImportPreflightResult preflight;
+        try
+        {
+            UseWaitCursor = true;
+            nextButton.Enabled = false;
+            preflight = await importExecutionService.PreflightAsync(
+                analysis.FullPath);
+        }
+        catch (IOException)
+        {
+            // Excel/OneDrive may hold the workbook without allowing a second
+            // reader. This is recoverable and must never terminate BinTracker.
+            currentStep = 3;
+            progress.ActiveStep = 3;
+            progress.Invalidate();
+            nextButton.Text = "Import >";
+            nextButton.Enabled = true;
+
+            MessageBox.Show(
+                this,
+                "BinTracker cannot read the workbook because it is currently open or locked by another program.\n\n" +
+                "Close the workbook in Excel (and allow OneDrive to finish syncing if necessary), then click Import again.\n\n" +
+                "Nothing has been imported.",
+                "Workbook is in use",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            currentStep = 3;
+            progress.ActiveStep = 3;
+            progress.Invalidate();
+            nextButton.Text = "Import >";
+            nextButton.Enabled = true;
+
+            MessageBox.Show(
+                this,
+                "BinTracker cannot read the workbook because access was denied. " +
+                "Check that the file is available and not locked, then try again. Nothing has been imported.",
+                "Cannot access workbook",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+            return;
+        }
+        finally
+        {
+            UseWaitCursor = false;
+        }
+
         currentStep = 4;
         progress.ActiveStep = 4;
         progress.Invalidate();
@@ -1370,9 +1779,6 @@ public sealed class ExcelImportForm : Form
         nextButton.Enabled = false;
 
         pageHost.Controls.Clear();
-
-        var preflight = await importExecutionService.PreflightAsync(
-            analysis.FullPath);
 
         var page = new TableLayoutPanel
         {

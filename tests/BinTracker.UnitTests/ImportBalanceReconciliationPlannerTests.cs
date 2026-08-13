@@ -288,6 +288,108 @@ public sealed class ImportBalanceReconciliationPlannerTests
         Assert.Equal(ImportBalanceReconciliationStatus.Ready, row.Status);
     }
 
+    [Fact]
+    public void Cutover_math_matches_Zahos_example_bfwd_plus_out_minus_in()
+    {
+        var analysis = Analysis(new ImportSnapshotCandidate(
+            "Update Account", "Zahos", CustomerType.Account, null,
+            Out: 10, In: 15, BroughtForward: 5, ExcelTotal: 0, SourceRow: "40"));
+
+        var result = ImportBalanceReconciliationPlanner.Build(
+            analysis,
+            SourceMapping,
+            CustomerPlan(null, "Zahos", ImportCustomerReviewStatus.New),
+            Containers,
+            [],
+            null,
+            new Dictionary<string, ImportCustomerDecision>(
+                StringComparer.OrdinalIgnoreCase)
+            {
+                ["Zahos"] = new(
+                    "Zahos",
+                    "Zahos",
+                    ImportCustomerDecisionAction.Create)
+            });
+
+        var row = Assert.Single(result.Rows);
+        Assert.Equal(0, row.CurrentBinTrackerBalance);
+        Assert.Equal(5, row.ExcelBroughtForward);
+        Assert.Equal(10, row.ExcelOut);
+        Assert.Equal(15, row.ExcelIn);
+        Assert.Equal(5, row.OpeningAdjustment);
+        Assert.Equal(0, row.ProjectedBalance);
+        Assert.Equal(0, row.ExcelTarget);
+        Assert.Equal(ImportBalanceReconciliationStatus.Ready, row.Status);
+    }
+
+    [Fact]
+    public void Existing_balance_is_adjusted_to_bfwd_before_daily_movements()
+    {
+        var analysis = Analysis(new ImportSnapshotCandidate(
+            "Update Account", "Clamms", CustomerType.Account, null,
+            Out: 4, In: 1, BroughtForward: 12, ExcelTotal: 15, SourceRow: "41"));
+
+        var result = ImportBalanceReconciliationPlanner.Build(
+            analysis,
+            SourceMapping,
+            CustomerPlan(7, "Clamms", ImportCustomerReviewStatus.Existing),
+            Containers,
+            [new BalanceRow(7, "Clamms Seafood", 1, "Blue Bin", 20)],
+            null,
+            null,
+            new Dictionary<string, ImportExistingCustomerDecision>(
+                StringComparer.OrdinalIgnoreCase)
+            {
+                ["Clamms"] = new(
+                    "Clamms",
+                    ImportExistingCustomerDecisionAction.AcceptMatch,
+                    7,
+                    "CLAMMS",
+                    "Clamms Seafood")
+            });
+
+        var row = Assert.Single(result.Rows);
+        Assert.Equal(20, row.CurrentBinTrackerBalance);
+        Assert.Equal(-8, row.OpeningAdjustment);
+        Assert.Equal(15, row.ProjectedBalance);
+        Assert.Equal(15, row.ExcelTarget);
+        Assert.Equal(ImportBalanceReconciliationStatus.Ready, row.Status);
+    }
+
+    [Fact]
+    public void Opening_adjustment_can_be_positive_or_negative_without_changing_daily_out_in()
+    {
+        // Current 3 -> B/Fwd 8 requires +5. Then OUT 2 and IN 6 produce target 4.
+        var analysis = Analysis(new ImportSnapshotCandidate(
+            "Update Account", "Clamms", CustomerType.Account, null,
+            Out: 2, In: 6, BroughtForward: 8, ExcelTotal: 4, SourceRow: "42"));
+
+        var result = ImportBalanceReconciliationPlanner.Build(
+            analysis,
+            SourceMapping,
+            CustomerPlan(7, "Clamms", ImportCustomerReviewStatus.Existing),
+            Containers,
+            [new BalanceRow(7, "Clamms Seafood", 1, "Blue Bin", 3)],
+            null,
+            null,
+            new Dictionary<string, ImportExistingCustomerDecision>(
+                StringComparer.OrdinalIgnoreCase)
+            {
+                ["Clamms"] = new(
+                    "Clamms",
+                    ImportExistingCustomerDecisionAction.AcceptMatch,
+                    7,
+                    "CLAMMS",
+                    "Clamms Seafood")
+            });
+
+        var row = Assert.Single(result.Rows);
+        Assert.Equal(5, row.OpeningAdjustment);
+        Assert.Equal(2, row.ExcelOut);
+        Assert.Equal(6, row.ExcelIn);
+        Assert.Equal(4, row.ProjectedBalance);
+    }
+
     private static ExcelImportAnalysis Analysis(
         params ImportSnapshotCandidate[] snapshots) =>
         new(

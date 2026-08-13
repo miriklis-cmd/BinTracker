@@ -3,6 +3,9 @@
 These are engineering improvements, not current user-facing defects.
 
 ## UI
+- Do not use Unicode glyphs as substitutes for designed UI icons. Use BinTracker-owned vector drawing helpers so icon appearance is DPI-safe, predictable and independent of installed fonts.
+- Keep high-density wizard summaries scannable with compact metric cards rather than multi-line diagnostic prose; reserve vertical space for the primary review grid.
+- Do not use the generic AutoSize `Card()` behaviour for fill/remaining-space regions such as Step 3 Review tabs. Explicitly set `AutoSize=false` before `Dock=Fill` for those containers.
 - When adding wizard state used across multiple event handlers/pages, declare and initialize the state in the form before wiring callers; packaging sanity checks should confirm both references and backing state exist.
 - Keep Review-grid column widths explicit and row wrapping enabled; the Review dataset is information-dense and should not rely on Fill sizing that silently truncates values.
 - Prefer cell-level DataGridView tooltips for row-wide diagnostics; `DataGridViewRow` has no ToolTipText property.
@@ -12,6 +15,7 @@ These are engineering improvements, not current user-facing defects.
 - Consider centralising typography/spacing constants.
 
 ## Import
+- Workbook lock/access failures are recoverable preflight conditions, not fatal exceptions. Keep Step 4 state unchanged until fingerprint preflight succeeds and never write anything before that point.
 - In `ShowReviewPageAsync`, compute reconciliation and the complete blocker list before assigning `nextButton.Enabled`; keep readiness assignment at the end of Review-state calculation.
 - Keep Step 3 readiness in `ImportReviewReadiness` rather than duplicating button-enable logic in WinForms; all blockers and reconciliation state must flow through one policy.
 - Exact re-import protection uses SHA-256 workbook fingerprints recorded in ImportRuns. Future import profiles/transform versions should add a parser/profile version to provenance so semantic reprocessing can be distinguished from accidental duplicate import.

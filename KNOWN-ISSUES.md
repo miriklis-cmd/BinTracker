@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.18.2**
+Current release: **v0.4.0-alpha.18.6**
 
 This file tracks current defects, incomplete production-critical behaviour, and limitations that a tester/operator needs to know about. Planned enhancements belong in `docs/Roadmap.md`; engineering cleanup belongs in `TECH-DEBT.md`.
 
@@ -107,6 +107,19 @@ Developer-only SQLite backup/load/fresh-database tools now exist for import test
 The controls work correctly, but the current custom-drawn artwork was accepted as functional rather than final visual polish.
 
 ## Recently resolved
+
+- Balance Reconciliation headers repeated the formula already shown above the grid, making headers excessively tall; headers are now concise again.
+- Step 3 metric cards could clip at normal DPI because the summary ribbon was too short; the ribbon is taller and has more internal icon/text space.
+- Alpha.18.5 used Unicode stand-ins for Review icons instead of the approved mockup icon set; Review now uses custom-drawn database, people, check-circle, person-plus, container, scales and expand icons matching the mockup semantics.
+
+- Step 3 Review summary was information-dense and consumed too much scanning effort; it now uses six compact visual metric cards and a simplified action row.
+- The Balance Reconciliation larger-view action was easy to miss at the bottom of the tab; it is now a persistent top-level Review action and the normal reconciliation grid gets more height.
+- Password visibility toggle artwork has been updated to the requested filled eye / eye-slash convention.
+
+- Step 4 preflight could terminate BinTracker with an unhandled `IOException` when Excel/another process held the workbook open; it now returns safely to Review with a retry message.
+- Balance Reconciliation remained too cramped for practical review even after the collapse fix; Review summary/header were compacted and a full-size reconciliation viewer was added.
+
+- Step 3 Customer Matches / Balance Reconciliation card inherited `AutoSize=true` from the generic Card helper, collapsing the tab/grid area to roughly one visible row despite `Dock=Fill`.
 
 - Alpha.18.1 evaluated Step 3 readiness before local `blockers` and `reconciliation` variables were declared, causing two CS0841 WinForms build errors.
 
