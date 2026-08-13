@@ -398,3 +398,31 @@
 - Differentiated opening adjustments in customer statement/history.
 - Removed stale Import-disabled copy and duplicate Analyse warning icon.
 - Fixed First Run Administrator button alignment.
+
+## v0.4.0-alpha.19.2
+- Fixed case-sensitive customer search.
+- Fixed async customer grid/detail selection race.
+- Increased Market Floor front-page readability.
+- Prevented Cash/COD CREDIT value wrapping.
+
+## v0.4.0-alpha.19.3
+- Widened Market Floor credit/total columns.
+- Prevented CREDIT label wrapping.
+- Increased front and reverse Market Floor text sizes.
+
+## v0.4.0-alpha.19.4
+- Separated Market Floor regular balances by container.
+- Added Bin column to front and reverse sheets.
+- Prevented Blue/Yellow/Bulk balances being presented as one physical collection quantity.
+
+## v0.4.0-alpha.19.5
+- Made Blue implicit on Market Floor front/reverse.
+- Displayed Yellow/Bulk inline with buyer.
+- Treated Bulk as a normal operational floor bin.
+- Removed dedicated Bin columns to recover width.
+- Retuned front font sizing to restore a two-page report.
+
+## v0.4.0-alpha.19.6
+- Restored Bulk to configured Special Containers.
+- Replaced fixed Market Floor front sizing with row-load-driven font/padding/spacing.
+- Added density response for high Yellow-bin days.

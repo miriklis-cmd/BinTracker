@@ -49,6 +49,10 @@ These are engineering improvements, not current user-facing defects.
 - Add a standard BinTracker import template/profile for future customers.
 
 ## Reports
+- Market Floor special-container classification follows `IsSpecialFloorReportContainer`; the configured flag is authoritative. Bulk is a special container in the production configuration.
+- Market Floor front layout must be computed from the actual rows for that report date. More Yellow/non-standard rows must automatically lower font/padding/spacing so page 1 remains a single physical A4 page; lighter days should reclaim that capacity as larger text.
+- Market Floor semantics: Blue is the standard/default bin and should be implicit in the printed layout. Show non-standard operational bins inline with the buyer (`Buyer (Yellow)`, `Buyer (Bulk)`) rather than consuming a dedicated Bin column.
+- Market Floor is a physical collection instruction sheet. Never aggregate regular container types across a customer: Blue, Yellow, Bulk and any future regular type must remain explicit. A combined net balance is insufficient for floor operations.
 - Market Floor credit quantity + label is one visual value. Reserve enough width for it and use a non-breaking separator; do not solve wrapping by shrinking the whole report.
 - Market Floor is an early-morning (~4am) operational report. Prefer the largest text that fits front/back A4; readability is more important than unused whitespace.
 - Market Floor report contains legacy workflow-specific placement rules: Cash/COD credits stay with Cash/COD, while Account credits use the separate CREDIT block. Keep this rule report-specific rather than changing core balance semantics.

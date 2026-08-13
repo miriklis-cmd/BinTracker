@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.19.1**
+Current release: **v0.4.0-alpha.19.6**
 
 This file tracks current defects, incomplete production-critical behaviour, and limitations that a tester/operator needs to know about. Planned enhancements belong in `docs/Roadmap.md`; engineering cleanup belongs in `TECH-DEBT.md`.
 
@@ -77,6 +77,18 @@ Real imported data exposed three report rules that are now corrected:
 
 The front page now uses adaptive typography based on row load for better page utilisation/readability.
 
+### Customer search/list/detail desynchronisation
+**Status:** Fixed / validation required  
+**Area:** Customers
+
+Lowercase searches such as `zahos` / `big` could return no visible rows because SQLite matching was case-sensitive, while asynchronous SelectionChanged events left an unrelated previous customer visible in the detail pane. Search is now explicitly case-insensitive and selection events are suppressed during grid reload.
+
+### Market Floor regular-container positions were aggregated
+**Status:** Fixed / validation required  
+**Area:** Reports
+
+The Market Floor Sheet previously summed all non-special container types into one customer total. This was unsafe operationally: for example CLAMMS showed `56`, while the real position was Blue 10 + Yellow 45 + Bulk 1. Page 1 and the reverse side now carry an explicit Bin column and keep each regular container in its own row.
+
 ## Medium priority — before production acceptance
 
 ### Batch Entry draft is not crash/power-loss persistent
@@ -123,6 +135,25 @@ The importer is functionally usable, but the approved Review mockup is not yet m
 This is intentionally deferred while transactional import execution is completed.
 
 ## Recently resolved
+
+- Bulk Bin is restored to the Special Containers block. `IsSpecialFloorReportContainer` is authoritative; the previous alpha.19.5 exception for Bulk was incorrect.
+- Market Floor front-page sizing is now driven by the actual rendered row load for the selected day. Additional Yellow rows immediately increase the load and automatically reduce font size, row padding and section spacing in graduated steps.
+- On lighter days the report automatically uses larger text; dense days progressively compact down to a guarded minimum instead of spilling the front sheet onto another page.
+
+- Market Floor no longer prints `Blue` because Blue is the standard/default floor bin. Non-standard operational bins are shown inline with the buyer, e.g. `CLAMMS (Yellow)` and `CLAMMS (Bulk)`.
+- Bulk Bin is now treated as an operational floor bin rather than being pushed into the Special Containers block; Blue/Yellow/Bulk are all represented in the normal floor workflow.
+- Removing the dedicated Bin column recovered substantial width on both pages and eliminates narrow-column wrapping such as `Yello/w`, `Ou/t` and `B/Fwd` fragmentation.
+- Front-page adaptive type was reduced only enough to restore the required single-page front after alpha.19.4 spilled onto a second front page; reverse-side type remains large and gains width from the removed Bin column.
+
+- Market Floor no longer aggregates Blue/Yellow/Bulk/other regular containers into a single customer total. Page 1 now shows Buyer + Bin + Total and page 2 shows Buyer + Bin + OUT/IN/B/Fwd/Total.
+- Reverse-side zero-history customers retain one default Blue row, while additional non-Blue rows appear only where that customer actually has container history, limiting page growth.
+
+- Market Floor front Cash/COD totals and reverse-side totals now reserve substantially more horizontal space; quantity + `CREDIT` is treated as one unbroken value so labels such as KHALID `12 CREDIT` do not wrap.
+- Market Floor typography was increased again after the real two-page PDF showed ample safe whitespace. Page-one margins are tighter and reverse-side base text is larger as well.
+
+- Customer search now matches code/name case-insensitively and suppresses async grid-selection races; the detail pane is always tied to a visible filtered row, or cleared when there are no matches.
+- Market Floor front-page font policy was increased after the two-page production-like render still showed substantial unused space; readability is now prioritised more aggressively.
+- Cash/COD credit totals use a non-breaking separator and a wider Total column so values such as `38 CREDIT` stay on one line.
 
 - Review warning copy no longer says Import is disabled; Step 4 is live and unresolved items now tell the operator to resolve blockers before continuing.
 - Analyse duplicate warning triangle was still present because the dynamic warning text embedded its own icon; only the dedicated warning icon remains.

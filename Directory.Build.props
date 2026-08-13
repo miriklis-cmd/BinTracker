@@ -9,9 +9,9 @@
       Update this value once per release; the application, build script,
       assemblies and future packaging all derive their version from here.
     -->
-    <Version>0.4.0-alpha.19.1</Version>
+    <Version>0.4.0-alpha.19.6</Version>
     <AssemblyVersion>0.4.0.0</AssemblyVersion>
     <FileVersion>0.4.0.0</FileVersion>
-    <InformationalVersion>0.4.0-alpha.19.1</InformationalVersion>
+    <InformationalVersion>0.4.0-alpha.19.6</InformationalVersion>
   </PropertyGroup>
 </Project>

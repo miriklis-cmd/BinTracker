@@ -1,19 +1,23 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.19.1
+## v0.4.0-alpha.19.6
 
-### Market Floor report corrections
-- Same-day import opening adjustments now contribute to B/Fwd and are excluded from physical daily OUT/IN.
-- Cash/COD credits remain in the Cash section.
-- Only Account-customer credits appear in the separate CREDIT section.
-- Reverse side now splits Account customers across two columns and puts Cash/COD in a third column, keeping the report to a front and back page.
-- Front-page font size adapts to row load for improved readability and page utilisation.
+### Bulk classification corrected
+Bulk Bin remains a special container. Market Floor now follows the configured `IsSpecialFloorReportContainer` flag without a Bulk exception.
 
-### Customer statement / movement history
-- Adjustment-source movements now display as `Opening adjustment (OUT)` / `Opening adjustment (IN)`.
-- They are no longer described as `OUT (Taken)` / `IN (Returned)`.
+### Dynamic Market Floor front-page layout
+The front page now sizes itself from the actual row count for that report date.
 
-### UI fixes
-- Review no longer says Import is disabled in this alpha.
-- Analyse warning now has exactly one triangle icon.
-- First-run Administrator footer buttons are aligned with fixed widths/heights.
+The algorithm considers:
+- Account owing rows after Blue/Yellow separation;
+- Cash/COD rows;
+- Account credit rows;
+- Special-container rows.
+
+As the busiest column grows, BinTracker progressively reduces:
+- font size;
+- row padding;
+- section spacing;
+- content-top spacing.
+
+On light days it automatically uses larger text. On unusually busy days, including days with many Yellow-bin rows, it becomes progressively more compact to preserve a single front A4 page.

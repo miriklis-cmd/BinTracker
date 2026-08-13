@@ -875,3 +875,78 @@
 - [ ] Zahos statement labels physical 10 as OUT (Taken)
 - [ ] Zahos statement labels physical 15 as IN (Returned)
 - [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.19.2
+- [ ] Build reports v0.4.0-alpha.19.2
+- [ ] Zero warnings
+- [ ] All tests pass
+- [ ] Search `zahos` shows Zahos in list and details
+- [ ] Search `big` shows BIG in list and details
+- [ ] Search nonsense clears list and details
+- [ ] Clear search restores normal list
+- [ ] Market Floor is exactly 2 pages
+- [ ] Page 1 text is clearly larger than alpha.19.1
+- [ ] `38 CREDIT` remains on one line
+- [ ] Cash/COD credits remain in Cash area
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.19.3
+- [ ] Build reports v0.4.0-alpha.19.3
+- [ ] Zero warnings
+- [ ] All tests pass
+- [ ] Market Floor remains exactly 2 pages
+- [ ] Page 1 text is larger than alpha.19.2
+- [ ] Page 2 text is larger than alpha.19.2
+- [ ] KHALID 12 CREDIT is one line
+- [ ] HO 38 CREDIT is one line
+- [ ] HP 18 CREDIT is one line
+- [ ] JUST 11 CREDIT is one line
+- [ ] KEVIN 30 CREDIT is one line
+- [ ] No Cash/COD CREDIT value wraps
+- [ ] No reverse-side CREDIT value wraps
+
+## v0.4.0-alpha.19.4
+- [ ] Build reports v0.4.0-alpha.19.4
+- [ ] Zero warnings
+- [ ] All tests pass
+- [ ] Market Floor remains exactly 2 pages
+- [ ] Page 1 has Buyer / Bin / Total
+- [ ] Page 2 has Buyer / Bin / Out / In / B/Fwd / Total
+- [ ] CLAMMS page 1 shows Blue 10
+- [ ] CLAMMS page 1 shows Yellow 45
+- [ ] CLAMMS page 1 shows Bulk 1
+- [ ] CLAMMS is not shown as aggregate 56
+- [ ] CLAMMS reverse rows remain separate by container
+- [ ] Other multi-container customers remain separated
+- [ ] CREDIT values remain single-line
+- [ ] Special containers remain in the Special Containers block
+
+## v0.4.0-alpha.19.5
+- [ ] Build reports v0.4.0-alpha.19.5
+- [ ] Zero warnings
+- [ ] All tests pass
+- [ ] Market Floor PDF is exactly 2 pages
+- [ ] No standard Blue row prints the word Blue
+- [ ] CLAMMS Blue row displays simply as CLAMMS
+- [ ] CLAMMS Yellow row displays as CLAMMS (Yellow)
+- [ ] CLAMMS Bulk row displays as CLAMMS (Bulk)
+- [ ] Bulk is not in Special Containers
+- [ ] Reverse side has no dedicated Bin column
+- [ ] Reverse CLAMMS Blue/Yellow/Bulk rows remain separate
+- [ ] Buyer names do not wrap unnecessarily
+- [ ] Out / In / B/Fwd headers do not fragment
+- [ ] CREDIT values remain one line
+
+## v0.4.0-alpha.19.6
+- [ ] Build reports v0.4.0-alpha.19.6
+- [ ] Zero warnings
+- [ ] All tests pass
+- [ ] Market Floor is exactly 2 pages with latest real workbook
+- [ ] Bulk appears only in Special Containers
+- [ ] Blue remains implicit
+- [ ] Yellow remains explicit inline with buyer
+- [ ] Normal current-day report uses largest practical readable font
+- [ ] Extra Yellow rows cause font/padding/spacing to shrink automatically
+- [ ] Front page does not spill onto a second front page
+- [ ] CREDIT values remain on one line
+- [ ] Reverse side remains one page
