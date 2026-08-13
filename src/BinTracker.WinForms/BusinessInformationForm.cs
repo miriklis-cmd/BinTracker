@@ -104,9 +104,10 @@ public sealed class BusinessInformationForm : Form
         // buttons share the exact same top/bottom coordinates at every DPI.
         var actions = new TableLayoutPanel
         {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Dock = DockStyle.None,
+            Anchor = AnchorStyles.Left,
+            AutoSize = false,
+            Size = new Size(250, 44),
             ColumnCount = 2,
             RowCount = 1,
             Margin = new Padding(0, 18, 0, 18),

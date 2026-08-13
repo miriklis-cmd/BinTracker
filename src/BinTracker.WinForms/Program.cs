@@ -13,6 +13,20 @@ internal static class Program
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         ApplicationConfiguration.Initialize();
 
+        try
+        {
+            DeveloperDatabaseStartup.ApplyPendingOperation();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Developer database switch failed.\n\n{ex.Message}",
+                "BinTracker",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            return;
+        }
+
         using var host = Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
@@ -71,6 +85,12 @@ internal static class Program
 
             using var main = scope.ServiceProvider.GetRequiredService<MainForm>();
             Application.Run(main);
+
+            if (main.RestartRequested)
+            {
+                Application.Restart();
+                return;
+            }
 
             // A normal window close exits BinTracker. An explicit Logout clears
             // the authenticated session and loops back to the login dialog.

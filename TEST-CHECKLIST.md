@@ -307,3 +307,358 @@
 - [ ] Business Information still saves/reloads correctly
 - [ ] KNOWN-ISSUES.md reflects current v0.4.0-alpha.7 status
 - [ ] TECH-DEBT.md contains engineering cleanup rather than active defects
+
+## v0.4.0-alpha.8 — Multi-page Import Wizard / Map
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.8
+- [ ] Build succeeds with zero warnings
+- [ ] All automated tests pass
+- [ ] Analyse page contains workbook selection and summary only
+- [ ] Analyse page does not show the large worksheet/customer grids
+- [ ] Next remains disabled until Analyse succeeds
+- [ ] Next moves to Map after successful Analyse
+- [ ] Wizard progress indicator highlights Map on page 2
+- [ ] Map worksheet grid shows Classification dropdown
+- [ ] Update Account defaults to Source
+- [ ] Update Cash defaults to Source
+- [ ] CREDITS defaults to Validation
+- [ ] Print This defaults to Report
+- [ ] Print this on reverse side defaults to Report
+- [ ] Summary defaults to Ignore
+- [ ] Changing classification refreshes Source customer preview immediately
+- [ ] Customer preview excludes Validation/Report/Ignore sheets
+- [ ] Back returns to Analyse without losing the analysis
+- [ ] All Worksheets `Columns` header is fully visible
+- [ ] All Worksheets `Candidates` header is fully visible
+- [ ] Duplicate dialog `Occurrences` header is fully visible
+- [ ] Review remains disabled/not implemented
+- [ ] No customer, balance or movement data is written by Analyse or Map
+
+## v0.4.0-alpha.9 — Import / Business Information UI regression
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.9
+- [ ] Build succeeds with zero warnings
+- [ ] All automated tests pass
+- [ ] Analyse result remains fully visible after workbook analysis
+- [ ] No text is hidden behind the Analyse page footer
+- [ ] `Preview changes` displays the full lowercase `g`
+- [ ] Step 1-4 subtitles are fully readable at 100%, 125% and 150% scaling
+- [ ] Map `Suggested reason` values are fully readable or wrap within the row
+- [ ] Default mapping reasons do not rely on tooltips to be understood
+- [ ] Business Information Save button is normal fixed width
+- [ ] Business Information Close button is normal fixed width and matches Save
+- [ ] Save and Close remain level at 100%, 125% and 150% scaling
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed for v0.4.0-alpha.9
+
+## v0.4.0-alpha.10 — Import Review
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.10
+- [ ] Build succeeds with zero warnings
+- [ ] All automated tests pass
+- [ ] Map `Candidates` header is fully visible
+- [ ] Duplicate dialog `Occurrences` header is fully visible
+- [ ] Review > opens step 3
+- [ ] Wizard progress indicator highlights Review
+- [ ] Review uses only Source-sheet customers
+- [ ] Existing customer code match is case-insensitive
+- [ ] Existing matching Account customer shows `Existing — match`
+- [ ] Existing matching Cash/COD customer shows `Existing — match`
+- [ ] Unknown customer code shows `New candidate`
+- [ ] Existing code with different detected type shows `TYPE MISMATCH`
+- [ ] Same code detected as both Account and Cash/COD Source data shows `SOURCE CONFLICT`
+- [ ] Review summary reports Source snapshot rows
+- [ ] Review summary reports B/Fwd/OUT/IN Total mismatches
+- [ ] Back returns from Review to Map
+- [ ] Import > remains disabled
+- [ ] Analyse / Map / Review make no customer, movement or balance database changes
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed for v0.4.0-alpha.10
+
+
+## v0.4.0-alpha.10.1 — Review test build fix
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.10.1
+- [ ] BinTracker.UnitTests compiles
+- [ ] All unit tests pass
+- [ ] All integration tests pass
+- [ ] Full solution builds with zero warnings
+- [ ] Review page still opens and behaves as in v0.4.0-alpha.10
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+
+## v0.4.0-alpha.10.2 — Map classification state
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.10.2
+- [ ] Build succeeds with zero warnings
+- [ ] All automated tests pass
+- [ ] Analyse workbook and continue to Map
+- [ ] Default worksheet classifications display visibly in every row
+- [ ] Change one or more classifications
+- [ ] Changed classification remains visibly selected after clicking another cell
+- [ ] Go Map → Review → Back
+- [ ] All prior classification selections are still visible
+- [ ] Go Map → Analyse → Next
+- [ ] All prior classification selections are still visible
+- [ ] Source sheet/customer counts still match selected Source mappings
+- [ ] No customer/movement/balance database data is written
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+
+## v0.4.0-alpha.10.3 — Legacy Buyer prefix handling
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.10.3
+- [ ] Build succeeds with zero warnings
+- [ ] All automated tests pass
+- [ ] `Clamms` and `(Bulk) Clamms` appear as one Review customer
+- [ ] Existing `CLAMMS` customer matches both variants case-insensitively
+- [ ] Review shows container hint `Bulk`
+- [ ] Review shows legacy variant `(Bulk) Clamms`
+- [ ] `(Y) Barwon` normalises to customer `Barwon` with hint `Y`
+- [ ] Review status `Existing — match` is fully visible
+- [ ] Snapshot candidates preserve container hints
+- [ ] No database writes occur
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.11 — Normalized customer matching
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.11
+- [ ] Build succeeds with zero warnings
+- [ ] All automated tests pass
+- [ ] `S & J` and `(Bulk) S&J` appear under one Review customer
+- [ ] Existing `S & J` customer is matched from imported `S&J`
+- [ ] Match reason says `Normalized code` where appropriate
+- [ ] Exact customer-code matches still take priority
+- [ ] Ambiguous normalized names are not auto-matched
+- [ ] `(Y)` displays as `Yellow Bin` in Review
+- [ ] `(Bulk)` displays as `Bulk Bin` in Review
+- [ ] Container short-code hints resolve where unambiguous
+- [ ] Review shows `Existing customer` header in full
+- [ ] Review shows `Existing type` header in full
+- [ ] Review status is fully readable
+- [ ] Review grid has no horizontal scrollbar at normal wizard width / 100% DPI
+- [ ] Legacy variant text remains inspectable via row tooltip
+- [ ] No import/database writes occur
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.12 — Developer Database Tools / re-import safety
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.12
+- [ ] Build succeeds with zero warnings
+- [ ] All automated tests pass
+- [ ] Settings shows Developer Tools for Administrator
+- [ ] Developer Database window shows active database path
+- [ ] Backup Database creates a usable .db copy
+- [ ] Load Database validates the selected file
+- [ ] Loading a non-BinTracker SQLite file is rejected
+- [ ] Load Database automatically creates a current-state backup
+- [ ] Load Database restarts BinTracker
+- [ ] After restart the selected database is active
+- [ ] Start Fresh Test Database warns before proceeding
+- [ ] Start Fresh automatically backs up the current database
+- [ ] Start Fresh restarts BinTracker
+- [ ] Fresh restart presents first-run Administrator setup
+- [ ] A saved developer backup can subsequently be loaded again
+- [ ] No live SQLite file replacement occurs while the app is running
+- [ ] `docs/ReimportSafety.md` documents exact and changed-workbook re-import handling
+- [ ] Re-import protection remains a blocker before Import is enabled
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.13 — Balance reconciliation
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.13
+- [ ] Build succeeds with zero warnings
+- [ ] All automated tests pass
+- [ ] Review has Customer matches and Balance reconciliation tabs
+- [ ] Current 12 / B/Fwd 20 / OUT 5 / IN 3 plans +8 opening adjustment
+- [ ] Same row projects to 22, not 34
+- [ ] Fresh current 0 plans opening adjustment equal to B/Fwd
+- [ ] OUT and IN remain separately visible
+- [ ] Missing B/Fwd / unresolved container / Excel mismatch block the row
+- [ ] No database writes occur
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.13.1 — WinForms tooltip build fix
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.13.1
+- [ ] BinTracker.WinForms compiles
+- [ ] Full solution builds with zero warnings
+- [ ] All unit tests pass
+- [ ] All integration tests pass
+- [ ] Review page still opens
+- [ ] Hovering Review row cells can show legacy variant tooltip
+- [ ] Balance reconciliation tab behaves as in v0.4.0-alpha.13
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+
+## v0.4.0-alpha.13.2 — Normalized Review grouping
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.13.2
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] `S & J` and `(Bulk) S&J` produce one Review customer row
+- [ ] `S&J`, `S & J` and `S  &  J` produce one Review customer row
+- [ ] Existing customer `S & J` is preferred as consolidated display code
+- [ ] Bulk container hint remains attached to the consolidated row
+- [ ] Legacy variant `(Bulk) S&J` remains visible in tooltip data
+- [ ] Existing count is not doubled by normalized variants
+- [ ] No database writes occur
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.13.3 — BalanceService SQLite crash
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.13.3
+- [ ] Full solution builds with zero warnings
+- [ ] All unit tests pass
+- [ ] All integration tests pass
+- [ ] BalanceService SQLite regression test passes
+- [ ] Open Import Wizard and Analyse workbook
+- [ ] Continue Map -> Review without an EF Core translation exception
+- [ ] Review Customer matches tab loads
+- [ ] Review Balance reconciliation tab loads
+- [ ] Current BinTracker balances shown in reconciliation are correct
+- [ ] Empty movement database returns an empty balance list without error
+- [ ] No import/database write occurs in Review
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.13.4 — BalanceService lookup regression
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.13.4
+- [ ] Full solution builds with zero warnings
+- [ ] All unit tests pass
+- [ ] All integration tests pass
+- [ ] BalanceService SQLite aggregate regression test passes
+- [ ] Unrelated customers with no movements are excluded from balance results
+- [ ] Import Wizard reaches Review without crashing
+- [ ] Balance reconciliation tab loads current balances
+- [ ] No database writes occur in Review
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.13.5 — Review / Developer Tools layout
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.13.5
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Review Customer / Code header is fully visible
+- [ ] Review Container(s) header and values are fully visible/wrap
+- [ ] Review Existing customer header and values are fully visible/wrap
+- [ ] Review Existing type header and values are fully visible/wrap
+- [ ] Review status header and values are fully visible/wrap
+- [ ] Match reason header and values are fully visible/wrap
+- [ ] Source worksheet header and values are fully visible/wrap
+- [ ] Review row height grows for wrapped values
+- [ ] Developer Database Tools opens at a usable size
+- [ ] Backup Database action is fully visible
+- [ ] Load Database action is fully visible
+- [ ] Start Fresh Test Database action is fully visible
+- [ ] Developer Database Tools can scroll vertically if DPI/content requires it
+- [ ] Close button is visible and normal sized
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.13.6 — width/layout pass
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.13.6
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Customer Review has no horizontal scrollbar at 100% DPI
+- [ ] Container(s), Existing customer/type, Review status, Match reason and Source values show fully or wrap
+- [ ] Balance Reconciliation has no normal horizontal scrollbar at 100% DPI
+- [ ] Developer Database Tools opens at larger size
+- [ ] Backup, Load and Start Fresh actions are fully visible
+- [ ] Close remains visible
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.14 — legacy container inference
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.14
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Customer with no brackets resolves to Blue Bin
+- [ ] `(Y)` resolves to Yellow Bin
+- [ ] `(Bulk)` resolves to Bulk Bin
+- [ ] Known Container Type short code resolves correctly
+- [ ] `(Tub)` remains unresolved when Tub is not configured
+- [ ] Unknown explicit token is shown in Review
+- [ ] Unknown explicit token blocks Balance Reconciliation / Import readiness
+- [ ] Missing token is not treated as an error
+- [ ] Balance Reconciliation explains the container rule used
+- [ ] No database writes occur
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.15 — manual container mapping
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.15
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] `(Tub)` remains blocked before mapping
+- [ ] Review exposes `Map container tokens...`
+- [ ] Mapping dialog lists each unresolved token once
+- [ ] Token can be mapped to an existing Container Type
+- [ ] `Manage Container Types...` opens Container Type master data
+- [ ] Newly created Container Type appears after returning
+- [ ] Applied mapping survives Review refresh / Back-Forward within the same wizard
+- [ ] Mapping can unblock Balance Reconciliation
+- [ ] Unknown unmapped tokens remain blocked
+- [ ] New workbook analysis clears session token mappings
+- [ ] No movement/import writes occur
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.15.1 — manual mapping build fix
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.15.1
+- [ ] BinTracker.WinForms compiles
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Import Wizard opens
+- [ ] Review opens
+- [ ] `Map container tokens...` opens
+- [ ] Manual token mappings survive Review refresh / Back-Forward navigation
+- [ ] Starting a new workbook analysis clears session token mappings
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.16 — customer decisions
+- [ ] Build reports v0.4.0-alpha.16
+- [ ] Full solution builds with zero warnings
+- [ ] All tests pass
+- [ ] Confirm new customers opens
+- [ ] Proposed name editable
+- [ ] Create / Skip work
+- [ ] Bulk selected/all actions work
+- [ ] Decisions survive Review and Back/Forward
+- [ ] Unconfirmed blocks reconciliation
+- [ ] Skip excludes customer without blocking
+- [ ] Create includes customer in reconciliation
+- [ ] New workbook clears decisions
+- [ ] No database writes occur
+
+## v0.4.0-alpha.16.1 — customer decision compile fix
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.16.1
+- [ ] BinTracker.Services compiles
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Missing decision remains blocked
+- [ ] Unconfirmed decision remains blocked
+- [ ] Skip excludes customer without blocking
+- [ ] Create remains eligible for reconciliation
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.16.2 — fresh database decision test
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.16.2
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Fresh new customer + Create decision calculates B/Fwd opening adjustment
+- [ ] Fresh new customer without decision remains blocked
+- [ ] Skip remains excluded
+- [ ] Existing-customer reconciliation is unchanged
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.16.3 — decision status / docs consolidation
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.16.3
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Fresh new customer + Create decision status is Ready
+- [ ] Fresh new customer without decision remains blocked
+- [ ] Unconfirmed remains blocked
+- [ ] Skip remains excluded
+- [ ] `docs/RELEASE-NOTES.md` exists
+- [ ] Old per-alpha `ReleaseNotes-v*.md` files are removed
+- [ ] `docs/CHANGELOG.md` retains version history
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed
+
+## v0.4.0-alpha.17 — existing matches / UI fixes
+- [ ] Build-BinTracker.bat reports v0.4.0-alpha.17
+- [ ] Full solution builds with zero warnings
+- [ ] All automated tests pass
+- [ ] Developer restart dialog shows real line breaks, not literal `\n`
+- [ ] Selected → Create is fully visible
+- [ ] Selected → Skip is fully visible
+- [ ] Review exposes Confirm existing matches...
+- [ ] Existing match starts Unconfirmed
+- [ ] Selected → Accept works
+- [ ] All → Accept works
+- [ ] Match can be overridden to another active customer
+- [ ] Override survives Review refresh / Back-Forward
+- [ ] Unconfirmed existing match blocks reconciliation
+- [ ] Confirmed existing match can become Ready
+- [ ] Container mapping does not erase customer decisions
+- [ ] KNOWN-ISSUES.md and TECH-DEBT.md reviewed

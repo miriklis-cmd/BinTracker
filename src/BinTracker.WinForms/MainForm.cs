@@ -21,12 +21,15 @@ public sealed class MainForm : Form
     private readonly IContainerTypeService containerTypes;
     private readonly IBusinessInformationService businessInformation;
     private readonly IExcelImportService excelImport;
+    private readonly IBalanceService balances;
+    private readonly IDeveloperDatabaseService developerDatabase;
 
     /// <summary>
     /// True when the user deliberately chose Logout rather than closing
     /// BinTracker. Program.cs uses this to return to the login screen.
     /// </summary>
     public bool LogoutRequested { get; private set; }
+    public bool RestartRequested { get; private set; }
 
     public MainForm(
         UserSession session,
@@ -40,7 +43,9 @@ public sealed class MainForm : Form
         IMarketFloorReportService marketFloorReports,
         IContainerTypeService containerTypes,
         IBusinessInformationService businessInformation,
-        IExcelImportService excelImport)
+        IExcelImportService excelImport,
+        IBalanceService balances,
+        IDeveloperDatabaseService developerDatabase)
     {
         this.session = session;
         this.users = users;
@@ -54,6 +59,8 @@ public sealed class MainForm : Form
         this.containerTypes = containerTypes;
         this.businessInformation = businessInformation;
         this.excelImport = excelImport;
+        this.balances = balances;
+        this.developerDatabase = developerDatabase;
 
         Text = $"BinTracker - {session.DisplayName}";
         StartPosition = FormStartPosition.CenterScreen;
@@ -298,7 +305,7 @@ public sealed class MainForm : Form
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 1,
-            RowCount = 2,
+            RowCount = 3,
             Margin = new Padding(0),
             Padding = new Padding(0)
         };
@@ -402,9 +409,13 @@ public sealed class MainForm : Form
         page.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         page.Controls.Add(BuildProfileSettingsSection(), 0, 0);
         page.Controls.Add(BuildAdministrationSettingsSection(), 0, 1);
+
+        if (session.Role == UserRole.Administrator)
+            page.Controls.Add(BuildDeveloperSettingsSection(), 0, 2);
 
         content.Controls.Add(page);
     }
@@ -544,7 +555,11 @@ public sealed class MainForm : Form
 
             importExcelButton.Click += (_, _) =>
             {
-                using var form = new ExcelImportForm(excelImport);
+                using var form = new ExcelImportForm(
+                    excelImport,
+                    customers,
+                    containerTypes,
+                    balances);
                 form.ShowDialog(this);
             };
 
@@ -585,6 +600,66 @@ public sealed class MainForm : Form
         var actionRow = section.RowCount++;
         section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         section.Controls.Add(actions, 0, actionRow);
+        section.SetColumnSpan(actions, 2);
+
+        return WrapSettingsSection(section);
+    }
+
+    private Panel BuildDeveloperSettingsSection()
+    {
+        var section = SettingsSection("Developer Tools");
+
+        var description = new Label
+        {
+            Text =
+                "Database test utilities for import development. Backup the current state, " +
+                "load a previous test database, or restart with a completely fresh database.",
+            AutoSize = true,
+            ForeColor = Color.FromArgb(80, 90, 105),
+            MaximumSize = new Size(900, 0),
+            Margin = new Padding(0, 0, 0, 14)
+        };
+
+        var descriptionRow = section.RowCount++;
+        section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        section.Controls.Add(description, 0, descriptionRow);
+        section.SetColumnSpan(description, 2);
+
+        var button = new Button
+        {
+            Text = "Developer Database",
+            AutoSize = false,
+            Size = new Size(190, 44),
+            Margin = Padding.Empty,
+            TextAlign = ContentAlignment.MiddleCenter
+        };
+
+        button.Click += (_, _) =>
+        {
+            using var form = new DeveloperDatabaseToolsForm(
+                developerDatabase,
+                () =>
+                {
+                    RestartRequested = true;
+                    Close();
+                });
+
+            form.ShowDialog(this);
+        };
+
+        var actions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Margin = Padding.Empty
+        };
+        actions.Controls.Add(button);
+
+        var row = section.RowCount++;
+        section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        section.Controls.Add(actions, 0, row);
         section.SetColumnSpan(actions, 2);
 
         return WrapSettingsSection(section);

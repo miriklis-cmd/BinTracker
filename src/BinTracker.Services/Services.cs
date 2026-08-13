@@ -488,12 +488,62 @@ internal sealed class BalanceService(IDbContextFactory<BinTrackerDbContext> fact
     public async Task<IReadOnlyList<BalanceRow>> GetBalancesAsync(CancellationToken cancellationToken = default)
     {
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        return await db.BinMovements.AsNoTracking()
-            .GroupBy(x => new { x.CustomerId, CustomerName=x.Customer.Name, x.ContainerTypeId, ContainerTypeName=x.ContainerType.Name })
-            .Select(g => new BalanceRow(g.Key.CustomerId, g.Key.CustomerName, g.Key.ContainerTypeId, g.Key.ContainerTypeName,
-                g.Sum(x => x.MovementType == MovementType.Out ? x.Quantity : -x.Quantity)))
-            .OrderBy(x => x.CustomerName).ThenBy(x => x.ContainerTypeName)
+
+        // Keep the part SQLite/EF Core handles well entirely in SQL:
+        // group by scalar foreign keys and calculate the signed balance.
+        //
+        // Do not group by navigation-property names here. EF Core 8/SQLite
+        // cannot reliably translate the previous join + navigation GroupBy +
+        // BalanceRow constructor projection used by the Import Review path.
+        var totals = await db.BinMovements.AsNoTracking()
+            .GroupBy(x => new { x.CustomerId, x.ContainerTypeId })
+            .Select(g => new
+            {
+                g.Key.CustomerId,
+                g.Key.ContainerTypeId,
+                Balance = g.Sum(x =>
+                    x.MovementType == MovementType.Out
+                        ? x.Quantity
+                        : -x.Quantity)
+            })
             .ToListAsync(cancellationToken);
+
+        if (totals.Count == 0)
+            return [];
+
+        // Load the small master-data lookup tables directly.
+        //
+        // Do not filter these with int[].Contains(...) inside the EF query.
+        // In the .NET 8 / EF Core 8 runtime used by BinTracker that pattern can
+        // be reduced to a ReadOnlySpan<int> call while EF extracts parameters,
+        // which is not valid inside the LINQ expression interpreter and throws
+        // before SQLite receives any SQL.
+        var customerNames = await db.Customers.AsNoTracking()
+            .ToDictionaryAsync(
+                x => x.Id,
+                x => x.Name,
+                cancellationToken);
+
+        var containerNames = await db.ContainerTypes.AsNoTracking()
+            .ToDictionaryAsync(
+                x => x.Id,
+                x => x.Name,
+                cancellationToken);
+
+        return totals
+            .Select(x => new BalanceRow(
+                x.CustomerId,
+                customerNames.TryGetValue(x.CustomerId, out var customerName)
+                    ? customerName
+                    : $"Customer #{x.CustomerId}",
+                x.ContainerTypeId,
+                containerNames.TryGetValue(x.ContainerTypeId, out var containerName)
+                    ? containerName
+                    : $"Container #{x.ContainerTypeId}",
+                x.Balance))
+            .OrderBy(x => x.CustomerName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.ContainerTypeName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 }
 

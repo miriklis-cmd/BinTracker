@@ -238,3 +238,89 @@
 - Added Import Wizard duplicate diagnostics dialog and concise warning panel.
 - Fixed Business Information Save/Close alignment and increased Address height.
 - Audited KNOWN-ISSUES.md and separated technical debt / future enhancements.
+
+## v0.4.0-alpha.8
+- Split Excel Import Wizard into Analyse and Map pages.
+- Added worksheet Source/Validation/Report/Ignore classification and Source-only customer preview.
+- Fixed remaining worksheet/duplicate dialog header clipping.
+
+## v0.4.0-alpha.9
+- Fixed Analyse result footer clipping, progress-step subtitle clipping and Map reason truncation.
+- Fixed oversized Business Information Close button.
+
+## v0.4.0-alpha.10
+- Added Import Wizard Review page and database customer-code matching preview.
+- Added Existing/New/Type mismatch/Source conflict safety checks.
+- Widened Candidates and Occurrences headers.
+
+## v0.4.0-alpha.10.1
+- Fixed Review planner unit-test compilation failure (CS8752).
+
+## v0.4.0-alpha.10.2
+- Fixed Import Wizard Map classification display/state loss after Back navigation.
+
+## v0.4.0-alpha.10.3
+- Normalised legacy Buyer prefixes into customer identity + container hint and fixed Review status clipping.
+
+## v0.4.0-alpha.11
+- Added conservative customer-name/code normalization and explainable match reasons.
+- Added legacy Y -> Yellow Bin and Bulk -> Bulk Bin container-hint resolution.
+- Reworked Review grid to eliminate normal horizontal scrolling/clipped match fields.
+
+## v0.4.0-alpha.12
+- Added Developer Database Backup / Load / Fresh testing tools.
+- Added restart-safe SQLite database switching.
+- Promoted re-import/idempotency protection to a required pre-Import milestone.
+
+## v0.4.0-alpha.13
+- Added authoritative Excel-target balance reconciliation planning and Review preview.
+
+## v0.4.0-alpha.13.1
+- Fixed WinForms build failure caused by invalid DataGridViewRow tooltip usage.
+
+## v0.4.0-alpha.13.2
+- Fixed Review planner grouping so normalized customer variants consolidate before matching.
+
+## v0.4.0-alpha.13.3
+- Fixed Step 3 Review crash caused by untranslatable BalanceService EF Core/SQLite LINQ.
+- Added real SQLite BalanceService regression coverage.
+- Added post-v1.0 customer-list-only import mode to roadmap.
+
+## v0.4.0-alpha.13.4
+- Fixed BalanceService ReadOnlySpan/Contains EF parameter-extraction failure.
+
+## v0.4.0-alpha.13.5
+- Fixed Step 3 Review clipping for headers and values.
+- Fixed Developer Database Tools vertical clipping.
+- Removed xUnit2031 integration-test warnings.
+
+## v0.4.0-alpha.13.6
+- Widened Import Review and Developer Database Tools; removed normal horizontal scrolling from Review grids.
+
+## v0.4.0-alpha.14
+- Added Blue Bin as the legacy default when no container token is present.
+- Unknown explicit container tokens now block reconciliation instead of being guessed.
+
+## v0.4.0-alpha.15
+- Added manual mapping of unknown legacy container tokens from Import Review.
+
+## v0.4.0-alpha.15.1
+- Fixed missing `containerTokenMappings` field in Import Wizard.
+
+## v0.4.0-alpha.16
+- Added editable new-customer confirmation with Create/Skip decisions and reconciliation blocking.
+
+## v0.4.0-alpha.16.1
+- Fixed CS0165 in new-customer decision reconciliation.
+
+## v0.4.0-alpha.16.2
+- Updated stale fresh-database reconciliation test to supply explicit Create decision.
+
+## v0.4.0-alpha.16.3
+- Fixed stale fresh-database reconciliation assertion: explicit Create decision now expects Ready.
+- Consolidated per-alpha release-note files into `docs/RELEASE-NOTES.md`; detailed history remains in this changelog.
+
+## v0.4.0-alpha.17
+- Added existing-customer match confirmation and override.
+- Fixed Developer Database Tools newline rendering.
+- Fixed clipped new-customer bulk-action buttons.

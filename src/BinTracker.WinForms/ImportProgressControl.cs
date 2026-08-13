@@ -14,8 +14,8 @@ internal sealed class ImportProgressControl : Control
 
     public ImportProgressControl()
     {
-        Height = 116;
-        MinimumSize = new Size(560, 116);
+        Height = 120;
+        MinimumSize = new Size(560, 120);
         BackColor = Color.White;
 
         SetStyle(
@@ -106,9 +106,9 @@ internal sealed class ImportProgressControl : Control
 
             var subtitleRect = new Rectangle(
                 (int)x - 90,
-                80,
+                78,
                 180,
-                24);
+                30);
 
             TextRenderer.DrawText(
                 e.Graphics,
@@ -118,7 +118,6 @@ internal sealed class ImportProgressControl : Control
                 Color.DimGray,
                 TextFormatFlags.HorizontalCenter |
                 TextFormatFlags.VerticalCenter |
-                TextFormatFlags.NoPadding |
                 TextFormatFlags.SingleLine);
         }
     }

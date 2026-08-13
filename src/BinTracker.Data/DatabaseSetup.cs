@@ -11,6 +11,9 @@ public static class DatabaseSetup
 
     public static string AppFolder => DatabaseConfiguration.AppFolder;
     public static string DatabasePath => DatabaseConfiguration.DefaultSqlitePath;
+    public static string ActiveSqlitePath =>
+        DatabaseConfiguration.GetSqlitePath(ConnectionString)
+        ?? DatabaseConfiguration.DefaultSqlitePath;
     public static string ConnectionString =>
         Settings.ConnectionString ?? $"Data Source={DatabasePath};Cache=Shared";
 
@@ -35,6 +38,8 @@ public static class DatabaseSetup
 
         services.AddDbContext<BinTrackerDbContext>(options =>
             ConfigureProvider(options, settings));
+
+        services.AddSingleton<IDeveloperDatabaseService, DeveloperDatabaseService>();
 
         return services;
     }

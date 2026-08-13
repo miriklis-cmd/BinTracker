@@ -11,6 +11,249 @@ public sealed record ImportWorksheetAnalysis(
     int BuyerCandidates,
     string Status);
 
+public enum ImportWorksheetRole
+{
+    Source = 0,
+    Validation = 1,
+    Report = 2,
+    Ignore = 3
+}
+
+public sealed record ImportWorksheetMapping(
+    string Worksheet,
+    ImportWorksheetRole Role,
+    string Reason);
+
+public sealed record LegacyBuyerIdentity(
+    string RawValue,
+    string CustomerCode,
+    string? ContainerHint);
+
+public static class LegacyBuyerParser
+{
+    /// <summary>
+    /// Legacy Jack Miriklis workbook convention:
+    /// a leading parenthesised token is a container hint, e.g.
+    /// "(Bulk) Clamms" => customer "Clamms", hint "Bulk"
+    /// "(Y) Barwon"    => customer "Barwon", hint "Y".
+    ///
+    /// Values without that pattern are left unchanged.
+    /// </summary>
+    public static LegacyBuyerIdentity Parse(string? rawValue)
+    {
+        var raw = (rawValue ?? string.Empty).Trim();
+
+        if (raw.Length >= 4 && raw[0] == '(')
+        {
+            var close = raw.IndexOf(')');
+
+            if (close > 1 && close < raw.Length - 1)
+            {
+                var hint = raw[1..close].Trim();
+                var customer = raw[(close + 1)..].Trim();
+
+                if (!string.IsNullOrWhiteSpace(hint) &&
+                    !string.IsNullOrWhiteSpace(customer))
+                {
+                    return new LegacyBuyerIdentity(raw, customer, hint);
+                }
+            }
+        }
+
+        return new LegacyBuyerIdentity(raw, raw, null);
+    }
+}
+
+public enum ImportCustomerReviewStatus
+{
+    Existing = 0,
+    New = 1,
+    TypeMismatch = 2,
+    SourceConflict = 3
+}
+
+public sealed record ImportCustomerReviewRow(
+    string CustomerCode,
+    CustomerType DetectedType,
+    string SourceWorksheets,
+    string LegacyVariants,
+    string ContainerHints,
+    ImportCustomerReviewStatus Status,
+    int? ExistingCustomerId,
+    string ExistingCustomerName,
+    CustomerType? ExistingCustomerType,
+    CustomerMatchKind MatchKind,
+    string MatchReason);
+
+public sealed record ImportReviewPlan(
+    IReadOnlyList<ImportCustomerReviewRow> Customers,
+    int SourceSheetCount,
+    int SourceOccurrenceCount,
+    int SnapshotRowCount,
+    int SnapshotTotalMismatchCount)
+{
+    public int UniqueCustomerCount => Customers.Count;
+    public int ExistingCount => Customers.Count(x => x.Status == ImportCustomerReviewStatus.Existing);
+    public int NewCount => Customers.Count(x => x.Status == ImportCustomerReviewStatus.New);
+    public int TypeMismatchCount => Customers.Count(x => x.Status == ImportCustomerReviewStatus.TypeMismatch);
+    public int SourceConflictCount => Customers.Count(x => x.Status == ImportCustomerReviewStatus.SourceConflict);
+    public bool HasBlockingCustomerConflicts =>
+        TypeMismatchCount > 0 || SourceConflictCount > 0;
+}
+
+public static class ExcelImportReviewPlanner
+{
+    public static ImportReviewPlan Build(
+        ExcelImportAnalysis analysis,
+        IReadOnlyCollection<ImportWorksheetMapping> mappings,
+        IReadOnlyCollection<CustomerListRow> existingCustomers)
+    {
+        var sourceSheets = mappings
+            .Where(x => x.Role == ImportWorksheetRole.Source)
+            .Select(x => x.Worksheet)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var sourceCandidates = analysis.CustomerCandidates
+            .Where(x => sourceSheets.Contains(x.Worksheet))
+            .Where(x => !string.IsNullOrWhiteSpace(x.CustomerCode))
+            .Select(x => new
+            {
+                Candidate = x,
+                Identity = LegacyBuyerParser.Parse(x.CustomerCode)
+            })
+            .Where(x => !string.IsNullOrWhiteSpace(x.Identity.CustomerCode))
+            .ToList();
+
+        var rows = new List<ImportCustomerReviewRow>();
+
+        foreach (var group in sourceCandidates
+                     .GroupBy(
+                         x => CustomerNameNormalizer.ComparisonKey(x.Identity.CustomerCode),
+                         StringComparer.OrdinalIgnoreCase)
+                     .Where(x => !string.IsNullOrWhiteSpace(x.Key))
+                     .OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            var detectedTypes = group
+                .Select(x => x.Candidate.CustomerType)
+                .Distinct()
+                .ToList();
+
+            // Prefer the human-readable form already used in an exact existing
+            // customer code when available; otherwise use the first unprefixed
+            // legacy value, then fall back to the first parsed customer value.
+            var parsedCustomerValues = group
+                .Select(x => x.Identity.CustomerCode.Trim())
+                .Where(x => x.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var exactExistingDisplay = existingCustomers
+                .Select(x => x.CustomerCode)
+                .FirstOrDefault(code =>
+                    CustomerNameNormalizer.ComparisonKey(code) == group.Key);
+
+            var unprefixedDisplay = group
+                .Where(x => string.IsNullOrWhiteSpace(x.Identity.ContainerHint))
+                .Select(x => x.Identity.CustomerCode.Trim())
+                .FirstOrDefault(x => x.Length > 0);
+
+            var customerCode =
+                exactExistingDisplay ??
+                unprefixedDisplay ??
+                parsedCustomerValues.First();
+
+            var worksheets = string.Join(
+                ", ",
+                group.Select(x => x.Candidate.Worksheet)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
+
+            var legacyVariants = string.Join(
+                ", ",
+                group.Select(x => x.Identity.RawValue)
+                    .Where(x => !x.Equals(customerCode, StringComparison.OrdinalIgnoreCase))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
+
+            var containerHints = string.Join(
+                ", ",
+                group.Select(x => x.Identity.ContainerHint)
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Select(x => x!)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
+
+            if (detectedTypes.Count != 1)
+            {
+                rows.Add(new ImportCustomerReviewRow(
+                    customerCode,
+                    detectedTypes.FirstOrDefault(),
+                    worksheets,
+                    legacyVariants,
+                    containerHints,
+                    ImportCustomerReviewStatus.SourceConflict,
+                    null,
+                    string.Empty,
+                    null,
+                    CustomerMatchKind.None,
+                    "Conflicting customer type across Source sheets"));
+                continue;
+            }
+
+            var detectedType = detectedTypes[0];
+            var match = CustomerNameNormalizer.FindBestMatch(
+                customerCode,
+                existingCustomers);
+
+            if (!match.IsMatch || match.Customer is null)
+            {
+                rows.Add(new ImportCustomerReviewRow(
+                    customerCode,
+                    detectedType,
+                    worksheets,
+                    legacyVariants,
+                    containerHints,
+                    ImportCustomerReviewStatus.New,
+                    null,
+                    string.Empty,
+                    null,
+                    CustomerMatchKind.None,
+                    match.Reason));
+                continue;
+            }
+
+            var existing = match.Customer;
+            var status = existing.CustomerType == detectedType
+                ? ImportCustomerReviewStatus.Existing
+                : ImportCustomerReviewStatus.TypeMismatch;
+
+            rows.Add(new ImportCustomerReviewRow(
+                customerCode,
+                detectedType,
+                worksheets,
+                legacyVariants,
+                containerHints,
+                status,
+                existing.Id,
+                existing.Name,
+                existing.CustomerType,
+                match.Kind,
+                match.Reason));
+        }
+
+        var sourceSnapshots = analysis.SnapshotCandidates
+            .Where(x => sourceSheets.Contains(x.Worksheet))
+            .ToList();
+
+        return new ImportReviewPlan(
+            rows,
+            sourceSheets.Count,
+            sourceCandidates.Count,
+            sourceSnapshots.Count,
+            sourceSnapshots.Count(x => !x.TotalMatches));
+    }
+}
+
 public sealed record ImportCustomerCandidate(
     string Worksheet,
     string CustomerCode,
@@ -301,11 +544,13 @@ internal sealed class ExcelImportService(
                 if (string.IsNullOrWhiteSpace(buyer) || LooksLikeSectionHeading(buyer))
                     continue;
 
+                var identity = LegacyBuyerParser.Parse(buyer);
+
                 yield return new ImportSnapshotCandidate(
                     sheet.Name,
-                    buyer,
+                    identity.CustomerCode,
                     GuessCustomerType(sheet.Name),
-                    ContainerHint: null,
+                    ContainerHint: identity.ContainerHint,
                     Out: ReadInt(sheet, dataRow, headers, "OUT"),
                     In: ReadInt(sheet, dataRow, headers, "IN"),
                     BroughtForward: ReadInt(sheet, dataRow, headers, "BFWD"),

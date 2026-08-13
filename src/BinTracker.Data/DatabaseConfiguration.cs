@@ -33,6 +33,11 @@ public static class DatabaseConfiguration
 
     public static string SettingsPath => Path.Combine(AppFolder, SettingsFileName);
     public static string DefaultSqlitePath => Path.Combine(AppFolder, "BinTracker.db");
+    public static string DeveloperBackupFolder => Path.Combine(AppFolder, "DeveloperBackups");
+    public static string PendingDatabaseOperationPath =>
+        Path.Combine(AppFolder, "pending-database-operation.json");
+    public static string PendingDatabaseFilePath =>
+        Path.Combine(AppFolder, "pending-database-load.db");
 
     public static DatabaseSettings Load()
     {
@@ -82,12 +87,12 @@ public static class DatabaseConfiguration
     public static string GetStatusText(DatabaseSettings settings) =>
         settings.Provider switch
         {
-            DatabaseProvider.Sqlite => $"SQLite: {TryGetSqlitePath(settings.ConnectionString) ?? DefaultSqlitePath}",
+            DatabaseProvider.Sqlite => $"SQLite: {GetSqlitePath(settings.ConnectionString) ?? DefaultSqlitePath}",
             DatabaseProvider.PostgreSql => "PostgreSQL: central database",
             _ => settings.Provider.ToString()
         };
 
-    private static string? TryGetSqlitePath(string? connectionString)
+    public static string? GetSqlitePath(string? connectionString)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
             return null;

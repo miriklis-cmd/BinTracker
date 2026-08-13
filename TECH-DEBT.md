@@ -3,12 +3,32 @@
 These are engineering improvements, not current user-facing defects.
 
 ## UI
+- When adding wizard state used across multiple event handlers/pages, declare and initialize the state in the form before wiring callers; packaging sanity checks should confirm both references and backing state exist.
+- Keep Review-grid column widths explicit and row wrapping enabled; the Review dataset is information-dense and should not rely on Fill sizing that silently truncates values.
+- Prefer cell-level DataGridView tooltips for row-wide diagnostics; `DataGridViewRow` has no ToolTipText property.
+- Prefer fixed-width action strips or shared dialog-button helpers for modal Save/Close actions; avoid Dock=Top tables when button widths must remain fixed.
 - Consolidate repeated WinForms card/button/grid construction into shared UI helpers.
 - Continue high-DPI regression testing across 100%, 125% and 150% scaling.
 - Consider centralising typography/spacing constants.
 
 ## Import
-- Refactor wizard steps into separate Analyse / Map / Review / Import view components as functionality grows.
+- Existing-customer match decisions are wizard-session state in alpha.17. Transactional Import must consume the reviewed target CustomerId and must not recompute matching at execution time.
+- Tests that create new customers must provide the same explicit decision state required by the wizard; avoid fixtures that bypass Create/Skip confirmation semantics.
+- Keep reconciliation decision lookup branches explicit; avoid compact `TryGetValue` expressions that obscure definite-assignment and null/unconfirmed handling.
+- Customer decision state is wizard-session state in alpha.16. Transactional Import must consume the exact reviewed decision snapshot rather than recomputing it.
+- Manual legacy container-token mappings are session-scoped in alpha.15. Persist reusable aliases later inside Import Profiles, not as global assumptions.
+- Legacy container inference must distinguish absent token (safe Blue Bin default) from unknown explicit token (hard blocker). Never default an unknown explicit token such as `(Tub)` to Blue.
+- Post-v1.0 customer-only import should be an explicit import intent/profile capability, not a special case hidden inside balance-import logic. It should bypass container/balance requirements while reusing customer matching and merge review.
+- Normalize legacy customer identity before grouping and matching; matching alone is not enough if variants have already been split into separate review rows.
+- Keep balance reconciliation planning pure/read-only and separate from execution so the exact proposed adjustments can be tested before transactional writes are introduced.
+- Introduce an `ImportRun`/source-row provenance model before import execution so re-import correction can be idempotent and auditable.
+- Developer Database Tools are intentionally restart-based; do not evolve them into live SQLite file replacement while DbContexts may be active.
+- Keep `CustomerNameNormalizer` conservative and reusable; commercial import profiles may need different normalization rules.
+- Post-v1.0: consider opt-in fuzzy customer matching (edit distance/similarity), but never auto-merge fuzzy matches without user approval.
+- Keep legacy Buyer-prefix parsing inside the legacy import profile/parser; generic import profiles must not assume parentheses always mean a container type.
+- Keep wizard state separate from page controls so Back/Next navigation never depends on transient DataGridView cell state.
+- Keep review-planning logic in the Services layer (not WinForms) so future CLI/import profiles can reuse the same safety checks.
+- The Import Wizard now uses separate Analyse/Map pages; continue extracting Review/Import into dedicated view components as those stages are implemented.
 - Introduce reusable import-profile abstractions so legacy/custom workbooks do not leak rules into the generic import engine.
 - Add a standard BinTracker import template/profile for future customers.
 

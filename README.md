@@ -1,4 +1,4 @@
-# BinTracker v0.4.0-alpha.7
+# BinTracker v0.4.0-alpha.17
 
 This release adds local authentication, roles, user administration, and an append-only audit trail.
 
@@ -37,10 +37,10 @@ PostgreSQL is the planned central database before simultaneous multi-PC deployme
 The PostgreSQL provider is not enabled yet, so this release has no extra server/install requirement.
 
 
-## v0.4.0-alpha.7
+## v0.4.0-alpha.17
 Customer Management is now functional from the left navigation.
 
-## v0.4.0-alpha.7
+## v0.4.0-alpha.17
 
 Customer codes are now the primary visible identifier in Customer Management. Select a customer and use **Customer Statement** to generate an audited PDF for a chosen period.
 
@@ -55,3 +55,7 @@ The Import Wizard currently supports read-only analysis of `.xlsm` and `.xlsx` w
 ## Versioning
 
 The BinTracker release version is defined once in `Directory.Build.props`. The application and `Build-BinTracker.bat` derive their displayed version from that value. See `docs/Versioning.md`.
+
+## Developer database testing
+
+Administrators can use **Settings > Developer Tools > Developer Database** to back up the current SQLite database, stage/load another test database, or restart with a fresh database. Load/Fresh operations are restart-based so the live SQLite file is never replaced while application database contexts may be active.
