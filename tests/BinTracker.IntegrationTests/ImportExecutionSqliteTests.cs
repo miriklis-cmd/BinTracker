@@ -126,6 +126,13 @@ public sealed class ImportExecutionSqliteTests
                 .ToListAsync();
 
             Assert.Equal(3, movements.Count);
+            Assert.All(
+                movements,
+                movement =>
+                    Assert.Equal(
+                        result.ImportRunId,
+                        movement.ImportRunId));
+
             Assert.Contains(
                 movements,
                 x =>
@@ -163,6 +170,230 @@ public sealed class ImportExecutionSqliteTests
             if (File.Exists(temp))
                 File.Delete(temp);
         }
+    }
+
+    [Fact]
+    public async Task Forced_failure_after_database_save_rolls_back_entire_import()
+    {
+        var temp = Path.Combine(
+            Path.GetTempPath(),
+            $"bintracker-import-rollback-{Guid.NewGuid():N}.xlsx");
+
+        await File.WriteAllBytesAsync(
+            temp,
+            "rollback-fingerprint-input"u8.ToArray());
+
+        try
+        {
+            await using var connection =
+                new SqliteConnection("Data Source=:memory:");
+            await connection.OpenAsync();
+
+            var services = new ServiceCollection();
+
+            services.AddDbContextFactory<BinTrackerDbContext>(
+                options => options.UseSqlite(connection));
+
+            services.AddBinTrackerServices();
+
+            // Last registration wins for single-service resolution.
+            services.AddSingleton<IImportExecutionFailureInjector>(
+                new ThrowingImportExecutionFailureInjector(
+                    ImportExecutionFailurePoint.AfterDatabaseSaveBeforeCommit));
+
+            await using var provider =
+                services.BuildServiceProvider();
+
+            await using var scope =
+                provider.CreateAsyncScope();
+
+            var factory = scope.ServiceProvider
+                .GetRequiredService<
+                    IDbContextFactory<BinTrackerDbContext>>();
+
+            await using (var db =
+                await factory.CreateDbContextAsync())
+            {
+                await db.Database.EnsureCreatedAsync();
+
+                var admin = new UserAccount
+                {
+                    Username = "admin",
+                    DisplayName = "Administrator",
+                    PasswordHash = "x",
+                    PasswordSalt = "x",
+                    Role = UserRole.Administrator,
+                    IsActive = true
+                };
+
+                db.UserAccounts.Add(admin);
+                await db.SaveChangesAsync();
+
+                scope.ServiceProvider
+                    .GetRequiredService<UserSession>()
+                    .SignIn(admin);
+            }
+
+            await using (var baseline =
+                await factory.CreateDbContextAsync())
+            {
+                Assert.Equal(0, await baseline.Customers.CountAsync());
+                Assert.Equal(0, await baseline.BinMovements.CountAsync());
+                Assert.Equal(0, await baseline.ImportRuns.CountAsync());
+                Assert.DoesNotContain(
+                    await baseline.AuditEvents.ToListAsync(),
+                    x => x.Action == "EXCEL_IMPORT_COMPLETED");
+            }
+
+            var service = scope.ServiceProvider
+                .GetRequiredService<IImportExecutionService>();
+
+            var preflight =
+                await service.PreflightAsync(temp);
+
+            var request = new ImportExecutionRequest(
+                temp,
+                preflight.Source.Sha256,
+                Analysis(
+                    new ImportSnapshotCandidate(
+                        "Update Account",
+                        "RollbackCo",
+                        CustomerType.Account,
+                        null,
+                        Out: 2,
+                        In: 1,
+                        BroughtForward: 10,
+                        ExcelTotal: 11,
+                        SourceRow: "12")),
+                [
+                    new ImportWorksheetMapping(
+                        "Update Account",
+                        ImportWorksheetRole.Source,
+                        "")
+                ],
+                new Dictionary<string, int>(
+                    StringComparer.OrdinalIgnoreCase),
+                new Dictionary<string, ImportCustomerDecision>(
+                    StringComparer.OrdinalIgnoreCase)
+                {
+                    ["RollbackCo"] = new(
+                        "RollbackCo",
+                        "Rollback Company",
+                        ImportCustomerDecisionAction.Create)
+                },
+                new Dictionary<
+                    string,
+                    ImportExistingCustomerDecision>(
+                    StringComparer.OrdinalIgnoreCase),
+                new DateOnly(2026, 8, 13));
+
+            var ex =
+                await Assert.ThrowsAsync<
+                    ImportExecutionInjectedFailureException>(
+                    () => service.ExecuteAsync(request));
+
+            Assert.Equal(
+                ImportExecutionFailurePoint
+                    .AfterDatabaseSaveBeforeCommit,
+                ex.Point);
+
+            // The injected failure happens only after ImportRun, new customer,
+            // movements and completion audit have all been SaveChanges'd into
+            // the transaction. None may survive transaction disposal.
+            await using var verify =
+                await factory.CreateDbContextAsync();
+
+            Assert.Equal(
+                0,
+                await verify.Customers.CountAsync());
+
+            Assert.Equal(
+                0,
+                await verify.BinMovements.CountAsync());
+
+            Assert.Equal(
+                0,
+                await verify.ImportRuns.CountAsync());
+
+            Assert.DoesNotContain(
+                await verify.AuditEvents.ToListAsync(),
+                x => x.Action == "EXCEL_IMPORT_COMPLETED");
+
+            // Because the failed run left no completed fingerprint behind,
+            // preflight must still permit a retry of the exact same source.
+            var retryPreflight =
+                await service.PreflightAsync(temp);
+
+            Assert.True(retryPreflight.CanProceed);
+            Assert.False(
+                retryPreflight.ExactWorkbookPreviouslyImported);
+        }
+        finally
+        {
+            if (File.Exists(temp))
+                File.Delete(temp);
+        }
+    }
+
+    [Fact]
+    public async Task Import_provenance_is_relational_and_non_import_movements_remain_unlinked()
+    {
+        await using var connection =
+            new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var services = new ServiceCollection();
+
+        services.AddDbContextFactory<BinTrackerDbContext>(
+            options => options.UseSqlite(connection));
+
+        services.AddBinTrackerServices();
+
+        await using var provider =
+            services.BuildServiceProvider();
+
+        await using var scope =
+            provider.CreateAsyncScope();
+
+        var factory = scope.ServiceProvider
+            .GetRequiredService<
+                IDbContextFactory<BinTrackerDbContext>>();
+
+        await using var db =
+            await factory.CreateDbContextAsync();
+
+        await db.Database.EnsureCreatedAsync();
+        await DatabaseSetup.InitializeSqliteAsync(db);
+
+        var customer = new Customer
+        {
+            CustomerCode = "MANUAL",
+            Name = "Manual Customer",
+            CustomerType = CustomerType.Account
+        };
+
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+
+        db.BinMovements.Add(new BinMovement
+        {
+            MovementDate = new DateOnly(2026, 8, 13),
+            MovementType = MovementType.Out,
+            Source = MovementSource.Manual,
+            CustomerId = customer.Id,
+            ContainerTypeId = 1,
+            Quantity = 1,
+            CreatedBy = "tester"
+        });
+
+        await db.SaveChangesAsync();
+
+        var movement =
+            await db.BinMovements
+                .AsNoTracking()
+                .SingleAsync();
+
+        Assert.Null(movement.ImportRunId);
     }
 
     [Fact]
@@ -272,6 +503,33 @@ public sealed class ImportExecutionSqliteTests
             if (File.Exists(temp))
                 File.Delete(temp);
         }
+    }
+
+    private sealed class ThrowingImportExecutionFailureInjector(
+        ImportExecutionFailurePoint failurePoint)
+        : IImportExecutionFailureInjector
+    {
+        public Task ReachAsync(
+            ImportExecutionFailurePoint point,
+            CancellationToken cancellationToken = default)
+        {
+            if (point == failurePoint)
+            {
+                throw new ImportExecutionInjectedFailureException(
+                    point);
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ImportExecutionInjectedFailureException(
+        ImportExecutionFailurePoint point)
+        : Exception(
+            $"Injected import failure at {point}.")
+    {
+        public ImportExecutionFailurePoint Point { get; } =
+            point;
     }
 
     private static ExcelImportAnalysis Analysis(

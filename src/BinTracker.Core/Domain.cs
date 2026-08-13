@@ -72,6 +72,14 @@ public sealed class BinMovement
     public ContainerType ContainerType { get; set; } = null!;
     public int? MovementBatchId { get; set; }
     public MovementBatch? MovementBatch { get; set; }
+
+    // Nullable because operator-entered/manual/batch movements are not created
+    // by an Excel Import Run. Import-generated Adjustment/ExcelImport rows must
+    // carry this FK so replacement/correction tooling can target only the
+    // records created by a specific import.
+    public long? ImportRunId { get; set; }
+    public ImportRun? ImportRun { get; set; }
+
     public int Quantity { get; set; }
     public string? ReferenceNumber { get; set; }
     public string? Notes { get; set; }
@@ -96,6 +104,9 @@ public sealed class ImportRun
     public string Username { get; set; } = string.Empty;
     public string SessionId { get; set; } = string.Empty;
     public string? Notes { get; set; }
+
+    public ICollection<BinMovement> Movements { get; set; } =
+        new List<BinMovement>();
 }
 
 public sealed class ApplicationSettings

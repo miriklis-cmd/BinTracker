@@ -81,7 +81,7 @@
 - BT-IMPORT-007: Import execution is transactional.
 - BT-IMPORT-008: Exact completed-workbook re-import is blocked.
 - BT-IMPORT-009: Changed-workbook/same-cutover correction must be explicit and must not duplicate prior imported movements.
-- BT-IMPORT-010: Import-generated records must be traceable to the Import Run that created them.
+- BT-IMPORT-010: Import-generated movements must link relationally to the Import Run that created them; non-import movements remain unlinked.
 
 ## Backup / Recovery
 

@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.19.8.1**
+Current baseline: **v0.4.0-alpha.19.10**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.19.8.1.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.19.10.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -25,9 +25,11 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [ ] Customer statements label opening adjustments distinctly.
 - [ ] Exact same workbook cannot be imported twice.
 - [ ] Workbook changed after Step 4 preflight is rejected.
-- [ ] **Forced mid-import failure rolls back all customers, movements and ImportRun changes.**
-- [ ] After `ImportRunId` work: every generated movement links to the correct ImportRun.
+- [x] **Automated forced failure after final SaveChanges rolls back customer, movements, ImportRun and completion audit; exact-source retry remains allowed.**
+- [x] Every generated import movement links to the correct ImportRun; Manual movement regression remains NULL.
 - [ ] After replacement work: changed workbook / same cutover requires explicit difference/correction workflow.
+
+- [ ] Optional manual forced-failure acceptance before v1.0 release sign-off.
 
 ## Customer acceptance
 

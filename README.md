@@ -1,4 +1,4 @@
-# BinTracker v0.4.0-alpha.19.8.1
+# BinTracker v0.4.0-alpha.19.10
 
 BinTracker is a .NET 8 Windows desktop application for tracking reusable container movements, customer/container balances, operational reporting and audited business activity.
 
@@ -15,6 +15,7 @@ BinTracker is a .NET 8 Windows desktop application for tracking reusable contain
 - Configurable Business Information/report identity.
 - Transactional legacy Excel Import Wizard with Analyse, Map, Review, balance reconciliation and Step 4 execution.
 - ImportRun SHA-256 exact-reimport protection.
+- Relational ImportRun provenance on generated import movements.
 - Developer database backup/load/fresh tools for testing.
 
 ## Important current limitations
@@ -23,9 +24,7 @@ See `KNOWN-ISSUES.md` and `docs/Roadmap.md`.
 
 Most important remaining items include:
 
-- forced-failure Import rollback verification;
 - changed-workbook/same-cutover replacement workflow;
-- relational ImportRun provenance;
 - unsaved customer-edit protection;
 - remaining operational reports;
 - dashboard operational pass;

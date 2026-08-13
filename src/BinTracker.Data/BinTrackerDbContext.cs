@@ -67,7 +67,14 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
                 .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.ContainerType).WithMany(x => x.Movements)
                 .HasForeignKey(x => x.ContainerTypeId).OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.ImportRun)
+                .WithMany(x => x.Movements)
+                .HasForeignKey(x => x.ImportRunId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             e.HasIndex(x => new { x.CustomerId, x.ContainerTypeId, x.MovementDate });
+            e.HasIndex(x => x.ImportRunId);
         });
 
         b.Entity<ApplicationSettings>(e =>

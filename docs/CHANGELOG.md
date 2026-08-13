@@ -441,3 +441,17 @@
 - Cleaned Known Issues and Technical Debt.
 - Updated Import Wizard/Re-import Safety/Functional Specification/Testing/README.
 - Consolidated release documentation by deleting obsolete per-alpha release-note files; historical details remain in this changelog.
+
+## v0.4.0-alpha.19.9
+- Added deterministic test-only Import execution failure injection.
+- Added SQLite regression test forcing failure after final SaveChanges and before Commit.
+- Proved customer, movements, ImportRun and completion audit all roll back.
+- Proved failed exact source remains eligible for retry.
+- Reconciled rollback status across Roadmap, Known Issues, Technical Debt, Test Checklist and importer documentation.
+
+## v0.4.0-alpha.19.10
+- Added nullable BinMovement.ImportRunId relationship and index.
+- Linked all Step 4 generated Adjustment/ExcelImport movements to their ImportRun.
+- Added SQLite schema migration V10 with conservative alpha.19.x provenance backfill.
+- Added provenance and migration regression tests.
+- Reconciled Roadmap, Known Issues, Technical Debt, Test Checklist and importer documentation.

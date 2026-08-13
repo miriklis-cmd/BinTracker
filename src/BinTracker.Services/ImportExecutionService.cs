@@ -40,6 +40,27 @@ public sealed record ImportExecutionResult(
     int InMovements,
     int MovementCount);
 
+public enum ImportExecutionFailurePoint
+{
+    AfterDatabaseSaveBeforeCommit
+}
+
+public interface IImportExecutionFailureInjector
+{
+    Task ReachAsync(
+        ImportExecutionFailurePoint point,
+        CancellationToken cancellationToken = default);
+}
+
+internal sealed class NoOpImportExecutionFailureInjector
+    : IImportExecutionFailureInjector
+{
+    public Task ReachAsync(
+        ImportExecutionFailurePoint point,
+        CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+}
+
 public interface IImportExecutionService
 {
     Task<ImportPreflightResult> PreflightAsync(
@@ -53,7 +74,9 @@ public interface IImportExecutionService
 
 internal sealed class ImportExecutionService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    UserSession session) : IImportExecutionService
+    UserSession session,
+    IImportExecutionFailureInjector failureInjector)
+    : IImportExecutionService
 {
     public async Task<ImportPreflightResult> PreflightAsync(
         string filePath,
@@ -399,6 +422,7 @@ internal sealed class ImportExecutionService(
                     CustomerId = customerId,
                     ContainerTypeId = item.ContainerTypeId.Value,
                     Quantity = Math.Abs(adjustment),
+                    ImportRunId = run.Id,
                     ReferenceNumber = commonReference,
                     Notes =
                         $"Excel import run #{run.Id}: opening adjustment " +
@@ -421,6 +445,7 @@ internal sealed class ImportExecutionService(
                     CustomerId = customerId,
                     ContainerTypeId = item.ContainerTypeId.Value,
                     Quantity = item.ExcelOut,
+                    ImportRunId = run.Id,
                     ReferenceNumber = commonReference,
                     Notes =
                         $"Excel import run #{run.Id}: legacy OUT movement. " +
@@ -443,6 +468,7 @@ internal sealed class ImportExecutionService(
                     CustomerId = customerId,
                     ContainerTypeId = item.ContainerTypeId.Value,
                     Quantity = item.ExcelIn,
+                    ImportRunId = run.Id,
                     ReferenceNumber = commonReference,
                     Notes =
                         $"Excel import run #{run.Id}: legacy IN movement. " +
@@ -481,6 +507,15 @@ internal sealed class ImportExecutionService(
         });
 
         await db.SaveChangesAsync(cancellationToken);
+
+        // Deliberate test seam: at this point all import writes have been
+        // flushed into the open database transaction, but none are committed.
+        // A forced exception here must leave the database exactly as it was
+        // before ExecuteAsync began.
+        await failureInjector.ReachAsync(
+            ImportExecutionFailurePoint.AfterDatabaseSaveBeforeCommit,
+            cancellationToken);
+
         await transaction.CommitAsync(cancellationToken);
 
         return new ImportExecutionResult(

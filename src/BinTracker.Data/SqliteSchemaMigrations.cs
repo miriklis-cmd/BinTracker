@@ -19,7 +19,8 @@ internal static class SqliteSchemaMigrations
         new(6, "Password self-service and account lockout", ApplyV6Async),
         new(7, "Container type master data", ApplyV7Async),
         new(8, "Business information master data", ApplyV8Async),
-        new(9, "Excel import provenance", ApplyV9Async)
+        new(9, "Excel import provenance", ApplyV9Async),
+        new(10, "Import movement relational provenance", ApplyV10Async)
     ];
 
     private static async Task ApplyV1Async(BinTrackerDbContext db)
@@ -223,6 +224,51 @@ internal static class SqliteSchemaMigrations
 
         await db.Database.ExecuteSqlRawAsync(
             "CREATE INDEX IF NOT EXISTS IX_ImportRuns_CompletedUtc ON ImportRuns (CompletedUtc);");
+    }
+
+    private static async Task ApplyV10Async(BinTrackerDbContext db)
+    {
+        var columns = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('BinMovements')")
+            .ToListAsync();
+
+        if (!columns.Contains(
+                "ImportRunId",
+                StringComparer.OrdinalIgnoreCase))
+        {
+            // SQLite permits a nullable REFERENCES column to be added in place.
+            // Existing operator/manual/batch movements remain NULL.
+            await db.Database.ExecuteSqlRawAsync("""
+                ALTER TABLE BinMovements
+                ADD COLUMN ImportRunId INTEGER NULL
+                    REFERENCES ImportRuns(Id) ON DELETE RESTRICT;
+                """);
+        }
+
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE INDEX IF NOT EXISTS IX_BinMovements_ImportRunId ON BinMovements (ImportRunId);");
+
+        // Backfill imports made by alpha.19.x before the FK existed.
+        //
+        // Only Import/Adjustment sources are eligible and the historical
+        // ReferenceNumber must be exactly IMPORT-<numeric run id> with a
+        // matching ImportRun row. Manual/Batch movements are never inferred.
+        await db.Database.ExecuteSqlRawAsync("""
+            UPDATE BinMovements
+            SET ImportRunId =
+                CAST(substr(ReferenceNumber, 8) AS INTEGER)
+            WHERE ImportRunId IS NULL
+              AND Source IN (2, 3)
+              AND ReferenceNumber GLOB 'IMPORT-[0-9]*'
+              AND ReferenceNumber NOT GLOB 'IMPORT-*[^0-9]*'
+              AND EXISTS (
+                  SELECT 1
+                  FROM ImportRuns
+                  WHERE ImportRuns.Id =
+                      CAST(substr(BinMovements.ReferenceNumber, 8) AS INTEGER)
+              );
+            """);
     }
 
     private static async Task AddBusinessInfoColumnIfMissingAsync(

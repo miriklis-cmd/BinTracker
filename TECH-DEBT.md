@@ -11,7 +11,6 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Database / data integrity
 
-- Add nullable `ImportRunId` FK from import-generated `BinMovement` records to `ImportRun`.
 - Add source-row/import-profile metadata needed for changed-workbook correction tooling.
 - Review useful database-level constraints/indexes rather than relying only on service validation.
 - Establish a production backup-before-migration policy.
@@ -20,6 +19,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Import
 
+- Historical alpha.19.x provenance backfill intentionally links only `Adjustment`/`ExcelImport` rows with a strict `IMPORT-<numeric id>` reference that resolves to an existing ImportRun; do not broaden inference to Manual/Batch rows.
 - Keep Review/reconciliation planning pure/read-only and reusable.
 - Transaction execution must always rebuild/validate against the live database immediately before writes.
 - Exact re-import identity uses SHA-256; future Import Profiles should add profile/parser version to provenance.
@@ -65,9 +65,9 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Testing
 
+- Keep the Import failure-injection seam test-only/no-op in production; use it for deterministic transaction-boundary regression tests rather than exposing runtime failure controls.
 - Continue the regression rule: when a real defect is found, add a reproducing automated test where practical.
 - Add Release-build CI/validation in addition to Debug.
 - Add high-DPI automated/manual acceptance coverage.
-- Add failure-injection tests for transactional Import rollback.
 - Add changed-workbook/replacement tests once ImportRun linkage exists.
 - Add stress fixtures for Market Floor row-density extremes.

@@ -57,9 +57,10 @@ Then one SQLite transaction:
 - uses confirmed existing-customer targets;
 - writes opening adjustments;
 - writes cutover-day OUT/IN movements;
+- links every generated movement to the ImportRun through `BinMovement.ImportRunId`;
 - records a completed ImportRun and audit event.
 
-A failure must roll the whole transaction back. Deliberate failure-injection acceptance testing is still outstanding.
+A failure rolls the whole transaction back. This is now covered by an integration test that injects a failure after the final database SaveChanges and before CommitAsync, then proves that all import writes disappear.
 
 ## Legacy snapshot rule
 
@@ -128,8 +129,6 @@ A different workbook for the same cutover date still needs the controlled differ
 
 ## Remaining importer work before v1.0
 
-- forced-failure rollback acceptance test;
-- relational `ImportRunId` provenance on generated movements;
 - changed-workbook/same-cutover difference/correction workflow;
 - Import Run history/details UI;
 - improved execution failure report;

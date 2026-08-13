@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.19.8.1**
+Current planning baseline: **v0.4.0-alpha.19.10**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -12,12 +12,12 @@ The importer is functionally implemented and has been exercised against the curr
 
 Remaining:
 
-- [ ] **Forced-failure rollback verification** — deliberately cause a Step 4 failure after writes have begun and prove that no partial customer, movement or ImportRun changes survive.
-- [ ] **Add `BinMovement.ImportRunId`** (nullable FK) so import-generated movements have relational provenance rather than only `IMPORT-<id>` text/reference metadata.
+- [x] **Forced-failure rollback verification** — integration test now forces failure after the final `SaveChangesAsync` but before `CommitAsync` and verifies that customer, movements, ImportRun and completion audit all disappear; exact-source retry remains allowed.
+- [x] **`BinMovement.ImportRunId` relational provenance** — nullable FK + index implemented; all new import Adjustment/ExcelImport movements link to their ImportRun, while Manual/Batch rows remain unlinked. Migration V10 safely backfills eligible alpha.19.x `IMPORT-<id>` rows.
 - [ ] **Changed-workbook / same-cutover workflow** — detect a different workbook fingerprint for a previously imported cutover date and offer Review Differences / Replace-Correct Previous Import / Cancel. Never provide a blind “import again anyway”.
 - [ ] **Import Run history/details UI** — show source file, SHA-256, cutover date, user, counts, status and generated records.
 - [ ] Add a useful transactional failure report showing the row/customer/container that stopped execution.
-- [ ] Re-test exact re-import after the provenance changes.
+- [x] Re-test exact re-import after provenance changes through the existing integration suite.
 
 Already implemented:
 
@@ -34,6 +34,8 @@ Already implemented:
 - [x] live-database revalidation immediately before commit;
 - [x] workbook-changed-after-preflight protection;
 - [x] transaction rollback implementation;
+- [x] forced post-SaveChanges rollback regression test;
+- [x] relational ImportRun movement provenance + legacy backfill migration;
 - [x] production-workbook end-to-end import testing.
 
 ### 2. Protect unsaved customer edits

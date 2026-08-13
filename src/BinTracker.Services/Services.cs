@@ -562,6 +562,9 @@ public static class ServiceSetup
         services.AddScoped<IContainerTypeService, ContainerTypeService>();
         services.AddScoped<IBusinessInformationService, BusinessInformationService>();
         services.AddScoped<IExcelImportService, ExcelImportService>();
+        services.AddSingleton<
+            IImportExecutionFailureInjector,
+            NoOpImportExecutionFailureInjector>();
         services.AddScoped<IImportExecutionService, ImportExecutionService>();
         services.AddScoped<IMarketFloorReportService, MarketFloorReportService>();
         services.AddScoped<IMovementService, MovementService>();
