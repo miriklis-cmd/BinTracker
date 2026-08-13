@@ -231,7 +231,7 @@ internal sealed class MarketFloorReportService(
                 var frontFontSize = FrontPageFontSize(data);
 
                 page.Size(PageSizes.A4);
-                page.Margin(12);
+                page.Margin(7);
                 page.DefaultTextStyle(x =>
                     x.FontFamily("Arial").FontSize(frontFontSize));
 
@@ -292,7 +292,7 @@ internal sealed class MarketFloorReportService(
             {
                 page.Size(PageSizes.A4);
                 page.Margin(12);
-                page.DefaultTextStyle(x => x.FontFamily("Arial").FontSize(7.2f));
+                page.DefaultTextStyle(x => x.FontFamily("Arial").FontSize(7.8f));
 
                 page.Header().Column(header =>
                 {
@@ -373,7 +373,7 @@ internal sealed class MarketFloorReportService(
                 table.ColumnsDefinition(columns =>
                 {
                     columns.RelativeColumn(4);
-                    columns.RelativeColumn(1);
+                    columns.RelativeColumn(2);
                 });
 
                 FrontHeader(table, "Buyer");
@@ -403,7 +403,7 @@ internal sealed class MarketFloorReportService(
             foreach (var item in rows)
             {
                 FrontCell(table, item.Buyer);
-                FrontCell(table, $"{Math.Abs(item.Total)} CREDIT");
+                FrontCell(table, $"{Math.Abs(item.Total)}\u00A0CREDIT");
             }
         });
     }
@@ -434,7 +434,7 @@ internal sealed class MarketFloorReportService(
 
                     var text = item.Balance > 0
                         ? $"{item.Balance} {ShortContainerName(item.Container)}"
-                        : $"{Math.Abs(item.Balance)} {ShortContainerName(item.Container)} CREDIT";
+                        : $"{Math.Abs(item.Balance)} {ShortContainerName(item.Container)}\u00A0CREDIT";
 
                     FrontCell(table, text);
                 }
@@ -456,12 +456,15 @@ internal sealed class MarketFloorReportService(
 
         var maxRows = Math.Max(accountColumns, rightColumnLoad);
 
+        // This report is used from around 4am. Prefer the largest
+        // readable text that still fits a single front page.
         return maxRows switch
         {
-            <= 34 => 9.4f,
-            <= 42 => 8.8f,
-            <= 50 => 8.1f,
-            _ => 7.3f
+            <= 34 => 12.2f,
+            <= 42 => 11.4f,
+            <= 50 => 10.6f,
+            <= 58 => 9.8f,
+            _ => 9.0f
         };
     }
 
@@ -500,11 +503,11 @@ internal sealed class MarketFloorReportService(
             {
                 table.ColumnsDefinition(columns =>
                 {
-                    columns.RelativeColumn(4);
-                    columns.RelativeColumn(1);
-                    columns.RelativeColumn(1);
-                    columns.RelativeColumn(1.4f);
-                    columns.RelativeColumn(1.8f);
+                    columns.RelativeColumn(4.2f);
+                    columns.RelativeColumn(0.85f);
+                    columns.RelativeColumn(0.85f);
+                    columns.RelativeColumn(1.35f);
+                    columns.RelativeColumn(2.75f);
                 });
 
                 CompactHeader(table, "Buyer");
@@ -526,7 +529,7 @@ internal sealed class MarketFloorReportService(
     }
 
     private static string FormatTotal(int value) =>
-        value < 0 ? $"{Math.Abs(value)} CREDIT" : value.ToString();
+        value < 0 ? $"{Math.Abs(value)}\u00A0CREDIT" : value.ToString();
 
     private static string ShortContainerName(string name) =>
         name.Replace(" Pallet", string.Empty, StringComparison.OrdinalIgnoreCase)

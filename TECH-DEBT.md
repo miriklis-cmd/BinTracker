@@ -3,6 +3,7 @@
 These are engineering improvements, not current user-facing defects.
 
 ## UI
+- Customer master/detail filtering must suppress asynchronous SelectionChanged callbacks while rebuilding the grid, then select/load exactly one visible result. Never let stale async callbacks overwrite filtered detail state.
 - Review card secondary text should be a concise secondary metric, not a repeated noun or status label. Keep primary and secondary meanings stable across states.
 - Approved raster icons must retain transparent inset space when scaled. Do not stretch icon artwork edge-to-edge into PictureBox/Button image bounds, especially tall container/bin artwork.
 - Review summary cards should contain one strong primary metric and one short secondary label; do not overload cards with multiple competing counts.
@@ -48,6 +49,8 @@ These are engineering improvements, not current user-facing defects.
 - Add a standard BinTracker import template/profile for future customers.
 
 ## Reports
+- Market Floor credit quantity + label is one visual value. Reserve enough width for it and use a non-breaking separator; do not solve wrapping by shrinking the whole report.
+- Market Floor is an early-morning (~4am) operational report. Prefer the largest text that fits front/back A4; readability is more important than unused whitespace.
 - Market Floor report contains legacy workflow-specific placement rules: Cash/COD credits stay with Cash/COD, while Account credits use the separate CREDIT block. Keep this rule report-specific rather than changing core balance semantics.
 - Reports must classify movement semantics by `MovementSource` as well as `MovementType`. `Adjustment` movements change opening/book position and must not be presented as physical Taken/Returned activity.
 - Extract more reusable report layout primitives as the report catalogue grows.

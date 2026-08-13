@@ -36,6 +36,7 @@ public sealed class CustomersView : UserControl
     private readonly DataGridView balances = Grid();
     private readonly DataGridView movements = Grid();
     private int selectedId;
+    private bool suppressSelectionChanged;
 
     public CustomersView(ICustomerService service, UserSession session, ICustomerStatementReportService statementReports)
     {
@@ -70,7 +71,11 @@ public sealed class CustomersView : UserControl
         customerGrid.Columns.Add(new DataGridViewTextBoxColumn { Name="Position", HeaderText="Net Position", Width=120 });
         customerGrid.Columns.Add(new DataGridViewTextBoxColumn { Name="Status", HeaderText="Status", Width=85 });
         addNew.Click += (_,_) => NewCustomer();
-        customerGrid.SelectionChanged += async (_,_) => await SelectionChangedAsync();
+        customerGrid.SelectionChanged += async (_,_) =>
+        {
+            if (!suppressSelectionChanged)
+                await SelectionChangedAsync();
+        };
         left.Controls.Add(tools,0,0); left.Controls.Add(addNew,0,1); left.Controls.Add(customerGrid,0,2);
 
         var right = new TableLayoutPanel
@@ -255,22 +260,133 @@ public sealed class CustomersView : UserControl
 
     private async Task ReloadAsync(int? selectId=null)
     {
-        var rows=await service.SearchAsync(search.Text, includeInactive.Checked);
-        customerGrid.SuspendLayout(); customerGrid.Rows.Clear();
-        foreach(var r in rows) customerGrid.Rows.Add(r.Id, r.CustomerCode, r.Name, CustomerTypeText(r.CustomerType), r.NetBalance == 0 ? "Even" : r.NetBalance > 0 ? $"{r.NetBalance} OUT" : $"{Math.Abs(r.NetBalance)} CREDIT", r.IsActive ? "Active" : "Inactive");
-        customerGrid.ResumeLayout();
-        if(selectId.HasValue) SelectRow(selectId.Value);
+        var rows = await service.SearchAsync(
+            search.Text,
+            includeInactive.Checked);
+
+        suppressSelectionChanged = true;
+        customerGrid.SuspendLayout();
+
+        try
+        {
+            customerGrid.Rows.Clear();
+
+            foreach (var r in rows)
+            {
+                customerGrid.Rows.Add(
+                    r.Id,
+                    r.CustomerCode,
+                    r.Name,
+                    CustomerTypeText(r.CustomerType),
+                    r.NetBalance == 0
+                        ? "Even"
+                        : r.NetBalance > 0
+                            ? $"{r.NetBalance} OUT"
+                            : $"{Math.Abs(r.NetBalance)} CREDIT",
+                    r.IsActive ? "Active" : "Inactive");
+            }
+
+            customerGrid.ClearSelection();
+
+            if (rows.Count == 0)
+            {
+                ClearCustomerDetails();
+                return;
+            }
+
+            // Preserve the requested/previous customer only if it is actually
+            // present in the current filtered result. Otherwise select the
+            // first visible match.
+            var requestedId =
+                selectId ??
+                (selectedId != 0 ? selectedId : (int?)null);
+
+            var targetId =
+                requestedId.HasValue &&
+                rows.Any(x => x.Id == requestedId.Value)
+                    ? requestedId.Value
+                    : rows[0].Id;
+
+            SelectRow(targetId);
+            selectedId = targetId;
+        }
+        finally
+        {
+            customerGrid.ResumeLayout();
+            suppressSelectionChanged = false;
+        }
+
+        await SelectionChangedAsync();
     }
 
     private async Task SelectionChangedAsync()
     {
-        if(customerGrid.SelectedRows.Count==0 || customerGrid.SelectedRows[0].Cells[0].Value is null) return;
-        selectedId=Convert.ToInt32(customerGrid.SelectedRows[0].Cells[0].Value);
-        var c=await service.GetAsync(selectedId); if(c is null) return;
-        code.Text=c.CustomerCode ?? ""; name.Text=c.Name; SelectCustomerType(c.CustomerType); contact.Text=c.ContactName ?? ""; phone.Text=c.Phone ?? ""; mobile.Text=c.MobileNumber ?? ""; email.Text=c.Email ?? ""; address.Text=c.Address ?? ""; notes.Text=c.Notes ?? "";
-        emailReminders.Checked=c.AllowEmailReminders; smsReminders.Checked=c.AllowSmsReminders; optOut.Checked=c.ReminderOptOut;
-        deactivate.Text=c.IsActive ? "Deactivate" : "Reactivate"; statement.Enabled=true; status.Text=c.IsActive ? "Active customer" : "Inactive customer";
+        if (suppressSelectionChanged)
+            return;
+
+        if (customerGrid.SelectedRows.Count == 0 ||
+            customerGrid.SelectedRows[0].Cells[0].Value is null)
+        {
+            ClearCustomerDetails();
+            return;
+        }
+
+        selectedId =
+            Convert.ToInt32(
+                customerGrid.SelectedRows[0].Cells[0].Value);
+
+        var c = await service.GetAsync(selectedId);
+
+        // A stale async selection event must never overwrite the editor after
+        // the filtered list has moved to another customer.
+        if (c is null ||
+            customerGrid.SelectedRows.Count == 0 ||
+            Convert.ToInt32(
+                customerGrid.SelectedRows[0].Cells[0].Value) != selectedId)
+        {
+            return;
+        }
+
+        code.Text = c.CustomerCode ?? "";
+        name.Text = c.Name;
+        SelectCustomerType(c.CustomerType);
+        contact.Text = c.ContactName ?? "";
+        phone.Text = c.Phone ?? "";
+        mobile.Text = c.MobileNumber ?? "";
+        email.Text = c.Email ?? "";
+        address.Text = c.Address ?? "";
+        notes.Text = c.Notes ?? "";
+        emailReminders.Checked = c.AllowEmailReminders;
+        smsReminders.Checked = c.AllowSmsReminders;
+        optOut.Checked = c.ReminderOptOut;
+        deactivate.Text = c.IsActive ? "Deactivate" : "Reactivate";
+        statement.Enabled = true;
+        status.Text = c.IsActive ? "Active customer" : "Inactive customer";
+
         await LoadRelatedAsync();
+    }
+
+    private void ClearCustomerDetails()
+    {
+        selectedId = 0;
+        code.Clear();
+        name.Clear();
+        customerType.SelectedIndex = 0;
+        contact.Clear();
+        phone.Clear();
+        mobile.Clear();
+        email.Clear();
+        address.Clear();
+        notes.Clear();
+        emailReminders.Checked = false;
+        smsReminders.Checked = false;
+        optOut.Checked = false;
+        deactivate.Text = "Deactivate";
+        deactivate.Enabled = false;
+        statement.Enabled = false;
+        status.Text = "No customer selected";
+        balances.Rows.Clear();
+        movements.Rows.Clear();
     }
 
     private async Task LoadRelatedAsync()

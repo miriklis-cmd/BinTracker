@@ -65,13 +65,24 @@ internal sealed class CustomerService(
         if (!includeInactive) customers = customers.Where(x => x.IsActive);
         query = query?.Trim();
         if (!string.IsNullOrWhiteSpace(query))
+        {
+            // SQLite string Contains can behave case-sensitively depending on
+            // collation. Customer search is deliberately case-insensitive.
+            var term = query.ToUpperInvariant();
+
             customers = customers.Where(x =>
-                x.Name.Contains(query) ||
-                (x.CustomerCode != null && x.CustomerCode.Contains(query)) ||
-                (x.ContactName != null && x.ContactName.Contains(query)) ||
-                (x.Phone != null && x.Phone.Contains(query)) ||
-                (x.MobileNumber != null && x.MobileNumber.Contains(query)) ||
-                (x.Email != null && x.Email.Contains(query)));
+                x.Name.ToUpper().Contains(term) ||
+                (x.CustomerCode != null &&
+                 x.CustomerCode.ToUpper().Contains(term)) ||
+                (x.ContactName != null &&
+                 x.ContactName.ToUpper().Contains(term)) ||
+                (x.Phone != null &&
+                 x.Phone.ToUpper().Contains(term)) ||
+                (x.MobileNumber != null &&
+                 x.MobileNumber.ToUpper().Contains(term)) ||
+                (x.Email != null &&
+                 x.Email.ToUpper().Contains(term)));
+        }
 
         return await customers
             .OrderBy(x => x.CustomerCode)
