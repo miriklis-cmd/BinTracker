@@ -58,3 +58,36 @@ The current UI smoke pass includes Import History readability at the operator's 
 
 
 Customer dirty-state protection requires full manual UI acceptance because selection, search/filter events, main-page navigation, logout and FormClosing are WinForms event-order behaviours. Container Types prompt wording and Import History no-wrap metadata are included in the same UI smoke pass.
+
+## Manual testing policy
+
+Every candidate build must be classified explicitly:
+
+- **UI changed → Full smoke test.**
+- **Business logic changed → Targeted smoke test** covering the affected workflow/calculation.
+- **UI + business logic changed → Full smoke test**, with special attention to the affected logic.
+- **Pure internal/refactor → Automated tests** unless a specific operational risk warrants manual verification.
+- **Reports/printing changed → Real preview/print test** of the affected report.
+- **Importer changed → Real-workbook test** when the behaviour depends on the production workbook/operator flow.
+
+The release response should state `TEST REQUIRED: None / Targeted / Full` and list the exact checks.
+
+## Documentation/audit policy
+
+Every meaningful implementation pass must reconcile the current implementation against:
+
+- `docs/Roadmap.md`;
+- `KNOWN-ISSUES.md`;
+- `TECH-DEBT.md`;
+- `TEST-CHECKLIST.md`;
+- `docs/FunctionalSpecification.md`;
+- `docs/BusinessRules.md`;
+- relevant feature docs;
+- `docs/RELEASE-NOTES.md`;
+- `docs/CHANGELOG.md`.
+
+Completed work is closed/removed from active lists; superseded statements are deleted rather than allowed to contradict current state. Historical release detail belongs in the changelog.
+
+## Conversation-to-requirements reconciliation
+
+Periodically compare the repository plan against the original product requirements and accepted operator decisions so requirements raised during bug-fixing do not disappear merely because they were not initially added to the roadmap.

@@ -82,3 +82,23 @@ Important security, master-data and movement changes create audit events.
 
 - Unsaved Customer edits must never be silently discarded. The operator must explicitly Save, Discard or Cancel before leaving the edited customer/workflow.
 - Unsaved-change dialog buttons must describe the actual action: **Save / Discard / Cancel**.
+
+## Historical balances
+
+- Historical outstanding position is derived from the immutable movement ledger as of the requested date; a separate daily snapshot table is not required merely to answer historical balances.
+- Daily/Weekly/Monthly reporting must preserve Container Type separation.
+
+## Batch Entry
+
+- Successful line entry clears non-carry-forward entry fields and returns focus to Customer entry.
+- Draft surviving navigation/logout does not imply crash/power-loss persistence; that is a separate production capability.
+
+## Communications
+
+- Current provider direction is Google Workspace for email and Texto for SMS.
+- Automatic reminder policy is intended to contact customers owing empty bins by Friday or earlier, while allowing business-rule refinement before production.
+
+## Central database
+
+- PostgreSQL is the intended direction for eventual multi-user central deployment.
+- Services + `IDbContextFactory<BinTrackerDbContext>` remain the application boundary; database-provider-specific concerns belong in infrastructure/migration code.

@@ -1,0 +1,31 @@
+# Audit Coverage
+
+This is the pre-v1 audit-coverage checklist. Audit history is append-only evidence, not an editable operational ledger.
+
+## Must be audited
+
+- Login success/failure/lockout/logout.
+- User create/activate/deactivate/role/password administration.
+- Customer create/change/activate/deactivate.
+- Container Type create/change/activate/deactivate.
+- Saved Single Entry and Batch Entry movements.
+- Movement correction/reversal when implemented.
+- Excel Import completion, failure where appropriate, and Replace/Correct.
+- Import Run provenance/replacement relationship.
+- Report generation, including Customer Statement and Market Floor.
+- Business Information/settings changes.
+- Reminder runs and individual Email/SMS delivery attempts.
+- Production Backup/Restore and database upgrade operations when implemented.
+
+## Evidence expectations
+
+Where relevant, events should preserve:
+
+- timestamp;
+- authenticated user;
+- action/entity;
+- success/failure;
+- session/computer identity;
+- meaningful before/after values or a concise description.
+
+Before v1.0, test this matrix end-to-end and explicitly document any intentionally unaudited operation.

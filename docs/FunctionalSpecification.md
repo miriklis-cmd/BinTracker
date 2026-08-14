@@ -101,3 +101,42 @@
 
 - BT-CUSTOMER-009: Customer editor changes must never be silently discarded. Selection, filtering, New Customer, page navigation, logout and application close must offer explicit Save / Discard / Cancel.
 - BT-UI-007: Unsaved-change prompts use explicit action labels rather than Yes / No where the actions are Save / Discard / Cancel.
+
+## Historical Querying
+
+- BT-HIST-001: BinTracker can calculate outstanding position by customer/container **as of a selected historical date** from the movement ledger.
+- BT-HIST-002: Daily, Weekly and Monthly operational query/reporting are explicit product requirements.
+- BT-HIST-003: Quick operational periods include today/yesterday, selected week and current/previous month.
+
+## Customer Analytics
+
+- BT-CUST-010: Customer lists support useful sorting by code/name, outstanding, credit and last movement.
+- BT-CUST-011: Customer detail/reporting can expose lifetime OUT/Taken and IN/Returned totals where operationally useful.
+
+## Batch Entry Acceptance
+
+- BT-BATCH-001: Successful line entry clears non-carry-forward entry fields and returns focus to the Customer field/code entry.
+- BT-BATCH-002: Esc behaviour is explicit and consistent for current-line edit/clear/exit states.
+- BT-BATCH-003: In-memory draft survival across navigation/logout is supported; crash/power-loss recovery is a separate production decision.
+
+## Statement Workflow
+
+- BT-PRINT-011: Customer Statement supports an operator flow to generate, view/open and print the PDF.
+
+## Dashboard Visualisation
+
+- BT-DASH-006: Dashboard includes useful visual trend/container reporting where it improves operational understanding; configured Dashboard Colour is presentation metadata only.
+
+## Backup Scheduling
+
+- BT-OPS-004: Production deployments support scheduled automatic backup with retention and recovery verification.
+
+## Central Database Readiness
+
+- BT-OPS-005: Before multi-user central deployment, perform a PostgreSQL readiness audit covering provider-specific SQL/migrations, connection handling, backup tooling and integration tests.
+
+## Communications Provider Direction
+
+- BT-COMM-007: Email delivery targets Google Workspace integration unless the business deliberately changes provider.
+- BT-COMM-008: SMS delivery targets Texto integration unless the business deliberately changes provider.
+- BT-COMM-009: Automatic reminder scheduling supports the agreed operational direction of contacting customers owing empty bins by Friday or earlier, subject to configurable policy.

@@ -77,3 +77,9 @@ Engineering improvements that are not currently user-facing defects. Product wor
 - Add Release-build CI/validation in addition to Debug.
 - Add high-DPI automated/manual acceptance coverage.
 - Add stress fixtures for Market Floor row-density extremes.
+
+## Database provider readiness
+
+- Perform a PostgreSQL readiness audit before central multi-user deployment.
+- Inventory SQLite-specific PRAGMA/raw SQL/schema upgrade paths, file-path assumptions and developer backup/reset tooling.
+- Avoid adding a generic Repository abstraction solely for provider portability; keep provider-neutral business behaviour in Services and isolate provider-specific infrastructure.

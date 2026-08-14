@@ -1,30 +1,29 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.19.12.3
+## v0.4.0-alpha.19.12.4
 
-### Customer unsaved-change protection
+### Conversation-to-roadmap reconciliation
 
-A full code/doc audit confirmed Customers had **not** yet received the unsaved-change protection previously assumed. The roadmap and Known Issues were correct; the earlier conversational claim was not.
+This is a documentation/planning-only candidate. No runtime business logic or UI implementation was intentionally changed.
 
-Customers now tracks every editable field and prompts **Save / Discard / Cancel** before changes can be lost through:
+Recovered/clarified requirements include:
 
-- selecting another customer;
-- changing Search/filter state;
-- starting New Customer;
-- navigating to another BinTracker page;
-- Logout;
-- closing BinTracker.
+- Batch Entry is mostly accepted; remaining work is Esc behaviour, post-entry clear/focus and crash/power-loss draft recovery decision.
+- Historical outstanding **as-of-date** reporting.
+- Explicit Weekly reporting and quick today/yesterday/current/previous-month periods.
+- Customer sorting by outstanding/credit/last movement and lifetime OUT/IN totals.
+- Customer Statement generate → view/open → print workflow.
+- Dashboard charts/trends.
+- Google Workspace email and Texto SMS provider direction.
+- Friday-or-earlier reminder policy direction.
+- Scheduled automatic production backups.
+- PostgreSQL readiness audit before multi-user deployment.
+- Post-v1 Customer Portal, barcode scanning and multiple depots.
+- Formal manual testing policy.
+- Full documentation audit on every meaningful implementation pass.
+- Explicit audit-coverage matrix.
+- Git/acceptance workflow and truthful build-gate requirements.
 
-Save persists first, Discard intentionally leaves without saving, and Cancel keeps the current editor/changes.
+### Current execution order
 
-### Explicit unsaved-change wording
-
-The shared unsaved-change dialog now uses buttons labelled **Save**, **Discard** and **Cancel**. Container Types uses this dialog instead of ambiguous Yes / No / Cancel wording.
-
-### Import History
-
-The provenance metadata line no longer wraps; Completed remains on the same line and the label ellipsizes only if the window is genuinely too narrow.
-
-### Roadmap/docs audit
-
-Customer dirty-state protection is moved from outstanding to complete. Its Known Issue is removed. The current priority order is now Reports → Dashboard → Email/SMS reminder plumbing → remaining importer failure-detail/cosmetics → packaging/production acceptance. Roadmap, Known Issues, Technical Debt, Test Checklist, Functional Specification, Business Rules, Testing, Master Data and README were reconciled.
+Reports → Batch Entry acceptance cleanup → Dashboard → Email/SMS → normal movement correction/reversal → production backup/recovery → security/audit hardening → PostgreSQL/multi-user/deployment readiness.

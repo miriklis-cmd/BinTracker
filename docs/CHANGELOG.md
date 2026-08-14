@@ -514,3 +514,11 @@
 - Added shared explicit Save / Discard / Cancel dialog and applied it to Container Types.
 - Prevented Import History Completed metadata from wrapping.
 - Closed the customer-unsaved Known Issue and reconciled roadmap/current-state documentation.
+
+## v0.4.0-alpha.19.12.4
+- Documentation/planning-only reconciliation against original conversation requirements.
+- Reclassified Batch Entry as mostly complete with three focused acceptance items.
+- Restored historical/as-of-date and explicit Weekly reporting requirements.
+- Restored customer sorting/lifetime totals, Statement view/print, Dashboard chart, scheduled backup, provider-direction and post-v1 requirements.
+- Added PostgreSQL readiness audit without introducing a generic Repository layer.
+- Added formal testing/audit/development workflow documentation.

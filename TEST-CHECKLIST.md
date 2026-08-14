@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.19.12.3**
+Current baseline: **v0.4.0-alpha.19.12.4**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.19.12.3.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.19.12.4.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -135,3 +135,31 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [ ] Edit existing customer then close BinTracker → Save / Discard / Cancel.
 - [ ] Save persists; Discard navigates without persisting; Cancel keeps the editor and typed changes.
 - [ ] Import History Completed metadata stays on one line at the test display/DPI.
+
+## Batch Entry acceptance cleanup
+
+- [x] Ctrl+Enter saves the batch.
+- [x] Tab / Shift+Tab keyboard flow works.
+- [x] Enter on Quantity / Reference / Notes adds or updates the pending line.
+- [x] Draft survives page navigation and logout/login while the app remains running.
+- [x] Pending rows affect Current vs With Draft balance preview.
+- [x] Dashboard refreshes after successful save.
+- [ ] Verify/document Esc behaviour in each state.
+- [ ] After successful line entry, non-carry-forward fields clear and focus returns to Customer entry.
+- [ ] Decide/implement crash/power-loss draft recovery before production if required.
+
+## Recovered reporting acceptance
+
+- [ ] Historical Outstanding / As-of-Date report returns the correct past customer/container position.
+- [ ] Weekly Movements report works for a selected week.
+- [ ] Daily report supports fast today/yesterday use.
+- [ ] Monthly report supports fast current/previous month use.
+- [ ] Customer Statement can be generated, opened/viewed and printed.
+- [ ] Customer sorting supports code/name, outstanding, credit and last movement where implemented.
+- [ ] Customer lifetime OUT/Taken and IN/Returned totals reconcile where exposed.
+
+## Project-process acceptance
+
+- [ ] Every implementation pass states TEST REQUIRED: None / Targeted / Full.
+- [ ] Full docs audit is performed every meaningful pass.
+- [ ] Build-BinTracker.bat truthfully fails on restore/build/test failure.

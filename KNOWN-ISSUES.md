@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.19.12.3**
+Current release: **v0.4.0-alpha.19.12.4**
 
 This file contains current defects/limitations that affect testing or production readiness. Completed history is in `docs/CHANGELOG.md`; future features are in `docs/Roadmap.md`; engineering cleanup is in `TECH-DEBT.md`.
 
@@ -54,3 +54,8 @@ The Zahos/BIG search/list-detail synchronization bug is fixed but should remain 
 - Import Review action icons remain smaller/cropped compared with the approved mockup, particularly container-related icons.
 - Review metric tiles do not yet have the approved rounded corners.
 - Password eye / Logout artwork is functional but not final visual polish.
+
+### Batch draft does not survive process termination
+**Area:** Batch Entry / Resilience
+
+Batch drafts survive normal page navigation and logout/login within the running application, but are currently in-memory and do not survive an application crash, PC restart or power loss. Decide whether production requires persisted draft recovery.

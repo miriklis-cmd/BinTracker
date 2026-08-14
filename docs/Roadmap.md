@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.19.12.3**
+Current planning baseline: **v0.4.0-alpha.19.12.4**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -15,6 +15,18 @@ With import integrity/provenance and unsaved Customer/Container-Type protection 
 5. **Production operations** — Backup/Restore, hardening, installer/upgrade and production acceptance.
 
 The remaining importer failure-detail message and deferred Review cosmetics can be handled alongside these phases without reopening the completed core import safety work.
+
+## Current execution order
+
+1. Finish **alpha.19.12.3/19.12.4 acceptance** and close remaining importer/customer/container UI defects.
+2. **Reports** — historical/as-of-date, Daily, Weekly, Monthly, Outstanding, Statement view/print and Daily Print Pack.
+3. **Batch Entry acceptance cleanup** — Esc behaviour, post-entry field reset/focus, crash/power-loss draft decision.
+4. **Dashboard** — operational metrics, drill-through, by-container view and useful charts.
+5. **Email/SMS** — Google Workspace email + Texto SMS direction, reminder rules/templates/delivery history.
+6. **Normal movement correction/reversal**.
+7. **Production backup/recovery**, including scheduled automatic backups.
+8. **Security/audit hardening** and audit-coverage matrix.
+9. **PostgreSQL/multi-computer readiness**, installer/update/deployment and production operations.
 
 ## Priority 0 — close data-integrity risks before more features
 
@@ -58,6 +70,13 @@ Already implemented:
 - [x] Prompt **Save / Discard / Cancel** when switching customer, searching/filtering away, starting New Customer, navigating to another page, logging out or closing the application.
 - [x] Container Types uses the same explicit **Save / Discard / Cancel** wording.
 
+### Customer search/sorting/analytics
+
+- [x] Type-ahead search by customer code/name exists.
+- [ ] Add operator-useful sorting for customer code/name, outstanding position, credit position and last movement.
+- [ ] Add customer lifetime totals for OUT/Taken and IN/Returned where operationally useful.
+- [ ] Keep customer balances separated by configured Container Type.
+
 ## Priority 1 — finish the core operational product
 
 ### 3. Reports
@@ -75,13 +94,35 @@ Implemented:
 Still required:
 
 - [ ] **Outstanding Containers report** — current outstanding position by customer/container, filterable and exportable/printable.
-- [ ] **Daily Movements report** — movement detail for a selected day, including direction, container, customer, reference, source and user.
+- [ ] **Historical Outstanding / As-of-Date report** — answer “how many bins were outstanding on a selected past date?” by customer/container without relying on saved daily snapshots.
+- [ ] **Weekly Movements report** — first-class selected-week OUT/IN/net detail and summary, not merely an implied date-range option.
+- [ ] **Customer Statement view/print workflow** — generate, open/view and print the statement directly from the operational workflow, not only save a PDF.
+- [ ] **Daily Movements report** — movement detail for a selected day, including quick operational use for **today/yesterday**, direction, container, customer, reference, source and user.
 - [ ] **Movement History report** — date range + customer/container/source filters.
-- [ ] **Monthly Summary** — monthly OUT, IN, net movement and useful customer/container breakdowns.
+- [ ] **Monthly Summary** — selected-month OUT, IN, net movement and useful customer/container breakdowns, including quick access to **last month**.
 - [ ] **Daily Print Pack** required by the Functional Specification: Outstanding Summary + Movement Detail.
 - [ ] Review whether Daily/Weekly/Monthly query/reporting needs on-screen tables in addition to PDF output.
 - [ ] Add CSV/Excel export where operationally useful.
 - [ ] Stress-test Market Floor with a genuinely high Yellow-bin day; adaptive sizing is accepted for now but remains a real-world validation item.
+
+### Batch Entry — acceptance cleanup, not a redesign
+
+Current operator-confirmed behaviour:
+
+- [x] `Ctrl+Enter` saves the batch.
+- [x] Tab / Shift+Tab keyboard flow works.
+- [x] Enter from Quantity / Reference / Notes adds or updates the pending line.
+- [x] Draft survives page navigation and logout/login while the application remains running.
+- [x] Pending rows affect Current vs With Draft balance preview.
+- [x] Dashboard refreshes after a successful batch save.
+
+Remaining:
+
+- [ ] Verify and document **Esc** behaviour in each Batch Entry state.
+- [ ] After a line is successfully added/committed, clear all entry fields that should not carry forward and return focus to the Customer field/code entry.
+- [ ] Decide/implement crash or power-loss draft recovery if required for production. Current in-memory draft does not survive process termination.
+
+This is acceptance/polish work only unless smoke testing exposes another real defect.
 
 ### 4. Dashboard
 
@@ -94,6 +135,7 @@ Required dashboard pass:
 - [ ] Add actionable customer/container attention list with drill-through.
 - [ ] Add recent movement/activity panel.
 - [ ] Add useful by-container summary (Blue / Yellow / special types as appropriate).
+- [ ] Add at least one genuinely useful operational chart/trend; use Container Type Dashboard Colour only as presentation metadata, not as physical-container meaning.
 - [ ] Make dashboard cards/actions clickable where they naturally lead to Customers or Reports.
 - [ ] Decide whether ageing / “days outstanding” belongs on the dashboard and define the business rule before implementing it.
 - [ ] Review layout at production DPI and typical 4am floor/office use.
@@ -116,9 +158,9 @@ Groundwork already exists:
 
 Still required:
 
-- [ ] Define reminder business rules: who gets reminded, trigger/age/quantity thresholds and manual vs automatic sending.
-- [ ] Email provider integration.
-- [ ] SMS provider integration.
+- [ ] Finalise reminder business rules around the previously agreed direction: automatically remind customers owing empty bins by **Friday or earlier**, while keeping thresholds/timing configurable where sensible.
+- [ ] Email provider integration using the previously chosen **Google Workspace** direction.
+- [ ] SMS provider integration using the previously chosen **Texto** direction.
 - [ ] Administrator provider/credential configuration with secrets stored securely.
 - [ ] Email and SMS templates.
 - [ ] Manual send from Customer screen.
@@ -129,6 +171,14 @@ Still required:
 - [ ] Retry/error handling without duplicate sends.
 - [ ] Audit reminder runs and sends.
 - [ ] Decide whether statements can be attached/linked in email reminders.
+
+### Production backup/recovery
+
+- [ ] User-accessible production Backup.
+- [ ] Validated Restore with explicit confirmation.
+- [ ] **Scheduled automatic backups** with configurable destination/retention.
+- [ ] Backup before schema/database upgrades.
+- [ ] Restore verification / recovery drill before production sign-off.
 
 ## Priority 3 — production hardening before v1.0
 
@@ -167,6 +217,9 @@ Developer Database tools are not the production solution.
 Current SQLite deployment is single-PC oriented.
 
 Before simultaneous multi-computer production use:
+
+- [ ] **PostgreSQL readiness audit** — inventory SQLite-specific SQL, PRAGMA/schema migration code, local-file assumptions, backup/reset tooling and provider-specific tests before introducing the central provider.
+- [ ] Keep Services + `IDbContextFactory<BinTrackerDbContext>` as the business/data-access boundary; do not add a generic Repository layer merely for PostgreSQL migration.
 
 - [ ] Decide whether PostgreSQL remains the target central provider.
 - [ ] Implement/test central database provider.
@@ -211,3 +264,9 @@ Do after the functional/data-integrity items above unless a defect blocks use.
 - Hosted/cloud or centrally managed deployment option.
 - Licensing/activation and commercial support tooling.
 - Product onboarding/import wizard for new businesses.
+
+### Additional post-v1 candidates recovered from original requirements
+
+- [ ] Customer web portal.
+- [ ] Barcode scanning.
+- [ ] Multiple depots.

@@ -1,4 +1,4 @@
-# BinTracker v0.4.0-alpha.19.12.3
+# BinTracker v0.4.0-alpha.19.12.4
 
 BinTracker is a .NET 8 Windows desktop application for tracking reusable container movements, customer/container balances, operational reporting and audited business activity.
 
@@ -26,6 +26,9 @@ BinTracker is a .NET 8 Windows desktop application for tracking reusable contain
 See `KNOWN-ISSUES.md` and `docs/Roadmap.md`.
 
 Most important remaining items include:
+
+- Historical/as-of-date, Daily, Weekly and Monthly reporting plus Statement view/print;
+- Batch Entry acceptance cleanup (Esc, post-entry reset/focus, crash/power-loss draft decision);
 
 - remaining operational reports;
 - dashboard operational pass;
