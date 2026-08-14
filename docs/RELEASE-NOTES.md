@@ -1,36 +1,30 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.19.11.3
+## v0.4.0-alpha.19.12.3
 
-### Correction comparison identity fix
+### Customer unsaved-change protection
 
-Manual smoke testing found that the correction review could show hundreds of false changes after changing only one workbook value.
+A full code/doc audit confirmed Customers had **not** yet received the unsaved-change protection previously assumed. The roadmap and Known Issues were correct; the earlier conversational claim was not.
 
-Cause:
-- previous imported movements were grouped using labels normalised to `Blue`;
-- proposed reconciliation rows were grouped using the configured display label `Blue Bin`;
-- the same physical container therefore appeared as two different correction positions.
+Customers now tracks every editable field and prompts **Save / Discard / Cancel** before changes can be lost through:
 
-Fixed:
-- correction comparison now keys configured containers by `ContainerTypeId`;
-- customer identity remains normalized by customer code;
-- display text is used only for what the operator sees;
-- the Greek delta symbol has been removed from correction wording;
-- `Replace / Correct` button width is increased so the full action is visible.
+- selecting another customer;
+- changing Search/filter state;
+- starting New Customer;
+- navigating to another BinTracker page;
+- Logout;
+- closing BinTracker.
 
-### Regression coverage
+Save persists first, Discard intentionally leaves without saving, and Cancel keeps the current editor/changes.
 
-The changed-workbook integration test now mirrors the real smoke test:
+### Explicit unsaved-change wording
 
-- original Blue OUT = 1;
-- corrected Blue OUT = 2;
-- no other workbook balance change.
+The shared unsaved-change dialog now uses buttons labelled **Save**, **Discard** and **Cancel**. Container Types uses this dialog instead of ambiguous Yes / No / Cancel wording.
 
-The comparison must return exactly one changed position:
-`REPLACECO / Blue Bin: 11 → 12 (+1)`.
+### Import History
 
-Same-day and next-day Manual movements remain preserved on top of the corrected workbook position.
+The provenance metadata line no longer wraps; Completed remains on the same line and the label ellipsizes only if the window is genuinely too narrow.
 
-### Documentation audit
+### Roadmap/docs audit
 
-Roadmap, Known Issues, Technical Debt, Test Checklist, Re-import Safety, Import Wizard, Business Rules, Functional Specification, Testing and README were reconciled. Manual UI/correction acceptance remains open until this build is smoke-tested.
+Customer dirty-state protection is moved from outstanding to complete. Its Known Issue is removed. The current priority order is now Reports → Dashboard → Email/SMS reminder plumbing → remaining importer failure-detail/cosmetics → packaging/production acceptance. Roadmap, Known Issues, Technical Debt, Test Checklist, Functional Specification, Business Rules, Testing, Master Data and README were reconciled.

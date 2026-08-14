@@ -57,6 +57,7 @@ public sealed class ExistingCustomerMatchForm : Form
         };
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
@@ -78,9 +79,20 @@ public sealed class ExistingCustomerMatchForm : Form
             Margin = new Padding(0, 6, 0, 12)
         }, 0, 1);
 
+        root.Controls.Add(new Label
+        {
+            Text =
+                "Accept match = confirm BinTracker's proposed customer.   " +
+                "Override match = deliberately select a different existing customer.",
+            AutoSize = true,
+            ForeColor = Color.FromArgb(65, 95, 135),
+            MaximumSize = new Size(1120, 0),
+            Margin = new Padding(0, 0, 0, 10)
+        }, 0, 2);
+
         ConfigureGrid();
-        root.Controls.Add(grid, 0, 2);
-        root.Controls.Add(BuildFooter(), 0, 3);
+        root.Controls.Add(grid, 0, 3);
+        root.Controls.Add(BuildFooter(), 0, 4);
         Controls.Add(root);
     }
 

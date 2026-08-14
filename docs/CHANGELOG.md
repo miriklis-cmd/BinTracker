@@ -485,3 +485,32 @@
 - Removed Greek delta notation from correction dialog.
 - Widened Replace / Correct Step 4 button.
 - Reconciled current-state documentation; manual acceptance remains open.
+
+## v0.4.0-alpha.19.12
+- Added Administrator Import Run history/details service and UI.
+- Added replacement-chain, SHA-256/source metadata and linked movement detail.
+- Added Administrator-only history integration tests.
+- Recorded alpha.19.11.3 real-workbook correction smoke test as passed.
+- Reconciled current-state documentation; new history UI manual acceptance remains open.
+
+## v0.4.0-alpha.19.12.1
+- Persisted immutable correction-difference snapshots on corrected ImportRuns.
+- Added migration V12 / `CorrectionChangesJson`.
+- Import History now displays previous → corrected → change per customer/container.
+- Explicitly labels older replacement runs whose differences were not captured.
+- Added migration, execution and history regression coverage.
+- Recorded alpha.19.12 Import History UI smoke checks and reconciled current-state docs.
+
+## v0.4.0-alpha.19.12.2
+- Fixed Import History heading overlap and lower-grid starvation.
+- Widened/readjusted Import History columns and detail layout.
+- Added inline Accept match / Override match explanation.
+- Added Container Types unsaved-change Save / Discard / Cancel protection.
+- Reconciled current-state documentation; manual UI acceptance remains open.
+
+## v0.4.0-alpha.19.12.3
+- Audited Customers and confirmed unsaved-change protection was previously missing.
+- Added Customer dirty-state snapshots and Save / Discard / Cancel protection across selection, filtering, New Customer, page navigation, logout and application close.
+- Added shared explicit Save / Discard / Cancel dialog and applied it to Container Types.
+- Prevented Import History Completed metadata from wrapping.
+- Closed the customer-unsaved Known Issue and reconciled roadmap/current-state documentation.

@@ -40,3 +40,8 @@ Business-specific values are configuration data and are not stored in README/pro
 When a Default Report Header is supplied, reports use it. Otherwise Trading Name is preferred, then Business Name, then `BinTracker`.
 
 All changes are audited.
+
+
+## Unsaved changes
+
+Customer and Container Type master-data editors protect modified fields with explicit **Save / Discard / Cancel** choices before navigation or close can discard edits.

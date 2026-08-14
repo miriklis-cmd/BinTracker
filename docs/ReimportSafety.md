@@ -58,3 +58,15 @@ The execution-time same-cutover guard remains as defence in depth, not as the pr
 ## Container identity in comparisons
 
 Correction comparison keys use normalized customer identity plus the resolved `ContainerTypeId`. Legacy tokens such as `Blue`, configured names such as `Blue Bin`, and other display wording must not create separate correction positions for the same configured container.
+
+
+## Import Run history UI
+
+Administrators can inspect the immutable provenance chain from Settings → Import History. The history shows original/replacement status, source fingerprint and the movements currently linked to each run. A replaced run can legitimately show zero currently linked movements because those generated records were atomically replaced by the corrected run; its historical run metadata and replacement relationship remain intact.
+
+
+## Correction difference snapshot
+
+Before a prior run's generated movements are removed, the corrected ImportRun persists an immutable JSON snapshot of every changed resolved Customer + ContainerType position, including previous import effect, corrected import effect and numeric difference. Import History renders this snapshot so the reason for a replacement remains visible after the old generated rows are gone.
+
+Runs corrected before this feature existed cannot be reconstructed reliably and are explicitly shown as “not captured by the build that created this run.”

@@ -1,8 +1,20 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.19.11.3**
+Current planning baseline: **v0.4.0-alpha.19.12.3**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
+
+## Current work order
+
+With import integrity/provenance and unsaved Customer/Container-Type protection now in place, the implementation order is:
+
+1. **Reports** — Outstanding Containers, Daily Movements, Movement History, Monthly Summary and Daily Print Pack.
+2. **Dashboard operational pass** — validate metrics, add actionable drill-through and recent/container activity.
+3. **Email/SMS reminder delivery** — business rules, providers, templates, retries and delivery history.
+4. **Movement correction/reversal** — controlled audited reversal/correction workflow.
+5. **Production operations** — Backup/Restore, hardening, installer/upgrade and production acceptance.
+
+The remaining importer failure-detail message and deferred Review cosmetics can be handled alongside these phases without reopening the completed core import safety work.
 
 ## Priority 0 — close data-integrity risks before more features
 
@@ -17,7 +29,7 @@ Remaining:
 - [x] **Correction comparison identity** — previous/proposed positions are now keyed by Customer identity + `ContainerTypeId`, not display labels, eliminating false `Blue` vs `Blue Bin` differences. One-value correction regression requires exactly one genuine changed position.
 - [x] **Step 4 correction discovery/UI** — preflight now receives the cutover date, so changed-workbook same-cutover state is surfaced before execution as an explicit **Replace / Correct** action rather than dead-ending at the backend guard.
 - [x] **Changed-workbook / same-cutover workflow** — structural CutoverDate detects a changed completed workbook for the same date; Step 4 shows a comparison and requires explicit Replace/Correct. Reconciliation reconstructs the pre-cutover baseline, replaces only prior ImportRun-linked movements, and preserves same-day/later Manual/Batch activity on top of the corrected workbook position.
-- [ ] **Import Run history/details UI** — show source file, SHA-256, cutover date, user, counts, status and generated records.
+- [x] **Import Run history/details UI** — Administrator Settings opens Import History with run list, source file/SHA-256/cutover/user/counts/status/replacement chain, currently linked movements, and persisted customer/container correction differences for replacement runs.
 - [ ] Add a useful transactional failure report showing the row/customer/container that stopped execution.
 - [x] Re-test exact re-import after provenance changes through the existing integration suite.
 
@@ -40,14 +52,11 @@ Already implemented:
 - [x] relational ImportRun movement provenance + legacy backfill migration;
 - [x] production-workbook end-to-end import testing.
 
-### 2. Protect unsaved customer edits
+### 2. Protect unsaved customer edits — COMPLETE
 
-- [ ] Track dirty state for all editable customer fields.
-- [ ] Prompt **Save / Discard / Cancel** when switching customer, searching/filtering away, starting New Customer, navigating away, logging out or closing the application.
-- [ ] Save button should clearly indicate when changes are pending.
-- [ ] Add regression tests where practical.
-
-This is a direct data-loss/usability issue and should be completed before further Customer features.
+- [x] Track dirty state for all editable customer fields.
+- [x] Prompt **Save / Discard / Cancel** when switching customer, searching/filtering away, starting New Customer, navigating to another page, logging out or closing the application.
+- [x] Container Types uses the same explicit **Save / Discard / Cancel** wording.
 
 ## Priority 1 — finish the core operational product
 

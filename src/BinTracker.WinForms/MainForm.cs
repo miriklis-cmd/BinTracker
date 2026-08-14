@@ -9,6 +9,8 @@ public sealed class MainForm : Form
     private readonly Label title = new();
     private readonly Panel content = new();
     private Control? selectedNav;
+    private CustomersView? activeCustomersView;
+    private bool bypassCustomerClosePrompt;
     private readonly UserSession session;
     private readonly IUserService users;
     private readonly IAuditService audit;
@@ -22,6 +24,7 @@ public sealed class MainForm : Form
     private readonly IBusinessInformationService businessInformation;
     private readonly IExcelImportService excelImport;
     private readonly IImportExecutionService importExecution;
+    private readonly IImportRunHistoryService importRunHistory;
     private readonly IBalanceService balances;
     private readonly IDeveloperDatabaseService developerDatabase;
 
@@ -46,6 +49,7 @@ public sealed class MainForm : Form
         IBusinessInformationService businessInformation,
         IExcelImportService excelImport,
         IImportExecutionService importExecution,
+        IImportRunHistoryService importRunHistory,
         IBalanceService balances,
         IDeveloperDatabaseService developerDatabase)
     {
@@ -62,6 +66,7 @@ public sealed class MainForm : Form
         this.businessInformation = businessInformation;
         this.excelImport = excelImport;
         this.importExecution = importExecution;
+        this.importRunHistory = importRunHistory;
         this.balances = balances;
         this.developerDatabase = developerDatabase;
 
@@ -75,6 +80,7 @@ public sealed class MainForm : Form
         Font = new Font("Segoe UI", 10F);
 
         Build();
+        FormClosing += MainForm_FormClosing;
         ShowDashboard();
     }
 
@@ -199,8 +205,11 @@ public sealed class MainForm : Form
         ResumeLayout(true);
     }
 
-    private void Logout()
+    private async void Logout()
     {
+        if(!await ConfirmCanLeaveActiveCustomerAsync())
+            return;
+
         var draftMessage = appState.DraftBatch.HasLines
             ? "\n\nYour unsaved Batch Entry draft will be kept on this computer for the next login."
             : string.Empty;
@@ -215,6 +224,7 @@ public sealed class MainForm : Form
         }
 
         LogoutRequested = true;
+        bypassCustomerClosePrompt = true;
         Close();
     }
 
@@ -262,8 +272,14 @@ public sealed class MainForm : Form
 
         caption.FlatAppearance.BorderSize = 0;
 
-        void Activate()
+        async void Activate()
         {
+            if(ReferenceEquals(selectedNav, row))
+                return;
+
+            if(!await ConfirmCanLeaveActiveCustomerAsync())
+                return;
+
             if (selectedNav is Panel previous)
             {
                 previous.BackColor = normal;
@@ -376,7 +392,8 @@ public sealed class MainForm : Form
     {
         SetPage("Customers");
         content.AutoScroll = false;
-        content.Controls.Add(new CustomersView(customers, session, statementReports));
+        activeCustomersView = new CustomersView(customers, session, statementReports);
+        content.Controls.Add(activeCustomersView);
     }
 
     private void ShowSingleEntry()
@@ -474,7 +491,7 @@ public sealed class MainForm : Form
 
         var description = new Label
         {
-            Text = "Manage authorised users, container types, business information, Excel import and inspect the audit trail.",
+            Text = "Manage authorised users, container types, business information, Excel import/history and inspect the audit trail.",
             AutoSize = true,
             ForeColor = Color.FromArgb(80, 90, 105),
             MaximumSize = new Size(900, 0),
@@ -567,6 +584,22 @@ public sealed class MainForm : Form
                 form.ShowDialog(this);
             };
 
+            var importHistoryButton = new Button
+            {
+                Text = "Import History",
+                AutoSize = false,
+                Size = new Size(165, 44),
+                Margin = new Padding(0, 0, 12, 0),
+                TextAlign = ContentAlignment.MiddleCenter,
+                UseCompatibleTextRendering = false
+            };
+
+            importHistoryButton.Click += (_, _) =>
+            {
+                using var form = new ImportRunHistoryForm(importRunHistory);
+                form.ShowDialog(this);
+            };
+
             var auditButton = new Button
             {
                 Text = "View Audit Trail",
@@ -587,6 +620,7 @@ public sealed class MainForm : Form
             actions.Controls.Add(containerTypesButton);
             actions.Controls.Add(businessInformationButton);
             actions.Controls.Add(importExcelButton);
+            actions.Controls.Add(importHistoryButton);
             actions.Controls.Add(auditButton);
         }
         else
@@ -740,6 +774,26 @@ public sealed class MainForm : Form
         return panel;
     }
 
+    private async Task<bool> ConfirmCanLeaveActiveCustomerAsync() =>
+        activeCustomersView is null ||
+        await activeCustomersView.ConfirmCanLeaveAsync();
+
+    private async void MainForm_FormClosing(
+        object? sender,
+        FormClosingEventArgs e)
+    {
+        if(bypassCustomerClosePrompt || activeCustomersView is null)
+            return;
+
+        e.Cancel = true;
+
+        if(await activeCustomersView.ConfirmCanLeaveAsync())
+        {
+            bypassCustomerClosePrompt = true;
+            Close();
+        }
+    }
+
     private void Placeholder(string page, string text)
     {
         SetPage(page);
@@ -750,6 +804,7 @@ public sealed class MainForm : Form
     {
         title.Text = page;
         content.Controls.Clear();
+        activeCustomersView = null;
         content.AutoScroll = true;
     }
 

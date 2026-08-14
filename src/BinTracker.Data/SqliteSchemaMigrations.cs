@@ -21,7 +21,8 @@ internal static class SqliteSchemaMigrations
         new(8, "Business information master data", ApplyV8Async),
         new(9, "Excel import provenance", ApplyV9Async),
         new(10, "Import movement relational provenance", ApplyV10Async),
-        new(11, "Import cutover and replacement chain", ApplyV11Async)
+        new(11, "Import cutover and replacement chain", ApplyV11Async),
+        new(12, "Import correction difference provenance", ApplyV12Async)
     ];
 
     private static async Task ApplyV1Async(BinTrackerDbContext db)
@@ -311,6 +312,22 @@ internal static class SqliteSchemaMigrations
             WHERE CutoverDate IS NULL
               AND Notes GLOB 'Cutover date [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].*';
             """);
+    }
+
+    private static async Task ApplyV12Async(BinTrackerDbContext db)
+    {
+        var columns = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ImportRuns')")
+            .ToListAsync();
+
+        if (!columns.Contains(
+                "CorrectionChangesJson",
+                StringComparer.OrdinalIgnoreCase))
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE ImportRuns ADD COLUMN CorrectionChangesJson TEXT NULL;");
+        }
     }
 
     private static async Task AddBusinessInfoColumnIfMissingAsync(

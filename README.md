@@ -1,4 +1,4 @@
-# BinTracker v0.4.0-alpha.19.11.3
+# BinTracker v0.4.0-alpha.19.12.3
 
 BinTracker is a .NET 8 Windows desktop application for tracking reusable container movements, customer/container balances, operational reporting and audited business activity.
 
@@ -8,6 +8,7 @@ BinTracker is a .NET 8 Windows desktop application for tracking reusable contain
 - Append-only audit trail.
 - Customer management with Account / Cash-COD classification.
 - Configurable Container Types.
+- Customer/Container-Type unsaved-change protection with explicit Save / Discard / Cancel.
 - Batch Entry and Single Entry IN/OUT movements.
 - Container-specific balances and customer movement history.
 - PDF Customer Statements.
@@ -17,6 +18,7 @@ BinTracker is a .NET 8 Windows desktop application for tracking reusable contain
 - ImportRun SHA-256 exact-reimport protection.
 - Relational ImportRun provenance on generated import movements.
 - Changed-workbook/same-cutover correction with explicit comparison and atomic replacement.
+- Administrator Import Run history/details with replacement-chain and generated-movement provenance.
 - Developer database backup/load/fresh tools for testing.
 
 ## Important current limitations
@@ -25,7 +27,6 @@ See `KNOWN-ISSUES.md` and `docs/Roadmap.md`.
 
 Most important remaining items include:
 
-- unsaved customer-edit protection;
 - remaining operational reports;
 - dashboard operational pass;
 - real Email/SMS reminder delivery;
@@ -47,7 +48,7 @@ Current workflow:
 
 The workbook's B/Fwd is treated as the authoritative cutover opening position. Cutover-day OUT and IN remain real movements. Exact completed-workbook re-import is blocked using SHA-256.
 
-Changed workbooks representing the same cutover date still require a controlled correction/replacement workflow before v1.0.
+Changed workbooks for an already completed cutover date use the controlled **Replace / Correct** workflow, with persisted correction provenance and atomic replacement of prior ImportRun-linked movements.
 
 ## Database
 

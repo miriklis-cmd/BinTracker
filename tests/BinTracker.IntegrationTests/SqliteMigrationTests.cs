@@ -360,4 +360,28 @@ public sealed class SqliteMigrationTests
         Assert.Contains("IX_ImportRuns_ReplacesImportRunId", indexes);
     }
 
+
+    [Fact]
+    public async Task Import_correction_provenance_migration_adds_json_snapshot_column()
+    {
+        await using var connection =
+            new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<BinTrackerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var db = new BinTrackerDbContext(options);
+        await db.Database.EnsureCreatedAsync();
+        await DatabaseSetup.InitializeSqliteAsync(db);
+
+        var columns = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ImportRuns')")
+            .ToListAsync();
+
+        Assert.Contains("CorrectionChangesJson", columns);
+    }
+
 }

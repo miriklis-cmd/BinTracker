@@ -28,6 +28,9 @@ public sealed class ContainerTypesForm : Form
     private readonly Label validation = new() { AutoSize = true, ForeColor = Color.Firebrick, MaximumSize = new Size(680, 0) };
     private readonly Button deactivate = ButtonOf("Deactivate", 120);
     private int selectedId;
+    private bool suppressSelectionChanged;
+    private bool bypassClosePrompt;
+    private ContainerEditorSnapshot? savedSnapshot;
 
     public ContainerTypesForm(IContainerTypeService service)
     {
@@ -41,6 +44,7 @@ public sealed class ContainerTypesForm : Form
         Font = new Font("Segoe UI",10F);
         Build();
         Shown += async (_,_) => await ReloadAsync();
+        FormClosing += ContainerTypesForm_FormClosing;
     }
 
     private void Build()
@@ -51,7 +55,11 @@ public sealed class ContainerTypesForm : Form
         grid.Columns.Add(new DataGridViewTextBoxColumn { Name="Code", HeaderText="Short Code", Width=105 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { Name="Usage", HeaderText="Movements", Width=95 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { Name="Status", HeaderText="Status", Width=80 });
-        grid.SelectionChanged += async (_,_) => await LoadSelectedAsync();
+        grid.SelectionChanged += async (_,_) =>
+        {
+            if (!suppressSelectionChanged)
+                await GridSelectionChangedAsync();
+        };
 
         var root = new TableLayoutPanel { Dock=DockStyle.Fill, ColumnCount=2, RowCount=1, Padding=new Padding(18), Margin=Padding.Empty };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,42));
@@ -73,9 +81,24 @@ public sealed class ContainerTypesForm : Form
         var tools=new TableLayoutPanel { Dock=DockStyle.Top, AutoSize=true, ColumnCount=2 };
         tools.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100)); tools.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         tools.Controls.Add(search,0,0); tools.Controls.Add(includeInactive,1,0);
-        search.TextChanged += async (_,_) => await ReloadAsync(); includeInactive.CheckedChanged += async (_,_) => await ReloadAsync();
+        search.TextChanged += async (_,_) =>
+        {
+            if (!HasUnsavedChanges())
+                await ReloadAsync(selectedId == 0 ? null : selectedId);
+        };
+        includeInactive.CheckedChanged += async (_,_) =>
+        {
+            if (await ConfirmLeaveCurrentAsync())
+                await ReloadAsync(selectedId == 0 ? null : selectedId);
+            else
+                includeInactive.Checked = !includeInactive.Checked;
+        };
         layout.Controls.Add(tools,0,1);
-        var add=ButtonOf("+ New Container",150); add.Margin=new Padding(0,10,0,10); add.Click += (_,_) => NewContainer(); layout.Controls.Add(add,0,2);
+        var add=ButtonOf("+ New Container",150); add.Margin=new Padding(0,10,0,10); add.Click += async (_,_) =>
+        {
+            if (await ConfirmLeaveCurrentAsync())
+                NewContainer();
+        }; layout.Controls.Add(add,0,2);
         layout.Controls.Add(grid,0,3); panel.Controls.Add(layout); return panel;
     }
 
@@ -108,9 +131,64 @@ public sealed class ContainerTypesForm : Form
     private async Task ReloadAsync(int? selectId=null)
     {
         var rows=await service.SearchAsync(search.Text,includeInactive.Checked);
-        grid.Rows.Clear();
-        foreach(var r in rows) grid.Rows.Add(r.Id,r.DisplayOrder,r.Name,r.ShortCode,r.MovementCount.ToString("N0"),r.IsActive?"Active":"Inactive");
-        if(selectId.HasValue) SelectRow(selectId.Value);
+
+        suppressSelectionChanged=true;
+        try
+        {
+            grid.Rows.Clear();
+            foreach(var r in rows)
+                grid.Rows.Add(r.Id,r.DisplayOrder,r.Name,r.ShortCode,r.MovementCount.ToString("N0"),r.IsActive?"Active":"Inactive");
+
+            grid.ClearSelection();
+
+            if(selectId.HasValue && rows.Any(x => x.Id == selectId.Value))
+                SelectRow(selectId.Value);
+            else if(rows.Count>0)
+                SelectRow(rows[0].Id);
+        }
+        finally
+        {
+            suppressSelectionChanged=false;
+        }
+
+        if(grid.SelectedRows.Count>0)
+            await LoadSelectedAsync();
+        else if(selectedId!=0)
+        {
+            selectedId=0;
+            savedSnapshot=null;
+        }
+    }
+
+    private async Task GridSelectionChangedAsync()
+    {
+        if(grid.SelectedRows.Count==0 || grid.SelectedRows[0].Cells[0].Value is null)
+            return;
+
+        var targetId=Convert.ToInt32(grid.SelectedRows[0].Cells[0].Value);
+
+        if(targetId==selectedId)
+            return;
+
+        var oldId=selectedId;
+
+        if(!await ConfirmLeaveCurrentAsync())
+        {
+            suppressSelectionChanged=true;
+            try
+            {
+                grid.ClearSelection();
+                if(oldId!=0)
+                    SelectRow(oldId);
+            }
+            finally
+            {
+                suppressSelectionChanged=false;
+            }
+            return;
+        }
+
+        await LoadSelectedAsync();
     }
 
     private async Task LoadSelectedAsync()
@@ -123,23 +201,97 @@ public sealed class ContainerTypesForm : Form
         deactivate.Text=item.IsActive?"Deactivate":"Reactivate";
         usage.Text=$"Movement records: {item.Usage.MovementCount:N0}   •   Customers with balance: {item.Usage.CustomersWithBalance:N0}\nFirst used: {DateText(item.Usage.FirstUsed)}   •   Last movement: {DateText(item.Usage.LastUsed)}";
         validation.Text="";
+        savedSnapshot=CaptureSnapshot();
     }
 
     private void NewContainer()
     {
-        selectedId=0; name.Clear(); shortCode.Clear(); systemCode.Text="Created automatically on first save"; description.Clear(); notes.Clear(); dashboardColour.Clear(); displayOrder.Value=0; active.Checked=true; special.Checked=false; usage.Text="No movement history yet."; deactivate.Enabled=false; validation.Text=""; grid.ClearSelection(); name.Focus();
+        suppressSelectionChanged=true;
+        try
+        {
+            selectedId=0; name.Clear(); shortCode.Clear(); systemCode.Text="Created automatically on first save"; description.Clear(); notes.Clear(); dashboardColour.Clear(); displayOrder.Value=0; active.Checked=true; special.Checked=false; usage.Text="No movement history yet."; deactivate.Enabled=false; validation.Text=""; grid.ClearSelection();
+            savedSnapshot=CaptureSnapshot();
+        }
+        finally
+        {
+            suppressSelectionChanged=false;
+        }
+        name.Focus();
     }
 
-    private async Task SaveAsync()
+    private async Task<bool> SaveAsync()
     {
         try
         {
             validation.Text="";
             var existing=selectedId==0?null:await service.GetAsync(selectedId);
             var model=new ContainerTypeEditModel(selectedId,name.Text,shortCode.Text,existing?.SystemCode??"",description.Text,notes.Text,(int)displayOrder.Value,active.Checked,special.Checked,dashboardColour.Text,existing?.Usage??new ContainerTypeUsage(0,0,null,null));
-            selectedId=await service.SaveAsync(model); deactivate.Enabled=true; await ReloadAsync(selectedId); await LoadSelectedAsync();
+            selectedId=await service.SaveAsync(model);
+            deactivate.Enabled=true;
+            await ReloadAsync(selectedId);
+            savedSnapshot=CaptureSnapshot();
+            return true;
         }
-        catch(Exception ex){ validation.Text=ex.Message; }
+        catch(Exception ex)
+        {
+            validation.Text=ex.Message;
+            return false;
+        }
+    }
+
+    private ContainerEditorSnapshot CaptureSnapshot() =>
+        new(
+            selectedId,
+            name.Text,
+            shortCode.Text,
+            description.Text,
+            notes.Text,
+            (int)displayOrder.Value,
+            active.Checked,
+            special.Checked,
+            dashboardColour.Text);
+
+    private bool HasUnsavedChanges() =>
+        savedSnapshot is not null &&
+        CaptureSnapshot() != savedSnapshot;
+
+    private async Task<bool> ConfirmLeaveCurrentAsync()
+    {
+        if(!HasUnsavedChanges())
+            return true;
+
+        var label=string.IsNullOrWhiteSpace(name.Text)
+            ? "this container type"
+            : $"'{name.Text.Trim()}'";
+
+        var answer=UnsavedChangesDialog.Ask(
+            this,
+            "Unsaved Container Type Changes",
+            $"You have unsaved changes to {label}.\n\nWhat would you like to do?");
+
+        if(answer==UnsavedChangesChoice.Cancel)
+            return false;
+
+        if(answer==UnsavedChangesChoice.Discard)
+            return true;
+
+        return await SaveAsync();
+    }
+
+    private async void ContainerTypesForm_FormClosing(
+        object? sender,
+        FormClosingEventArgs e)
+    {
+        if(bypassClosePrompt || !HasUnsavedChanges())
+            return;
+
+        e.Cancel=true;
+
+        if(await ConfirmLeaveCurrentAsync())
+        {
+            bypassClosePrompt=true;
+            Close();
+        }
     }
 
     private async Task ToggleActiveAsync()
@@ -152,6 +304,17 @@ public sealed class ContainerTypesForm : Form
     }
 
     private void SelectRow(int id){ foreach(DataGridViewRow row in grid.Rows) if(Convert.ToInt32(row.Cells[0].Value)==id){ row.Selected=true; grid.CurrentCell=row.Cells[1]; break; } }
+    private sealed record ContainerEditorSnapshot(
+        int Id,
+        string Name,
+        string ShortCode,
+        string Description,
+        string Notes,
+        int DisplayOrder,
+        bool Active,
+        bool Special,
+        string DashboardColour);
+
     private static string DateText(DateOnly? d)=>d?.ToString("dd/MM/yyyy")??"Never";
     private static void Add(TableLayoutPanel f,string label,Control control){ var row=f.RowCount++; f.RowStyles.Add(new RowStyle(SizeType.AutoSize)); f.Controls.Add(new Label{Text=label,AutoSize=true,Margin=new Padding(0,8,18,8),ForeColor=Color.FromArgb(70,80,95)},0,row); control.Margin=new Padding(0,4,0,6); f.Controls.Add(control,1,row); }
     private static TextBox Field(bool multiline=false)=>new(){Dock=DockStyle.Fill,Multiline=multiline,Height=multiline?58:30};

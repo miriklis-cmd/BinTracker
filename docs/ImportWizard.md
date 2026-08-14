@@ -152,3 +152,13 @@ Step 4 preflight includes the active cutover date. When a changed workbook corre
 
 
 Correction differences are grouped by stable configured container identity (`ContainerTypeId`), not by legacy/display wording. The review shows the configured container name to the operator.
+
+
+## Import history
+
+Settings → Import History provides the post-import provenance view. It is read-only and shows every Import Run, replacement relationships, source fingerprint and generated movement records.
+
+
+## Correction provenance snapshot
+
+Successful Replace/Correct execution persists the approved resolved customer/container differences on the corrected ImportRun before deleting the previous run's generated movement rows. This is displayed later in Import History.

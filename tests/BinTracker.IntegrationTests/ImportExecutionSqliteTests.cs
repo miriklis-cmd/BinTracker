@@ -553,6 +553,10 @@ public sealed class ImportExecutionSqliteTests
 
             Assert.Equal("Replaced", oldRun.Status);
             Assert.Equal(firstResult.ImportRunId, newRun.ReplacesImportRunId);
+            Assert.False(string.IsNullOrWhiteSpace(newRun.CorrectionChangesJson));
+            Assert.Contains(
+                "\"Difference\":1",
+                newRun.CorrectionChangesJson);
 
             Assert.Equal(
                 0,

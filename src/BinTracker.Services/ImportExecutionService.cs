@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.Json;
 using BinTracker.Core;
 using BinTracker.Data;
 using Microsoft.EntityFrameworkCore;
@@ -71,6 +72,18 @@ public sealed record ImportReplacementComparison(
     IReadOnlyList<ImportReplacementDifference> Differences)
 {
     public int ChangedPositionCount => Differences.Count;
+}
+
+public sealed record ImportCorrectionChangeSnapshot(
+    int CustomerId,
+    string CustomerCode,
+    string CustomerName,
+    int ContainerTypeId,
+    string ContainerType,
+    int PreviousNetEffect,
+    int CorrectedNetEffect)
+{
+    public int Difference => CorrectedNetEffect - PreviousNetEffect;
 }
 
 public sealed record ImportExecutionResult(
@@ -655,6 +668,124 @@ internal sealed class ImportExecutionService(
             var previousMovements = await db.BinMovements
                 .Where(x => x.ImportRunId == previousRun.Id)
                 .ToListAsync(cancellationToken);
+
+            // Persist the exact approved correction difference before the old
+            // generated rows are removed from the live ledger. Use resolved
+            // database identities, never legacy/display strings.
+            var previousEffects = previousMovements
+                .GroupBy(x => new
+                {
+                    x.CustomerId,
+                    x.ContainerTypeId
+                })
+                .ToDictionary(
+                    g => (g.Key.CustomerId, g.Key.ContainerTypeId),
+                    g => g.Sum(x =>
+                        x.MovementType == MovementType.Out
+                            ? x.Quantity
+                            : -x.Quantity));
+
+            var proposedEffects = reconciliation.Rows
+                .Where(x =>
+                    x.IsReady &&
+                    x.ContainerTypeId.HasValue &&
+                    x.OpeningAdjustment.HasValue)
+                .Select(x =>
+                {
+                    var key = CustomerNameNormalizer.ComparisonKey(
+                        x.CustomerCode);
+
+                    if (!customerIds.TryGetValue(key, out var customerId))
+                    {
+                        throw new InvalidOperationException(
+                            $"No resolved BinTracker customer exists for correction comparison '{x.CustomerCode}'.");
+                    }
+
+                    return new
+                    {
+                        CustomerId = customerId,
+                        ContainerTypeId = x.ContainerTypeId!.Value,
+                        Net =
+                            x.OpeningAdjustment!.Value +
+                            x.ExcelOut -
+                            x.ExcelIn
+                    };
+                })
+                .GroupBy(x => new
+                {
+                    x.CustomerId,
+                    x.ContainerTypeId
+                })
+                .ToDictionary(
+                    g => (g.Key.CustomerId, g.Key.ContainerTypeId),
+                    g => g.Sum(x => x.Net));
+
+            var effectKeys = previousEffects.Keys
+                .Concat(proposedEffects.Keys)
+                .Distinct()
+                .ToList();
+
+            var changedKeys = effectKeys
+                .Where(key =>
+                    previousEffects.GetValueOrDefault(key) !=
+                    proposedEffects.GetValueOrDefault(key))
+                .ToList();
+
+            if (changedKeys.Count > 0)
+            {
+                var changedCustomerIds = changedKeys
+                    .Select(x => x.CustomerId)
+                    .Distinct()
+                    .ToHashSet();
+
+                var changedContainerIds = changedKeys
+                    .Select(x => x.ContainerTypeId)
+                    .Distinct()
+                    .ToHashSet();
+
+                // Load master data in small tables, then resolve in memory.
+                var customerLookup = (await db.Customers
+                        .AsNoTracking()
+                        .ToListAsync(cancellationToken))
+                    .Where(x => changedCustomerIds.Contains(x.Id))
+                    .ToDictionary(x => x.Id);
+
+                var containerLookup = (await db.ContainerTypes
+                        .AsNoTracking()
+                        .ToListAsync(cancellationToken))
+                    .Where(x => changedContainerIds.Contains(x.Id))
+                    .ToDictionary(x => x.Id);
+
+                var correctionChanges = changedKeys
+                    .Select(key =>
+                    {
+                        var customer = customerLookup[key.CustomerId];
+                        var container = containerLookup[key.ContainerTypeId];
+
+                        return new ImportCorrectionChangeSnapshot(
+                            key.CustomerId,
+                            customer.CustomerCode ?? string.Empty,
+                            customer.Name,
+                            key.ContainerTypeId,
+                            container.Name,
+                            previousEffects.GetValueOrDefault(key),
+                            proposedEffects.GetValueOrDefault(key));
+                    })
+                    .OrderBy(
+                        x => x.CustomerCode,
+                        StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(
+                        x => x.ContainerType,
+                        StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                run.CorrectionChangesJson =
+                    JsonSerializer.Serialize(correctionChanges);
+            }
+            else
+            {
+                run.CorrectionChangesJson = "[]";
+            }
 
             db.BinMovements.RemoveRange(previousMovements);
 

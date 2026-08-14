@@ -85,9 +85,19 @@
 - BT-IMPORT-011: Same-cutover correction must calculate the corrected import from pre-cutover legitimate history and preserve same-day/later non-import activity on top.
 - BT-IMPORT-012: Step 4 must surface changed-workbook/same-cutover correction before execution with an explicit Replace / Correct action; execution-time rejection alone is not an acceptable workflow.
 - BT-IMPORT-013: Correction comparisons must use resolved configured container identity, not legacy/display container strings.
+- BT-IMPORT-014: Administrators must be able to inspect Import Run provenance, replacement relationships and generated movement records through a read-only history UI.
+- BT-IMPORT-015: A corrected ImportRun must persist the exact resolved customer/container difference snapshot before the prior generated rows are removed, so replacement intent remains auditable later.
 
 ## Backup / Recovery
 
 - BT-OPS-001: Production data can be backed up safely.
 - BT-OPS-002: Restore requires explicit confirmation and database validation.
 - BT-OPS-003: Upgrades protect existing data and include recovery guidance.
+
+
+- BT-UI-006: Editable Container Type master data must warn before navigation/close discards unsaved changes and offer Save / Discard / Cancel.
+- BT-IMPORT-016: Import History must keep provenance, correction changes and linked movement data readable at supported desktop sizes/DPI.
+
+
+- BT-CUSTOMER-009: Customer editor changes must never be silently discarded. Selection, filtering, New Customer, page navigation, logout and application close must offer explicit Save / Discard / Cancel.
+- BT-UI-007: Unsaved-change prompts use explicit action labels rather than Yes / No where the actions are Save / Discard / Cancel.

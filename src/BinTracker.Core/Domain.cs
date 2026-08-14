@@ -97,6 +97,12 @@ public sealed class ImportRun
     public DateTime SourceLastWriteUtc { get; set; }
     public DateOnly? CutoverDate { get; set; }
     public long? ReplacesImportRunId { get; set; }
+
+    // Immutable JSON snapshot of the approved replacement differences.
+    // Stored on the corrected run because the previous run's generated
+    // movements are deliberately removed from the live ledger.
+    public string? CorrectionChangesJson { get; set; }
+
     public DateTime StartedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedUtc { get; set; }
     public string Status { get; set; } = "Pending";

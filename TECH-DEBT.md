@@ -19,6 +19,8 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Import
 
+- Older replacement runs created before alpha.19.12.1 cannot have exact correction-difference detail reconstructed if their replaced movement rows are already gone. History explicitly labels these as “not captured by the build that created this run”; do not fabricate/backfill differences.
+- Import Run history is intentionally read-only. Do not add deletion/edit controls; corrections flow through Replace/Correct so provenance remains intact.
 - Import/replacement comparisons must use stable database identity (`ContainerTypeId`) for configured containers; display names/tokens are presentation only and must never become reconciliation keys.
 - Preflight context must include cutover/profile identity whenever UI decisions depend on same-cutover history. Do not rely on execution-time guards to discover state the operator needed to see earlier.
 - Same-cutover replacement baseline is historical, not current-state: use legitimate movements strictly before the cutover date while excluding the prior ImportRun. Same-day/later Manual/Batch activity must remain outside the corrected workbook reconciliation and survive on top.
@@ -49,8 +51,9 @@ Engineering improvements that are not currently user-facing defects. Product wor
 ## Customer UI
 
 - Customer master/detail filtering must suppress async selection events during reload and only display a currently visible result.
-- Add a reusable dirty-form/navigation guard rather than implementing one-off unsaved-change prompts in multiple screens.
+- Dirty-state snapshots remain per editor, but the operator-facing **Save / Discard / Cancel** dialog is shared. Consider extracting the remaining navigation/snapshot mechanics if more editable master-data screens are added.
 - Consider common validation/error-display helpers for edit forms.
+- Save button could visually indicate pending editor changes; this is polish, not a data-loss blocker now that navigation guards are implemented.
 
 ## Communications
 

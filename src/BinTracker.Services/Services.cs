@@ -566,6 +566,7 @@ public static class ServiceSetup
             IImportExecutionFailureInjector,
             NoOpImportExecutionFailureInjector>();
         services.AddScoped<IImportExecutionService, ImportExecutionService>();
+        services.AddScoped<IImportRunHistoryService, ImportRunHistoryService>();
         services.AddScoped<IMarketFloorReportService, MarketFloorReportService>();
         services.AddScoped<IMovementService, MovementService>();
         return services;

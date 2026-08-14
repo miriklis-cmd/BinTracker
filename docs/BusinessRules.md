@@ -68,3 +68,17 @@ Important security, master-data and movement changes create audit events.
 
 
 - Import correction comparison identity is Customer + configured Container Type. Legacy tokens/display labels do not define separate balances.
+
+
+- Import Run history is read-only. Import history is provenance/audit evidence, not an editable operational ledger.
+
+
+- Correction differences are immutable provenance. Store the resolved Customer + Container Type change snapshot on the corrected ImportRun before removing the previous run's generated rows.
+
+
+- Unsaved Container Type edits must never be silently discarded when the operator selects another type, starts a new type, or closes the editor.
+- Existing-customer Import decisions: **Accept match** confirms the automatically proposed BinTracker customer; **Override match** records an explicit choice of a different existing customer.
+
+
+- Unsaved Customer edits must never be silently discarded. The operator must explicitly Save, Discard or Cancel before leaving the edited customer/workflow.
+- Unsaved-change dialog buttons must describe the actual action: **Save / Discard / Cancel**.

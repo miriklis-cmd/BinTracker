@@ -37,6 +37,10 @@ public sealed class CustomersView : UserControl
     private readonly DataGridView movements = Grid();
     private int selectedId;
     private bool suppressSelectionChanged;
+    private bool suppressFilterChanged;
+    private string lastAppliedSearchText = string.Empty;
+    private bool lastAppliedIncludeInactive;
+    private CustomerEditorSnapshot? savedSnapshot;
 
     public CustomersView(ICustomerService service, UserSession session, ICustomerStatementReportService statementReports)
     {
@@ -61,8 +65,18 @@ public sealed class CustomersView : UserControl
         var tools = new TableLayoutPanel { Dock=DockStyle.Top, AutoSize=true, ColumnCount=2, Padding=new Padding(0,0,0,8) };
         tools.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100)); tools.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         search.PlaceholderText="Search code, customer, contact, phone or email..."; search.Dock=DockStyle.Fill; search.Margin=new Padding(0,0,8,0);
-        search.TextChanged += async (_,_) => await ReloadAsync();
-        includeInactive.Text="Inactive"; includeInactive.AutoSize=true; includeInactive.CheckedChanged += async (_,_) => await ReloadAsync();
+        search.TextChanged += async (_,_) =>
+        {
+            if(!suppressFilterChanged)
+                await SearchChangedAsync();
+        };
+        includeInactive.Text="Inactive";
+        includeInactive.AutoSize=true;
+        includeInactive.CheckedChanged += async (_,_) =>
+        {
+            if(!suppressFilterChanged)
+                await IncludeInactiveChangedAsync();
+        };
         tools.Controls.Add(search,0,0); tools.Controls.Add(includeInactive,1,0);
         customerGrid.Columns.Add(new DataGridViewTextBoxColumn { Name="Id", Visible=false });
         customerGrid.Columns.Add(new DataGridViewTextBoxColumn { Name="Code", HeaderText="Code", Width=110 });
@@ -70,7 +84,11 @@ public sealed class CustomersView : UserControl
         customerGrid.Columns.Add(new DataGridViewTextBoxColumn { Name="Type", HeaderText="Type", Width=105 });
         customerGrid.Columns.Add(new DataGridViewTextBoxColumn { Name="Position", HeaderText="Net Position", Width=120 });
         customerGrid.Columns.Add(new DataGridViewTextBoxColumn { Name="Status", HeaderText="Status", Width=85 });
-        addNew.Click += (_,_) => NewCustomer();
+        addNew.Click += async (_,_) =>
+        {
+            if(await ConfirmCanLeaveAsync())
+                NewCustomer();
+        };
         customerGrid.SelectionChanged += async (_,_) =>
         {
             if (!suppressSelectionChanged)
@@ -264,6 +282,9 @@ public sealed class CustomersView : UserControl
             search.Text,
             includeInactive.Checked);
 
+        lastAppliedSearchText = search.Text;
+        lastAppliedIncludeInactive = includeInactive.Checked;
+
         suppressSelectionChanged = true;
         customerGrid.SuspendLayout();
 
@@ -331,9 +352,31 @@ public sealed class CustomersView : UserControl
             return;
         }
 
-        selectedId =
-            Convert.ToInt32(
-                customerGrid.SelectedRows[0].Cells[0].Value);
+        var targetId = Convert.ToInt32(
+            customerGrid.SelectedRows[0].Cells[0].Value);
+
+        if(targetId != selectedId && HasUnsavedChanges())
+        {
+            var oldId = selectedId;
+
+            if(!await ConfirmCanLeaveAsync())
+            {
+                suppressSelectionChanged = true;
+                try
+                {
+                    customerGrid.ClearSelection();
+                    if(oldId != 0)
+                        SelectRow(oldId);
+                }
+                finally
+                {
+                    suppressSelectionChanged = false;
+                }
+                return;
+            }
+        }
+
+        selectedId = targetId;
 
         var c = await service.GetAsync(selectedId);
 
@@ -362,6 +405,7 @@ public sealed class CustomersView : UserControl
         deactivate.Text = c.IsActive ? "Deactivate" : "Reactivate";
         statement.Enabled = true;
         status.Text = c.IsActive ? "Active customer" : "Inactive customer";
+        savedSnapshot = CaptureSnapshot();
 
         await LoadRelatedAsync();
     }
@@ -387,6 +431,7 @@ public sealed class CustomersView : UserControl
         status.Text = "No customer selected";
         balances.Rows.Clear();
         movements.Rows.Clear();
+        savedSnapshot = CaptureSnapshot();
     }
 
     private async Task LoadRelatedAsync()
@@ -397,17 +442,115 @@ public sealed class CustomersView : UserControl
 
     private void NewCustomer()
     {
-        selectedId=0; code.Clear(); name.Clear(); customerType.SelectedIndex=0; contact.Clear(); phone.Clear(); mobile.Clear(); email.Clear(); address.Clear(); notes.Clear(); emailReminders.Checked=true; smsReminders.Checked=true; optOut.Checked=false; deactivate.Enabled=false; status.Text="New customer"; balances.Rows.Clear(); movements.Rows.Clear(); statement.Enabled=false; code.Focus();
+        suppressSelectionChanged=true;
+        try
+        {
+            customerGrid.ClearSelection();
+            selectedId=0; code.Clear(); name.Clear(); customerType.SelectedIndex=0; contact.Clear(); phone.Clear(); mobile.Clear(); email.Clear(); address.Clear(); notes.Clear(); emailReminders.Checked=true; smsReminders.Checked=true; optOut.Checked=false; deactivate.Enabled=false; status.Text="New customer"; balances.Rows.Clear(); movements.Rows.Clear(); statement.Enabled=false;
+            savedSnapshot=CaptureSnapshot();
+        }
+        finally
+        {
+            suppressSelectionChanged=false;
+        }
+        code.Focus();
     }
 
-    private async Task SaveAsync()
+    private async Task<bool> SaveAsync(bool reload=true)
     {
         try
         {
             var id=await service.SaveAsync(new CustomerEditModel { Id=selectedId, CustomerCode=code.Text, Name=name.Text, CustomerType=SelectedCustomerType(), ContactName=contact.Text, Phone=phone.Text, MobileNumber=mobile.Text, Email=email.Text, Address=address.Text, Notes=notes.Text, AllowEmailReminders=emailReminders.Checked, AllowSmsReminders=smsReminders.Checked, ReminderOptOut=optOut.Checked });
-            selectedId=id; deactivate.Enabled=true; statement.Enabled=true; status.Text="Saved"; await ReloadAsync(id); await LoadRelatedAsync();
+            selectedId=id;
+            deactivate.Enabled=true;
+            statement.Enabled=true;
+            status.Text="Saved";
+            savedSnapshot=CaptureSnapshot();
+
+            if(reload)
+            {
+                await ReloadAsync(id);
+                await LoadRelatedAsync();
+            }
+
+            return true;
         }
-        catch(Exception ex){ MessageBox.Show(ex.Message,"Customer",MessageBoxButtons.OK,MessageBoxIcon.Warning); }
+        catch(Exception ex)
+        {
+            MessageBox.Show(ex.Message,"Customer",MessageBoxButtons.OK,MessageBoxIcon.Warning);
+            return false;
+        }
+    }
+
+    public async Task<bool> ConfirmCanLeaveAsync()
+    {
+        if(!HasUnsavedChanges())
+            return true;
+
+        var label=string.IsNullOrWhiteSpace(name.Text)
+            ? string.IsNullOrWhiteSpace(code.Text)
+                ? "this customer"
+                : $"customer '{code.Text.Trim()}'"
+            : $"customer '{name.Text.Trim()}'";
+
+        var answer=UnsavedChangesDialog.Ask(
+            FindForm(),
+            "Unsaved Customer Changes",
+            $"You have unsaved changes to {label}.\n\nWhat would you like to do?");
+
+        if(answer==UnsavedChangesChoice.Cancel)
+            return false;
+
+        if(answer==UnsavedChangesChoice.Discard)
+            return true;
+
+        return await SaveAsync(reload:false);
+    }
+
+    private CustomerEditorSnapshot CaptureSnapshot() =>
+        new(
+            selectedId,
+            code.Text,
+            name.Text,
+            SelectedCustomerType(),
+            contact.Text,
+            phone.Text,
+            mobile.Text,
+            email.Text,
+            address.Text,
+            notes.Text,
+            emailReminders.Checked,
+            smsReminders.Checked,
+            optOut.Checked);
+
+    private bool HasUnsavedChanges() =>
+        savedSnapshot is not null &&
+        CaptureSnapshot() != savedSnapshot;
+
+    private async Task SearchChangedAsync()
+    {
+        if(HasUnsavedChanges() && !await ConfirmCanLeaveAsync())
+        {
+            suppressFilterChanged=true;
+            try { search.Text=lastAppliedSearchText; }
+            finally { suppressFilterChanged=false; }
+            return;
+        }
+
+        await ReloadAsync();
+    }
+
+    private async Task IncludeInactiveChangedAsync()
+    {
+        if(HasUnsavedChanges() && !await ConfirmCanLeaveAsync())
+        {
+            suppressFilterChanged=true;
+            try { includeInactive.Checked=lastAppliedIncludeInactive; }
+            finally { suppressFilterChanged=false; }
+            return;
+        }
+
+        await ReloadAsync();
     }
 
     private async Task GenerateStatementAsync()
@@ -502,6 +645,21 @@ public sealed class CustomersView : UserControl
 
         return panel;
     }
+    private sealed record CustomerEditorSnapshot(
+        int Id,
+        string Code,
+        string Name,
+        CustomerType CustomerType,
+        string Contact,
+        string Phone,
+        string Mobile,
+        string Email,
+        string Address,
+        string Notes,
+        bool EmailReminders,
+        bool SmsReminders,
+        bool OptOut);
+
     private sealed record CustomerTypeOption(CustomerType Value, string Text)
     {
         public override string ToString() => Text;
