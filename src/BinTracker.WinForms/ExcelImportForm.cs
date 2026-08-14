@@ -229,6 +229,7 @@ public sealed class ExcelImportForm : Form
 
         backButton.Visible = false;
         nextButton.Text = "Next >";
+        nextButton.Width = 115;
         nextButton.Enabled = analysis is not null;
 
         pageHost.Controls.Clear();
@@ -1750,7 +1751,8 @@ public sealed class ExcelImportForm : Form
             UseWaitCursor = true;
             nextButton.Enabled = false;
             preflight = await importExecutionService.PreflightAsync(
-                analysis.FullPath);
+                analysis.FullPath,
+                DateOnly.FromDateTime(DateTime.Today));
         }
         catch (IOException)
         {
@@ -1807,8 +1809,12 @@ public sealed class ExcelImportForm : Form
         backButton.Visible = true;
         nextButton.Text =
             preflight.RequiresReplacement
-                ? "Review correction"
+                ? "Replace / Correct"
                 : "Import now";
+        nextButton.Width =
+            preflight.RequiresReplacement
+                ? 175
+                : 115;
         nextButton.Enabled = preflight.CanProceed;
 
         pageHost.Controls.Clear();
@@ -1867,15 +1873,20 @@ public sealed class ExcelImportForm : Form
             ? $"⚠ This exact workbook was already imported in run #{preflight.PreviousImportRunId} on " +
               $"{preflight.PreviousCompletedUtc?.ToLocalTime():g} by {preflight.PreviousUsername}. " +
               "Exact re-import is blocked."
-            : "✓ This exact workbook has not previously been recorded as a completed import.";
+            : preflight.RequiresReplacement
+                ? $"⚠ A different workbook was already imported for this cutover date in run " +
+                  $"#{preflight.PreviousCutoverRun!.ImportRunId}. This workbook must Replace/Correct that run."
+                : "✓ This exact workbook has not previously been recorded as a completed import.";
 
         statusLayout.Controls.Add(new Label
         {
             AutoSize = true,
             Text = duplicateText,
-            ForeColor = preflight.ExactWorkbookPreviouslyImported
-                ? Color.DarkOrange
-                : Color.FromArgb(20, 115, 70),
+            ForeColor =
+                preflight.ExactWorkbookPreviouslyImported ||
+                preflight.RequiresReplacement
+                    ? Color.DarkOrange
+                    : Color.FromArgb(20, 115, 70),
             MaximumSize = new Size(1240, 0),
             Margin = new Padding(0, 8, 0, 8)
         }, 0, 4);
@@ -1901,11 +1912,15 @@ public sealed class ExcelImportForm : Form
         {
             AutoSize = true,
             Text =
-                preflight.CanProceed
-                    ? "Import now will create the confirmed new customers, reconcile each opening position to Excel B/Fwd, " +
-                      "then preserve today's OUT and IN movements. All database changes, including the ImportRun, are committed " +
-                      "together in one SQLite transaction. If any line fails, the entire import is rolled back."
-                    : "Go Back to Review or Cancel. Exact re-imports are blocked to prevent duplicate balances and movements.",
+                !preflight.CanProceed
+                    ? "Go Back to Review or Cancel. Exact re-imports are blocked to prevent duplicate balances and movements."
+                    : preflight.RequiresReplacement
+                        ? "Replace / Correct will first show the differences against the previous completed Import Run. " +
+                          "If you approve them, BinTracker will atomically replace only the movements linked to that prior run. " +
+                          "Manual/Batch movements and customer records are preserved."
+                        : "Import now will create the confirmed new customers, reconcile each opening position to Excel B/Fwd, " +
+                          "then preserve today's OUT and IN movements. All database changes, including the ImportRun, are committed " +
+                          "together in one SQLite transaction. If any line fails, the entire import is rolled back.",
             MaximumSize = new Size(1240, 0),
             ForeColor = Color.FromArgb(45, 55, 70)
         });
@@ -2014,7 +2029,7 @@ public sealed class ExcelImportForm : Form
                     .Select(x =>
                         $"{x.CustomerCode} / {x.Container}: " +
                         $"{x.PreviousNetEffect:+#;-#;0} → {x.ProposedNetEffect:+#;-#;0} " +
-                        $"(Δ {x.Difference:+#;-#;0})")
+                        $"({x.Difference:+#;-#;0})")
                     .ToList();
 
                 var detail = sample.Count == 0
@@ -2079,7 +2094,9 @@ public sealed class ExcelImportForm : Form
             (step4RequiresReplacement
                 ? "Only movements linked to the previous Import Run will be replaced. Manual/Batch movements and customer records are preserved.\n\nProceed with Replace/Correct now?"
                 : "Proceed with Import now?"),
-            "Confirm Excel Import",
+            step4RequiresReplacement
+                ? "Confirm Replace / Correct"
+                : "Confirm Excel Import",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning,
             MessageBoxDefaultButton.Button2);

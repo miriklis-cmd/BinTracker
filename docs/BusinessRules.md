@@ -62,3 +62,9 @@ Important security, master-data and movement changes create audit events.
 - Same-cutover correction reconstructs the workbook position from legitimate movement history strictly before the cutover date.
 - Movements linked to the previous ImportRun are excluded/replaced.
 - Manual/Batch activity on the cutover date or later is subsequent real activity and remains on top of the corrected imported position.
+
+
+- Correction must be visible before execution: when same-cutover replacement is required, Step 4 presents Replace / Correct and the comparison before any write attempt.
+
+
+- Import correction comparison identity is Customer + configured Container Type. Legacy tokens/display labels do not define separate balances.

@@ -144,3 +144,11 @@ A different workbook for the same cutover date still needs the controlled differ
 ## Changed-workbook correction
 
 A changed fingerprint for an already-completed cutover date enters correction mode. Step 4 reviews the net differences and requires explicit Replace/Correct confirmation. The previous import is removed from the reconciliation baseline. The correction baseline uses legitimate history strictly before the cutover date, so same-day/later Manual/Batch activity remains on top rather than being absorbed into the corrected Excel opening position.
+
+
+## Correction UI
+
+Step 4 preflight includes the active cutover date. When a changed workbook corresponds to a previously completed cutover, the normal Import action becomes **Replace / Correct** and an amber warning identifies the previous run. Clicking it opens the correction comparison before any database write.
+
+
+Correction differences are grouped by stable configured container identity (`ContainerTypeId`), not by legacy/display wording. The review shows the configured container name to the operator.

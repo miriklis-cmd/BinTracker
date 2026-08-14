@@ -38,3 +38,11 @@ Run:
 ```
 
 A local candidate is valid only when restore, build and automated tests all succeed with zero warnings.
+
+
+## UI/business workflow acceptance
+
+Automated integration coverage verifies that a changed workbook preflight supplied with the cutover date returns `RequiresReplacement = true`. Manual UI acceptance must additionally prove that Step 4 uses that state to show **Replace / Correct** before execution.
+
+
+Correction regression coverage includes the real smoke-test shape: changing one Blue OUT quantity from 1 to 2 must produce exactly one changed customer/container position with a +1 difference.

@@ -228,6 +228,7 @@ internal sealed class ImportExecutionService(
             .Select(x => new
             {
                 CustomerCode = x.Customer.CustomerCode ?? string.Empty,
+                x.ContainerTypeId,
                 Container = x.ContainerType.Name,
                 x.MovementType,
                 x.Quantity
@@ -237,13 +238,14 @@ internal sealed class ImportExecutionService(
         var previousEffects = previousRows
             .GroupBy(x => ReplacementKey(
                 x.CustomerCode,
-                NormalizeContainerLabel(x.Container)))
+                x.ContainerTypeId))
             .ToDictionary(
                 g => g.Key,
                 g => new
                 {
                     CustomerCode = g.First().CustomerCode,
-                    Container = NormalizeContainerLabel(g.First().Container),
+                    ContainerTypeId = g.First().ContainerTypeId,
+                    Container = g.First().Container,
                     Net = g.Sum(x =>
                         x.MovementType == MovementType.Out
                             ? x.Quantity
@@ -260,12 +262,13 @@ internal sealed class ImportExecutionService(
         var proposedEffects = proposedRows
             .GroupBy(x => ReplacementKey(
                 x.CustomerCode,
-                x.Container))
+                x.ContainerTypeId!.Value))
             .ToDictionary(
                 g => g.Key,
                 g => new
                 {
                     CustomerCode = g.First().CustomerCode,
+                    ContainerTypeId = g.First().ContainerTypeId!.Value,
                     Container = g.First().Container,
                     Net = g.Sum(x =>
                         (x.OpeningAdjustment ?? 0) +
@@ -906,25 +909,10 @@ internal sealed class ImportExecutionService(
 
     private static string ReplacementKey(
         string customerCode,
-        string container) =>
+        int containerTypeId) =>
         $"{CustomerNameNormalizer.ComparisonKey(customerCode)}|" +
-        container.Trim().ToUpperInvariant();
-
-    private static string NormalizeContainerLabel(string name)
-    {
-        if (name.Equals("Blue Bin", StringComparison.OrdinalIgnoreCase))
-            return "Blue";
-        if (name.Equals("Yellow Bin", StringComparison.OrdinalIgnoreCase))
-            return "Yellow";
-        if (name.Equals("Bulk Bin", StringComparison.OrdinalIgnoreCase))
-            return "Bulk";
-
-        return name.EndsWith(
-                " Bin",
-                StringComparison.OrdinalIgnoreCase)
-            ? name[..^4].Trim()
-            : name;
-    }
+        containerTypeId.ToString(
+            System.Globalization.CultureInfo.InvariantCulture);
 
     private static void ValidateDecisions(
         ImportReviewPlan review,

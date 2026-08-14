@@ -83,6 +83,8 @@
 - BT-IMPORT-009: Changed-workbook/same-cutover correction must be explicit and must not duplicate prior imported movements.
 - BT-IMPORT-010: Import-generated movements must link relationally to the Import Run that created them; non-import movements remain unlinked.
 - BT-IMPORT-011: Same-cutover correction must calculate the corrected import from pre-cutover legitimate history and preserve same-day/later non-import activity on top.
+- BT-IMPORT-012: Step 4 must surface changed-workbook/same-cutover correction before execution with an explicit Replace / Correct action; execution-time rejection alone is not an acceptable workflow.
+- BT-IMPORT-013: Correction comparisons must use resolved configured container identity, not legacy/display container strings.
 
 ## Backup / Recovery
 

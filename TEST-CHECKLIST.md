@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.19.11.1**
+Current baseline: **v0.4.0-alpha.19.11.3**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.19.11.1.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.19.11.3.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -28,6 +28,9 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [x] **Automated forced failure after final SaveChanges rolls back customer, movements, ImportRun and completion audit; exact-source retry remains allowed.**
 - [x] Every generated import movement links to the correct ImportRun; Manual movement regression remains NULL.
 - [x] Changed workbook / same cutover is detected, compared and explicitly Replace/Corrected; prior linked movements are replaced while same-day and later Manual movements are preserved outside the corrected cutover baseline.
+- [ ] **Manual UI acceptance:** changed workbook on the same cutover shows **Replace / Correct** on Step 4 before execution, then displays the correction comparison.
+- [ ] **Manual correction accuracy:** changing only AEGIR Blue OUT from 1 → 2 produces one genuine AEGIR / Blue Bin change of +1, not duplicate Blue/Blue Bin entries.
+- [ ] **Manual UI sizing:** Replace / Correct button text is fully visible.
 
 - [ ] Optional manual forced-failure acceptance before v1.0 release sign-off.
 

@@ -19,6 +19,8 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Import
 
+- Import/replacement comparisons must use stable database identity (`ContainerTypeId`) for configured containers; display names/tokens are presentation only and must never become reconciliation keys.
+- Preflight context must include cutover/profile identity whenever UI decisions depend on same-cutover history. Do not rely on execution-time guards to discover state the operator needed to see earlier.
 - Same-cutover replacement baseline is historical, not current-state: use legitimate movements strictly before the cutover date while excluding the prior ImportRun. Same-day/later Manual/Batch activity must remain outside the corrected workbook reconciliation and survive on top.
 - Replacement comparison currently summarizes changed net customer/container positions and movement counts. A future Import Run details UI can add line/source-row differences without widening the replacement safety boundary.
 - Historical alpha.19.x provenance backfill intentionally links only `Adjustment`/`ExcelImport` rows with a strict `IMPORT-<numeric id>` reference that resolves to an existing ImportRun; do not broaden inference to Manual/Batch rows.

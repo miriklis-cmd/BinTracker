@@ -454,7 +454,7 @@ public sealed class ImportExecutionSqliteTests
                     firstPreflight.Source.Sha256,
                     Analysis(new ImportSnapshotCandidate(
                         "Update Account", "ReplaceCo", CustomerType.Account, null,
-                        Out: 2, In: 1, BroughtForward: 10, ExcelTotal: 11, SourceRow: "12")),
+                        Out: 1, In: 0, BroughtForward: 10, ExcelTotal: 11, SourceRow: "12")),
                     [new ImportWorksheetMapping("Update Account", ImportWorksheetRole.Source, "")],
                     new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
                     new Dictionary<string, ImportCustomerDecision>(StringComparer.OrdinalIgnoreCase)
@@ -496,8 +496,18 @@ public sealed class ImportExecutionSqliteTests
                 await db.SaveChangesAsync();
             }
 
-            var correctedPreflight = await service.PreflightAsync(correctedFile, cutover);
+            // Step 4 UI must supply the cutover date to preflight. Without
+            // it, the backend execution guard would reject the import later
+            // but the UI could not surface Replace/Correct beforehand.
+            var correctedPreflight =
+                await service.PreflightAsync(
+                    correctedFile,
+                    cutover);
+
+            Assert.True(correctedPreflight.CanProceed);
             Assert.True(correctedPreflight.RequiresReplacement);
+            Assert.False(
+                correctedPreflight.ExactWorkbookPreviouslyImported);
             Assert.Equal(
                 firstResult.ImportRunId,
                 correctedPreflight.PreviousCutoverRun!.ImportRunId);
@@ -507,7 +517,7 @@ public sealed class ImportExecutionSqliteTests
                 correctedPreflight.Source.Sha256,
                 Analysis(new ImportSnapshotCandidate(
                     "Update Account", "ReplaceCo", CustomerType.Account, null,
-                    Out: 5, In: 2, BroughtForward: 12, ExcelTotal: 15, SourceRow: "12")),
+                    Out: 2, In: 0, BroughtForward: 10, ExcelTotal: 12, SourceRow: "12")),
                 [new ImportWorksheetMapping("Update Account", ImportWorksheetRole.Source, "")],
                 new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
                 new Dictionary<string, ImportCustomerDecision>(StringComparer.OrdinalIgnoreCase),
@@ -525,7 +535,14 @@ public sealed class ImportExecutionSqliteTests
                 firstResult.ImportRunId);
 
             var comparison = await service.CompareReplacementAsync(correctedRequest);
-            Assert.True(comparison.ChangedPositionCount > 0);
+
+            var difference = Assert.Single(comparison.Differences);
+            Assert.Equal(1, comparison.ChangedPositionCount);
+            Assert.Equal("REPLACECO", difference.CustomerCode);
+            Assert.Equal("Blue Bin", difference.Container);
+            Assert.Equal(11, difference.PreviousNetEffect);
+            Assert.Equal(12, difference.ProposedNetEffect);
+            Assert.Equal(1, difference.Difference);
 
             var correctedResult = await service.ExecuteAsync(correctedRequest);
 
@@ -567,7 +584,9 @@ public sealed class ImportExecutionSqliteTests
                         ? x.Quantity
                         : -x.Quantity);
 
-            Assert.Equal(21, finalBalance);
+            // Corrected workbook position 12 + same-day Manual 2 +
+            // next-day Manual 4.
+            Assert.Equal(18, finalBalance);
         }
         finally
         {

@@ -1,19 +1,36 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.19.11.1
+## v0.4.0-alpha.19.11.3
 
-### Same-cutover correction baseline fix
+### Correction comparison identity fix
 
-The alpha.19.11 replacement regression test exposed a real bug: the previous ImportRun was excluded, but legitimate post-cutover Manual activity was still included in the corrected opening-balance baseline.
+Manual smoke testing found that the correction review could show hundreds of false changes after changing only one workbook value.
 
-The corrected rule is now:
+Cause:
+- previous imported movements were grouped using labels normalised to `Blue`;
+- proposed reconciliation rows were grouped using the configured display label `Blue Bin`;
+- the same physical container therefore appeared as two different correction positions.
 
-- replacement reconciliation uses legitimate history strictly **before** the cutover date;
-- previous ImportRun movements are excluded/replaced;
-- Manual/Batch activity on the cutover date and later remains untouched and sits on top of the corrected imported position.
+Fixed:
+- correction comparison now keys configured containers by `ContainerTypeId`;
+- customer identity remains normalized by customer code;
+- display text is used only for what the operator sees;
+- the Greek delta symbol has been removed from correction wording;
+- `Replace / Correct` button width is increased so the full action is visible.
 
-Regression coverage now includes a Manual OUT on the cutover date and another on the following day. Both must survive the correction and remain unlinked to the ImportRun.
+### Regression coverage
+
+The changed-workbook integration test now mirrors the real smoke test:
+
+- original Blue OUT = 1;
+- corrected Blue OUT = 2;
+- no other workbook balance change.
+
+The comparison must return exactly one changed position:
+`REPLACECO / Blue Bin: 11 → 12 (+1)`.
+
+Same-day and next-day Manual movements remain preserved on top of the corrected workbook position.
 
 ### Documentation audit
 
-Roadmap, Technical Debt, Test Checklist, Re-import Safety, Import Wizard, Business Rules, Functional Specification, Testing and README were reconciled with the corrected semantics.
+Roadmap, Known Issues, Technical Debt, Test Checklist, Re-import Safety, Import Wizard, Business Rules, Functional Specification, Testing and README were reconciled. Manual UI/correction acceptance remains open until this build is smoke-tested.

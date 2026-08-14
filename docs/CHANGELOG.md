@@ -470,3 +470,18 @@
 - Preserves same-day and later Manual/Batch activity on top of corrected import.
 - Strengthened replacement integration regression for same-day and next-day Manual movements.
 - Reconciled current-state documentation with corrected replacement semantics.
+
+## v0.4.0-alpha.19.11.2
+- Fixed Step 4 preflight omitting CutoverDate.
+- Changed-workbook same-cutover state now appears before execution.
+- Added explicit Replace / Correct Step 4 action and amber previous-run warning.
+- Strengthened dated-preflight replacement regression assertions.
+- Reconciled current-state documentation and left manual UI acceptance open.
+
+## v0.4.0-alpha.19.11.3
+- Fixed false correction differences caused by `Blue` vs `Blue Bin` display-string keys.
+- Correction comparison now keys containers by ContainerTypeId.
+- Strengthened regression: one Blue OUT change produces exactly one +1 position change.
+- Removed Greek delta notation from correction dialog.
+- Widened Replace / Correct Step 4 button.
+- Reconciled current-state documentation; manual acceptance remains open.

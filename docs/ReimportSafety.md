@@ -42,3 +42,19 @@ Correction uses the same verified SQLite transaction boundary as normal Import. 
 A correction can happen after operators have already entered legitimate activity on the cutover date or later. Those movements are subsequent real activity and must not change the corrected Excel opening adjustment.
 
 The corrected workbook therefore rebuilds from history strictly before the cutover. After the old ImportRun movements are replaced, legitimate same-day/later activity remains on top of the corrected imported position.
+
+
+## Step 4 discovery
+
+The Import UI must call preflight with the active cutover date. A changed fingerprint with a prior completed run for that date is surfaced on Step 4 **before execution**:
+
+- amber same-cutover warning;
+- explicit **Replace / Correct** action;
+- difference review before final confirmation.
+
+The execution-time same-cutover guard remains as defence in depth, not as the primary operator workflow.
+
+
+## Container identity in comparisons
+
+Correction comparison keys use normalized customer identity plus the resolved `ContainerTypeId`. Legacy tokens such as `Blue`, configured names such as `Blue Bin`, and other display wording must not create separate correction positions for the same configured container.
