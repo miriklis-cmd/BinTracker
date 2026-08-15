@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.19.12.4**
+Current baseline: **v0.4.0-alpha.20.0.5.1**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.19.12.4.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.20.0.5.1.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -69,9 +69,19 @@ Historical alpha checklists have been removed from this file. Defect history rem
 
 ## Reports
 
+- [ ] Reports launcher keeps Market Floor Sheet first and inline.
+- [ ] Outstanding Containers opens in a dedicated full report window.
+- [ ] Clicking Open Report again while Outstanding is already open brings the same window forward rather than opening a duplicate.
+- [ ] Outstanding dedicated window remains readable at production DPI and exposes Run Report / Today / Export CSV without clipping.
+- [ ] Outstanding window uses responsive sizing on laptop and large monitor; results grid expands with available screen size.
+
 - [ ] Customer Statement smoke test.
 - [ ] Market Floor smoke test.
-- [ ] Outstanding Containers report acceptance after implementation.
+- [ ] Outstanding Containers on-screen/as-of-date UI acceptance.
+- [ ] With **All containers**, each customer's configured container rows are adjacent (e.g. CLAMMS Blue / Yellow / Bulk together).
+- [ ] Outstanding grid/card is fully visible and uses its own vertical scrollbar rather than being cut off by the main window.
+- [ ] Outstanding Containers CSV export opens correctly and preserves container/customer separation.
+- [ ] Outstanding Containers PDF/print acceptance after implementation.
 - [ ] Daily Movements report acceptance after implementation.
 - [ ] Movement History report acceptance after implementation.
 - [ ] Monthly Summary acceptance after implementation.
@@ -150,7 +160,8 @@ Historical alpha checklists have been removed from this file. Defect history rem
 
 ## Recovered reporting acceptance
 
-- [ ] Historical Outstanding / As-of-Date report returns the correct past customer/container position.
+- [x] Automated Historical Outstanding / As-of-Date regression excludes future movements and keeps Blue/Yellow (all configured containers) separate.
+- [ ] Manual Historical Outstanding / As-of-Date query matches a known past balance.
 - [ ] Weekly Movements report works for a selected week.
 - [ ] Daily report supports fast today/yesterday use.
 - [ ] Monthly report supports fast current/previous month use.
@@ -163,3 +174,6 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [ ] Every implementation pass states TEST REQUIRED: None / Targeted / Full.
 - [ ] Full docs audit is performed every meaningful pass.
 - [ ] Build-BinTracker.bat truthfully fails on restore/build/test failure.
+
+- [ ] Outstanding Containers customer Code column expands to fit the longest visible customer code, subject to its maximum width.
+- [ ] Code column remains sensible with short codes and does not consume excessive width with an unusually long code.

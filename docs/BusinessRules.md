@@ -102,3 +102,22 @@ Important security, master-data and movement changes create audit events.
 
 - PostgreSQL is the intended direction for eventual multi-user central deployment.
 - Services + `IDbContextFactory<BinTrackerDbContext>` remain the application boundary; database-provider-specific concerns belong in infrastructure/migration code.
+
+## As-of-date reporting
+
+- “As of” means the position at the end of the selected movement date: include movements dated on or before that date and exclude later movements.
+- Positive positions are outstanding; negative positions are credit.
+- Container types are never combined when calculating historical positions.
+- Inactive customers remain part of historical truth and may be included in historical reporting.
+
+
+## Outstanding report presentation
+
+- Outstanding report default ordering is Customer → configured Container Type display order so multiple container positions for one customer remain together.
+
+
+## Report catalogue navigation
+
+- Market Floor Sheet remains the first/inline operational report.
+- Detailed reports use dedicated windows so filters, tables and export/print actions have full working space.
+- “Today” is a shortcut inside the relevant report window, not a separate report.

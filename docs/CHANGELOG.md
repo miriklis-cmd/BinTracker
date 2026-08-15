@@ -522,3 +522,39 @@
 - Restored customer sorting/lifetime totals, Statement view/print, Dashboard chart, scheduled backup, provider-direction and post-v1 requirements.
 - Added PostgreSQL readiness audit without introducing a generic Repository layer.
 - Added formal testing/audit/development workflow documentation.
+
+## v0.4.0-alpha.20.0
+- Began Reports phase.
+- Added ledger-derived Historical / As-of-Date Outstanding service.
+- Added Reports UI with date/customer/container filters, credits/inactive options and per-container totals.
+- Added Outstanding CSV export.
+- Added SQLite integration coverage for historical cutoff, container separation, credits and filters.
+- Reconciled current-state documentation; PDF/print remains open.
+
+## v0.4.0-alpha.20.0.1
+- Restored Market Floor Sheet as the first report on the Reports page.
+- Increased Outstanding export button width so `Export CSV` is not clipped at production DPI.
+
+## v0.4.0-alpha.20.0.2
+- Changed Outstanding default ordering from Container-first to Customer-first.
+- Multi-container customer rows now stay adjacent in configured container order.
+- Reduced Outstanding grid viewport so the full card remains visible with an internal scrollbar.
+- Added ordering regression assertion and reconciled current-state docs.
+
+## v0.4.0-alpha.20.0.3
+- Converted Reports into a compact launcher architecture.
+- Kept Market Floor Sheet first and inline.
+- Moved Outstanding Containers into a dedicated full report window.
+- Added single-instance Outstanding window activation through MainForm.
+- Preserved existing historical reporting logic and CSV export.
+- Reconciled current-state documentation and roadmap.
+
+## v0.4.0-alpha.20.0.4
+- Made Outstanding Containers window responsive to the active monitor working area.
+- Reserved reliable filter/action height to prevent clipped controls.
+- Result grid now consumes remaining space and grows on larger displays.
+- Added laptop/large-monitor acceptance requirements and reconciled current-state docs.
+
+## v0.4.0-alpha.20.0.5
+- Outstanding Containers now dynamically sizes the Customer Code column to the longest visible code.
+- Added sensible 110 px minimum and 260 px maximum widths so spare report space is used without allowing pathological values to dominate the grid.

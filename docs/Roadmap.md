@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.19.12.4**
+Current planning baseline: **v0.4.0-alpha.20.0.5.1**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -81,6 +81,8 @@ Already implemented:
 
 ### 3. Reports
 
+- [x] **Report launcher architecture** — Market Floor remains inline as the primary operational report; detailed reports open in dedicated single-instance, responsive report windows sized from the current monitor working area so data grids grow on larger displays.
+
 Implemented:
 
 - [x] Customer Statement PDF with container-by-container running balances.
@@ -93,8 +95,8 @@ Implemented:
 
 Still required:
 
-- [ ] **Outstanding Containers report** — current outstanding position by customer/container, filterable and exportable/printable.
-- [ ] **Historical Outstanding / As-of-Date report** — answer “how many bins were outstanding on a selected past date?” by customer/container without relying on saved daily snapshots.
+- [~] **Outstanding Containers report** — current/as-of-date on-screen query is implemented with customer/container filters, inactive/credit options and CSV export. **Customer → Container grouping** keeps Blue/Yellow/Bulk/etc. adjacent for each customer. PDF/print output remains.
+- [x] **Historical Outstanding / As-of-Date foundation** — ledger-derived end-of-date customer/container positions are implemented and tested; future movements are excluded and containers remain separate.
 - [ ] **Weekly Movements report** — first-class selected-week OUT/IN/net detail and summary, not merely an implied date-range option.
 - [ ] **Customer Statement view/print workflow** — generate, open/view and print the statement directly from the operational workflow, not only save a PDF.
 - [ ] **Daily Movements report** — movement detail for a selected day, including quick operational use for **today/yesterday**, direction, container, customer, reference, source and user.

@@ -1,29 +1,23 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.19.12.4
+## v0.4.0-alpha.20.0.5
 
-### Conversation-to-roadmap reconciliation
+### Responsive report windows
 
-This is a documentation/planning-only candidate. No runtime business logic or UI implementation was intentionally changed.
+Outstanding Containers no longer opens at a fixed 1320×760 size.
 
-Recovered/clarified requirements include:
+- Initial window size is calculated from the active monitor working area.
+- The window uses approximately 90% of available width and 88% of available height, within sensible min/max bounds.
+- Laptop displays remain compact.
+- Larger desktop monitors provide substantially more result-grid space.
+- Filter/action controls reserve enough vertical space to prevent button clipping.
+- The result grid fills the remaining client area and resizes with the report window.
+- Grid scrollbars remain available when data exceeds the visible area.
 
-- Batch Entry is mostly accepted; remaining work is Esc behaviour, post-entry clear/focus and crash/power-loss draft recovery decision.
-- Historical outstanding **as-of-date** reporting.
-- Explicit Weekly reporting and quick today/yesterday/current/previous-month periods.
-- Customer sorting by outstanding/credit/last movement and lifetime OUT/IN totals.
-- Customer Statement generate → view/open → print workflow.
-- Dashboard charts/trends.
-- Google Workspace email and Texto SMS provider direction.
-- Friday-or-earlier reminder policy direction.
-- Scheduled automatic production backups.
-- PostgreSQL readiness audit before multi-user deployment.
-- Post-v1 Customer Portal, barcode scanning and multiple depots.
-- Formal manual testing policy.
-- Full documentation audit on every meaningful implementation pass.
-- Explicit audit-coverage matrix.
-- Git/acceptance workflow and truthful build-gate requirements.
+### Documentation audit
 
-### Current execution order
+Roadmap, Technical Debt, Test Checklist, Functional Specification, Testing, README and versioning were reconciled.
 
-Reports → Batch Entry acceptance cleanup → Dashboard → Email/SMS → normal movement correction/reversal → production backup/recovery → security/audit hardening → PostgreSQL/multi-user/deployment readiness.
+### Test requirement
+
+**Full smoke test** because report-window layout changed.

@@ -10,6 +10,7 @@ public sealed class MainForm : Form
     private readonly Panel content = new();
     private Control? selectedNav;
     private CustomersView? activeCustomersView;
+    private OutstandingContainersReportForm? outstandingReportForm;
     private bool bypassCustomerClosePrompt;
     private readonly UserSession session;
     private readonly IUserService users;
@@ -20,6 +21,7 @@ public sealed class MainForm : Form
     private readonly IMovementService movements;
     private readonly ApplicationState appState;
     private readonly IMarketFloorReportService marketFloorReports;
+    private readonly IOutstandingReportService outstandingReports;
     private readonly IContainerTypeService containerTypes;
     private readonly IBusinessInformationService businessInformation;
     private readonly IExcelImportService excelImport;
@@ -45,6 +47,7 @@ public sealed class MainForm : Form
         IMovementService movements,
         ApplicationState appState,
         IMarketFloorReportService marketFloorReports,
+        IOutstandingReportService outstandingReports,
         IContainerTypeService containerTypes,
         IBusinessInformationService businessInformation,
         IExcelImportService excelImport,
@@ -62,6 +65,7 @@ public sealed class MainForm : Form
         this.movements = movements;
         this.appState = appState;
         this.marketFloorReports = marketFloorReports;
+        this.outstandingReports = outstandingReports;
         this.containerTypes = containerTypes;
         this.businessInformation = businessInformation;
         this.excelImport = excelImport;
@@ -408,7 +412,39 @@ public sealed class MainForm : Form
     {
         SetPage("Reports");
         content.AutoScroll = true;
-        content.Controls.Add(new ReportsView(marketFloorReports));
+        content.Controls.Add(
+            new ReportsView(
+                marketFloorReports,
+                OpenOutstandingReport));
+    }
+
+    private void OpenOutstandingReport()
+    {
+        if (outstandingReportForm is not null &&
+            !outstandingReportForm.IsDisposed)
+        {
+            if (outstandingReportForm.WindowState ==
+                FormWindowState.Minimized)
+            {
+                outstandingReportForm.WindowState =
+                    FormWindowState.Normal;
+            }
+
+            outstandingReportForm.BringToFront();
+            outstandingReportForm.Activate();
+            return;
+        }
+
+        outstandingReportForm =
+            new OutstandingContainersReportForm(
+                outstandingReports);
+
+        outstandingReportForm.FormClosed += (_, _) =>
+        {
+            outstandingReportForm = null;
+        };
+
+        outstandingReportForm.Show(this);
     }
 
     private void ShowSettings()

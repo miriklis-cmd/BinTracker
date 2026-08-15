@@ -91,3 +91,26 @@ Completed work is closed/removed from active lists; superseded statements are de
 ## Conversation-to-requirements reconciliation
 
 Periodically compare the repository plan against the original product requirements and accepted operator decisions so requirements raised during bug-fixing do not disappear merely because they were not initially added to the roadmap.
+
+## Historical reporting coverage
+
+`OutstandingReportSqliteTests` verifies:
+
+- future movements do not leak into an earlier As-of-Date result;
+- OUT/IN produce the correct signed position;
+- configured Container Types remain separate;
+- credits are hidden by default and optionally included;
+- customer/container/inactive filters work.
+
+Because alpha.20.0 adds Reports UI, manual acceptance is a **Full smoke test** under the project testing policy.
+
+
+Outstanding reporting regression coverage also checks customer/container adjacency so a multi-container customer is not visually split into separate large container blocks.
+
+
+## Report launcher UI acceptance
+
+The report launcher architecture is manually verified because single-instance WinForms window ownership/activation is UI behaviour. Outstanding report calculation remains covered independently by SQLite integration tests.
+
+
+Report-window UI acceptance includes a laptop-sized display and a larger desktop/27-inch monitor resolution. Verify filters/actions remain visible and the dataset expands with available client space.

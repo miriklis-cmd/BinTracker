@@ -39,6 +39,10 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Reports
 
+- Dedicated report windows must be responsive to monitor working area rather than fixed desktop dimensions. Filters/actions keep their required height; result grids consume the remaining client area.
+
+- Reports page is a launcher, not a scrolling host for every report. Keep Market Floor inline; detailed/filter-heavy reports belong in dedicated windows. MainForm owns one live instance per report window to prevent duplicates.
+
 - Market Floor is an operational ~4am document: maximise readable type while guaranteeing front + reverse pagination.
 - Both Market Floor pages must derive density from actual rendered row load, including extra non-standard container rows and likely wraps.
 - Blue is implicit on Market Floor; non-standard regular containers such as Yellow must be explicit.
@@ -83,3 +87,8 @@ Engineering improvements that are not currently user-facing defects. Product wor
 - Perform a PostgreSQL readiness audit before central multi-user deployment.
 - Inventory SQLite-specific PRAGMA/raw SQL/schema upgrade paths, file-path assumptions and developer backup/reset tooling.
 - Avoid adding a generic Repository abstraction solely for provider portability; keep provider-neutral business behaviour in Services and isolate provider-specific infrastructure.
+
+## Reporting foundation
+
+- Historical reporting deliberately derives as-of-date positions from the movement ledger. Do not introduce daily snapshot persistence unless a measured performance/recovery need justifies it.
+- Outstanding CSV export is implemented; PDF/print presentation remains part of the Reports phase.

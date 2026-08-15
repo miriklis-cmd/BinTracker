@@ -140,3 +140,24 @@
 - BT-COMM-007: Email delivery targets Google Workspace integration unless the business deliberately changes provider.
 - BT-COMM-008: SMS delivery targets Texto integration unless the business deliberately changes provider.
 - BT-COMM-009: Automatic reminder scheduling supports the agreed operational direction of contacting customers owing empty bins by Friday or earlier, subject to configurable policy.
+
+## Outstanding / Historical Reporting
+
+- BT-PRINT-012: Outstanding reporting supports an As-of Date and calculates end-of-date position from movements dated on or before that date.
+- BT-PRINT-013: Historical outstanding positions remain separate by configured Container Type.
+- BT-PRINT-014: Outstanding reporting supports customer and container filtering and may optionally include credit positions.
+- BT-PRINT-015: Future-dated movements never affect an earlier As-of-Date result.
+
+
+## Report UI Architecture
+
+- BT-REPORT-UI-001: The Reports page is a compact launcher as the report catalogue grows.
+- BT-REPORT-UI-002: Market Floor Sheet remains directly accessible inline because it is the primary daily operational report.
+- BT-REPORT-UI-003: Filter-heavy/data-grid reports open in dedicated report windows.
+- BT-REPORT-UI-004: Only one live instance of a given report window should exist per MainForm session; reopening brings the existing window forward.
+
+
+- BT-REPORT-UI-005: Dedicated report windows size themselves from the active monitor's working area within sensible minimum/maximum bounds.
+- BT-REPORT-UI-006: Report filter/action controls must remain fully visible; the result dataset consumes remaining window space and resizes with the window/monitor.
+
+- BT-REPORT-UI-007: Report customer-code columns dynamically size to the longest visible customer code, with sensible minimum and maximum widths so codes remain readable without crowding other report data.
