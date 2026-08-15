@@ -569,6 +569,7 @@ public static class ServiceSetup
         services.AddScoped<IImportRunHistoryService, ImportRunHistoryService>();
         services.AddScoped<IMarketFloorReportService, MarketFloorReportService>();
         services.AddScoped<IOutstandingReportService, OutstandingReportService>();
+        services.AddScoped<IOutstandingReportPdfService, OutstandingReportPdfService>();
         services.AddScoped<IMovementService, MovementService>();
         return services;
     }

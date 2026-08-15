@@ -5,6 +5,7 @@ namespace BinTracker.WinForms;
 public sealed class OutstandingContainersReportForm : Form
 {
     private readonly IOutstandingReportService outstanding;
+    private readonly IOutstandingReportPdfService pdfReports;
 
     private readonly DateTimePicker reportDate = new()
     {
@@ -65,9 +66,11 @@ public sealed class OutstandingContainersReportForm : Form
     private OutstandingReportResult? currentResult;
 
     public OutstandingContainersReportForm(
-        IOutstandingReportService outstanding)
+        IOutstandingReportService outstanding,
+        IOutstandingReportPdfService pdfReports)
     {
         this.outstanding = outstanding;
+        this.pdfReports = pdfReports;
 
         Text = "Outstanding Containers";
         StartPosition = FormStartPosition.Manual;
@@ -144,38 +147,62 @@ public sealed class OutstandingContainersReportForm : Form
             Dock = DockStyle.Top,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            MinimumSize = new Size(0, 76),
+            MinimumSize = new Size(0, 118),
             BackColor = Color.White,
-            Padding = new Padding(16),
+            Padding = new Padding(16, 12, 16, 12),
             Margin = new Padding(0, 0, 0, 10)
         };
 
-        var controls = new FlowLayoutPanel
+        var controlRows = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            RowCount = 2,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+        controlRows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        controlRows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var filters = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = true,
-            Padding = new Padding(0, 4, 0, 4),
+            Padding = new Padding(0, 2, 0, 4),
             Margin = Padding.Empty
         };
 
-        controls.Controls.Add(ControlLabel("As of"));
-        controls.Controls.Add(reportDate);
-        controls.Controls.Add(ControlLabel("Customer", 14));
-        controls.Controls.Add(customerSearch);
-        controls.Controls.Add(ControlLabel("Container", 14));
-        controls.Controls.Add(containerFilter);
-        controls.Controls.Add(includeCredits);
-        controls.Controls.Add(includeInactive);
+        filters.Controls.Add(ControlLabel("As of"));
+        filters.Controls.Add(reportDate);
+        filters.Controls.Add(ControlLabel("Customer", 14));
+        filters.Controls.Add(customerSearch);
+        filters.Controls.Add(ControlLabel("Container", 14));
+        filters.Controls.Add(containerFilter);
+        filters.Controls.Add(includeCredits);
+        filters.Controls.Add(includeInactive);
+
+        var actions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true,
+            Padding = new Padding(0, 8, 0, 0),
+            Margin = Padding.Empty
+        };
 
         var run = new Button
         {
             Text = "Run Report",
             AutoSize = false,
-            Size = new Size(125, 38),
-            Margin = new Padding(14, 0, 0, 0)
+            Size = new Size(125, 40),
+            Margin = Padding.Empty
         };
         run.Click += async (_, _) => await LoadReportAsync();
 
@@ -183,7 +210,7 @@ public sealed class OutstandingContainersReportForm : Form
         {
             Text = "Today",
             AutoSize = false,
-            Size = new Size(90, 38),
+            Size = new Size(90, 40),
             Margin = new Padding(8, 0, 0, 0)
         };
         today.Click += async (_, _) =>
@@ -192,20 +219,43 @@ public sealed class OutstandingContainersReportForm : Form
             await LoadReportAsync();
         };
 
+        var pdf = new Button
+        {
+            Text = "Generate PDF",
+            AutoSize = false,
+            Size = new Size(145, 40),
+            Margin = new Padding(18, 0, 0, 0)
+        };
+        pdf.Click += async (_, _) => await GeneratePdfAsync(openAfter: false);
+
+        var pdfOpen = new Button
+        {
+            Text = "Generate && Open",
+            AutoSize = false,
+            Size = new Size(175, 40),
+            Margin = new Padding(8, 0, 0, 0)
+        };
+        pdfOpen.Click += async (_, _) => await GeneratePdfAsync(openAfter: true);
+
         var export = new Button
         {
             Text = "Export CSV",
             AutoSize = false,
-            Size = new Size(135, 38),
+            Size = new Size(135, 40),
             Margin = new Padding(8, 0, 0, 0)
         };
         export.Click += (_, _) => ExportCsv();
 
-        controls.Controls.Add(run);
-        controls.Controls.Add(today);
-        controls.Controls.Add(export);
+        actions.Controls.Add(run);
+        actions.Controls.Add(today);
+        actions.Controls.Add(pdf);
+        actions.Controls.Add(pdfOpen);
+        actions.Controls.Add(export);
 
-        controlsCard.Controls.Add(controls);
+        controlRows.Controls.Add(filters, 0, 0);
+        controlRows.Controls.Add(actions, 0, 1);
+
+        controlsCard.Controls.Add(controlRows);
         root.Controls.Add(controlsCard, 0, 1);
 
         var summaryCard = new Panel
@@ -467,6 +517,65 @@ public sealed class OutstandingContainersReportForm : Form
                 this,
                 ex.Message,
                 "Outstanding Containers",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+        finally
+        {
+            Enabled = true;
+            UseWaitCursor = false;
+        }
+    }
+
+    private async Task GeneratePdfAsync(bool openAfter)
+    {
+        var result = currentResult;
+
+        if (result is null)
+        {
+            MessageBox.Show(
+                this,
+                "Run the report first.",
+                "Outstanding Containers",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
+        using var dialog = new SaveFileDialog
+        {
+            Title = "Generate Outstanding Containers PDF",
+            Filter = "PDF file (*.pdf)|*.pdf",
+            FileName = $"BinTracker_Outstanding_{result.AsOfDate:yyyyMMdd}.pdf",
+            AddExtension = true,
+            DefaultExt = "pdf"
+        };
+
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+            return;
+
+        try
+        {
+            UseWaitCursor = true;
+            Enabled = false;
+
+            await pdfReports.GeneratePdfAsync(result, dialog.FileName);
+
+            if (openAfter)
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = dialog.FileName,
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                this,
+                ex.Message,
+                "Outstanding Containers PDF",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
         }

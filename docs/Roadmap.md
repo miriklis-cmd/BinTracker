@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.20.0.6.1**
+Current planning baseline: **v0.4.0-alpha.20.0.7.2.1**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -9,6 +9,26 @@ This roadmap tracks work that is still relevant. Completed alpha-by-alpha histor
 With import integrity/provenance and unsaved Customer/Container-Type protection now in place, the implementation order is:
 
 1. **Reports** — Outstanding Containers, Daily Movements, Movement History, Monthly Summary and Daily Print Pack.
+
+### Dashboard milestone design gate
+
+**Do not begin Dashboard implementation immediately.** Before writing Dashboard code, stop and evaluate the design with the operator.
+
+The discussion must cover:
+
+- useful charts and chart types;
+- forecasting hooks and future predictive/ML readiness;
+- drill-through behaviour from cards/charts/customers/containers/alerts;
+- attention/exception detection;
+- recent activity and operational trends;
+- customer/container comparisons;
+- ageing/outstanding behaviour;
+- anomaly/risk/forecast ideas;
+- laptop vs large-monitor layouts;
+- alternative dashboard concepts and trade-offs.
+
+Only implement after a preferred direction is agreed. Dashboard is intentionally allowed its own milestone because experimentation may materially change scope.
+
 2. **Dashboard operational pass** — validate metrics, add actionable drill-through and recent/container activity.
 3. **Email/SMS reminder delivery** — business rules, providers, templates, retries and delivery history.
 4. **Movement correction/reversal** — controlled audited reversal/correction workflow.
@@ -95,7 +115,7 @@ Implemented:
 
 Still required:
 
-- [~] **Outstanding Containers report** — current/as-of-date on-screen query is implemented with customer/container filters, inactive/credit options and CSV export. **Customer → Container grouping** keeps Blue/Yellow/Bulk/etc. adjacent for each customer. PDF/print output remains.
+- [x] **Outstanding Containers report** — current/as-of-date on-screen query, customer/container filters, inactive/credit options, CSV export and audited landscape PDF generation are implemented. **Customer → Container grouping** keeps Blue/Yellow/Bulk/etc. adjacent for each customer.
 - [x] **Historical Outstanding / As-of-Date foundation** — ledger-derived end-of-date customer/container positions are implemented and tested; future movements are excluded and containers remain separate.
 - [ ] **Weekly Movements report** — first-class selected-week OUT/IN/net detail and summary, not merely an implied date-range option.
 - [ ] **Customer Statement view/print workflow** — generate, open/view and print the statement directly from the operational workflow, not only save a PDF.
@@ -272,3 +292,8 @@ Do after the functional/data-integrity items above unless a defect blocks use.
 - [ ] Customer web portal.
 - [ ] Barcode scanning.
 - [ ] Multiple depots.
+
+
+## Version milestone policy
+
+Milestone numbering follows scope. Substantial workstreams may receive their own `0.x.0` milestone rather than being forced into a fixed number of phases. Dashboard is a likely candidate for its own milestone because it may involve experimentation and multiple iterations.

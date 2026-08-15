@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.20.0.6.1**
+Current baseline: **v0.4.0-alpha.20.0.7.2.1**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.20.0.6.1.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.20.0.7.2.1.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -181,3 +181,24 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [ ] Outstanding Containers Code column shows long customer codes such as BEST OCIANA / CAMBERWELL without truncation where available width permits.
 - [ ] Outstanding Containers Type column expands enough to show Account and Cash / COD clearly.
 - [ ] Rerunning/filtering the report recalculates Code/Type widths from currently visible rows.
+
+- [ ] Outstanding Containers Generate PDF saves a readable landscape PDF matching the current filtered/as-of-date result.
+- [ ] Outstanding Containers Generate & Open saves the PDF and opens it in the Windows default PDF viewer.
+- [ ] Outstanding PDF preserves Customer → Container ordering, credit/inactive choices already reflected in the current result, totals and long customer codes.
+- [ ] OUTSTANDING_REPORT_GENERATED audit event records date, row count and output filename.
+
+
+## alpha.20.0.7.1 constructor wiring
+
+- [ ] Build succeeds with `OutstandingContainersReportForm(IOutstandingReportService, IOutstandingReportPdfService)`.
+- [ ] Full automated unit/integration suite passes.
+
+
+## alpha.20.0.7.2 Outstanding action layout
+
+- [ ] Outstanding filters remain fully visible on the first control row.
+- [ ] Run Report and Today are fully visible on the action row.
+- [ ] Generate PDF button is fully visible.
+- [ ] Generate & Open button is fully visible.
+- [ ] Export CSV button is fully visible.
+- [ ] No report action is partially hidden at production laptop DPI.

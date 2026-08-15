@@ -22,6 +22,7 @@ public sealed class MainForm : Form
     private readonly ApplicationState appState;
     private readonly IMarketFloorReportService marketFloorReports;
     private readonly IOutstandingReportService outstandingReports;
+    private readonly IOutstandingReportPdfService outstandingReportPdfs;
     private readonly IContainerTypeService containerTypes;
     private readonly IBusinessInformationService businessInformation;
     private readonly IExcelImportService excelImport;
@@ -48,6 +49,7 @@ public sealed class MainForm : Form
         ApplicationState appState,
         IMarketFloorReportService marketFloorReports,
         IOutstandingReportService outstandingReports,
+        IOutstandingReportPdfService outstandingReportPdfs,
         IContainerTypeService containerTypes,
         IBusinessInformationService businessInformation,
         IExcelImportService excelImport,
@@ -66,6 +68,7 @@ public sealed class MainForm : Form
         this.appState = appState;
         this.marketFloorReports = marketFloorReports;
         this.outstandingReports = outstandingReports;
+        this.outstandingReportPdfs = outstandingReportPdfs;
         this.containerTypes = containerTypes;
         this.businessInformation = businessInformation;
         this.excelImport = excelImport;
@@ -437,7 +440,8 @@ public sealed class MainForm : Form
 
         outstandingReportForm =
             new OutstandingContainersReportForm(
-                outstandingReports);
+                outstandingReports,
+                outstandingReportPdfs);
 
         outstandingReportForm.FormClosed += (_, _) =>
         {

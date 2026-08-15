@@ -564,3 +564,22 @@
 - Code and Type columns now resize immediately after each report population.
 - Code range: 130–300 px; Type range: 130–220 px.
 - Reconciled reporting UI documentation and regression checklist.
+
+## v0.4.0-alpha.20.0.7
+- Completed Outstanding Containers with audited landscape PDF generation.
+- Added Generate PDF and Generate & Open actions to the responsive report window.
+- PDF uses the already-calculated current report result so UI filters and exported presentation cannot silently diverge.
+- Reconciled roadmap, known issues, technical debt, functional spec, testing, README, versioning and release notes.
+- Normalized stale documentation baseline version 20.0.6.1 to 20.0.7.
+
+## v0.4.0-alpha.20.0.7.1
+- Fixed stale `OutstandingContainersReportForm` constructor call in MainForm after PDF service dependency was added.
+- Audited all Outstanding report construction sites.
+- Formalised milestone-based versioning and the future `alpha.N` / `alpha.N.M` rule.
+- Added compile-time dependency-wiring guidance and reconciled current-state documentation.
+
+## v0.4.0-alpha.20.0.7.2
+- Split Outstanding report controls into dedicated filter and action rows.
+- Prevented Generate PDF / Generate & Open / Export CSV buttons from being hidden by DPI wrapping.
+- Recorded mandatory Dashboard design-discussion gate before any Dashboard implementation.
+- Reconciled current-state roadmap/spec/testing/tech-debt/release documentation.

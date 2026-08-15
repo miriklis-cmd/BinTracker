@@ -94,3 +94,13 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 - Historical reporting deliberately derives as-of-date positions from the movement ledger. Do not introduce daily snapshot persistence unless a measured performance/recovery need justifies it.
 - Outstanding CSV export is implemented; PDF/print presentation remains part of the Reports phase.
+
+
+## Dependency wiring
+
+- Constructor dependency changes must be propagated to every manual WinForms construction site. Prefer consistent DI/factory patterns where they reduce the risk of stale constructor calls without obscuring ownership/lifetime.
+
+
+## Report filter/action layout
+
+- Do not pack all filters and report actions into one FlowLayoutPanel. Use separate filter/action rows in detailed report windows so DPI wrapping cannot hide action buttons.

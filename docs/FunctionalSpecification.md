@@ -163,3 +163,10 @@
 - BT-REPORT-UI-007: Report customer-code columns dynamically size to the longest visible customer code, with sensible minimum and maximum widths so codes remain readable without crowding other report data.
 
 - BT-REPORT-UI-008: Outstanding report Code and Type columns resize from the currently visible result set after each report run, using sensible minimum/maximum widths.
+
+
+## Dashboard Design Gate
+
+- BT-DASH-DESIGN-001: Dashboard implementation must not begin until the operator and developer review alternative layouts, charts, drill-through behaviour, exception/attention concepts and forecasting hooks together.
+- BT-DASH-DESIGN-002: Dashboard design must consider both laptop and large-monitor operation.
+- BT-DASH-DESIGN-003: Forecasting/ML hooks are future-facing derived analytics and must never modify authoritative movement/balance records.

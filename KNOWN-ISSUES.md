@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.20.0.6.1**
+Current release: **v0.4.0-alpha.20.0.7.2.1**
 
 This file contains current defects/limitations that affect testing or production readiness. Completed history is in `docs/CHANGELOG.md`; future features are in `docs/Roadmap.md`; engineering cleanup is in `TECH-DEBT.md`.
 
@@ -9,7 +9,7 @@ This file contains current defects/limitations that affect testing or production
 ### Reports catalogue is incomplete
 **Area:** Reports
 
-Only Market Floor and Customer Statement are implemented. Outstanding Containers, Daily Movements, Movement History, Monthly Summary and the Daily Print Pack remain to be built.
+Market Floor, Customer Statement and Outstanding Containers are implemented. Daily/Weekly Movements, Movement History, Monthly Summary and the Daily Print Pack remain to be built.
 
 ### Dashboard is still the first-pass operational dashboard
 **Area:** Dashboard

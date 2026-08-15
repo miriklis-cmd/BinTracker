@@ -114,3 +114,13 @@ The report launcher architecture is manually verified because single-instance Wi
 
 
 Report-window UI acceptance includes a laptop-sized display and a larger desktop/27-inch monitor resolution. Verify filters/actions remain visible and the dataset expands with available client space.
+
+
+## Compile-time dependency wiring
+
+When a WinForms form/service constructor gains a required dependency, audit **all construction sites** in the solution. A build failure caused by a stale constructor call is a regression in dependency wiring and should be fixed before any runtime smoke test.
+
+
+## Report action layout
+
+Detailed report windows use a two-row control layout when necessary: filters on the first row and report actions on a dedicated second row. At supported DPI/resolutions, button labels must remain fully visible; wrapping may move whole controls but must never hide part of the action row.
