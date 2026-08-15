@@ -280,23 +280,42 @@ public sealed class OutstandingContainersReportForm : Form
             Math.Max(0, (working.Height - Height) / 2);
     }
 
-    private void ResizeCustomerCodeColumn()
+    private void ResizeContentColumns()
     {
-        var codeColumn = grid.Columns
-            .Cast<DataGridViewColumn>()
-            .FirstOrDefault(column =>
-                string.Equals(column.Name, "Code", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(column.HeaderText, "Code", StringComparison.OrdinalIgnoreCase));
+        ResizeColumnToContent(
+            "Code",
+            minimumWidth: 130,
+            maximumWidth: 300);
 
-        if (codeColumn is null)
+        ResizeColumnToContent(
+            "Type",
+            minimumWidth: 130,
+            maximumWidth: 220);
+    }
+
+    private void ResizeColumnToContent(
+        string headerText,
+        int minimumWidth,
+        int maximumWidth)
+    {
+        var column = grid.Columns
+            .Cast<DataGridViewColumn>()
+            .FirstOrDefault(x =>
+                string.Equals(
+                    x.HeaderText,
+                    headerText,
+                    StringComparison.OrdinalIgnoreCase));
+
+        if (column is null)
         {
             return;
         }
 
-        var graphics = grid.CreateGraphics();
         var font = grid.DefaultCellStyle.Font ?? Font;
-
-        var longestWidth = TextRenderer.MeasureText("Code", font).Width;
+        var longestWidth =
+            TextRenderer.MeasureText(
+                headerText,
+                grid.ColumnHeadersDefaultCellStyle.Font ?? font).Width;
 
         foreach (DataGridViewRow row in grid.Rows)
         {
@@ -305,22 +324,29 @@ public sealed class OutstandingContainersReportForm : Form
                 continue;
             }
 
-            var text = Convert.ToString(row.Cells[codeColumn.Index].Value) ?? string.Empty;
+            var text =
+                Convert.ToString(
+                    row.Cells[column.Index].Value) ??
+                string.Empty;
+
             longestWidth = Math.Max(
                 longestWidth,
-                TextRenderer.MeasureText(text, font).Width);
+                TextRenderer.MeasureText(
+                    text,
+                    font).Width);
         }
 
-        // Keep the code readable without allowing an unusually long code to
-        // consume the report. Extra padding accounts for cell margins/gridlines.
-        codeColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-        codeColumn.MinimumWidth = 110;
-        codeColumn.Width = Math.Clamp(longestWidth + 28, 110, 260);
+        column.AutoSizeMode =
+            DataGridViewAutoSizeColumnMode.None;
+        column.MinimumWidth = minimumWidth;
+        column.Width = Math.Clamp(
+            longestWidth + 34,
+            minimumWidth,
+            maximumWidth);
     }
 
     private void ConfigureGrid()
     {
-        grid.DataBindingComplete += (_, _) => ResizeCustomerCodeColumn();
         grid.ColumnHeadersHeightSizeMode =
             DataGridViewColumnHeadersHeightSizeMode.AutoSize;
         grid.AutoSizeRowsMode =
@@ -332,7 +358,7 @@ public sealed class OutstandingContainersReportForm : Form
             "Customer",
             260,
             DataGridViewAutoSizeColumnMode.Fill));
-        grid.Columns.Add(Column("Type", 105));
+        grid.Columns.Add(Column("Type", 130));
         grid.Columns.Add(Column("Container", 150));
         grid.Columns.Add(Column("Position", 120));
         grid.Columns.Add(Column("Last movement", 130));
@@ -402,6 +428,8 @@ public sealed class OutstandingContainersReportForm : Form
                     row.LastMovementDate?.ToString("dd/MM/yyyy") ?? "—",
                     row.IsActive ? "Active" : "Inactive");
             }
+
+            ResizeContentColumns();
 
             var totals = result.ContainerTotals
                 .Select(x =>

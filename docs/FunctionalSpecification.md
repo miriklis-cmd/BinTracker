@@ -161,3 +161,5 @@
 - BT-REPORT-UI-006: Report filter/action controls must remain fully visible; the result dataset consumes remaining window space and resizes with the window/monitor.
 
 - BT-REPORT-UI-007: Report customer-code columns dynamically size to the longest visible customer code, with sensible minimum and maximum widths so codes remain readable without crowding other report data.
+
+- BT-REPORT-UI-008: Outstanding report Code and Type columns resize from the currently visible result set after each report run, using sensible minimum/maximum widths.

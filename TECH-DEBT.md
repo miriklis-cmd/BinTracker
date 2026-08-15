@@ -39,6 +39,8 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Reports
 
+- Report grids populated with `Rows.Add(...)` must trigger any content-based column sizing explicitly after population; `DataBindingComplete` does not run for manually added rows.
+
 - Dedicated report windows must be responsive to monitor working area rather than fixed desktop dimensions. Filters/actions keep their required height; result grids consume the remaining client area.
 
 - Reports page is a launcher, not a scrolling host for every report. Keep Market Floor inline; detailed/filter-heavy reports belong in dedicated windows. MainForm owns one live instance per report window to prevent duplicates.

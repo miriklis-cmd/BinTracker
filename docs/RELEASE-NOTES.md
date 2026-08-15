@@ -1,23 +1,23 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.20.0.5
+## v0.4.0-alpha.20.0.6
 
-### Responsive report windows
+### Outstanding column sizing fix
 
-Outstanding Containers no longer opens at a fixed 1320×760 size.
+The previous dynamic Customer Code sizing was wired to `DataBindingComplete`, but Outstanding Containers manually adds grid rows, so that event never fired.
 
-- Initial window size is calculated from the active monitor working area.
-- The window uses approximately 90% of available width and 88% of available height, within sensible min/max bounds.
-- Laptop displays remain compact.
-- Larger desktop monitors provide substantially more result-grid space.
-- Filter/action controls reserve enough vertical space to prevent button clipping.
-- The result grid fills the remaining client area and resizes with the report window.
-- Grid scrollbars remain available when data exceeds the visible area.
+Fixed:
+
+- Code width is recalculated immediately after each report result is populated.
+- Code uses a wider 130 px minimum and up to 300 px based on the longest visible customer code.
+- Type is now also content-aware, with a 130–220 px range.
+- Filtering/rerunning recalculates both widths from the current visible result set.
+- Customer remains the flexible fill column, so spare monitor width is still used efficiently.
 
 ### Documentation audit
 
-Roadmap, Technical Debt, Test Checklist, Functional Specification, Testing, README and versioning were reconciled.
+Roadmap/current docs, Technical Debt, Test Checklist, Functional Specification, README and versioning were reconciled.
 
 ### Test requirement
 
-**Full smoke test** because report-window layout changed.
+**Targeted smoke test** — verify long Code values and Type labels are fully readable after running/filtering Outstanding Containers.

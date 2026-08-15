@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.20.0.5.1**
+Current baseline: **v0.4.0-alpha.20.0.6.1**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.20.0.5.1.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.20.0.6.1.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -177,3 +177,7 @@ Historical alpha checklists have been removed from this file. Defect history rem
 
 - [ ] Outstanding Containers customer Code column expands to fit the longest visible customer code, subject to its maximum width.
 - [ ] Code column remains sensible with short codes and does not consume excessive width with an unusually long code.
+
+- [ ] Outstanding Containers Code column shows long customer codes such as BEST OCIANA / CAMBERWELL without truncation where available width permits.
+- [ ] Outstanding Containers Type column expands enough to show Account and Cash / COD clearly.
+- [ ] Rerunning/filtering the report recalculates Code/Type widths from currently visible rows.

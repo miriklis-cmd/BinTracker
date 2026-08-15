@@ -558,3 +558,9 @@
 ## v0.4.0-alpha.20.0.5
 - Outstanding Containers now dynamically sizes the Customer Code column to the longest visible code.
 - Added sensible 110 px minimum and 260 px maximum widths so spare report space is used without allowing pathological values to dominate the grid.
+
+## v0.4.0-alpha.20.0.6
+- Fixed ineffective Customer Code dynamic sizing caused by relying on DataBindingComplete with manually added DataGridView rows.
+- Code and Type columns now resize immediately after each report population.
+- Code range: 130–300 px; Type range: 130–220 px.
+- Reconciled reporting UI documentation and regression checklist.
