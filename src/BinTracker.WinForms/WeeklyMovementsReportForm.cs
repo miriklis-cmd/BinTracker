@@ -49,6 +49,7 @@ public sealed class WeeklyMovementsReportForm : Form
     private readonly DataGridView detailGrid = Grid();
     private readonly DataGridView summaryGrid = Grid();
     private WeeklyMovementsReportResult? current;
+    private bool autoRefreshReady;
 
     public WeeklyMovementsReportForm(
         IWeeklyMovementsReportService reports,
@@ -67,6 +68,41 @@ public sealed class WeeklyMovementsReportForm : Form
         BackColor = Color.FromArgb(245, 247, 250);
 
         weekPicker.MaxDate = DateTime.Today;
+
+        weekPicker.ValueChanged += async (_, _) =>
+        {
+            if (autoRefreshReady)
+                await LoadReportAsync();
+        };
+
+        customerSearch.KeyDown += async (_, e) =>
+        {
+            if (e.KeyCode != Keys.Enter)
+                return;
+
+            e.SuppressKeyPress = true;
+
+            if (autoRefreshReady)
+                await LoadReportAsync();
+        };
+
+        containerFilter.SelectedIndexChanged += async (_, _) =>
+        {
+            if (autoRefreshReady)
+                await LoadReportAsync();
+        };
+
+        sourceFilter.SelectedIndexChanged += async (_, _) =>
+        {
+            if (autoRefreshReady)
+                await LoadReportAsync();
+        };
+
+        includeAdjustments.CheckedChanged += async (_, _) =>
+        {
+            if (autoRefreshReady)
+                await LoadReportAsync();
+        };
 
         Build();
         Load += async (_, _) =>
@@ -154,17 +190,15 @@ public sealed class WeeklyMovementsReportForm : Form
 
         var actions = Flow();
         actions.Padding = new Padding(0, 8, 0, 0);
-        actions.Controls.Add(ActionButton("Run Report", 125, async () => await LoadReportAsync()));
-        actions.Controls.Add(ActionButton("This Week", 110, async () =>
-        {
-            weekPicker.Value = DateTime.Today;
-            await LoadReportAsync();
-        }));
-        actions.Controls.Add(ActionButton("Last Week", 110, async () =>
-        {
-            weekPicker.Value = DateTime.Today.AddDays(-7);
-            await LoadReportAsync();
-        }));
+        actions.Controls.Add(ActionButton(
+            "This Week",
+            110,
+            async () => await SetDateAndRefreshAsync(DateTime.Today)));
+        actions.Controls.Add(ActionButton(
+            "Last Week",
+            110,
+            async () => await SetDateAndRefreshAsync(
+                DateTime.Today.AddDays(-7))));
         actions.Controls.Add(ActionButton("Generate PDF", 140, async () => await GeneratePdfAsync(false)));
         actions.Controls.Add(ActionButton("Generate && Open", 175, async () => await GeneratePdfAsync(true)));
         var csv = new Button { Text = "Export CSV", Size = new Size(135, 40), Margin = new Padding(8,0,0,0) };
@@ -246,6 +280,15 @@ public sealed class WeeklyMovementsReportForm : Form
         sourceFilter.Items.Add(new Choice<MovementSource?>(MovementSource.ExcelImport,"Excel Import"));
         sourceFilter.SelectedIndex=0;
 
+        autoRefreshReady = true;
+        await LoadReportAsync();
+    }
+
+    private async Task SetDateAndRefreshAsync(DateTime date)
+    {
+        autoRefreshReady = false;
+        weekPicker.Value = date;
+        autoRefreshReady = true;
         await LoadReportAsync();
     }
 

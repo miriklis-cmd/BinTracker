@@ -13,6 +13,7 @@ public sealed class MainForm : Form
     private OutstandingContainersReportForm? outstandingReportForm;
     private DailyMovementsReportForm? dailyMovementsReportForm;
     private WeeklyMovementsReportForm? weeklyMovementsReportForm;
+    private MovementHistoryReportForm? movementHistoryReportForm;
     private bool bypassCustomerClosePrompt;
     private readonly UserSession session;
     private readonly IUserService users;
@@ -29,6 +30,8 @@ public sealed class MainForm : Form
     private readonly IDailyMovementsReportPdfService dailyMovementReportPdfs;
     private readonly IWeeklyMovementsReportService weeklyMovementReports;
     private readonly IWeeklyMovementsReportPdfService weeklyMovementReportPdfs;
+    private readonly IMovementHistoryReportService movementHistoryReports;
+    private readonly IMovementHistoryReportPdfService movementHistoryReportPdfs;
     private readonly IContainerTypeService containerTypes;
     private readonly IBusinessInformationService businessInformation;
     private readonly IExcelImportService excelImport;
@@ -60,6 +63,8 @@ public sealed class MainForm : Form
         IDailyMovementsReportPdfService dailyMovementReportPdfs,
         IWeeklyMovementsReportService weeklyMovementReports,
         IWeeklyMovementsReportPdfService weeklyMovementReportPdfs,
+        IMovementHistoryReportService movementHistoryReports,
+        IMovementHistoryReportPdfService movementHistoryReportPdfs,
         IContainerTypeService containerTypes,
         IBusinessInformationService businessInformation,
         IExcelImportService excelImport,
@@ -83,6 +88,8 @@ public sealed class MainForm : Form
         this.dailyMovementReportPdfs = dailyMovementReportPdfs;
         this.weeklyMovementReports = weeklyMovementReports;
         this.weeklyMovementReportPdfs = weeklyMovementReportPdfs;
+        this.movementHistoryReports = movementHistoryReports;
+        this.movementHistoryReportPdfs = movementHistoryReportPdfs;
         this.containerTypes = containerTypes;
         this.businessInformation = businessInformation;
         this.excelImport = excelImport;
@@ -434,7 +441,8 @@ public sealed class MainForm : Form
                 marketFloorReports,
                 OpenOutstandingReport,
                 OpenDailyMovementsReport,
-                OpenWeeklyMovementsReport));
+                OpenWeeklyMovementsReport,
+                OpenMovementHistoryReport));
     }
 
     private void OpenOutstandingReport()
@@ -520,6 +528,37 @@ public sealed class MainForm : Form
         };
 
         weeklyMovementsReportForm.Show(this);
+    }
+
+    private void OpenMovementHistoryReport()
+    {
+        if (movementHistoryReportForm is not null &&
+            !movementHistoryReportForm.IsDisposed)
+        {
+            if (movementHistoryReportForm.WindowState ==
+                FormWindowState.Minimized)
+            {
+                movementHistoryReportForm.WindowState =
+                    FormWindowState.Normal;
+            }
+
+            movementHistoryReportForm.BringToFront();
+            movementHistoryReportForm.Activate();
+            return;
+        }
+
+        movementHistoryReportForm =
+            new MovementHistoryReportForm(
+                movementHistoryReports,
+                movementHistoryReportPdfs,
+                containerTypes);
+
+        movementHistoryReportForm.FormClosed += (_, _) =>
+        {
+            movementHistoryReportForm = null;
+        };
+
+        movementHistoryReportForm.Show(this);
     }
 
     private void ShowSettings()

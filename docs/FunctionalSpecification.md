@@ -211,22 +211,22 @@
 
 - BT-REPORT-WEEKLY-001: A selected week is Monday through Sunday.
 - BT-REPORT-WEEKLY-002: Provide This Week and Last Week shortcuts.
-- BT-REPORT-WEEKLY-003: Show movement detail and a customer/container summary.
+- BT-REPORT-WEEKLY-003: Show **Daily Detail** and **Weekly Overview** views.
 - BT-REPORT-WEEKLY-004: Summary shows OUT, IN and net movement (OUT minus IN).
 - BT-REPORT-WEEKLY-005: Filter by customer, container and normal entry source.
 - BT-REPORT-WEEKLY-006: Opening adjustments are excluded by default and included only explicitly.
-- BT-REPORT-WEEKLY-007: CSV preserves the current detail-grid order and optionally includes Notes.
+- BT-REPORT-WEEKLY-007: CSV exports the selected view, preserves its current grid order, and optionally includes Notes for Daily Detail.
 - BT-REPORT-WEEKLY-008: The date selector resolves explicitly to and displays its Monday-Sunday week; the UI labels the input Select date rather than the ambiguous Week containing.
 - BT-REPORT-WEEKLY-009: Weekly Movements supports Generate PDF and Generate & Open.
-- BT-REPORT-WEEKLY-010: Weekly PDF uses the currently selected Movement Detail or Customer / Container Summary tab and preserves that grid's current sort order.
-- BT-REPORT-WEEKLY-011: Weekly PDF respects all active report filters and opening-adjustment inclusion, with Notes independently optional for PDF and CSV.
+- BT-REPORT-WEEKLY-010: Weekly PDF uses the currently selected Daily Detail or Weekly Overview tab and preserves that grid's current sort order.
+- BT-REPORT-WEEKLY-011: Weekly PDF respects all active report filters and opening-adjustment inclusion; the shared **Include notes in exports** option controls Notes for Daily Detail PDF/CSV.
 - BT-REPORT-WEEKLY-012: Weekly report Date and customer-code columns are wide enough for visible values, with customer-code width adapting to the result set.
 
 
 - BT-REPORT-WEEKLY-013: Weekly Movements exposes **Daily Detail** and **Weekly Overview** as views within the same report.
 - BT-REPORT-WEEKLY-014: Weekly Overview aggregates by Customer + Container Type and displays total OUT, total IN and Net for the week.
 - BT-REPORT-WEEKLY-015: Weekly PDF and CSV export the currently selected view and preserve its current grid ordering.
-- BT-REPORT-WEEKLY-016: Notes options are independent for PDF and CSV and are applicable to Daily Detail only.
+- BT-REPORT-WEEKLY-016: The shared Notes export option applies to Daily Detail only; Weekly Overview has no single movement-note field.
 - BT-REPORT-WEEKLY-017: Weekly Generate & Open must render a literal ampersand in WinForms.
 
 
@@ -239,3 +239,26 @@
 
 - BT-REPORT-DAILY-015: Daily Movements date selection cannot go later than today.
 - BT-REPORT-DAILY-016: Daily Movements service defensively clamps future requested dates to today.
+
+
+## Business Branding
+
+- BT-BRAND-001: Existing Business Information provides Business Name, Trading Name and Default Report Header as the current textual report identity.
+- BT-BRAND-002: Pre-v1 branding expansion adds a configurable business logo and one authoritative branding configuration for reports, statements, email and other generated output.
+- BT-BRAND-003: Logo storage/file rules, dimensions, fallbacks, placement and per-output enablement are agreed before implementation.
+- BT-BRAND-004: Branding must not create separate contradictory identity/header systems for PDF and email output.
+
+
+## Movement History Report
+
+- BT-REPORT-HISTORY-001: Query actual movement rows for an inclusive selected date range.
+- BT-REPORT-HISTORY-002: Start/end dates cannot go later than today; service logic defensively clamps future requests.
+- BT-REPORT-HISTORY-003: Reversed ranges are normalized to chronological order.
+- BT-REPORT-HISTORY-004: Filter by customer, configured Container Type, IN/OUT direction and normal entry source.
+- BT-REPORT-HISTORY-005: Opening Adjustment is excluded by default and included only by explicit option.
+- BT-REPORT-HISTORY-006: Container choices come from authoritative configured Container Types, including inactive types for historical filtering.
+- BT-REPORT-HISTORY-007: Provide Last 7 Days, Last 30 Days and This Month shortcuts.
+- BT-REPORT-HISTORY-008: Date and Quantity sort by typed values, not formatted strings.
+- BT-REPORT-HISTORY-009: PDF and CSV preserve current visible grid order.
+- BT-REPORT-HISTORY-010: One Include notes in exports option controls Notes in both PDF and CSV.
+- BT-REPORT-HISTORY-011: PDF generation is audited as `MOVEMENT_HISTORY_REPORT_GENERATED`.

@@ -180,7 +180,7 @@ Important security, master-data and movement changes create audit events.
 - **Weekly Overview** aggregates the selected week's activity by Customer + Container Type.
 - Weekly Overview shows total OUT, total IN and Net (OUT minus IN). Example: if CLAMMS takes 45 Yellow Bins and returns 45 Yellow Bins in the week, the overview shows `45 OUT`, `45 IN`, `Net 0`.
 - PDF and CSV export the currently selected view and preserve that view's current grid order.
-- Notes options apply to Daily Detail only because Weekly Overview contains aggregated rows rather than individual movement notes.
+- **Include notes in exports** applies to Daily Detail PDF/CSV only because Weekly Overview contains aggregated rows rather than individual movement notes.
 
 
 ## Weekly report date limits
@@ -203,3 +203,29 @@ Important security, master-data and movement changes create audit events.
 - Daily Movements is actual-history reporting, not forecasting.
 - The selected date cannot be later than today.
 - The service defensively clamps a future requested date to today so future-dated movement rows cannot leak into Daily Movements.
+
+
+## Business branding
+
+- Current generated-report identity is textual: Default Report Header, otherwise Trading Name, otherwise Business Name, otherwise `BinTracker`.
+- Logo support is not implemented yet.
+- Future logo/email/report branding must use one authoritative Business Information branding configuration rather than format-specific identity settings.
+
+
+## Movement History reporting
+
+- Movement History is actual historical movement reporting, not forecasting.
+- Date ranges are inclusive and cannot extend past today.
+- Opening adjustments are excluded by default because they are not physical activity.
+- Historical Container Type filtering includes inactive configured types because old movement rows remain legitimate history.
+- OUT/IN/net are movement totals for the selected range, not outstanding balances.
+- PDF/CSV use the current displayed row order and one shared Notes export option.
+
+
+## Interactive report refresh behaviour
+
+- Interactive report windows do not require a separate Run Report button.
+- Date pickers, dropdown filters and result-affecting checkboxes refresh the report when changed.
+- Free-text Customer search does **not** query on every keystroke; pressing Enter applies the customer filter.
+- Shortcut buttons such as Today, Yesterday, This Week, Last Week, Last 7 Days, Last 30 Days and This Month apply their date selection and refresh immediately.
+- This interaction standard applies to Outstanding Containers, Daily Movements, Weekly Movements, Movement History and future interactive report windows unless a report has a specific reason to behave differently.

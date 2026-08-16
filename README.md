@@ -1,4 +1,4 @@
-# BinTracker v0.4.0-alpha.21.4.1.1
+# BinTracker v0.4.0-alpha.22.1
 
 BinTracker is a .NET 8 Windows desktop application for tracking reusable container movements, customer/container balances, operational reporting and audited business activity.
 
@@ -14,7 +14,9 @@ BinTracker is a .NET 8 Windows desktop application for tracking reusable contain
 - PDF Customer Statements.
 - Two-page Market Floor report.
 - As-of-Date Outstanding Containers query with PDF/CSV export in a dedicated report window.
-- Daily Movements report with Today/Yesterday shortcuts, filters and PDF/CSV export.
+- Daily Movements report with Today/Yesterday shortcuts, future-date guard, filters and PDF/CSV export.
+- Weekly Movements report with Monday-Sunday selection, Daily Detail / Weekly Overview, filters, PDF/CSV export and current-week activity-through-today semantics.
+- Movement History report with inclusive date-range search, filters, future-date guard and PDF/CSV export.
 - Compact Reports launcher architecture: Market Floor inline, detailed reports in dedicated single-instance windows.
 - Configurable Business Information/report identity.
 - Transactional legacy Excel Import Wizard with Analyse, Map, Review, balance reconciliation and Step 4 execution.
@@ -30,13 +32,12 @@ See `KNOWN-ISSUES.md` and `docs/Roadmap.md`.
 
 Most important remaining items include:
 
-- Historical/as-of-date, Daily, Weekly and Monthly reporting plus Statement view/print;
-- Batch Entry acceptance cleanup (Esc, post-entry reset/focus, crash/power-loss draft decision);
-
-- remaining operational reports;
+- Remaining reporting: Monthly Summary, Customer Statement open/view/print workflow and Daily Print Pack;
+- Batch Entry acceptance cleanup (Esc, post-entry reset/focus, crash/power-loss draft recovery decision);
 - dashboard operational pass;
+- Business Information branding expansion: logo + shared report/email output identity;
 - real Email/SMS reminder delivery;
-- movement correction/reversal;
+- controlled movement correction/reversal;
 - production backup/restore;
 - installer/deployment/security hardening.
 
@@ -98,3 +99,5 @@ A valid local build requires successful restore, build and automated tests.
 ## Versioning
 
 The application version is defined in `Directory.Build.props`.
+
+- Interactive report windows use live filter refresh; Customer free-text applies on Enter and no Run Report button is required.

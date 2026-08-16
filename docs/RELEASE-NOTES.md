@@ -1,23 +1,25 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.21.4.1
+## v0.4.0-alpha.22.1
 
-### Build/test fix
+### Live interactive report filtering
 
-Fixed the integration-test compile failure introduced in alpha.21.4.
+Removed the separate **Run Report** action from interactive report windows.
 
-Cause:
-- `WeeklyMovementsReportSqliteTests` directly called `WeeklyMovementsReportService.StartOfWeek(...)`;
-- the concrete service is intentionally `internal`, so the test project could not access it.
+Outstanding Containers, Daily Movements, Weekly Movements and Movement History now use the same interaction standard:
 
-Fix:
-- the test now independently calculates the expected Monday week start and verifies the public report result;
-- application/report behaviour is unchanged.
+- date changes refresh automatically;
+- dropdown filters refresh automatically;
+- result-affecting checkboxes refresh automatically;
+- Customer text waits for Enter rather than querying on every keystroke;
+- date/range shortcut buttons continue to refresh immediately.
 
-### Full audit
+Movement History's **This Month** action was widened so its full label is visible.
 
-Testing, Technical Debt, Test Checklist, version references, changelog and release notes were reconciled.
+### Mandatory full audit
+
+All Markdown files were enumerated/reviewed and current-state documentation, Roadmap Coverage, version references, specifications, business rules, testing, Known Issues, Tech Debt, changelog, release notes and Documentation Audit were reconciled.
 
 ### Test requirement
 
-**Automated build/test gate only.** No runtime UI or business behaviour changed in this patch.
+**Full smoke test** because multiple report UIs and interaction behaviour changed.

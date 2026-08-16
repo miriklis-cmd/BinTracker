@@ -64,6 +64,7 @@ public sealed class OutstandingContainersReportForm : Form
     };
 
     private OutstandingReportResult? currentResult;
+    private bool autoRefreshReady;
 
     public OutstandingContainersReportForm(
         IOutstandingReportService outstanding,
@@ -78,6 +79,43 @@ public sealed class OutstandingContainersReportForm : Form
         MinimumSize = new Size(1000, 650);
         Font = new Font("Segoe UI", 10F);
         BackColor = Color.FromArgb(245, 247, 250);
+
+        reportDate.MaxDate = DateTime.Today;
+
+        reportDate.ValueChanged += async (_, _) =>
+        {
+            if (autoRefreshReady)
+                await LoadReportAsync();
+        };
+
+        customerSearch.KeyDown += async (_, e) =>
+        {
+            if (e.KeyCode != Keys.Enter)
+                return;
+
+            e.SuppressKeyPress = true;
+
+            if (autoRefreshReady)
+                await LoadReportAsync();
+        };
+
+        containerFilter.SelectedIndexChanged += async (_, _) =>
+        {
+            if (autoRefreshReady)
+                await LoadReportAsync();
+        };
+
+        includeCredits.CheckedChanged += async (_, _) =>
+        {
+            if (autoRefreshReady)
+                await LoadReportAsync();
+        };
+
+        includeInactive.CheckedChanged += async (_, _) =>
+        {
+            if (autoRefreshReady)
+                await LoadReportAsync();
+        };
 
         Build();
         Load += async (_, _) =>
@@ -197,15 +235,6 @@ public sealed class OutstandingContainersReportForm : Form
             Margin = Padding.Empty
         };
 
-        var run = new Button
-        {
-            Text = "Run Report",
-            AutoSize = false,
-            Size = new Size(125, 40),
-            Margin = Padding.Empty
-        };
-        run.Click += async (_, _) => await LoadReportAsync();
-
         var today = new Button
         {
             Text = "Today",
@@ -215,7 +244,9 @@ public sealed class OutstandingContainersReportForm : Form
         };
         today.Click += async (_, _) =>
         {
+            autoRefreshReady = false;
             reportDate.Value = DateTime.Today;
+            autoRefreshReady = true;
             await LoadReportAsync();
         };
 
@@ -246,7 +277,6 @@ public sealed class OutstandingContainersReportForm : Form
         };
         export.Click += (_, _) => ExportCsv();
 
-        actions.Controls.Add(run);
         actions.Controls.Add(today);
         actions.Controls.Add(pdf);
         actions.Controls.Add(pdfOpen);
@@ -441,6 +471,7 @@ public sealed class OutstandingContainersReportForm : Form
             containerFilter.SelectedIndex = 0;
         }
 
+        autoRefreshReady = true;
         await LoadReportAsync();
     }
 

@@ -678,3 +678,43 @@
 - Fixed Weekly Movements integration-test compile failure caused by referencing an internal concrete service.
 - Test now independently calculates expected Monday week start and verifies the public result.
 - Reconciled test/audit/version documentation.
+
+## v0.4.0-alpha.21.5
+- Completed historical roadmap reconciliation.
+- Promoted Movement Correction, Branding and Email/SMS Communications into the explicit pre-v1 execution sequence.
+- Restored/confirmed Batch Entry recovery/polish, customer analytics, statement workflow, remaining reports, scheduled backups, audit coverage and release-discipline requirements.
+- Added RoadmapCoverageMatrix.md.
+- Retained post-v1 WinUI 3, customer portal, barcode scanning and multiple depots.
+
+
+## v0.4.0-alpha.21.5.1
+- Audited every Markdown file against current implementation and roadmap state.
+- Fixed stale current-state documentation for Weekly Movements, Notes export semantics, version references and importer status.
+- Reconciled roadmap ordering/duplication and clarified existing Default Report Header vs planned logo/shared branding.
+- Added stronger documentation/version consistency rules while preserving historical changelog truth.
+
+
+## v0.4.0-alpha.21.5.2
+- Made the full code/state + all-Markdown audit a mandatory gate for every packaged build.
+- Added explicit Roadmap Coverage, version, spec, Known Issues, Tech Debt, test and release-document reconciliation requirements.
+- Added a permanent per-build checklist and rolling Documentation Audit requirement.
+
+
+## v0.4.0-alpha.22
+- Added Movement History date-range report.
+- Added customer/container/direction/source filters and optional Opening Adjustment inclusion.
+- Added authoritative active/inactive Container Type filtering.
+- Added future-date guards and range normalization.
+- Added Last 7 Days / Last 30 Days / This Month shortcuts.
+- Added audited PDF and CSV export preserving visible grid order and shared Notes option.
+- Added SQLite integration coverage.
+- Completed mandatory full Markdown/current-state audit and reconciled roadmap coverage.
+
+
+## v0.4.0-alpha.22.1
+- Removed Run Report buttons from interactive report windows.
+- Added automatic refresh for date/dropdown/result-affecting checkbox filters.
+- Added Customer-on-Enter refresh while avoiding per-keystroke database queries.
+- Fixed Movement History This Month button sizing.
+- Established live-filter behaviour as the standard for future interactive report windows.
+- Completed mandatory full documentation/current-state audit.

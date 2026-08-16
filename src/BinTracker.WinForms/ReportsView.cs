@@ -9,6 +9,7 @@ public sealed class ReportsView : UserControl
     private readonly Action openOutstanding;
     private readonly Action openDailyMovements;
     private readonly Action openWeeklyMovements;
+    private readonly Action openMovementHistory;
 
     private readonly DateTimePicker reportDate = new()
     {
@@ -28,12 +29,14 @@ public sealed class ReportsView : UserControl
         IMarketFloorReportService marketFloor,
         Action openOutstanding,
         Action openDailyMovements,
-        Action openWeeklyMovements)
+        Action openWeeklyMovements,
+        Action openMovementHistory)
     {
         this.marketFloor = marketFloor;
         this.openOutstanding = openOutstanding;
         this.openDailyMovements = openDailyMovements;
         this.openWeeklyMovements = openWeeklyMovements;
+        this.openMovementHistory = openMovementHistory;
 
         Dock = DockStyle.Fill;
         BackColor = Color.FromArgb(245, 247, 250);
@@ -210,6 +213,14 @@ public sealed class ReportsView : UserControl
             0,
             2);
 
+        layout.Controls.Add(
+            ReportLauncher(
+                "Movement History",
+                "Search actual movement history across a date range with customer, container, direction and source filters.",
+                openMovementHistory),
+            1,
+            2);
+
         panel.Controls.Add(layout);
         return panel;
     }
@@ -335,7 +346,7 @@ public sealed class ReportsView : UserControl
         layout.Controls.Add(new Label
         {
             Text =
-                "Next: Movement History  •  Monthly Summary  •  Daily Print Pack",
+                "Next: Monthly Summary  •  Customer Statement workflow  •  Daily Print Pack",
             AutoSize = true,
             ForeColor = Color.DimGray
         });

@@ -127,6 +127,10 @@ Exact successful workbook fingerprints are blocked.
 
 A different workbook for the same cutover date still needs the controlled difference/replacement workflow described in `ReimportSafety.md`.
 
+## Core importer status
+
+Analyse, Map, Review, transactional execution, exact-reimport blocking, changed-workbook Replace/Correct, ImportRun provenance/history and correction-difference persistence are implemented.
+
 ## Remaining importer work before v1.0
 
 - Import Run history/details UI;

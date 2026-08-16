@@ -41,6 +41,17 @@ When a Default Report Header is supplied, reports use it. Otherwise Trading Name
 
 All changes are audited.
 
+### Branding roadmap status
+
+`Default Report Header` already provides the configurable/custom textual report header. The planned pre-v1 branding expansion adds:
+
+- business logo configuration;
+- shared logo/header placement rules for reports/statements;
+- reuse of the same authoritative identity in future email/generated output;
+- agreed image storage, sizing, fallback and per-output behaviour.
+
+Logo support is **not implemented** in the current schema/UI.
+
 
 ## Unsaved changes
 

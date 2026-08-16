@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.21.4.1.1**
+Current baseline: **v0.4.0-alpha.22.1**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.21.4.1.1.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.22.1.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -276,12 +276,12 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [ ] OUT, IN and Net values are numerically correct.
 - [ ] Quantity/summary numeric sorting is numeric rather than textual.
 - [ ] CSV preserves current detail order.
-- [ ] Include notes in CSV correctly includes/omits Notes.
+- [ ] **Include notes in exports** correctly includes/omits Notes in Daily Detail CSV and PDF.
 - [ ] Select date clearly displays the resolved Monday-Sunday Week range.
 - [ ] Generate PDF and Generate & Open work from both report tabs.
 - [ ] Weekly PDF preserves the selected tab and current grid sort order.
 - [ ] Weekly PDF respects active customer/container/source/opening-adjustment filters.
-- [ ] Include notes in PDF and Include notes in CSV operate independently.
+- [ ] **Include notes in exports** is the single Notes control for both PDF and CSV.
 - [ ] Detail Date values are not truncated; detail/summary Code widths adapt to visible codes.
 - [ ] Weekly PDF generation appears in the audit trail with week, view, totals and output filename.
 
@@ -289,7 +289,7 @@ Historical alpha checklists have been removed from this file. Defect history rem
 ## alpha.21.2 Weekly overview / export polish
 
 - [ ] Weekly button visibly reads **Generate & Open** including the ampersand.
-- [ ] Notes controls remain separate: Include notes in PDF and Include notes in CSV.
+- [ ] Weekly shows one **Include notes in exports** control; it is disabled on Weekly Overview.
 - [ ] Daily Detail shows individual movement rows.
 - [ ] Weekly Overview shows one row per customer/container with OUT, IN and Net.
 - [ ] Known equal activity example displays equal OUT/IN and Net 0.
@@ -325,3 +325,59 @@ Historical alpha checklists have been removed from this file. Defect history rem
 
 - [ ] Integration tests compile without referencing internal `WeeklyMovementsReportService`.
 - [ ] Full automated unit/integration suite passes.
+
+
+## alpha.21.5.1 documentation consistency audit
+
+- [x] Current-version references agree with `Directory.Build.props`.
+- [x] Weekly Movements is documented as implemented in current-state docs.
+- [x] Weekly Notes semantics use one Include notes in exports control.
+- [x] Branding docs distinguish existing Default Report Header from future logo/shared branding.
+- [x] Roadmap has one authoritative execution order and no duplicate production-backup section.
+- [x] Changelog remains historical and is not rewritten to erase superseded behaviour.
+
+
+## Mandatory checklist for every packaged build
+
+- [ ] Automated build/test gate passes, or any failure is explicitly documented before another candidate is issued.
+- [ ] Changed implementation and affected call sites/services/UI/persistence/tests audited.
+- [ ] Every Markdown file enumerated and reviewed.
+- [ ] Roadmap reconciled with Roadmap Coverage Matrix.
+- [ ] Current-version references match `Directory.Build.props`.
+- [ ] Known Issues reflects current limitations only.
+- [ ] Tech Debt reflects unresolved debt only.
+- [ ] Functional Specification and Business Rules match current behaviour.
+- [ ] Testing/Test Checklist updated for the candidate.
+- [ ] Changelog updated.
+- [ ] Current Release Notes replaced for the candidate.
+- [ ] DocumentationAudit updated.
+- [ ] Operator testing requirement explicitly classified as automated-only, targeted smoke, or full smoke.
+
+
+## alpha.22 Movement History
+
+- [ ] Movement History opens as a single-instance responsive report window.
+- [ ] Start/end date pickers cannot select later than today.
+- [ ] Last 7 Days, Last 30 Days and This Month select correct inclusive ranges.
+- [ ] Customer/container/direction/source filters work.
+- [ ] Container selector includes configured Blue/Yellow/Bulk/etc. and inactive historical types where applicable.
+- [ ] Opening adjustments are excluded by default and included only explicitly.
+- [ ] Date sorts chronologically and Quantity sorts numerically.
+- [ ] PDF matches current grid sorting/filter result.
+- [ ] CSV matches current grid sorting/filter result.
+- [ ] Include notes in exports consistently affects both PDF and CSV.
+- [ ] MOVEMENT_HISTORY_REPORT_GENERATED audit event is written for PDF generation.
+
+
+## alpha.22.1 live report refresh
+
+- [ ] Outstanding Containers has no Run Report button.
+- [ ] Daily Movements has no Run Report button.
+- [ ] Weekly Movements has no Run Report button.
+- [ ] Movement History has no Run Report button.
+- [ ] Changing date/dropdown/result-affecting checkbox filters automatically refreshes each report.
+- [ ] Customer typing does not refresh on every character.
+- [ ] Pressing Enter in Customer refreshes each report.
+- [ ] Report shortcut buttons still refresh immediately.
+- [ ] Movement History button reads **This Month** in full.
+- [ ] Existing PDF/CSV exports still reflect the current displayed dataset/order.

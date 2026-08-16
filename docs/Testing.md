@@ -24,8 +24,7 @@ When a real defect is found:
 
 ## Current high-value gaps
 
-- changed-workbook replacement workflow once implemented;
-- more production-scale/custom workbook fixtures without private business data;
+- broader production-scale/custom workbook fixtures without private business data;
 - Release-build acceptance;
 - stress coverage for high-density Market Floor days.
 
@@ -77,6 +76,7 @@ The release response should state `TEST REQUIRED: None / Targeted / Full` and li
 Every meaningful implementation pass must reconcile the current implementation against:
 
 - `docs/Roadmap.md`;
+- `docs/RoadmapCoverageMatrix.md`;
 - `KNOWN-ISSUES.md`;
 - `TECH-DEBT.md`;
 - `TEST-CHECKLIST.md`;
@@ -178,7 +178,7 @@ Manual acceptance verifies This Week/Last Week, responsive layout, Detail/Summar
 - Weekly Overview aggregates Customer + Container Type across the full Monday-Sunday week.
 - Example validation: 45 OUT and 45 IN for the same customer/container appears as `OUT 45 / IN 45 / Net 0`.
 - PDF and CSV export whichever tab is selected and preserve the current sort of that tab.
-- Notes PDF/CSV options remain independent and are disabled on Weekly Overview.
+- One **Include notes in exports** option controls both PDF and CSV for Daily Detail and is disabled on Weekly Overview.
 - `Generate & Open` visibly includes the literal ampersand.
 
 
@@ -203,3 +203,47 @@ Manual acceptance verifies This Week/Last Week, responsive layout, Detail/Summar
 ## Test visibility boundary
 
 Integration tests should verify public behaviour through registered interfaces and returned results. They should not depend on internal concrete service classes merely to reuse helper methods; duplicate a tiny expected-value calculation in the test when that better preserves the implementation boundary.
+
+
+## Build audit acceptance gate
+
+Before packaging every candidate:
+
+- enumerate all Markdown files;
+- reconcile current-state docs against actual implementation;
+- compare Roadmap against Roadmap Coverage Matrix;
+- reconcile version references with `Directory.Build.props`;
+- confirm Known Issues contains real current limitations only;
+- confirm Tech Debt contains unresolved engineering debt rather than already-fixed defects;
+- confirm Functional Specification / Business Rules describe current behaviour;
+- confirm Test Checklist includes the new candidate's acceptance requirement;
+- preserve superseded historical behaviour only in CHANGELOG;
+- record the audit in `docs/DocumentationAudit.md`.
+
+Failure of this audit blocks packaging in the same way as a failed automated test.
+
+
+## Movement History coverage
+
+`MovementHistoryReportSqliteTests` verifies:
+
+- inclusive date-range boundaries;
+- default exclusion of Opening Adjustments;
+- OUT/IN/net totals;
+- customer/container/direction/source filtering;
+- future-date clamping;
+- reversed-range normalization.
+
+Manual acceptance verifies responsive layout, Last 7 / Last 30 / This Month shortcuts, authoritative Container Type choices, typed Date/Quantity sorting and PDF/CSV visible-order consistency.
+
+
+## Interactive report refresh acceptance
+
+For Outstanding Containers, Daily Movements, Weekly Movements and Movement History:
+
+- Run Report button is absent.
+- Changing date/dropdown/result-affecting checkbox filters refreshes results.
+- Typing a Customer does not query on each character.
+- Pressing Enter in Customer applies the search.
+- Shortcut buttons still refresh immediately.
+- Export/PDF continues to use the resulting on-screen dataset/order.

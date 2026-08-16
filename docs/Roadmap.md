@@ -1,14 +1,8 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.21.4.1.1**
+Current planning baseline: **v0.4.0-alpha.22.1**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
-
-## Current work order
-
-With import integrity/provenance and unsaved Customer/Container-Type protection now in place, the implementation order is:
-
-1. **Reports** — Outstanding Containers, Daily Movements, Movement History, Monthly Summary and Daily Print Pack.
 
 ### Dashboard milestone design gate
 
@@ -39,17 +33,26 @@ Only implement after a preferred direction is agreed. Dashboard is intentionally
 
 The remaining importer failure-detail message and deferred Review cosmetics can be handled alongside these phases without reopening the completed core import safety work.
 
-## Current execution order
 
-1. Finish **alpha.19.12.3/19.12.4 acceptance** and close remaining importer/customer/container UI defects.
-2. **Reports** — historical/as-of-date, Daily, Weekly, Monthly, Outstanding, Statement view/print and Daily Print Pack.
-3. **Batch Entry acceptance cleanup** — Esc behaviour, post-entry field reset/focus, crash/power-loss draft decision.
-4. **Dashboard** — operational metrics, drill-through, by-container view and useful charts.
-5. **Email/SMS** — Google Workspace email + Texto SMS direction, reminder rules/templates/delivery history.
-6. **Normal movement correction/reversal**.
-7. **Production backup/recovery**, including scheduled automatic backups.
-8. **Security/audit hardening** and audit-coverage matrix.
-9. **PostgreSQL/multi-computer readiness**, installer/update/deployment and production operations.
+## Current execution order — audited 16 August 2026
+
+This order is the authoritative pre-v1 sequence. Milestone numbers after v0.4 remain flexible and follow genuine scope.
+
+1. **Finish v0.4 Reporting** — validate Movement History, then Monthly Summary, Customer Statement open/view/print, Daily Print Pack and remaining report consistency work.
+2. **Batch Entry acceptance cleanup** — verify Esc, post-entry field clearing/focus, and implement/decide crash/power-loss draft recovery before production.
+3. **Movement Correction / Reversal** — controlled, linked, audited correction of saved movements; never silently edit/delete history.
+4. **Business Information & Branding** — logo, custom header/branding text, and one reusable branding source for reports/statements/email and generated output.
+5. **Email, SMS & Customer Communications** — Google Workspace email + Texto SMS direction, manual and automatic reminders, templates, delivery history/retries/audit, statement attachment/link decision.
+6. **Dashboard** — mandatory design discussion before implementation: KPIs, charts, forecasting/ML hooks, drill-through, attention states, responsive/large-monitor behaviour, plus explicit WinForms-v1 vs WinUI-3-v2 comparison for Dashboard, Reports launcher, individual report screens and import workflow.
+7. **Customer operational analytics/polish** — useful sorting by outstanding/credit/last movement, lifetime OUT/IN totals, and statement workflow integration.
+8. **Production Backup / Restore / Recovery** — user backup, validated restore, scheduled automatic backups, retention, pre-upgrade backup and recovery drill.
+9. **Security, audit & reliability hardening** — authorization matrix, audit-coverage matrix, secrets, logging, crash/restart, database integrity, Release build and DPI testing.
+10. **PostgreSQL / multi-computer readiness** — preserve Services + `IDbContextFactory`; audit SQLite assumptions, central-provider migration, concurrency/configuration and central backup strategy.
+11. **Installer / upgrade / deployment** — Windows package, safe upgrades, signing decision and production configuration.
+12. **Full v1 acceptance / regression** — fresh install/database, real workbook import, balances, entries, corrections, reports, communications, branding, dashboard, backup/restore, restart/crash and upgrade testing.
+13. **v1.0 production release** — BinTracker is accepted as the replacement for the daily Excel workflow.
+
+Post-v1 remains separate: **Windows UI v2 / WinUI 3**, customer portal, barcode scanning, multiple depots and other commercial/expansion work.
 
 ## Priority 0 — close data-integrity risks before more features
 
@@ -120,13 +123,13 @@ Still required:
 
 - [x] **Outstanding Containers report** — current/as-of-date on-screen query, customer/container filters, inactive/credit options, CSV export and audited landscape PDF generation are implemented. **Customer → Container grouping** keeps Blue/Yellow/Bulk/etc. adjacent for each customer.
 - [x] **Historical Outstanding / As-of-Date foundation** — ledger-derived end-of-date customer/container positions are implemented and tested; future movements are excluded and containers remain separate.
-- [x] **Weekly Movements report** — first-class Monday-to-Sunday selected-week movement detail plus customer/container OUT, IN and net summary, This Week/Last Week shortcuts, filters and CSV export.
+- [x] **Weekly Movements report** — Monday-to-Sunday Daily Detail + Weekly Overview, This Week/Last Week shortcuts, authoritative Container Type filter, future-date guard/current-week activity-through-today semantics, PDF/Generate & Open and CSV export preserving selected-view sort.
 - [ ] **Customer Statement view/print workflow** — generate, open/view and print the statement directly from the operational workflow, not only save a PDF.
 - [x] **Daily Movements report** — dedicated responsive report window with today/yesterday shortcuts, customer/container/direction/source filters, physical-movement default, optional opening adjustments, typed sorting, audited PDF and CSV preserving the current grid order.
-- [ ] **Movement History report** — date range + customer/container/source filters.
+- [x] **Movement History report** — inclusive date range, customer/container/direction/source filters, opening-adjustment opt-in, future-date guards, quick range shortcuts, typed sorting, audited PDF and CSV preserving current grid order.
 - [ ] **Monthly Summary** — selected-month OUT, IN, net movement and useful customer/container breakdowns, including quick access to **last month**.
 - [ ] **Daily Print Pack** required by the Functional Specification: Outstanding Summary + Movement Detail.
-- [ ] Review whether Daily/Weekly/Monthly query/reporting needs on-screen tables in addition to PDF output.
+- [ ] Define the on-screen interaction pattern for **Monthly Summary** when implemented; Daily and Weekly already have dedicated on-screen grids.
 - [ ] Add CSV/Excel export where operationally useful.
 - [ ] Stress-test Market Floor with a genuinely high Yellow-bin day; adaptive sizing is accepted for now but remains a real-world validation item.
 
@@ -172,9 +175,20 @@ Required dashboard pass:
 - [ ] Preserve original + reversal/correction linkage and audit trail.
 - [ ] Decide roles permitted to reverse/correct.
 
+### 5A. Business Information & Branding
+
+This is a **pre-v1 milestone**, not a post-v1 idea.
+
+- [ ] Business logo in Business Information.
+- [x] Configurable textual **Default Report Header** already exists in Business Information; retain it as the custom textual header foundation.
+- [ ] One authoritative branding model/service for PDFs, statements, email and other generated output.
+- [ ] Design storage, file types, dimensions/aspect ratio, fallbacks, header/footer placement and per-output enable/disable behaviour before implementation.
+- [ ] Decide how business name, trading name, logo and custom header coexist without duplicate-looking output.
+- [ ] Leave room for richer HTML email header/signature treatment without creating a second branding system.
+
 ## Priority 2 — communications
 
-### 6. Email and SMS reminders
+### 6. Email, SMS & Customer Communications
 
 Groundwork already exists:
 
@@ -197,13 +211,6 @@ Still required:
 - [ ] Audit reminder runs and sends.
 - [ ] Decide whether statements can be attached/linked in email reminders.
 
-### Production backup/recovery
-
-- [ ] User-accessible production Backup.
-- [ ] Validated Restore with explicit confirmation.
-- [ ] **Scheduled automatic backups** with configurable destination/retention.
-- [ ] Backup before schema/database upgrades.
-- [ ] Restore verification / recovery drill before production sign-off.
 
 ## Priority 3 — production hardening before v1.0
 
@@ -278,22 +285,6 @@ Do after the functional/data-integrity items above unless a defect blocks use.
 - [ ] Installer/upgrade tested.
 
 
-### Business Information branding / generated-output identity
-
-- [ ] Add ability to configure a **business logo** in Business Information.
-- [ ] Add optional **custom header / branding text** independent of the legal/business name.
-- [ ] Design how branding should be reused by **PDF reports, customer statements, emails, reminders and other generated output**.
-- [ ] Discuss before implementation:
-  - image storage format/location and database-vs-file trade-offs;
-  - supported logo dimensions/aspect ratio/file types;
-  - fallback when no logo is configured;
-  - whether report/email branding can be enabled/disabled per output type;
-  - header/footer placement rules;
-  - how the business name, logo and custom header interact without duplication;
-  - whether email branding should support a richer HTML header/signature later.
-- [ ] Implement the branding layer only after the shared behaviour is agreed, so report/email generators consume one authoritative business-branding configuration.
-
-
 ## Post-v1.0 / commercial roadmap
 
 ### BinTracker Windows UI v2 / WinUI 3 evaluation
@@ -322,6 +313,38 @@ Do after the functional/data-integrity items above unless a defect blocks use.
 - [ ] Multiple depots.
 
 
+
+## Historical requirements audit — 16 August 2026
+
+The roadmap was reconciled against the project history rather than only the most recent build notes. Items that must remain explicitly visible:
+
+### Pre-v1 requirements recovered/confirmed
+
+- [ ] **Batch Entry:** verify Esc semantics; clear/reset appropriate fields and return focus after successful entry; resolve crash/power-loss draft persistence.
+- [ ] **Customer operations:** sort by code/name/outstanding/credit/last movement; lifetime OUT and IN totals where useful.
+- [ ] **Customer Statement:** operational view/open/print workflow, not PDF-save-only.
+- [ ] **Movement History:** date-range/customer/container/source reporting.
+- [ ] **Monthly Summary:** selected month plus Last Month shortcut, OUT/IN/net and customer/container breakdown.
+- [ ] **Daily Print Pack:** Outstanding Summary + Movement Detail.
+- [ ] **Movement Correction / Reversal:** linked original/correction records, reason, actor/time, permissions and audit; no destructive edit.
+- [ ] **Business Information & Branding:** logo/custom header and reusable output branding.
+- [ ] **Email/SMS communications:** Google Workspace email + Texto SMS direction; customer Email/SMS/Opt-out settings; Friday-or-earlier empty-bin reminder direction; manual/bulk/automatic sends; templates; delivery history; retry/idempotency; audit; statement attachment/link decision.
+- [ ] **Dashboard:** design before code; charts, useful KPIs, attention states, drill-through, recent activity, by-container view, ageing rule discussion, forecasting/ML hooks and large-monitor layout.
+- [ ] **Dashboard future-UI discussion:** explicitly compare what WinUI 3 v2 would improve in Dashboard, Reports launcher, individual report windows and import workflow, and avoid over-engineering WinForms v1 where appropriate.
+- [ ] **Backup/recovery:** user backup/restore plus scheduled automatic backups, configurable destination/retention, pre-upgrade backup and recovery drill.
+- [ ] **Audit coverage:** maintain an explicit audit-coverage matrix across security/admin/customer/movement/import/report/communication actions.
+- [ ] **PostgreSQL/multi-user:** Services + `IDbContextFactory` remains the boundary; no generic Repository layer merely for migration.
+- [ ] **Release discipline:** targeted smoke test for business-logic changes; full smoke test for UI changes; full documentation/audit reconciliation as development proceeds; clean Git/release state before milestone closure.
+
+### Post-v1 requirements recovered/confirmed
+
+- [ ] **Windows UI v2 / WinUI 3** evaluation/migration decision after v1 publication.
+- [ ] **Customer portal**.
+- [ ] **Barcode scanning**.
+- [ ] **Multiple depots**.
+
+These are not allowed to disappear merely because a later roadmap summary is shortened.
+
 ## Version milestone policy
 
 Milestone numbering follows scope. Substantial workstreams may receive their own `0.x.0` milestone rather than being forced into a fixed number of phases. Dashboard is a likely candidate for its own milestone because it may involve experimentation and multiple iterations.
@@ -331,6 +354,10 @@ Milestone numbering follows scope. Substantial workstreams may receive their own
 
 Detailed report windows treat the on-screen dataset as the operator's printable view: supported column sorting is type-correct, and PDF generation preserves the current displayed order. This standard should be reused by subsequent report windows.
 
+
+### Interactive report live-filter standard
+
+Outstanding Containers, Daily Movements, Weekly Movements and Movement History use live date/dropdown/result-checkbox refresh with Customer-on-Enter search and no separate Run Report button. Reuse this interaction model for future interactive reports.
 
 ### Report output consistency
 
@@ -360,3 +387,8 @@ Weekly Movements keeps detailed and aggregated use cases together: **Daily Detai
 ### Weekly actual-history semantics
 
 Weekly Movements is explicitly historical/actual reporting: future dates are unavailable, current-week data stops at today, and configured Container Types drive filtering. Predictive future weeks remain reserved for later forecasting/analytics work.
+
+
+### Mandatory per-build audit discipline
+
+The full audit is part of **every** build, not a periodic cleanup task. No candidate is considered complete until code/state, all Markdown files, roadmap coverage, version references, specifications, known issues, tech debt, test requirements, changelog and current release notes have been reconciled.

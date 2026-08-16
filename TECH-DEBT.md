@@ -161,3 +161,26 @@ Engineering improvements that are not currently user-facing defects. Product wor
 ## Test/service visibility
 
 - Tests must not depend on internal concrete report services solely to call implementation helpers. Prefer public interfaces/results and independent expected-value calculations.
+
+
+## Documentation consistency
+
+- Current-state docs must not retain superseded UI semantics after a later patch changes them. Historical behaviour belongs only in `docs/CHANGELOG.md`.
+- `docs/RoadmapCoverageMatrix.md` is the cross-check for major pre-v1/post-v1 workstreams; update it whenever roadmap scope moves.
+
+
+## Documentation/process drift risk
+
+- Past development allowed current-state documentation to drift from implemented behaviour. Treat the mandatory full-build audit as a permanent control, not a temporary cleanup measure.
+- If a build changes behaviour without reconciling current-state docs, that build is incomplete even if it compiles/tests successfully.
+
+
+## Report movement-row duplication
+
+- Daily, Weekly and Movement History currently have closely related movement-row DTO/query projection code. Do not prematurely introduce a generic report abstraction, but consider extracting shared typed movement-report primitives if Monthly/other reports create meaningful maintenance duplication.
+
+
+## Report refresh concurrency
+
+- Live filter refresh uses asynchronous report queries. If future reports become slow or network-backed, consider cancellation/debouncing so rapidly changed filters cannot waste work or allow an older query to overwrite a newer result.
+- Customer free-text deliberately refreshes on Enter rather than every keystroke to avoid unnecessary queries.
