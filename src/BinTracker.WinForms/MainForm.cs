@@ -28,6 +28,7 @@ public sealed class MainForm : Form
     private readonly IDailyMovementsReportService dailyMovementReports;
     private readonly IDailyMovementsReportPdfService dailyMovementReportPdfs;
     private readonly IWeeklyMovementsReportService weeklyMovementReports;
+    private readonly IWeeklyMovementsReportPdfService weeklyMovementReportPdfs;
     private readonly IContainerTypeService containerTypes;
     private readonly IBusinessInformationService businessInformation;
     private readonly IExcelImportService excelImport;
@@ -58,6 +59,7 @@ public sealed class MainForm : Form
         IDailyMovementsReportService dailyMovementReports,
         IDailyMovementsReportPdfService dailyMovementReportPdfs,
         IWeeklyMovementsReportService weeklyMovementReports,
+        IWeeklyMovementsReportPdfService weeklyMovementReportPdfs,
         IContainerTypeService containerTypes,
         IBusinessInformationService businessInformation,
         IExcelImportService excelImport,
@@ -80,6 +82,7 @@ public sealed class MainForm : Form
         this.dailyMovementReports = dailyMovementReports;
         this.dailyMovementReportPdfs = dailyMovementReportPdfs;
         this.weeklyMovementReports = weeklyMovementReports;
+        this.weeklyMovementReportPdfs = weeklyMovementReportPdfs;
         this.containerTypes = containerTypes;
         this.businessInformation = businessInformation;
         this.excelImport = excelImport;
@@ -509,7 +512,7 @@ public sealed class MainForm : Form
         }
 
         weeklyMovementsReportForm =
-            new WeeklyMovementsReportForm(weeklyMovementReports, outstandingReports);
+            new WeeklyMovementsReportForm(weeklyMovementReports, weeklyMovementReportPdfs, outstandingReports);
 
         weeklyMovementsReportForm.FormClosed += (_, _) =>
         {

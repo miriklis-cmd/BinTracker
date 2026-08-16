@@ -639,3 +639,14 @@
 - Added SQLite integration coverage.
 - Added post-v1 Windows UI v2 / WinUI 3 evaluation milestone.
 - Reconciled full documentation and preserved the Dashboard design gate.
+
+
+## v0.4.0-alpha.21.1
+- Completed Weekly Movements PDF support with Generate PDF and Generate & Open.
+- Weekly PDF now follows the selected Movement Detail or Customer / Container Summary tab and preserves the current grid order.
+- Added independent Include notes in PDF and Include notes in CSV options.
+- Replaced ambiguous Week containing wording with Select date and an explicit resolved Monday-Sunday Week range.
+- Widened the weekly Date column and added result-driven customer-code sizing in detail and summary grids.
+- Added audited WEEKLY_MOVEMENTS_REPORT_GENERATED events including week, view, totals, Notes option and output filename.
+- Expanded the mandatory Dashboard design gate to compare WinForms v1 with future WinUI 3 v2, explicitly including the Reports launcher and individual report screens as reference UI.
+- Reconciled roadmap, functional specification, test checklist and audit coverage.

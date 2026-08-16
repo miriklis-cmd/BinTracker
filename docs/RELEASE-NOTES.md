@@ -1,6 +1,6 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.21
+## v0.4.0-alpha.21.1
 
 ### Weekly Movements
 
@@ -27,3 +27,5 @@ Roadmap, Business Rules, Functional Specification, Testing, Test Checklist, Tech
 ### Test requirement
 
 **Full smoke test** because a new report UI and reporting logic were added.
+
+- Weekly Movements now includes PDF/Generate & Open, selected-tab/current-sort fidelity, independent PDF/CSV Notes options, explicit Monday-Sunday week display and improved Date/Code sizing.

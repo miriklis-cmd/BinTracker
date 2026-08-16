@@ -170,6 +170,8 @@
 - BT-DASH-DESIGN-001: Dashboard implementation must not begin until the operator and developer review alternative layouts, charts, drill-through behaviour, exception/attention concepts and forecasting hooks together.
 - BT-DASH-DESIGN-002: Dashboard design must consider both laptop and large-monitor operation.
 - BT-DASH-DESIGN-003: Forecasting/ML hooks are future-facing derived analytics and must never modify authoritative movement/balance records.
+- BT-DASH-DESIGN-004: The Dashboard design discussion must explicitly compare what is appropriate for WinForms v1 versus what a future WinUI 3 v2 could materially improve.
+- BT-DASH-DESIGN-005: The WinUI 3 discussion must use both the current Reports launcher and representative individual report windows as reference screens, including report discovery/navigation, responsive layout, filters, grids, exports and visual hierarchy.
 
 
 - BT-REPORT-UI-009: Numeric report columns sort numerically even when their display text includes labels such as OUT/CREDIT.
@@ -214,3 +216,8 @@
 - BT-REPORT-WEEKLY-005: Filter by customer, container and normal entry source.
 - BT-REPORT-WEEKLY-006: Opening adjustments are excluded by default and included only explicitly.
 - BT-REPORT-WEEKLY-007: CSV preserves the current detail-grid order and optionally includes Notes.
+- BT-REPORT-WEEKLY-008: The date selector resolves explicitly to and displays its Monday-Sunday week; the UI labels the input Select date rather than the ambiguous Week containing.
+- BT-REPORT-WEEKLY-009: Weekly Movements supports Generate PDF and Generate & Open.
+- BT-REPORT-WEEKLY-010: Weekly PDF uses the currently selected Movement Detail or Customer / Container Summary tab and preserves that grid's current sort order.
+- BT-REPORT-WEEKLY-011: Weekly PDF respects all active report filters and opening-adjustment inclusion, with Notes independently optional for PDF and CSV.
+- BT-REPORT-WEEKLY-012: Weekly report Date and customer-code columns are wide enough for visible values, with customer-code width adapting to the result set.

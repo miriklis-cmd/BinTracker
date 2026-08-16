@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.21.1.1**
+Current baseline: **v0.4.0-alpha.21.1**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.21.1.1.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.21.1.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -277,3 +277,10 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [ ] Quantity/summary numeric sorting is numeric rather than textual.
 - [ ] CSV preserves current detail order.
 - [ ] Include notes in CSV correctly includes/omits Notes.
+- [ ] Select date clearly displays the resolved Monday-Sunday Week range.
+- [ ] Generate PDF and Generate & Open work from both report tabs.
+- [ ] Weekly PDF preserves the selected tab and current grid sort order.
+- [ ] Weekly PDF respects active customer/container/source/opening-adjustment filters.
+- [ ] Include notes in PDF and Include notes in CSV operate independently.
+- [ ] Detail Date values are not truncated; detail/summary Code widths adapt to visible codes.
+- [ ] Weekly PDF generation appears in the audit trail with week, view, totals and output filename.

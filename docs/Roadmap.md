@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.21.1.1**
+Current planning baseline: **v0.4.0-alpha.21.1**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -25,7 +25,10 @@ The discussion must cover:
 - ageing/outstanding behaviour;
 - anomaly/risk/forecast ideas;
 - laptop vs large-monitor layouts;
-- alternative dashboard concepts and trade-offs.
+- alternative dashboard concepts and trade-offs;
+- how a future WinUI 3 v2 could materially improve the Dashboard (responsive cards, charts, drill-through, visual states, navigation and large-monitor presentation), while separating v1 WinForms work from v2-only polish;
+- the current Reports launcher as an explicit v1 reference screen: report discovery, categorisation, cards, density, search/favourites/recent-report possibilities and responsive growth as more reports are added;
+- representative individual report windows as v1 reference screens, comparing WinForms vs WinUI 3 for filters, grids, sorting, summaries, exports and richer visualisation.
 
 Only implement after a preferred direction is agreed. Dashboard is intentionally allowed its own milestone because experimentation may materially change scope.
 

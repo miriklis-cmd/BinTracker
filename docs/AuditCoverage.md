@@ -12,7 +12,7 @@ This is the pre-v1 audit-coverage checklist. Audit history is append-only eviden
 - Movement correction/reversal when implemented.
 - Excel Import completion, failure where appropriate, and Replace/Correct.
 - Import Run provenance/replacement relationship.
-- Report generation, including Customer Statement and Market Floor.
+- Report generation, including Customer Statement, Market Floor, Outstanding Containers, Daily Movements and Weekly Movements PDF output.
 - Business Information/settings changes.
 - Reminder runs and individual Email/SMS delivery attempts.
 - Production Backup/Restore and database upgrade operations when implemented.

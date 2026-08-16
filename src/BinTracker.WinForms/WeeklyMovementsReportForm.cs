@@ -6,6 +6,7 @@ namespace BinTracker.WinForms;
 public sealed class WeeklyMovementsReportForm : Form
 {
     private readonly IWeeklyMovementsReportService reports;
+    private readonly IWeeklyMovementsReportPdfService pdfReports;
     private readonly IOutstandingReportService outstanding;
 
     private readonly DateTimePicker weekPicker = new()
@@ -26,12 +27,25 @@ public sealed class WeeklyMovementsReportForm : Form
         Text = "Include opening adjustments",
         AutoSize = true
     };
+    private readonly CheckBox includeNotesInPdf = new()
+    {
+        Text = "Include notes in PDF",
+        AutoSize = true,
+        Margin = new Padding(22, 0, 0, 0)
+    };
     private readonly CheckBox includeNotesInExport = new()
     {
         Text = "Include notes in CSV",
         AutoSize = true,
         Margin = new Padding(22, 0, 0, 0)
     };
+    private readonly Label resolvedWeekLabel = new()
+    {
+        AutoSize = true,
+        ForeColor = Color.FromArgb(60, 75, 95),
+        Margin = new Padding(14, 9, 0, 0)
+    };
+    private readonly TabControl tabs = new() { Dock = DockStyle.Fill };
     private readonly Label summaryLabel = new()
     {
         AutoSize = true,
@@ -44,9 +58,11 @@ public sealed class WeeklyMovementsReportForm : Form
 
     public WeeklyMovementsReportForm(
         IWeeklyMovementsReportService reports,
+        IWeeklyMovementsReportPdfService pdfReports,
         IOutstandingReportService outstanding)
     {
         this.reports = reports;
+        this.pdfReports = pdfReports;
         this.outstanding = outstanding;
 
         Text = "Weekly Movements";
@@ -125,8 +141,9 @@ public sealed class WeeklyMovementsReportForm : Form
             RowCount = 3
         };
         var filters = Flow();
-        filters.Controls.Add(ControlLabel("Week containing"));
+        filters.Controls.Add(ControlLabel("Select date"));
         filters.Controls.Add(weekPicker);
+        filters.Controls.Add(resolvedWeekLabel);
         filters.Controls.Add(ControlLabel("Customer", 14));
         filters.Controls.Add(customerSearch);
         filters.Controls.Add(ControlLabel("Container", 14));
@@ -137,6 +154,7 @@ public sealed class WeeklyMovementsReportForm : Form
         var options = Flow();
         options.Padding = new Padding(0, 6, 0, 4);
         options.Controls.Add(includeAdjustments);
+        options.Controls.Add(includeNotesInPdf);
         options.Controls.Add(includeNotesInExport);
 
         var actions = Flow();
@@ -152,6 +170,8 @@ public sealed class WeeklyMovementsReportForm : Form
             weekPicker.Value = DateTime.Today.AddDays(-7);
             await LoadReportAsync();
         }));
+        actions.Controls.Add(ActionButton("Generate PDF", 140, async () => await GeneratePdfAsync(false)));
+        actions.Controls.Add(ActionButton("Generate & Open", 165, async () => await GeneratePdfAsync(true)));
         var csv = new Button { Text = "Export CSV", Size = new Size(135, 40), Margin = new Padding(8,0,0,0) };
         csv.Click += (_, _) => ExportCsv();
         actions.Controls.Add(csv);
@@ -173,7 +193,6 @@ public sealed class WeeklyMovementsReportForm : Form
         summaryCard.Controls.Add(summaryLabel);
         root.Controls.Add(summaryCard,0,2);
 
-        var tabs = new TabControl { Dock = DockStyle.Fill };
         var detailPage = new TabPage("Movement Detail") { Padding = new Padding(8) };
         detailPage.Controls.Add(detailGrid);
         var summaryPage = new TabPage("Customer / Container Summary") { Padding = new Padding(8) };
@@ -245,6 +264,9 @@ public sealed class WeeklyMovementsReportForm : Form
                 summaryGrid.Rows[i].Tag=row;
             }
 
+            resolvedWeekLabel.Text = $"Week: {current.WeekStart:dd/MM/yyyy} – {current.WeekEnd:dd/MM/yyyy}";
+            AdjustGridColumnWidths();
+
             summaryLabel.Text =
                 $"{current.WeekStart:dd/MM/yyyy} – {current.WeekEnd:dd/MM/yyyy} — " +
                 $"{current.Rows.Count:N0} movement row(s) • {current.OutQuantity:N0} OUT • " +
@@ -255,6 +277,58 @@ public sealed class WeeklyMovementsReportForm : Form
             MessageBox.Show(this,ex.Message,"Weekly Movements",MessageBoxButtons.OK,MessageBoxIcon.Error);
         }
         finally { Enabled=true; UseWaitCursor=false; }
+    }
+
+    private WeeklyMovementsReportResult BuildDisplayedResult()
+    {
+        var source = current ?? throw new InvalidOperationException("Run the report first.");
+        var rows = detailGrid.Rows.Cast<DataGridViewRow>()
+            .Where(x => !x.IsNewRow).Select(x => x.Tag as WeeklyMovementReportRow)
+            .Where(x => x is not null).Cast<WeeklyMovementReportRow>().ToList();
+        var summary = summaryGrid.Rows.Cast<DataGridViewRow>()
+            .Where(x => !x.IsNewRow).Select(x => x.Tag as WeeklyMovementSummaryRow)
+            .Where(x => x is not null).Cast<WeeklyMovementSummaryRow>().ToList();
+        return new WeeklyMovementsReportResult(source.WeekStart, source.WeekEnd, rows, summary);
+    }
+
+    private async Task GeneratePdfAsync(bool openAfter)
+    {
+        if (current is null) { MessageBox.Show(this, "Run the report first."); return; }
+        var result = BuildDisplayedResult();
+        var summaryView = tabs.SelectedIndex == 1;
+        using var dialog = new SaveFileDialog
+        {
+            Title = "Generate Weekly Movements PDF", Filter = "PDF file (*.pdf)|*.pdf",
+            FileName = $"BinTracker_Weekly_Movements_{result.WeekStart:yyyyMMdd}_{result.WeekEnd:yyyyMMdd}_{(summaryView ? "Summary" : "Detail")}.pdf",
+            AddExtension = true, DefaultExt = "pdf"
+        };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        try
+        {
+            Enabled = false; UseWaitCursor = true;
+            await pdfReports.GeneratePdfAsync(result, dialog.FileName, summaryView, includeNotesInPdf.Checked);
+            if (openAfter) System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            { FileName = dialog.FileName, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Weekly Movements PDF", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally { Enabled = true; UseWaitCursor = false; }
+    }
+
+    private void AdjustGridColumnWidths()
+    {
+        static int WidthFor(DataGridView grid, string columnName, IEnumerable<string> values, int minimum, int maximum)
+        {
+            var header = grid.Columns[columnName].HeaderText;
+            var longest = values.Append(header).OrderByDescending(x => x?.Length ?? 0).FirstOrDefault() ?? header;
+            return Math.Clamp(TextRenderer.MeasureText(longest, grid.Font).Width + 34, minimum, maximum);
+        }
+        if (current is null) return;
+        detailGrid.Columns["Date"].Width = WidthFor(detailGrid, "Date", current.Rows.Select(x => x.MovementDate.ToString("ddd dd/MM/yyyy")), 135, 175);
+        detailGrid.Columns["Code"].Width = WidthFor(detailGrid, "Code", current.Rows.Select(x => x.CustomerCode), 150, 260);
+        summaryGrid.Columns["Code"].Width = WidthFor(summaryGrid, "Code", current.Summary.Select(x => x.CustomerCode), 150, 260);
     }
 
     private void ExportCsv()
@@ -292,8 +366,8 @@ public sealed class WeeklyMovementsReportForm : Form
 
     private void ConfigureDetailGrid()
     {
-        detailGrid.Columns.Add(Column("Date",105,"Date"));
-        detailGrid.Columns.Add(Column("Code",125,"Code"));
+        detailGrid.Columns.Add(Column("Date",135,"Date"));
+        detailGrid.Columns.Add(Column("Code",150,"Code"));
         detailGrid.Columns.Add(Column("Customer",220,"Customer",DataGridViewAutoSizeColumnMode.Fill));
         detailGrid.Columns.Add(Column("Type",115,"Type"));
         detailGrid.Columns.Add(Column("Container",135,"Container"));
@@ -317,7 +391,7 @@ public sealed class WeeklyMovementsReportForm : Form
 
     private void ConfigureSummaryGrid()
     {
-        summaryGrid.Columns.Add(Column("Code",125,"Code"));
+        summaryGrid.Columns.Add(Column("Code",150,"Code"));
         summaryGrid.Columns.Add(Column("Customer",250,"Customer",DataGridViewAutoSizeColumnMode.Fill));
         summaryGrid.Columns.Add(Column("Container",150,"Container"));
         summaryGrid.Columns.Add(Column("OUT",100,"Out"));

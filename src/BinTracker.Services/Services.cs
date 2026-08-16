@@ -573,6 +573,7 @@ public static class ServiceSetup
         services.AddScoped<IDailyMovementsReportService, DailyMovementsReportService>();
         services.AddScoped<IDailyMovementsReportPdfService, DailyMovementsReportPdfService>();
         services.AddScoped<IWeeklyMovementsReportService, WeeklyMovementsReportService>();
+        services.AddScoped<IWeeklyMovementsReportPdfService, WeeklyMovementsReportPdfService>();
         services.AddScoped<IMovementService, MovementService>();
         return services;
     }
