@@ -1,30 +1,23 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.21.4
+## v0.4.0-alpha.21.4.1
 
-### Daily Movements future-date guard
+### Build/test fix
 
-Daily Movements now follows the same actual-history rule as Weekly Movements:
+Fixed the integration-test compile failure introduced in alpha.21.4.
 
-- date picker cannot go later than today;
-- service logic defensively clamps future date requests to today;
-- future-dated movement rows cannot leak into a Daily Movements report.
+Cause:
+- `WeeklyMovementsReportSqliteTests` directly called `WeeklyMovementsReportService.StartOfWeek(...)`;
+- the concrete service is intentionally `internal`, so the test project could not access it.
 
-### Roadmap: Business Information branding
-
-Added a formal design/roadmap item for:
-
-- business logo;
-- optional custom branding/header text;
-- shared use across reports, customer statements, emails, reminders and other generated output;
-- discussion of storage, sizing, fallbacks, placement and per-output behaviour before implementation.
-
-This is intentionally a design item first rather than a rushed partial implementation.
+Fix:
+- the test now independently calculates the expected Monday week start and verifies the public report result;
+- application/report behaviour is unchanged.
 
 ### Full audit
 
-Roadmap, Business Rules, Functional Specification, Testing, Test Checklist, Technical Debt, README, Known Issues, Versioning, changelog and release notes were reconciled.
+Testing, Technical Debt, Test Checklist, version references, changelog and release notes were reconciled.
 
 ### Test requirement
 
-**Targeted smoke test** for Daily Movements date selection. Automated coverage was added for future-date clamping.
+**Automated build/test gate only.** No runtime UI or business behaviour changed in this patch.

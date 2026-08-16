@@ -198,3 +198,8 @@ Manual acceptance verifies This Week/Last Week, responsive layout, Detail/Summar
 - Daily Movements date picker cannot select later than today.
 - A future date supplied directly to the service is clamped to today.
 - Future-dated movement rows are not returned by Daily Movements.
+
+
+## Test visibility boundary
+
+Integration tests should verify public behaviour through registered interfaces and returned results. They should not depend on internal concrete service classes merely to reuse helper methods; duplicate a tiny expected-value calculation in the test when that better preserves the implementation boundary.

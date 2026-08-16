@@ -673,3 +673,8 @@
 - Added integration regression coverage for future Daily report dates.
 - Added Business Information logo/custom-header/generated-output branding design milestone.
 - Reconciled full documentation/audit state.
+
+## v0.4.0-alpha.21.4.1
+- Fixed Weekly Movements integration-test compile failure caused by referencing an internal concrete service.
+- Test now independently calculates expected Monday week start and verifies the public result.
+- Reconciled test/audit/version documentation.

@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.21.4**
+Current baseline: **v0.4.0-alpha.21.4.1.1**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.21.4.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.21.4.1.1.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -319,3 +319,9 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [ ] Today still runs correctly.
 - [ ] Yesterday still runs correctly.
 - [ ] Automated integration coverage confirms future service requests clamp to today.
+
+
+## alpha.21.4.1 build/test wiring
+
+- [ ] Integration tests compile without referencing internal `WeeklyMovementsReportService`.
+- [ ] Full automated unit/integration suite passes.

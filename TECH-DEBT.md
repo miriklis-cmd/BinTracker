@@ -156,3 +156,8 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 - Business Information currently stores textual business details only. Future branding support should avoid scattering logo/header handling across PDF/email code.
 - Prefer one reusable branding model/service that supplies logo, custom header text, fallback behaviour and placement rules to reports, emails and other generated output.
+
+
+## Test/service visibility
+
+- Tests must not depend on internal concrete report services solely to call implementation helpers. Prefer public interfaces/results and independent expected-value calculations.

@@ -137,8 +137,11 @@ public sealed class WeeklyMovementsReportSqliteTests
         var result = await service.QueryAsync(
             new WeeklyMovementsReportQuery(today.AddDays(14)));
 
+        var expectedWeekStart =
+            today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+
         Assert.Equal(
-            WeeklyMovementsReportService.StartOfWeek(today),
+            expectedWeekStart,
             result.WeekStart);
 
         Assert.Equal(today, result.DataThroughDate);
