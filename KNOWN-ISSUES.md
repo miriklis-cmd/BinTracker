@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.20.0.8.4.1.1**
+Current release: **v0.4.0-alpha.21.1.1**
 
 This file contains current defects/limitations that affect testing or production readiness. Completed history is in `docs/CHANGELOG.md`; future features are in `docs/Roadmap.md`; engineering cleanup is in `TECH-DEBT.md`.
 

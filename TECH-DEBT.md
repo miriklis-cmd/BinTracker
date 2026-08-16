@@ -139,3 +139,8 @@ Engineering improvements that are not currently user-facing defects. Product wor
 ## Report export option semantics
 
 - If one option affects multiple export formats, name it by the shared concept rather than a specific format. Daily Movements uses `Include notes in exports` for both PDF and CSV.
+
+
+## Weekly report filter master data
+
+- Weekly Movements currently reuses Outstanding reporting to discover configured Container Types, matching Daily Movements. Consolidate this into a shared report-filter/master-data provider when enough report windows justify it.

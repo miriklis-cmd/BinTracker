@@ -203,3 +203,14 @@
 - BT-REPORT-DAILY-013: Daily Movements lays out core filters, report options and report actions in separate auto-sized rows so DPI/wrapping cannot hide action buttons.
 
 - BT-REPORT-DAILY-014: The Include notes in exports setting applies consistently to PDF and CSV.
+
+
+## Weekly Movements Report
+
+- BT-REPORT-WEEKLY-001: A selected week is Monday through Sunday.
+- BT-REPORT-WEEKLY-002: Provide This Week and Last Week shortcuts.
+- BT-REPORT-WEEKLY-003: Show movement detail and a customer/container summary.
+- BT-REPORT-WEEKLY-004: Summary shows OUT, IN and net movement (OUT minus IN).
+- BT-REPORT-WEEKLY-005: Filter by customer, container and normal entry source.
+- BT-REPORT-WEEKLY-006: Opening adjustments are excluded by default and included only explicitly.
+- BT-REPORT-WEEKLY-007: CSV preserves the current detail-grid order and optionally includes Notes.

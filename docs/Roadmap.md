@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.20.0.8.4.1.1**
+Current planning baseline: **v0.4.0-alpha.21.1.1**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -117,7 +117,7 @@ Still required:
 
 - [x] **Outstanding Containers report** — current/as-of-date on-screen query, customer/container filters, inactive/credit options, CSV export and audited landscape PDF generation are implemented. **Customer → Container grouping** keeps Blue/Yellow/Bulk/etc. adjacent for each customer.
 - [x] **Historical Outstanding / As-of-Date foundation** — ledger-derived end-of-date customer/container positions are implemented and tested; future movements are excluded and containers remain separate.
-- [ ] **Weekly Movements report** — first-class selected-week OUT/IN/net detail and summary, not merely an implied date-range option.
+- [x] **Weekly Movements report** — first-class Monday-to-Sunday selected-week movement detail plus customer/container OUT, IN and net summary, This Week/Last Week shortcuts, filters and CSV export.
 - [ ] **Customer Statement view/print workflow** — generate, open/view and print the statement directly from the operational workflow, not only save a PDF.
 - [x] **Daily Movements report** — dedicated responsive report window with today/yesterday shortcuts, customer/container/direction/source filters, physical-movement default, optional opening adjustments, typed sorting, audited PDF and CSV preserving the current grid order.
 - [ ] **Movement History report** — date range + customer/container/source filters.
@@ -275,6 +275,14 @@ Do after the functional/data-integrity items above unless a defect blocks use.
 - [ ] Installer/upgrade tested.
 
 ## Post-v1.0 / commercial roadmap
+
+### BinTracker Windows UI v2 / WinUI 3 evaluation
+
+- [ ] After v1, evaluate whether the current WinForms UI is materially holding BinTracker back.
+- [ ] Compare WinForms vs WinUI 3 for responsive/high-DPI layout, modern controls/styling, dashboard/chart interaction, drill-through/navigation, accessibility and long-term maintainability.
+- [ ] Treat this as an evaluation gate, **not** a predetermined rewrite.
+- [ ] If WinForms remains fit for purpose, keep it. If WinUI 3 provides enough concrete benefit to justify migration cost/risk, create a separate Windows UI v2 implementation roadmap.
+
 
 - Customer-list-only import mode.
 - Reusable Import Profiles and standard BinTracker import template.

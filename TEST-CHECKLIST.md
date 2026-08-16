@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.20.0.8.4.1.1**
+Current baseline: **v0.4.0-alpha.21.1.1**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.20.0.8.4.1.1.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.21.1.1.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -263,3 +263,17 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [ ] Include notes in exports checked: PDF includes Notes.
 - [ ] Include notes in exports checked: CSV includes Notes column/data.
 - [ ] On-screen Notes column remains visible regardless of export setting.
+
+
+## alpha.21 Weekly Movements
+
+- [ ] Weekly Movements dedicated window opens single-instance and is responsive.
+- [ ] Selected week resolves Monday through Sunday.
+- [ ] This Week and Last Week shortcuts select the correct week.
+- [ ] Customer/container/source filters work.
+- [ ] Opening adjustments are excluded by default and included only explicitly.
+- [ ] Movement Detail and Customer / Container Summary agree.
+- [ ] OUT, IN and Net values are numerically correct.
+- [ ] Quantity/summary numeric sorting is numeric rather than textual.
+- [ ] CSV preserves current detail order.
+- [ ] Include notes in CSV correctly includes/omits Notes.

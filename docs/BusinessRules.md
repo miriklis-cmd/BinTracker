@@ -163,3 +163,11 @@ Important security, master-data and movement changes create audit events.
 ## Daily Movements UI layout
 
 - Daily Movements layout has no business-data effect: moving filters/options/actions between visual rows does not change query, balance, PDF or CSV semantics.
+
+
+## Weekly movement reporting
+
+- Operational weeks run Monday through Sunday.
+- Weekly net movement is OUT minus IN; it is movement for the week, not the customer's outstanding balance.
+- Opening adjustments are excluded by default because they are not physical weekly activity.
+- Weekly summary remains separated by Customer and Container Type.

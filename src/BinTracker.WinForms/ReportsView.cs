@@ -8,6 +8,7 @@ public sealed class ReportsView : UserControl
     private readonly IMarketFloorReportService marketFloor;
     private readonly Action openOutstanding;
     private readonly Action openDailyMovements;
+    private readonly Action openWeeklyMovements;
 
     private readonly DateTimePicker reportDate = new()
     {
@@ -26,11 +27,13 @@ public sealed class ReportsView : UserControl
     public ReportsView(
         IMarketFloorReportService marketFloor,
         Action openOutstanding,
-        Action openDailyMovements)
+        Action openDailyMovements,
+        Action openWeeklyMovements)
     {
         this.marketFloor = marketFloor;
         this.openOutstanding = openOutstanding;
         this.openDailyMovements = openDailyMovements;
+        this.openWeeklyMovements = openWeeklyMovements;
 
         Dock = DockStyle.Fill;
         BackColor = Color.FromArgb(245, 247, 250);
@@ -161,7 +164,7 @@ public sealed class ReportsView : UserControl
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 2,
-            RowCount = 2
+            RowCount = 3
         };
 
         layout.ColumnStyles.Add(
@@ -198,6 +201,14 @@ public sealed class ReportsView : UserControl
                 openDailyMovements),
             1,
             1);
+
+        layout.Controls.Add(
+            ReportLauncher(
+                "Weekly Movements",
+                "Monday-to-Sunday movement detail plus customer/container OUT, IN and net summary.",
+                openWeeklyMovements),
+            0,
+            2);
 
         panel.Controls.Add(layout);
         return panel;
@@ -324,7 +335,7 @@ public sealed class ReportsView : UserControl
         layout.Controls.Add(new Label
         {
             Text =
-                "Next: Weekly Movements  •  Movement History  •  Monthly Summary  •  Daily Print Pack",
+                "Next: Movement History  •  Monthly Summary  •  Daily Print Pack",
             AutoSize = true,
             ForeColor = Color.DimGray
         });

@@ -1,13 +1,24 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.20.0.8.4
+## v0.4.0-alpha.21
 
-### Daily export Notes consistency
+### Weekly Movements
 
-- Renamed **Include notes in PDF** to **Include notes in exports**.
-- When unchecked, Notes remain visible on-screen but are omitted from PDF and CSV.
-- When checked, both PDF and CSV include a Notes column.
-- No movement/report calculation changed.
+Added the next first-class report window:
+
+- Monday-to-Sunday selected-week reporting.
+- This Week and Last Week shortcuts.
+- Customer, Container and Source filters.
+- Opening adjustments excluded by default with explicit inclusion.
+- Movement Detail tab.
+- Customer / Container Summary tab with OUT, IN and Net.
+- Numeric Quantity / OUT / IN / Net sorting.
+- CSV export preserving the displayed Detail order.
+- Optional Notes column in CSV.
+
+### Post-v1 roadmap
+
+Added a **BinTracker Windows UI v2 / WinUI 3 evaluation** milestone after v1. This is an evaluation gate, not a predetermined rewrite.
 
 ### Full audit
 
@@ -15,4 +26,4 @@ Roadmap, Business Rules, Functional Specification, Testing, Test Checklist, Tech
 
 ### Test requirement
 
-**Targeted smoke test** — export one PDF and one CSV with Notes off, then again with Notes on.
+**Full smoke test** because a new report UI and reporting logic were added.

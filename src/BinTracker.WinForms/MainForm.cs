@@ -12,6 +12,7 @@ public sealed class MainForm : Form
     private CustomersView? activeCustomersView;
     private OutstandingContainersReportForm? outstandingReportForm;
     private DailyMovementsReportForm? dailyMovementsReportForm;
+    private WeeklyMovementsReportForm? weeklyMovementsReportForm;
     private bool bypassCustomerClosePrompt;
     private readonly UserSession session;
     private readonly IUserService users;
@@ -26,6 +27,7 @@ public sealed class MainForm : Form
     private readonly IOutstandingReportPdfService outstandingReportPdfs;
     private readonly IDailyMovementsReportService dailyMovementReports;
     private readonly IDailyMovementsReportPdfService dailyMovementReportPdfs;
+    private readonly IWeeklyMovementsReportService weeklyMovementReports;
     private readonly IContainerTypeService containerTypes;
     private readonly IBusinessInformationService businessInformation;
     private readonly IExcelImportService excelImport;
@@ -55,6 +57,7 @@ public sealed class MainForm : Form
         IOutstandingReportPdfService outstandingReportPdfs,
         IDailyMovementsReportService dailyMovementReports,
         IDailyMovementsReportPdfService dailyMovementReportPdfs,
+        IWeeklyMovementsReportService weeklyMovementReports,
         IContainerTypeService containerTypes,
         IBusinessInformationService businessInformation,
         IExcelImportService excelImport,
@@ -76,6 +79,7 @@ public sealed class MainForm : Form
         this.outstandingReportPdfs = outstandingReportPdfs;
         this.dailyMovementReports = dailyMovementReports;
         this.dailyMovementReportPdfs = dailyMovementReportPdfs;
+        this.weeklyMovementReports = weeklyMovementReports;
         this.containerTypes = containerTypes;
         this.businessInformation = businessInformation;
         this.excelImport = excelImport;
@@ -426,7 +430,8 @@ public sealed class MainForm : Form
             new ReportsView(
                 marketFloorReports,
                 OpenOutstandingReport,
-                OpenDailyMovementsReport));
+                OpenDailyMovementsReport,
+                OpenWeeklyMovementsReport));
     }
 
     private void OpenOutstandingReport()
@@ -488,6 +493,30 @@ public sealed class MainForm : Form
         };
 
         dailyMovementsReportForm.Show(this);
+    }
+
+    private void OpenWeeklyMovementsReport()
+    {
+        if (weeklyMovementsReportForm is not null &&
+            !weeklyMovementsReportForm.IsDisposed)
+        {
+            if (weeklyMovementsReportForm.WindowState == FormWindowState.Minimized)
+                weeklyMovementsReportForm.WindowState = FormWindowState.Normal;
+
+            weeklyMovementsReportForm.BringToFront();
+            weeklyMovementsReportForm.Activate();
+            return;
+        }
+
+        weeklyMovementsReportForm =
+            new WeeklyMovementsReportForm(weeklyMovementReports, outstandingReports);
+
+        weeklyMovementsReportForm.FormClosed += (_, _) =>
+        {
+            weeklyMovementsReportForm = null;
+        };
+
+        weeklyMovementsReportForm.Show(this);
     }
 
     private void ShowSettings()

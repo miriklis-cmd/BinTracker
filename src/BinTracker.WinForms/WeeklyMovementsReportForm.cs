@@ -1,0 +1,385 @@
+using BinTracker.Core;
+using BinTracker.Services;
+
+namespace BinTracker.WinForms;
+
+public sealed class WeeklyMovementsReportForm : Form
+{
+    private readonly IWeeklyMovementsReportService reports;
+    private readonly IOutstandingReportService outstanding;
+
+    private readonly DateTimePicker weekPicker = new()
+    {
+        Format = DateTimePickerFormat.Short,
+        Width = 140,
+        Value = DateTime.Today
+    };
+    private readonly TextBox customerSearch = new()
+    {
+        Width = 220,
+        PlaceholderText = "Customer code or name"
+    };
+    private readonly ComboBox containerFilter = ChoiceBox(175);
+    private readonly ComboBox sourceFilter = ChoiceBox(155);
+    private readonly CheckBox includeAdjustments = new()
+    {
+        Text = "Include opening adjustments",
+        AutoSize = true
+    };
+    private readonly CheckBox includeNotesInExport = new()
+    {
+        Text = "Include notes in CSV",
+        AutoSize = true,
+        Margin = new Padding(22, 0, 0, 0)
+    };
+    private readonly Label summaryLabel = new()
+    {
+        AutoSize = true,
+        ForeColor = Color.FromArgb(60, 75, 95),
+        MaximumSize = new Size(1350, 0)
+    };
+    private readonly DataGridView detailGrid = Grid();
+    private readonly DataGridView summaryGrid = Grid();
+    private WeeklyMovementsReportResult? current;
+
+    public WeeklyMovementsReportForm(
+        IWeeklyMovementsReportService reports,
+        IOutstandingReportService outstanding)
+    {
+        this.reports = reports;
+        this.outstanding = outstanding;
+
+        Text = "Weekly Movements";
+        StartPosition = FormStartPosition.Manual;
+        AutoScaleMode = AutoScaleMode.Dpi;
+        MinimumSize = new Size(1100, 720);
+        Font = new Font("Segoe UI", 10F);
+        BackColor = Color.FromArgb(245, 247, 250);
+
+        Build();
+        Load += async (_, _) =>
+        {
+            ApplyResponsiveBounds();
+            await InitialiseAsync();
+        };
+    }
+
+    private void Build()
+    {
+        ConfigureDetailGrid();
+        ConfigureSummaryGrid();
+
+        var root = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 5,
+            Padding = new Padding(18)
+        };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var header = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 1,
+            RowCount = 2,
+            BackColor = Color.White,
+            Padding = new Padding(18, 12, 18, 12),
+            Margin = new Padding(0, 0, 0, 10)
+        };
+        header.Controls.Add(new Label
+        {
+            Text = "Weekly Movements",
+            AutoSize = true,
+            Font = new Font("Segoe UI Semibold", 19F, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 5)
+        }, 0, 0);
+        header.Controls.Add(new Label
+        {
+            Text = "Monday-to-Sunday physical movement detail and customer/container summary for the selected week.",
+            AutoSize = true,
+            ForeColor = Color.FromArgb(80, 90, 105)
+        }, 0, 1);
+        root.Controls.Add(header, 0, 0);
+
+        var controlsCard = new Panel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Color.White,
+            Padding = new Padding(16, 12, 16, 12),
+            Margin = new Padding(0, 0, 0, 10)
+        };
+        var rows = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            RowCount = 3
+        };
+        var filters = Flow();
+        filters.Controls.Add(ControlLabel("Week containing"));
+        filters.Controls.Add(weekPicker);
+        filters.Controls.Add(ControlLabel("Customer", 14));
+        filters.Controls.Add(customerSearch);
+        filters.Controls.Add(ControlLabel("Container", 14));
+        filters.Controls.Add(containerFilter);
+        filters.Controls.Add(ControlLabel("Source", 14));
+        filters.Controls.Add(sourceFilter);
+
+        var options = Flow();
+        options.Padding = new Padding(0, 6, 0, 4);
+        options.Controls.Add(includeAdjustments);
+        options.Controls.Add(includeNotesInExport);
+
+        var actions = Flow();
+        actions.Padding = new Padding(0, 8, 0, 0);
+        actions.Controls.Add(ActionButton("Run Report", 125, async () => await LoadReportAsync()));
+        actions.Controls.Add(ActionButton("This Week", 110, async () =>
+        {
+            weekPicker.Value = DateTime.Today;
+            await LoadReportAsync();
+        }));
+        actions.Controls.Add(ActionButton("Last Week", 110, async () =>
+        {
+            weekPicker.Value = DateTime.Today.AddDays(-7);
+            await LoadReportAsync();
+        }));
+        var csv = new Button { Text = "Export CSV", Size = new Size(135, 40), Margin = new Padding(8,0,0,0) };
+        csv.Click += (_, _) => ExportCsv();
+        actions.Controls.Add(csv);
+
+        rows.Controls.Add(filters,0,0);
+        rows.Controls.Add(options,0,1);
+        rows.Controls.Add(actions,0,2);
+        controlsCard.Controls.Add(rows);
+        root.Controls.Add(controlsCard,0,1);
+
+        var summaryCard = new Panel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            BackColor = Color.White,
+            Padding = new Padding(16,10,16,10),
+            Margin = new Padding(0,0,0,10)
+        };
+        summaryCard.Controls.Add(summaryLabel);
+        root.Controls.Add(summaryCard,0,2);
+
+        var tabs = new TabControl { Dock = DockStyle.Fill };
+        var detailPage = new TabPage("Movement Detail") { Padding = new Padding(8) };
+        detailPage.Controls.Add(detailGrid);
+        var summaryPage = new TabPage("Customer / Container Summary") { Padding = new Padding(8) };
+        summaryPage.Controls.Add(summaryGrid);
+        tabs.TabPages.Add(detailPage);
+        tabs.TabPages.Add(summaryPage);
+        root.Controls.Add(tabs,0,3);
+
+        var close = new Button { Text="Close", Size=new Size(110,38), Margin=new Padding(0,10,0,0) };
+        close.Click += (_,_) => Close();
+        var footer = new FlowLayoutPanel
+        {
+            Dock=DockStyle.Fill, AutoSize=true, FlowDirection=FlowDirection.RightToLeft
+        };
+        footer.Controls.Add(close);
+        root.Controls.Add(footer,0,4);
+        Controls.Add(root);
+    }
+
+    private async Task InitialiseAsync()
+    {
+        containerFilter.Items.Add(new Choice<int?>(null, "All containers"));
+        var source = await outstanding.QueryAsync(new OutstandingReportQuery(
+            DateOnly.FromDateTime(DateTime.Today),
+            IncludeCredits:true, IncludeInactiveCustomers:true));
+        foreach (var c in source.ContainerTotals)
+            containerFilter.Items.Add(new Choice<int?>(c.ContainerTypeId,c.ContainerType));
+        containerFilter.SelectedIndex=0;
+
+        sourceFilter.Items.Add(new Choice<MovementSource?>(null,"All sources"));
+        sourceFilter.Items.Add(new Choice<MovementSource?>(MovementSource.Manual,"Single Entry"));
+        sourceFilter.Items.Add(new Choice<MovementSource?>(MovementSource.Batch,"Batch Entry"));
+        sourceFilter.Items.Add(new Choice<MovementSource?>(MovementSource.ExcelImport,"Excel Import"));
+        sourceFilter.SelectedIndex=0;
+
+        await LoadReportAsync();
+    }
+
+    private async Task LoadReportAsync()
+    {
+        try
+        {
+            Enabled=false; UseWaitCursor=true;
+            current = await reports.QueryAsync(new WeeklyMovementsReportQuery(
+                DateOnly.FromDateTime(weekPicker.Value.Date),
+                customerSearch.Text,
+                (containerFilter.SelectedItem as Choice<int?>)?.Value,
+                (sourceFilter.SelectedItem as Choice<MovementSource?>)?.Value,
+                includeAdjustments.Checked));
+
+            detailGrid.Rows.Clear();
+            foreach (var row in current.Rows)
+            {
+                var i=detailGrid.Rows.Add(
+                    row.MovementDate.ToString("ddd dd/MM"),
+                    row.CustomerCode,row.CustomerName,CustomerTypeText(row.CustomerType),
+                    row.ContainerType,row.DirectionText,row.Quantity.ToString("N0"),
+                    row.SourceText,row.Reference,row.Notes,row.EnteredBy);
+                detailGrid.Rows[i].Tag=row;
+            }
+
+            summaryGrid.Rows.Clear();
+            foreach (var row in current.Summary)
+            {
+                var i=summaryGrid.Rows.Add(
+                    row.CustomerCode,row.CustomerName,row.ContainerType,
+                    row.OutQuantity.ToString("N0"),row.InQuantity.ToString("N0"),
+                    row.NetQuantity.ToString("N0"));
+                summaryGrid.Rows[i].Tag=row;
+            }
+
+            summaryLabel.Text =
+                $"{current.WeekStart:dd/MM/yyyy} – {current.WeekEnd:dd/MM/yyyy} — " +
+                $"{current.Rows.Count:N0} movement row(s) • {current.OutQuantity:N0} OUT • " +
+                $"{current.InQuantity:N0} IN • Net {current.NetQuantity:+#;-#;0}";
+        }
+        catch(Exception ex)
+        {
+            MessageBox.Show(this,ex.Message,"Weekly Movements",MessageBoxButtons.OK,MessageBoxIcon.Error);
+        }
+        finally { Enabled=true; UseWaitCursor=false; }
+    }
+
+    private void ExportCsv()
+    {
+        if (current is null) { MessageBox.Show(this,"Run the report first."); return; }
+        using var dialog = new SaveFileDialog
+        {
+            Title="Export Weekly Movements",
+            Filter="CSV file (*.csv)|*.csv",
+            FileName=$"BinTracker_Weekly_Movements_{current.WeekStart:yyyyMMdd}_{current.WeekEnd:yyyyMMdd}.csv",
+            AddExtension=true, DefaultExt="csv"
+        };
+        if(dialog.ShowDialog(this)!=DialogResult.OK) return;
+
+        using var writer=new StreamWriter(dialog.FileName,false,new System.Text.UTF8Encoding(true));
+        writer.WriteLine(includeNotesInExport.Checked
+            ? "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Notes,Entered By"
+            : "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Entered By");
+
+        foreach(DataGridViewRow gridRow in detailGrid.Rows)
+        {
+            if(gridRow.Tag is not WeeklyMovementReportRow row) continue;
+            var fields=new List<string>
+            {
+                Csv(row.MovementDate.ToString("dd/MM/yyyy")),Csv(row.CustomerCode),Csv(row.CustomerName),
+                Csv(CustomerTypeText(row.CustomerType)),Csv(row.ContainerType),Csv(row.DirectionText),
+                row.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                Csv(row.SourceText),Csv(row.Reference)
+            };
+            if(includeNotesInExport.Checked) fields.Add(Csv(row.Notes));
+            fields.Add(Csv(row.EnteredBy));
+            writer.WriteLine(string.Join(",",fields));
+        }
+    }
+
+    private void ConfigureDetailGrid()
+    {
+        detailGrid.Columns.Add(Column("Date",105,"Date"));
+        detailGrid.Columns.Add(Column("Code",125,"Code"));
+        detailGrid.Columns.Add(Column("Customer",220,"Customer",DataGridViewAutoSizeColumnMode.Fill));
+        detailGrid.Columns.Add(Column("Type",115,"Type"));
+        detailGrid.Columns.Add(Column("Container",135,"Container"));
+        detailGrid.Columns.Add(Column("Direction",95,"Direction"));
+        detailGrid.Columns.Add(Column("Qty",75,"Quantity"));
+        detailGrid.Columns.Add(Column("Source",135,"Source"));
+        detailGrid.Columns.Add(Column("Reference",140,"Reference"));
+        detailGrid.Columns.Add(Column("Notes",180,"Notes"));
+        detailGrid.Columns.Add(Column("Entered by",110,"EnteredBy"));
+        detailGrid.SortCompare += (_,e) =>
+        {
+            if(detailGrid.Columns[e.Column.Index].Name!="Quantity") return;
+            var l=detailGrid.Rows[e.RowIndex1].Tag as WeeklyMovementReportRow;
+            var r=detailGrid.Rows[e.RowIndex2].Tag as WeeklyMovementReportRow;
+            if(l is null || r is null) return;
+            e.SortResult=l.Quantity.CompareTo(r.Quantity);
+            if(e.SortResult==0) e.SortResult=l.MovementId.CompareTo(r.MovementId);
+            e.Handled=true;
+        };
+    }
+
+    private void ConfigureSummaryGrid()
+    {
+        summaryGrid.Columns.Add(Column("Code",125,"Code"));
+        summaryGrid.Columns.Add(Column("Customer",250,"Customer",DataGridViewAutoSizeColumnMode.Fill));
+        summaryGrid.Columns.Add(Column("Container",150,"Container"));
+        summaryGrid.Columns.Add(Column("OUT",100,"Out"));
+        summaryGrid.Columns.Add(Column("IN",100,"In"));
+        summaryGrid.Columns.Add(Column("Net",100,"Net"));
+        summaryGrid.SortCompare += (_,e) =>
+        {
+            if(summaryGrid.Rows[e.RowIndex1].Tag is not WeeklyMovementSummaryRow l ||
+               summaryGrid.Rows[e.RowIndex2].Tag is not WeeklyMovementSummaryRow r) return;
+            e.SortResult=summaryGrid.Columns[e.Column.Index].Name switch
+            {
+                "Out"=>l.OutQuantity.CompareTo(r.OutQuantity),
+                "In"=>l.InQuantity.CompareTo(r.InQuantity),
+                "Net"=>l.NetQuantity.CompareTo(r.NetQuantity),
+                _=>0
+            };
+            if(summaryGrid.Columns[e.Column.Index].Name is "Out" or "In" or "Net") e.Handled=true;
+        };
+    }
+
+    private void ApplyResponsiveBounds()
+    {
+        var screen=Owner is not null ? Screen.FromControl(Owner) : Screen.FromPoint(Cursor.Position);
+        var area=screen.WorkingArea;
+        Width=Math.Clamp((int)Math.Round(area.Width*.92),MinimumSize.Width,1900);
+        Height=Math.Clamp((int)Math.Round(area.Height*.88),MinimumSize.Height,1100);
+        Left=area.Left+Math.Max(0,(area.Width-Width)/2);
+        Top=area.Top+Math.Max(0,(area.Height-Height)/2);
+    }
+
+    private static DataGridView Grid()=>new()
+    {
+        Dock=DockStyle.Fill,ReadOnly=true,AllowUserToAddRows=false,AllowUserToDeleteRows=false,
+        AllowUserToResizeRows=false,MultiSelect=false,SelectionMode=DataGridViewSelectionMode.FullRowSelect,
+        RowHeadersVisible=false,AutoGenerateColumns=false,BackgroundColor=Color.White,
+        BorderStyle=BorderStyle.FixedSingle,ScrollBars=ScrollBars.Both
+    };
+    private static FlowLayoutPanel Flow()=>new()
+    {
+        Dock=DockStyle.Top,AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,
+        FlowDirection=FlowDirection.LeftToRight,WrapContents=true,Margin=Padding.Empty
+    };
+    private static Button ActionButton(string text,int width,Func<Task> action)
+    {
+        var b=new Button{Text=text,Size=new Size(width,40),Margin=new Padding(8,0,0,0)};
+        b.Click+=async(_,_)=>await action(); return b;
+    }
+    private static Label ControlLabel(string text,int left=0)=>new()
+    {Text=text,AutoSize=true,Margin=new Padding(left,9,8,0)};
+    private static ComboBox ChoiceBox(int width)=>new()
+    {Width=width,DropDownStyle=ComboBoxStyle.DropDownList};
+    private static DataGridViewTextBoxColumn Column(string header,int width,string name,
+        DataGridViewAutoSizeColumnMode auto=DataGridViewAutoSizeColumnMode.None)=>new()
+    {Name=name,HeaderText=header,Width=width,MinimumWidth=Math.Min(width,90),AutoSizeMode=auto,
+     SortMode=DataGridViewColumnSortMode.Automatic};
+    private static string CustomerTypeText(CustomerType t)=>t==CustomerType.Account?"Account":"Cash / COD";
+    private static string Csv(string value)
+    {
+        var escaped=value.Replace("\"","\"\"");
+        return value.Contains(',')||value.Contains('"')||value.Contains('\r')||value.Contains('\n')
+            ? $"\"{escaped}\"":escaped;
+    }
+    private sealed record Choice<T>(T Value,string Text)
+    { public override string ToString()=>Text; }
+}

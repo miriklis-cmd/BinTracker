@@ -629,3 +629,13 @@
 - Applied the Notes option consistently to both PDF and CSV.
 - CSV now conditionally includes/omits its Notes column and values.
 - Reconciled full documentation and preserved the Dashboard design gate.
+
+## v0.4.0-alpha.21
+- Added first-class Weekly Movements report.
+- Added Monday-Sunday week boundaries and This Week/Last Week shortcuts.
+- Added detail and customer/container OUT/IN/Net summary views.
+- Added customer/container/source filters and optional opening-adjustment inclusion.
+- Added CSV export with optional Notes.
+- Added SQLite integration coverage.
+- Added post-v1 Windows UI v2 / WinUI 3 evaluation milestone.
+- Reconciled full documentation and preserved the Dashboard design gate.
