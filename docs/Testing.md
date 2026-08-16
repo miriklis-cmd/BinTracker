@@ -124,3 +124,42 @@ When a WinForms form/service constructor gains a required dependency, audit **al
 ## Report action layout
 
 Detailed report windows use a two-row control layout when necessary: filters on the first row and report actions on a dedicated second row. At supported DPI/resolutions, button labels must remain fully visible; wrapping may move whole controls but must never hide part of the action row.
+
+
+## Interactive report sort/print acceptance
+
+For Outstanding Containers:
+
+- Position numeric sort must order by signed numeric balance, not formatted display text (`9`, `8`, `72`, `7` is invalid numeric descending order).
+- Sort by Type/Code/Customer/Container should continue to use ordinary text ordering.
+- Generate PDF / Generate & Open must preserve the grid's current displayed row order.
+
+
+CSV preserves the grid's current displayed row order in the same way as PDF. After sorting Position, Type, Customer, Code or Container, exported CSV rows must appear in that order.
+
+
+## Daily Movements coverage
+
+`DailyMovementsReportSqliteTests` verifies:
+
+- only the selected MovementDate is returned;
+- opening adjustments are excluded by default and included only explicitly;
+- OUT/IN totals are correct;
+- customer/container/direction/source filters work.
+
+Manual UI acceptance verifies responsive layout, Today/Yesterday, numeric Quantity sorting, and PDF/CSV visible-order consistency.
+
+
+Daily Movements UI acceptance also verifies:
+
+- the literal `Generate & Open` label is visible (ampersand is not consumed as a mnemonic);
+- `All directions` is fully readable in the Direction selector;
+- Include notes in exports off omits Notes from both PDF and CSV;
+- Include notes in exports on adds the Notes column to both PDF and CSV;
+- the denser default PDF layout does not reduce operational readability.
+
+
+Daily Movements source-control acceptance verifies that Opening Adjustment is not present in the Source selector and is controlled solely by **Include opening adjustments**.
+
+
+The three-row Daily Movements control layout is manually verified at production DPI: filter wrapping and option text must not push the action row beneath the summary/results area.

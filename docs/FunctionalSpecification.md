@@ -170,3 +170,36 @@
 - BT-DASH-DESIGN-001: Dashboard implementation must not begin until the operator and developer review alternative layouts, charts, drill-through behaviour, exception/attention concepts and forecasting hooks together.
 - BT-DASH-DESIGN-002: Dashboard design must consider both laptop and large-monitor operation.
 - BT-DASH-DESIGN-003: Forecasting/ML hooks are future-facing derived analytics and must never modify authoritative movement/balance records.
+
+
+- BT-REPORT-UI-009: Numeric report columns sort numerically even when their display text includes labels such as OUT/CREDIT.
+- BT-PRINT-016: Outstanding Containers PDF preserves the currently displayed grid row order so operator-selected sorting is reflected in the printable report.
+
+
+- BT-EXPORT-001: Outstanding Containers CSV export preserves the currently displayed grid row order/sort.
+- BT-EXPORT-002: Printable/exported report outputs use the same visible dataset ordering so CSV and PDF do not silently disagree with the operator's on-screen view.
+
+
+## Daily Movements Report
+
+- BT-REPORT-DAILY-001: Query movement rows for one selected MovementDate.
+- BT-REPORT-DAILY-002: Provide Today and Yesterday shortcuts.
+- BT-REPORT-DAILY-003: Filter by customer, container, IN/OUT direction and movement source.
+- BT-REPORT-DAILY-004: Opening Adjustment rows are excluded by default and can be explicitly included.
+- BT-REPORT-DAILY-005: Show customer/type/container/direction/quantity/source/reference/notes/entered-by detail and per-container OUT/IN totals.
+- BT-REPORT-DAILY-006: Quantity sorts numerically.
+- BT-REPORT-DAILY-007: PDF and CSV preserve the current displayed grid ordering.
+- BT-REPORT-DAILY-008: PDF generation is audited.
+
+
+- BT-REPORT-DAILY-009: Daily Movements provides an optional **Include notes in exports** setting; Notes are omitted from both PDF and CSV by default.
+- BT-REPORT-DAILY-010: Daily report action labels and filter values must remain fully readable at supported DPI, including literal `Generate & Open` and `All directions`.
+
+
+- BT-REPORT-DAILY-011: The Daily Movements Source selector contains normal entry origins only; Opening Adjustment is not offered as a Source choice.
+- BT-REPORT-DAILY-012: Opening Adjustment visibility is controlled solely by the explicit **Include opening adjustments** option.
+
+
+- BT-REPORT-DAILY-013: Daily Movements lays out core filters, report options and report actions in separate auto-sized rows so DPI/wrapping cannot hide action buttons.
+
+- BT-REPORT-DAILY-014: The Include notes in exports setting applies consistently to PDF and CSV.

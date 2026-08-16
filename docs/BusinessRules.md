@@ -121,3 +121,45 @@ Important security, master-data and movement changes create audit events.
 - Market Floor Sheet remains the first/inline operational report.
 - Detailed reports use dedicated windows so filters, tables and export/print actions have full working space.
 - “Today” is a shortcut inside the relevant report window, not a separate report.
+
+
+## Interactive report sorting and printing
+
+- Interactive report columns must sort according to their underlying data type. Numeric positions/quantities sort numerically, never lexicographically by formatted text.
+- Outstanding Containers PDF generation is a printable snapshot of the current on-screen dataset and therefore follows the operator's current grid row order/sort.
+- Changing grid sort order is presentation only; it does not modify movement history, balances or stored report data.
+
+
+## Interactive report export ordering
+
+- Outstanding Containers CSV export follows the operator's current displayed grid order/sort, the same as PDF generation.
+- PDF and CSV therefore represent the current on-screen dataset ordering; neither export changes authoritative movement/balance data.
+
+
+## Daily movement reporting
+
+- Daily Movements defaults to physical activity: Manual/Single Entry, Batch Entry and ExcelImport physical IN/OUT rows.
+- Opening Adjustment rows are not physical daily movements and are excluded by default; the operator can explicitly include them for investigation.
+- Today and Yesterday are shortcuts that set the report date and rerun the same report logic.
+- Numeric Quantity sorting uses the underlying integer quantity.
+- PDF and CSV preserve the current displayed grid order/sort.
+
+
+## Daily Movements export notes
+
+- Daily export notes are opt-in because free-text notes can materially increase PDF width/page count and add unnecessary CSV detail.
+- When Include notes in exports is off, Notes remain visible on-screen but are omitted from both PDF and CSV.
+- When enabled, PDF and CSV both add a Notes column; PDF uses a slightly denser layout to retain readability.
+
+
+## Daily Movements source/adjustment controls
+
+- The Source filter intentionally excludes Opening Adjustment. It represents normal entry origin: Single Entry, Batch Entry or Excel Import.
+- Opening adjustments are controlled only by the separate **Include opening adjustments** checkbox.
+- With the checkbox off, adjustment rows are excluded regardless of other filters.
+- With the checkbox on and Source = All sources, adjustment rows may appear alongside physical movement rows and are clearly identified by Source.
+
+
+## Daily Movements UI layout
+
+- Daily Movements layout has no business-data effect: moving filters/options/actions between visual rows does not change query, balance, PDF or CSV semantics.

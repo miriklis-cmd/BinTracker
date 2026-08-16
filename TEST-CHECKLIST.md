@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.20.0.7.2.1**
+Current baseline: **v0.4.0-alpha.20.0.8.4.1.1**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.20.0.7.2.1.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.20.0.8.4.1.1.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -82,7 +82,15 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [ ] Outstanding grid/card is fully visible and uses its own vertical scrollbar rather than being cut off by the main window.
 - [ ] Outstanding Containers CSV export opens correctly and preserves container/customer separation.
 - [ ] Outstanding Containers PDF/print acceptance after implementation.
-- [ ] Daily Movements report acceptance after implementation.
+- [ ] Daily Movements dedicated window opens single-instance and is responsive.
+- [ ] Today shortcut displays today's physical movements.
+- [ ] Yesterday shortcut displays yesterday's physical movements.
+- [ ] Opening adjustments are excluded by default and appear only when Include adjustments is selected.
+- [ ] Customer/container/direction/source filters work.
+- [ ] Quantity sorts numerically.
+- [ ] Daily PDF matches the current sorted grid order.
+- [ ] Daily CSV matches the current sorted grid order.
+- [ ] Daily PDF is readable/printable and DAILY_MOVEMENTS_REPORT_GENERATED is audited.
 - [ ] Movement History report acceptance after implementation.
 - [ ] Monthly Summary acceptance after implementation.
 - [ ] Daily Print Pack acceptance after implementation.
@@ -202,3 +210,56 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [ ] Generate & Open button is fully visible.
 - [ ] Export CSV button is fully visible.
 - [ ] No report action is partially hidden at production laptop DPI.
+
+
+## alpha.20.0.7.3 report sorting / printable view
+
+- [ ] Sort Position descending: e.g. `72 OUT` sorts ahead of `9 OUT`, `8 OUT`, `7 OUT`.
+- [ ] Sort Position ascending and verify numeric order.
+- [ ] Sort Type and confirm Cash / COD and Account group correctly.
+- [ ] After sorting the grid, Generate PDF preserves that exact visible row order.
+- [ ] Generate & Open preserves the current grid sort order as well.
+- [ ] Sorting does not alter the underlying balances or report totals.
+
+
+## alpha.20.0.7.4 CSV visible-order export
+
+- [ ] Sort Position descending, Export CSV, confirm numeric-descending row order matches the grid.
+- [ ] Sort Type, Export CSV, confirm Type grouping matches the grid.
+- [ ] Sort Customer/Code/Container and confirm CSV preserves that exact visible row order.
+- [ ] PDF and CSV from the same sorted grid use the same row order.
+
+
+## alpha.20.0.8.1 Daily report polish
+
+- [ ] Daily action button visibly reads **Generate & Open** including the ampersand.
+- [ ] Direction selector fully displays **All directions** at production laptop DPI.
+- [ ] Include notes in exports unchecked: generated PDF omits Notes.
+- [ ] Include notes in exports checked: generated PDF contains a Notes column and note text.
+- [ ] Default no-notes PDF remains readable and uses page space efficiently.
+
+
+## alpha.20.0.8.2 Daily adjustment-control cleanup
+
+- [ ] Source dropdown offers All sources, Single Entry, Batch Entry and Excel Import.
+- [ ] Source dropdown does not offer Opening Adjustment.
+- [ ] **Include opening adjustments** unchecked excludes adjustment rows.
+- [ ] **Include opening adjustments** checked allows adjustment rows to appear when other filters permit them.
+
+
+## alpha.20.0.8.3 Daily control layout
+
+- [ ] Core filters are fully visible.
+- [ ] Include opening adjustments and Include notes in exports are fully visible on their own options row.
+- [ ] Run Report, Today, Yesterday, Generate PDF, Generate & Open and Export CSV are fully visible.
+- [ ] No action button is hidden behind the summary panel at production laptop DPI.
+- [ ] Resizing the window does not partially clip the action row.
+
+
+## alpha.20.0.8.4 Daily export notes consistency
+
+- [ ] Include notes in exports unchecked: PDF omits Notes.
+- [ ] Include notes in exports unchecked: CSV omits Notes column/data.
+- [ ] Include notes in exports checked: PDF includes Notes.
+- [ ] Include notes in exports checked: CSV includes Notes column/data.
+- [ ] On-screen Notes column remains visible regardless of export setting.

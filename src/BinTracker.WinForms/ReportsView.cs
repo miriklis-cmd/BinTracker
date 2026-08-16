@@ -7,6 +7,7 @@ public sealed class ReportsView : UserControl
 {
     private readonly IMarketFloorReportService marketFloor;
     private readonly Action openOutstanding;
+    private readonly Action openDailyMovements;
 
     private readonly DateTimePicker reportDate = new()
     {
@@ -24,10 +25,12 @@ public sealed class ReportsView : UserControl
 
     public ReportsView(
         IMarketFloorReportService marketFloor,
-        Action openOutstanding)
+        Action openOutstanding,
+        Action openDailyMovements)
     {
         this.marketFloor = marketFloor;
         this.openOutstanding = openOutstanding;
+        this.openDailyMovements = openDailyMovements;
 
         Dock = DockStyle.Fill;
         BackColor = Color.FromArgb(245, 247, 250);
@@ -189,9 +192,10 @@ public sealed class ReportsView : UserControl
             1);
 
         layout.Controls.Add(
-            ComingSoonLauncher(
-                "Movement Reports",
-                "Daily, Weekly, Movement History and Monthly reporting will open in their own report windows."),
+            ReportLauncher(
+                "Daily Movements",
+                "Physical IN/OUT activity for today, yesterday or any selected day, with filters, PDF and CSV.",
+                openDailyMovements),
             1,
             1);
 
@@ -320,7 +324,7 @@ public sealed class ReportsView : UserControl
         layout.Controls.Add(new Label
         {
             Text =
-                "Next: Daily Movements  •  Weekly Movements  •  Movement History  •  Monthly Summary  •  Daily Print Pack",
+                "Next: Weekly Movements  •  Movement History  •  Monthly Summary  •  Daily Print Pack",
             AutoSize = true,
             ForeColor = Color.DimGray
         });

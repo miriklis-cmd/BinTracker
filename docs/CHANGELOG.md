@@ -583,3 +583,49 @@
 - Prevented Generate PDF / Generate & Open / Export CSV buttons from being hidden by DPI wrapping.
 - Recorded mandatory Dashboard design-discussion gate before any Dashboard implementation.
 - Reconciled current-state roadmap/spec/testing/tech-debt/release documentation.
+
+## v0.4.0-alpha.20.0.7.3
+- Fixed Outstanding Position sorting to compare signed numeric balances rather than formatted strings.
+- Attached typed report models to DataGridView rows for type-correct interaction.
+- Outstanding PDF generation now preserves the current displayed grid row order/sort.
+- Added report interaction standard and reconciled roadmap/spec/business/testing/tech-debt/release documentation.
+
+## v0.4.0-alpha.20.0.7.4
+- Fixed Outstanding CSV export to preserve current displayed grid row order/sort.
+- Reused the same displayed-result snapshot approach as PDF generation.
+- Recorded CSV/PDF visible-order consistency as the standard for future reports.
+- Reconciled roadmap/spec/business/testing/tech-debt/release documentation.
+
+## v0.4.0-alpha.20.0.8
+- Added Daily Movements report service and responsive report window.
+- Added Today/Yesterday shortcuts and customer/container/direction/source filters.
+- Excluded Opening Adjustments by default with explicit opt-in.
+- Added typed Quantity sorting.
+- Added PDF/CSV outputs preserving current displayed grid order.
+- Added audited Daily Movements PDF generation.
+- Added SQLite integration coverage and reconciled all current-state docs.
+
+## v0.4.0-alpha.20.0.8.1
+- Fixed Daily Movements Generate & Open ampersand rendering.
+- Widened Direction selector for All directions at production DPI.
+- Added opt-in Notes column to Daily Movements PDF.
+- Tightened default Daily PDF spacing to improve page utilisation.
+- Recorded Notes-in-print business rule and reconciled all current-state docs.
+
+## v0.4.0-alpha.20.0.8.2
+- Removed Opening Adjustment from the Daily Movements Source dropdown.
+- Renamed the checkbox to Include opening adjustments.
+- Made the adjustment inclusion toggle the single explicit adjustment-control path.
+- Reconciled report UX rules and full current-state documentation.
+
+## v0.4.0-alpha.20.0.8.3
+- Fixed Daily Movements action buttons being clipped after alpha.20.0.8.2.
+- Split report controls into auto-sized Filters / Options / Actions rows.
+- Removed dependency on a fixed/minimum controls-card height for button visibility.
+- Reconciled the full documentation/audit set and preserved the Dashboard design gate.
+
+## v0.4.0-alpha.20.0.8.4
+- Renamed Daily Movements option to Include notes in exports.
+- Applied the Notes option consistently to both PDF and CSV.
+- CSV now conditionally includes/omits its Notes column and values.
+- Reconciled full documentation and preserved the Dashboard design gate.

@@ -402,17 +402,19 @@ public sealed class OutstandingContainersReportForm : Form
         grid.AutoSizeRowsMode =
             DataGridViewAutoSizeRowsMode.None;
         grid.ScrollBars = ScrollBars.Both;
+        grid.SortCompare += Grid_SortCompare;
 
-        grid.Columns.Add(Column("Code", 115));
+        grid.Columns.Add(Column("Code", 115, name: "Code"));
         grid.Columns.Add(Column(
             "Customer",
             260,
-            DataGridViewAutoSizeColumnMode.Fill));
-        grid.Columns.Add(Column("Type", 130));
-        grid.Columns.Add(Column("Container", 150));
-        grid.Columns.Add(Column("Position", 120));
-        grid.Columns.Add(Column("Last movement", 130));
-        grid.Columns.Add(Column("Status", 95));
+            DataGridViewAutoSizeColumnMode.Fill,
+            name: "Customer"));
+        grid.Columns.Add(Column("Type", 130, name: "Type"));
+        grid.Columns.Add(Column("Container", 150, name: "Container"));
+        grid.Columns.Add(Column("Position", 120, name: "Position"));
+        grid.Columns.Add(Column("Last movement", 130, name: "LastMovement"));
+        grid.Columns.Add(Column("Status", 95, name: "Status"));
     }
 
     private async Task InitialiseAsync()
@@ -466,7 +468,7 @@ public sealed class OutstandingContainersReportForm : Form
 
             foreach (var row in result.Rows)
             {
-                grid.Rows.Add(
+                var rowIndex = grid.Rows.Add(
                     row.CustomerCode,
                     row.CustomerName,
                     row.CustomerType ==
@@ -477,6 +479,8 @@ public sealed class OutstandingContainersReportForm : Form
                     row.PositionText,
                     row.LastMovementDate?.ToString("dd/MM/yyyy") ?? "—",
                     row.IsActive ? "Active" : "Inactive");
+
+                grid.Rows[rowIndex].Tag = row;
             }
 
             ResizeContentColumns();
@@ -527,6 +531,57 @@ public sealed class OutstandingContainersReportForm : Form
         }
     }
 
+    private void Grid_SortCompare(
+        object? sender,
+        DataGridViewSortCompareEventArgs e)
+    {
+        if (grid.Columns[e.Column.Index].Name != "Position")
+        {
+            return;
+        }
+
+        var left = grid.Rows[e.RowIndex1].Tag as OutstandingReportRow;
+        var right = grid.Rows[e.RowIndex2].Tag as OutstandingReportRow;
+
+        if (left is null || right is null)
+        {
+            return;
+        }
+
+        // Position is a numeric balance, not display text. Without this,
+        // DataGridView compares "9 OUT", "72 OUT", etc. lexicographically.
+        e.SortResult = left.Balance.CompareTo(right.Balance);
+
+        if (e.SortResult == 0)
+        {
+            e.SortResult = string.Compare(
+                left.CustomerCode,
+                right.CustomerCode,
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        e.Handled = true;
+    }
+
+    private OutstandingReportResult BuildDisplayedResultFromCurrentGrid(
+        OutstandingReportResult result)
+    {
+        var displayedRows = grid.Rows
+            .Cast<DataGridViewRow>()
+            .Where(row => !row.IsNewRow)
+            .Select(row => row.Tag as OutstandingReportRow)
+            .Where(row => row is not null)
+            .Cast<OutstandingReportRow>()
+            .ToList();
+
+        // The PDF is intentionally a printable snapshot of the dataset the
+        // operator is currently viewing, including their chosen grid sort.
+        return new OutstandingReportResult(
+            result.AsOfDate,
+            displayedRows,
+            result.ContainerTotals);
+    }
+
     private async Task GeneratePdfAsync(bool openAfter)
     {
         var result = currentResult;
@@ -559,7 +614,12 @@ public sealed class OutstandingContainersReportForm : Form
             UseWaitCursor = true;
             Enabled = false;
 
-            await pdfReports.GeneratePdfAsync(result, dialog.FileName);
+            var printableResult =
+                BuildDisplayedResultFromCurrentGrid(result);
+
+            await pdfReports.GeneratePdfAsync(
+                printableResult,
+                dialog.FileName);
 
             if (openAfter)
             {
@@ -602,12 +662,15 @@ public sealed class OutstandingContainersReportForm : Form
             return;
         }
 
+        var exportResult =
+            BuildDisplayedResultFromCurrentGrid(result);
+
         using var dialog = new SaveFileDialog
         {
             Title = "Export Outstanding Containers",
             Filter = "CSV file (*.csv)|*.csv",
             FileName =
-                $"BinTracker_Outstanding_{result.AsOfDate:yyyyMMdd}.csv",
+                $"BinTracker_Outstanding_{exportResult.AsOfDate:yyyyMMdd}.csv",
             AddExtension = true,
             DefaultExt = "csv"
         };
@@ -623,10 +686,10 @@ public sealed class OutstandingContainersReportForm : Form
         writer.WriteLine(
             "As Of,Customer Code,Customer Name,Customer Type,Container,Position,Quantity,Last Movement,Status");
 
-        foreach (var row in result.Rows)
+        foreach (var row in exportResult.Rows)
         {
             writer.WriteLine(string.Join(",",
-                Csv(result.AsOfDate.ToString("dd/MM/yyyy")),
+                Csv(exportResult.AsOfDate.ToString("dd/MM/yyyy")),
                 Csv(row.CustomerCode),
                 Csv(row.CustomerName),
                 Csv(row.CustomerType ==
@@ -661,13 +724,16 @@ public sealed class OutstandingContainersReportForm : Form
         string header,
         int width,
         DataGridViewAutoSizeColumnMode autoSize =
-            DataGridViewAutoSizeColumnMode.None) =>
+            DataGridViewAutoSizeColumnMode.None,
+        string? name = null) =>
         new()
         {
+            Name = name ?? header,
             HeaderText = header,
             Width = width,
             AutoSizeMode = autoSize,
-            MinimumWidth = Math.Min(width, 90)
+            MinimumWidth = Math.Min(width, 90),
+            SortMode = DataGridViewColumnSortMode.Automatic
         };
 
     private static string Csv(string value)

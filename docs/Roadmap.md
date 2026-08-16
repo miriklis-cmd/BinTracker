@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.20.0.7.2.1**
+Current planning baseline: **v0.4.0-alpha.20.0.8.4.1.1**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -119,7 +119,7 @@ Still required:
 - [x] **Historical Outstanding / As-of-Date foundation** — ledger-derived end-of-date customer/container positions are implemented and tested; future movements are excluded and containers remain separate.
 - [ ] **Weekly Movements report** — first-class selected-week OUT/IN/net detail and summary, not merely an implied date-range option.
 - [ ] **Customer Statement view/print workflow** — generate, open/view and print the statement directly from the operational workflow, not only save a PDF.
-- [ ] **Daily Movements report** — movement detail for a selected day, including quick operational use for **today/yesterday**, direction, container, customer, reference, source and user.
+- [x] **Daily Movements report** — dedicated responsive report window with today/yesterday shortcuts, customer/container/direction/source filters, physical-movement default, optional opening adjustments, typed sorting, audited PDF and CSV preserving the current grid order.
 - [ ] **Movement History report** — date range + customer/container/source filters.
 - [ ] **Monthly Summary** — selected-month OUT, IN, net movement and useful customer/container breakdowns, including quick access to **last month**.
 - [ ] **Daily Print Pack** required by the Functional Specification: Outstanding Summary + Movement Detail.
@@ -297,3 +297,28 @@ Do after the functional/data-integrity items above unless a defect blocks use.
 ## Version milestone policy
 
 Milestone numbering follows scope. Substantial workstreams may receive their own `0.x.0` milestone rather than being forced into a fixed number of phases. Dashboard is a likely candidate for its own milestone because it may involve experimentation and multiple iterations.
+
+
+### Report interaction standard
+
+Detailed report windows treat the on-screen dataset as the operator's printable view: supported column sorting is type-correct, and PDF generation preserves the current displayed order. This standard should be reused by subsequent report windows.
+
+
+### Report output consistency
+
+Detailed report windows treat the current grid order as the operator's chosen report view. PDF and CSV outputs preserve that displayed order. Reuse this rule for future report windows.
+
+
+### Daily Movements print options
+
+Daily Movements supports optional exported Notes. Notes stay out of PDF and CSV by default to preserve compact operational output, but can be included explicitly when investigation/detail is required.
+
+
+### Daily Movements adjustment UX
+
+Daily Movements uses a single explicit opening-adjustment control. Opening Adjustment is not duplicated in the Source selector.
+
+
+### Daily Movements control layout standard
+
+Daily Movements uses separate auto-sized Filter, Options and Actions rows. Reuse this structure when later report windows have enough controls that DPI wrapping could obscure actions.

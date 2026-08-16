@@ -570,6 +570,8 @@ public static class ServiceSetup
         services.AddScoped<IMarketFloorReportService, MarketFloorReportService>();
         services.AddScoped<IOutstandingReportService, OutstandingReportService>();
         services.AddScoped<IOutstandingReportPdfService, OutstandingReportPdfService>();
+        services.AddScoped<IDailyMovementsReportService, DailyMovementsReportService>();
+        services.AddScoped<IDailyMovementsReportPdfService, DailyMovementsReportPdfService>();
         services.AddScoped<IMovementService, MovementService>();
         return services;
     }

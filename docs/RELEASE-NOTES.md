@@ -1,28 +1,18 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.20.0.7.2
+## v0.4.0-alpha.20.0.8.4
 
-### Outstanding action-row layout fix
+### Daily export Notes consistency
 
-The Outstanding report had enough overall window space, but filters and actions shared one wrapping FlowLayoutPanel. At production DPI the action buttons wrapped into a second line that was partially hidden.
-
-Fixed structurally:
-
-- first row contains date/customer/container filters and credit/inactive options;
-- second dedicated row contains Run Report, Today, Generate PDF, Generate & Open and Export CSV;
-- action buttons have explicit DPI-safe widths/heights;
-- the controls card reserves enough vertical space for both rows.
-
-This avoids relying on further window enlargement.
-
-### Dashboard design gate recorded
-
-Before the future Dashboard milestone begins, implementation must stop for a joint design/evaluation discussion covering charts, forecasting hooks, drill-through, exception/attention ideas, trends, comparison views and laptop/large-monitor layouts.
+- Renamed **Include notes in PDF** to **Include notes in exports**.
+- When unchecked, Notes remain visible on-screen but are omitted from PDF and CSV.
+- When checked, both PDF and CSV include a Notes column.
+- No movement/report calculation changed.
 
 ### Full audit
 
-Roadmap, Technical Debt, Test Checklist, Functional Specification, Testing, README, Known Issues, Versioning, changelog and release notes were reconciled.
+Roadmap, Business Rules, Functional Specification, Testing, Test Checklist, Technical Debt, README, Known Issues, Versioning, changelog and release notes were reconciled. The Dashboard design-discussion gate remains intact.
 
 ### Test requirement
 
-**Full smoke test** because report-window UI layout changed.
+**Targeted smoke test** — export one PDF and one CSV with Notes off, then again with Notes on.

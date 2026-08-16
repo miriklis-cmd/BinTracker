@@ -104,3 +104,38 @@ Engineering improvements that are not currently user-facing defects. Product wor
 ## Report filter/action layout
 
 - Do not pack all filters and report actions into one FlowLayoutPanel. Use separate filter/action rows in detailed report windows so DPI wrapping cannot hide action buttons.
+
+
+## Report sorting
+
+- Formatted numeric grid cells (for example `72 OUT` / `3 CREDIT`) must never rely on default string sorting. Keep an authoritative typed row model attached to the grid row and compare the underlying numeric value.
+
+
+## Report output consistency
+
+- PDF and CSV should use the same displayed-result snapshot helper rather than independently re-reading the service result, otherwise on-screen sorting can diverge from exported output.
+
+
+## Daily report master-data choices
+
+- Daily Movements currently reuses the Outstanding reporting service to discover configured Container Types for its filter list. A shared report-filter/master-data provider may be worthwhile once more report windows need the same choices; do not duplicate direct DbContext UI queries.
+
+
+## WinForms button labels
+
+- WinForms treats `&` as a mnemonic marker by default. Literal ampersands in button labels must be escaped as `&&` (or mnemonics explicitly disabled) so labels such as `Generate & Open` render correctly.
+
+
+## Report filter semantics
+
+- Avoid two controls that appear to select the same semantic concept. Daily Movements separates normal entry Source from the explicit Opening Adjustment inclusion toggle.
+
+
+## Detailed report control bands
+
+- When detailed reports have many controls, use separate auto-sized semantic rows (filters / options / actions) rather than relying on one or two wrapping FlowLayoutPanels. This prevents DPI-dependent action clipping.
+
+
+## Report export option semantics
+
+- If one option affects multiple export formats, name it by the shared concept rather than a specific format. Daily Movements uses `Include notes in exports` for both PDF and CSV.
