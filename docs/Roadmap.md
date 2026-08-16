@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.21.1**
+Current planning baseline: **v0.4.0-alpha.21.4**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -277,6 +277,23 @@ Do after the functional/data-integrity items above unless a defect blocks use.
 - [ ] Security/hardening review completed.
 - [ ] Installer/upgrade tested.
 
+
+### Business Information branding / generated-output identity
+
+- [ ] Add ability to configure a **business logo** in Business Information.
+- [ ] Add optional **custom header / branding text** independent of the legal/business name.
+- [ ] Design how branding should be reused by **PDF reports, customer statements, emails, reminders and other generated output**.
+- [ ] Discuss before implementation:
+  - image storage format/location and database-vs-file trade-offs;
+  - supported logo dimensions/aspect ratio/file types;
+  - fallback when no logo is configured;
+  - whether report/email branding can be enabled/disabled per output type;
+  - header/footer placement rules;
+  - how the business name, logo and custom header interact without duplication;
+  - whether email branding should support a richer HTML header/signature later.
+- [ ] Implement the branding layer only after the shared behaviour is agreed, so report/email generators consume one authoritative business-branding configuration.
+
+
 ## Post-v1.0 / commercial roadmap
 
 ### BinTracker Windows UI v2 / WinUI 3 evaluation
@@ -333,3 +350,13 @@ Daily Movements uses a single explicit opening-adjustment control. Opening Adjus
 ### Daily Movements control layout standard
 
 Daily Movements uses separate auto-sized Filter, Options and Actions rows. Reuse this structure when later report windows have enough controls that DPI wrapping could obscure actions.
+
+
+### Weekly Movements views
+
+Weekly Movements keeps detailed and aggregated use cases together: **Daily Detail** for individual transactions and **Weekly Overview** for Customer/Container OUT, IN and Net totals. PDF/CSV follow the selected view.
+
+
+### Weekly actual-history semantics
+
+Weekly Movements is explicitly historical/actual reporting: future dates are unavailable, current-week data stops at today, and configured Container Types drive filtering. Predictive future weeks remain reserved for later forecasting/analytics work.

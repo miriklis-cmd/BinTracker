@@ -171,3 +171,35 @@ Important security, master-data and movement changes create audit events.
 - Weekly net movement is OUT minus IN; it is movement for the week, not the customer's outstanding balance.
 - Opening adjustments are excluded by default because they are not physical weekly activity.
 - Weekly summary remains separated by Customer and Container Type.
+
+
+## Weekly detail versus overview
+
+- Weekly Movements contains two views rather than separate reports.
+- **Daily Detail** shows individual movement rows across the selected Monday-Sunday week.
+- **Weekly Overview** aggregates the selected week's activity by Customer + Container Type.
+- Weekly Overview shows total OUT, total IN and Net (OUT minus IN). Example: if CLAMMS takes 45 Yellow Bins and returns 45 Yellow Bins in the week, the overview shows `45 OUT`, `45 IN`, `Net 0`.
+- PDF and CSV export the currently selected view and preserve that view's current grid order.
+- Notes options apply to Daily Detail only because Weekly Overview contains aggregated rows rather than individual movement notes.
+
+
+## Weekly report date limits
+
+- Weekly Movements is an actual-history report, not a forecasting report.
+- The selected date cannot be later than today.
+- The report service also defensively clamps a future selected date to today.
+- For the current Monday-Sunday week, the displayed week remains the calendar week but movement data stops at today; future days are never interpreted as zero activity.
+- Future/predictive reporting belongs to later forecasting/analytics work, not Weekly Movements.
+
+## Weekly report container filters
+
+- Container choices come from configured BinTracker Container Types, not from current outstanding balances.
+- Active and inactive configured container types are available so historical reports can still filter a container type that has since been deactivated.
+- Inactive types are explicitly labelled `(inactive)`.
+
+
+## Daily report date limits
+
+- Daily Movements is actual-history reporting, not forecasting.
+- The selected date cannot be later than today.
+- The service defensively clamps a future requested date to today so future-dated movement rows cannot leak into Daily Movements.

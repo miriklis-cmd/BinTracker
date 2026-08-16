@@ -221,3 +221,21 @@
 - BT-REPORT-WEEKLY-010: Weekly PDF uses the currently selected Movement Detail or Customer / Container Summary tab and preserves that grid's current sort order.
 - BT-REPORT-WEEKLY-011: Weekly PDF respects all active report filters and opening-adjustment inclusion, with Notes independently optional for PDF and CSV.
 - BT-REPORT-WEEKLY-012: Weekly report Date and customer-code columns are wide enough for visible values, with customer-code width adapting to the result set.
+
+
+- BT-REPORT-WEEKLY-013: Weekly Movements exposes **Daily Detail** and **Weekly Overview** as views within the same report.
+- BT-REPORT-WEEKLY-014: Weekly Overview aggregates by Customer + Container Type and displays total OUT, total IN and Net for the week.
+- BT-REPORT-WEEKLY-015: Weekly PDF and CSV export the currently selected view and preserve its current grid ordering.
+- BT-REPORT-WEEKLY-016: Notes options are independent for PDF and CSV and are applicable to Daily Detail only.
+- BT-REPORT-WEEKLY-017: Weekly Generate & Open must render a literal ampersand in WinForms.
+
+
+- BT-REPORT-WEEKLY-018: Weekly Movements uses one **Include notes in exports** option for both PDF and CSV.
+- BT-REPORT-WEEKLY-019: The selected date cannot be later than today; service logic defensively clamps future dates.
+- BT-REPORT-WEEKLY-020: Current-week results include movement data only through today even though the calendar week ends on Sunday.
+- BT-REPORT-WEEKLY-021: Container filter options come from configured Container Types rather than outstanding-balance results.
+- BT-REPORT-WEEKLY-022: Inactive Container Types remain selectable for historical reporting and are visibly labelled inactive.
+
+
+- BT-REPORT-DAILY-015: Daily Movements date selection cannot go later than today.
+- BT-REPORT-DAILY-016: Daily Movements service defensively clamps future requested dates to today.

@@ -81,6 +81,8 @@ public sealed class DailyMovementsReportForm : Form
         Font = new Font("Segoe UI", 10F);
         BackColor = Color.FromArgb(245, 247, 250);
 
+        reportDate.MaxDate = DateTime.Today;
+
         Build();
 
         Load += async (_, _) =>

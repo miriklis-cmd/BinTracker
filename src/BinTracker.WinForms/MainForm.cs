@@ -512,7 +512,7 @@ public sealed class MainForm : Form
         }
 
         weeklyMovementsReportForm =
-            new WeeklyMovementsReportForm(weeklyMovementReports, weeklyMovementReportPdfs, outstandingReports);
+            new WeeklyMovementsReportForm(weeklyMovementReports, weeklyMovementReportPdfs, containerTypes);
 
         weeklyMovementsReportForm.FormClosed += (_, _) =>
         {

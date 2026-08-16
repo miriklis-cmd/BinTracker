@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.21.1**
+Current baseline: **v0.4.0-alpha.21.4**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.21.1.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.21.4.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -284,3 +284,38 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [ ] Include notes in PDF and Include notes in CSV operate independently.
 - [ ] Detail Date values are not truncated; detail/summary Code widths adapt to visible codes.
 - [ ] Weekly PDF generation appears in the audit trail with week, view, totals and output filename.
+
+
+## alpha.21.2 Weekly overview / export polish
+
+- [ ] Weekly button visibly reads **Generate & Open** including the ampersand.
+- [ ] Notes controls remain separate: Include notes in PDF and Include notes in CSV.
+- [ ] Daily Detail shows individual movement rows.
+- [ ] Weekly Overview shows one row per customer/container with OUT, IN and Net.
+- [ ] Known equal activity example displays equal OUT/IN and Net 0.
+- [ ] Weekly Overview numeric OUT/IN/Net sorting remains numeric.
+- [ ] Generate PDF from Daily Detail exports current Daily Detail ordering.
+- [ ] Generate PDF from Weekly Overview exports current Weekly Overview ordering.
+- [ ] Export CSV from Daily Detail exports current Daily Detail ordering and respects CSV Notes option.
+- [ ] Export CSV from Weekly Overview exports overview columns/order.
+- [ ] Notes controls are disabled while Weekly Overview is selected.
+
+
+## alpha.21.3 Weekly semantics / filter fixes
+
+- [ ] Weekly has one **Include notes in exports** checkbox, not separate PDF/CSV Notes controls.
+- [ ] Notes checkbox affects both Daily Detail PDF and CSV consistently.
+- [ ] Date picker does not allow a date after today.
+- [ ] Current-week report does not include future-dated movements.
+- [ ] Current-week label/PDF clearly states activity is only through today when the week has not finished.
+- [ ] Container filter includes all configured types relevant to this database (e.g. Blue, Yellow, Bulk) regardless of current outstanding balance.
+- [ ] Inactive configured container types appear as `(inactive)` and remain usable for historical filtering.
+- [ ] Selecting Yellow/Bulk correctly filters both Daily Detail and Weekly Overview.
+
+
+## alpha.21.4 Daily date guard
+
+- [ ] Daily Movements date picker cannot select a date after today.
+- [ ] Today still runs correctly.
+- [ ] Yesterday still runs correctly.
+- [ ] Automated integration coverage confirms future service requests clamp to today.

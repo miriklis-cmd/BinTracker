@@ -149,6 +149,67 @@ public sealed class DailyMovementsReportSqliteTests
         Assert.Equal(MovementSource.Batch, row.Source);
     }
 
+
+    [Fact]
+    public async Task Future_daily_date_is_clamped_to_today()
+    {
+        await using var connection =
+            new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<BinTrackerDbContext>(
+            options => options.UseSqlite(connection));
+        services.AddBinTrackerServices();
+
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+
+        var factory = scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var tomorrow = today.AddDays(1);
+
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            await db.Database.EnsureCreatedAsync();
+            await DatabaseSetup.InitializeSqliteAsync(db);
+
+            var customer = new Customer
+            {
+                CustomerCode = "TODAY",
+                Name = "Today Test",
+                CustomerType = CustomerType.Account
+            };
+
+            db.Customers.Add(customer);
+            await db.SaveChangesAsync();
+
+            db.BinMovements.AddRange(
+                Movement(customer.Id, 1, today,
+                    MovementType.Out, MovementSource.Batch, 2),
+                Movement(customer.Id, 1, tomorrow,
+                    MovementType.Out, MovementSource.Batch, 99));
+
+            await db.SaveChangesAsync();
+        }
+
+        var service = scope.ServiceProvider
+            .GetRequiredService<IDailyMovementsReportService>();
+
+        var result = await service.QueryAsync(
+            new DailyMovementsReportQuery(today.AddDays(14)));
+
+        Assert.Equal(today, result.ReportDate);
+
+        var row = Assert.Single(result.Rows);
+        Assert.Equal(2, row.Quantity);
+        Assert.DoesNotContain(
+            result.Rows,
+            x => x.MovementDate > today);
+    }
+
     private static BinMovement Movement(
         int customerId,
         int containerTypeId,

@@ -58,6 +58,15 @@ public sealed record WeeklyMovementsReportResult(
     IReadOnlyList<WeeklyMovementReportRow> Rows,
     IReadOnlyList<WeeklyMovementSummaryRow> Summary)
 {
+    public DateOnly DataThroughDate
+    {
+        get
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            return WeekEnd > today ? today : WeekEnd;
+        }
+    }
+
     public int OutQuantity => Rows.Where(x => x.Direction == MovementType.Out).Sum(x => x.Quantity);
     public int InQuantity => Rows.Where(x => x.Direction == MovementType.In).Sum(x => x.Quantity);
     public int NetQuantity => OutQuantity - InQuantity;
@@ -78,13 +87,21 @@ internal sealed class WeeklyMovementsReportService(
         WeeklyMovementsReportQuery query,
         CancellationToken cancellationToken = default)
     {
-        var start = StartOfWeek(query.WeekStart);
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var selectedDate = query.WeekStart > today
+            ? today
+            : query.WeekStart;
+
+        var start = StartOfWeek(selectedDate);
         var end = start.AddDays(6);
+        var dataThrough = end > today ? today : end;
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
         var movements = db.BinMovements.AsNoTracking()
-            .Where(x => x.MovementDate >= start && x.MovementDate <= end);
+            .Where(x =>
+                x.MovementDate >= start &&
+                x.MovementDate <= dataThrough);
 
         if (!query.IncludeAdjustments)
             movements = movements.Where(x => x.Source != MovementSource.Adjustment);

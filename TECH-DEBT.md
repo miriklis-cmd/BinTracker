@@ -141,6 +141,18 @@ Engineering improvements that are not currently user-facing defects. Product wor
 - If one option affects multiple export formats, name it by the shared concept rather than a specific format. Daily Movements uses `Include notes in exports` for both PDF and CSV.
 
 
-## Weekly report filter master data
+## Report filter master data
 
-- Weekly Movements currently reuses Outstanding reporting to discover configured Container Types, matching Daily Movements. Consolidate this into a shared report-filter/master-data provider when enough report windows justify it.
+- Weekly Movements now uses `IContainerTypeService` as the authoritative configured Container Type source rather than deriving choices from outstanding balances.
+- Daily Movements still derives its container filter choices from Outstanding reporting; migrate Daily to the same authoritative master-data approach in a later cleanup so all report filters share consistent semantics.
+
+
+## Multi-view report export consistency
+
+- Reports with multiple grids/views must export the **selected report view**, not silently fall back to the detail dataset. Weekly Movements PDF and CSV both follow the selected Daily Detail / Weekly Overview tab and its displayed ordering.
+
+
+## Business branding assets
+
+- Business Information currently stores textual business details only. Future branding support should avoid scattering logo/header handling across PDF/email code.
+- Prefer one reusable branding model/service that supplies logo, custom header text, fallback behaviour and placement rules to reports, emails and other generated output.

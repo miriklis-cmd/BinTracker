@@ -170,3 +170,31 @@ The three-row Daily Movements control layout is manually verified at production 
 `WeeklyMovementsReportSqliteTests` verifies Monday-Sunday boundaries, exclusion of opening adjustments, OUT/IN/net totals, summary aggregation and customer/container/source filters.
 
 Manual acceptance verifies This Week/Last Week, responsive layout, Detail/Summary tabs, numeric sorting and CSV visible-order behaviour.
+
+
+## Weekly Overview export acceptance
+
+- Daily Detail lists each movement row.
+- Weekly Overview aggregates Customer + Container Type across the full Monday-Sunday week.
+- Example validation: 45 OUT and 45 IN for the same customer/container appears as `OUT 45 / IN 45 / Net 0`.
+- PDF and CSV export whichever tab is selected and preserve the current sort of that tab.
+- Notes PDF/CSV options remain independent and are disabled on Weekly Overview.
+- `Generate & Open` visibly includes the literal ampersand.
+
+
+## Weekly future-date/container-filter acceptance
+
+- Date picker cannot select later than today.
+- Service queried with a future date clamps to the current week.
+- Future-dated movement rows are excluded.
+- If the current week has future calendar days, the UI/PDF says activity is through today rather than implying future days had zero movements.
+- Container filter is populated from configured Container Types and therefore includes Yellow/Bulk/etc. even when a type has no current outstanding balance.
+- Inactive historical container types remain filterable and display `(inactive)`.
+- One Include notes in exports option controls both PDF and CSV.
+
+
+## Daily future-date acceptance
+
+- Daily Movements date picker cannot select later than today.
+- A future date supplied directly to the service is clamped to today.
+- Future-dated movement rows are not returned by Daily Movements.

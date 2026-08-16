@@ -1,31 +1,30 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.21.1
+## v0.4.0-alpha.21.4
 
-### Weekly Movements
+### Daily Movements future-date guard
 
-Added the next first-class report window:
+Daily Movements now follows the same actual-history rule as Weekly Movements:
 
-- Monday-to-Sunday selected-week reporting.
-- This Week and Last Week shortcuts.
-- Customer, Container and Source filters.
-- Opening adjustments excluded by default with explicit inclusion.
-- Movement Detail tab.
-- Customer / Container Summary tab with OUT, IN and Net.
-- Numeric Quantity / OUT / IN / Net sorting.
-- CSV export preserving the displayed Detail order.
-- Optional Notes column in CSV.
+- date picker cannot go later than today;
+- service logic defensively clamps future date requests to today;
+- future-dated movement rows cannot leak into a Daily Movements report.
 
-### Post-v1 roadmap
+### Roadmap: Business Information branding
 
-Added a **BinTracker Windows UI v2 / WinUI 3 evaluation** milestone after v1. This is an evaluation gate, not a predetermined rewrite.
+Added a formal design/roadmap item for:
+
+- business logo;
+- optional custom branding/header text;
+- shared use across reports, customer statements, emails, reminders and other generated output;
+- discussion of storage, sizing, fallbacks, placement and per-output behaviour before implementation.
+
+This is intentionally a design item first rather than a rushed partial implementation.
 
 ### Full audit
 
-Roadmap, Business Rules, Functional Specification, Testing, Test Checklist, Technical Debt, README, Known Issues, Versioning, changelog and release notes were reconciled. The Dashboard design-discussion gate remains intact.
+Roadmap, Business Rules, Functional Specification, Testing, Test Checklist, Technical Debt, README, Known Issues, Versioning, changelog and release notes were reconciled.
 
 ### Test requirement
 
-**Full smoke test** because a new report UI and reporting logic were added.
-
-- Weekly Movements now includes PDF/Generate & Open, selected-tab/current-sort fidelity, independent PDF/CSV Notes options, explicit Monday-Sunday week display and improved Date/Code sizing.
+**Targeted smoke test** for Daily Movements date selection. Automated coverage was added for future-date clamping.

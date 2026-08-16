@@ -7,7 +7,7 @@ public sealed class WeeklyMovementsReportForm : Form
 {
     private readonly IWeeklyMovementsReportService reports;
     private readonly IWeeklyMovementsReportPdfService pdfReports;
-    private readonly IOutstandingReportService outstanding;
+    private readonly IContainerTypeService containerTypes;
 
     private readonly DateTimePicker weekPicker = new()
     {
@@ -27,15 +27,9 @@ public sealed class WeeklyMovementsReportForm : Form
         Text = "Include opening adjustments",
         AutoSize = true
     };
-    private readonly CheckBox includeNotesInPdf = new()
+    private readonly CheckBox includeNotesInExports = new()
     {
-        Text = "Include notes in PDF",
-        AutoSize = true,
-        Margin = new Padding(22, 0, 0, 0)
-    };
-    private readonly CheckBox includeNotesInExport = new()
-    {
-        Text = "Include notes in CSV",
+        Text = "Include notes in exports",
         AutoSize = true,
         Margin = new Padding(22, 0, 0, 0)
     };
@@ -59,11 +53,11 @@ public sealed class WeeklyMovementsReportForm : Form
     public WeeklyMovementsReportForm(
         IWeeklyMovementsReportService reports,
         IWeeklyMovementsReportPdfService pdfReports,
-        IOutstandingReportService outstanding)
+        IContainerTypeService containerTypes)
     {
         this.reports = reports;
         this.pdfReports = pdfReports;
-        this.outstanding = outstanding;
+        this.containerTypes = containerTypes;
 
         Text = "Weekly Movements";
         StartPosition = FormStartPosition.Manual;
@@ -71,6 +65,8 @@ public sealed class WeeklyMovementsReportForm : Form
         MinimumSize = new Size(1100, 720);
         Font = new Font("Segoe UI", 10F);
         BackColor = Color.FromArgb(245, 247, 250);
+
+        weekPicker.MaxDate = DateTime.Today;
 
         Build();
         Load += async (_, _) =>
@@ -117,7 +113,7 @@ public sealed class WeeklyMovementsReportForm : Form
         }, 0, 0);
         header.Controls.Add(new Label
         {
-            Text = "Monday-to-Sunday physical movement detail and customer/container summary for the selected week.",
+            Text = "Monday-to-Sunday reporting. Daily Detail shows every movement; Weekly Overview totals OUT and IN by customer/container.",
             AutoSize = true,
             ForeColor = Color.FromArgb(80, 90, 105)
         }, 0, 1);
@@ -154,8 +150,7 @@ public sealed class WeeklyMovementsReportForm : Form
         var options = Flow();
         options.Padding = new Padding(0, 6, 0, 4);
         options.Controls.Add(includeAdjustments);
-        options.Controls.Add(includeNotesInPdf);
-        options.Controls.Add(includeNotesInExport);
+        options.Controls.Add(includeNotesInExports);
 
         var actions = Flow();
         actions.Padding = new Padding(0, 8, 0, 0);
@@ -171,7 +166,7 @@ public sealed class WeeklyMovementsReportForm : Form
             await LoadReportAsync();
         }));
         actions.Controls.Add(ActionButton("Generate PDF", 140, async () => await GeneratePdfAsync(false)));
-        actions.Controls.Add(ActionButton("Generate & Open", 165, async () => await GeneratePdfAsync(true)));
+        actions.Controls.Add(ActionButton("Generate && Open", 175, async () => await GeneratePdfAsync(true)));
         var csv = new Button { Text = "Export CSV", Size = new Size(135, 40), Margin = new Padding(8,0,0,0) };
         csv.Click += (_, _) => ExportCsv();
         actions.Controls.Add(csv);
@@ -193,12 +188,13 @@ public sealed class WeeklyMovementsReportForm : Form
         summaryCard.Controls.Add(summaryLabel);
         root.Controls.Add(summaryCard,0,2);
 
-        var detailPage = new TabPage("Movement Detail") { Padding = new Padding(8) };
+        var detailPage = new TabPage("Daily Detail") { Padding = new Padding(8) };
         detailPage.Controls.Add(detailGrid);
-        var summaryPage = new TabPage("Customer / Container Summary") { Padding = new Padding(8) };
+        var summaryPage = new TabPage("Weekly Overview") { Padding = new Padding(8) };
         summaryPage.Controls.Add(summaryGrid);
         tabs.TabPages.Add(detailPage);
         tabs.TabPages.Add(summaryPage);
+        tabs.SelectedIndexChanged += (_, _) => UpdateViewOptions();
         root.Controls.Add(tabs,0,3);
 
         var close = new Button { Text="Close", Size=new Size(110,38), Margin=new Padding(0,10,0,0) };
@@ -210,17 +206,39 @@ public sealed class WeeklyMovementsReportForm : Form
         footer.Controls.Add(close);
         root.Controls.Add(footer,0,4);
         Controls.Add(root);
+        UpdateViewOptions();
+    }
+
+    private void UpdateViewOptions()
+    {
+        var detailView = tabs.SelectedIndex == 0;
+
+        includeNotesInExports.Enabled = detailView;
+
+        if (!detailView)
+            includeNotesInExports.Checked = false;
     }
 
     private async Task InitialiseAsync()
     {
         containerFilter.Items.Add(new Choice<int?>(null, "All containers"));
-        var source = await outstanding.QueryAsync(new OutstandingReportQuery(
-            DateOnly.FromDateTime(DateTime.Today),
-            IncludeCredits:true, IncludeInactiveCustomers:true));
-        foreach (var c in source.ContainerTotals)
-            containerFilter.Items.Add(new Choice<int?>(c.ContainerTypeId,c.ContainerType));
-        containerFilter.SelectedIndex=0;
+
+        var configuredContainers =
+            await containerTypes.SearchAsync(
+                search: null,
+                includeInactive: true);
+
+        foreach (var container in configuredContainers)
+        {
+            var label = container.IsActive
+                ? container.Name
+                : $"{container.Name} (inactive)";
+
+            containerFilter.Items.Add(
+                new Choice<int?>(container.Id, label));
+        }
+
+        containerFilter.SelectedIndex = 0;
 
         sourceFilter.Items.Add(new Choice<MovementSource?>(null,"All sources"));
         sourceFilter.Items.Add(new Choice<MovementSource?>(MovementSource.Manual,"Single Entry"));
@@ -264,13 +282,23 @@ public sealed class WeeklyMovementsReportForm : Form
                 summaryGrid.Rows[i].Tag=row;
             }
 
-            resolvedWeekLabel.Text = $"Week: {current.WeekStart:dd/MM/yyyy} – {current.WeekEnd:dd/MM/yyyy}";
+            resolvedWeekLabel.Text =
+                current.DataThroughDate < current.WeekEnd
+                    ? $"Week: {current.WeekStart:dd/MM/yyyy} – {current.WeekEnd:dd/MM/yyyy} (activity through {current.DataThroughDate:dd/MM/yyyy})"
+                    : $"Week: {current.WeekStart:dd/MM/yyyy} – {current.WeekEnd:dd/MM/yyyy}";
+
             AdjustGridColumnWidths();
 
             summaryLabel.Text =
-                $"{current.WeekStart:dd/MM/yyyy} – {current.WeekEnd:dd/MM/yyyy} — " +
+                $"{current.WeekStart:dd/MM/yyyy} – {current.WeekEnd:dd/MM/yyyy}" +
+                (current.DataThroughDate < current.WeekEnd
+                    ? $" • activity through {current.DataThroughDate:dd/MM/yyyy}"
+                    : "") +
+                $" — " +
                 $"{current.Rows.Count:N0} movement row(s) • {current.OutQuantity:N0} OUT • " +
-                $"{current.InQuantity:N0} IN • Net {current.NetQuantity:+#;-#;0}";
+                $"{current.InQuantity:N0} IN • Net {current.NetQuantity:+#;-#;0}" +
+                Environment.NewLine +
+                "Daily Detail = individual movements   •   Weekly Overview = customer/container totals for the whole week";
         }
         catch(Exception ex)
         {
@@ -299,14 +327,14 @@ public sealed class WeeklyMovementsReportForm : Form
         using var dialog = new SaveFileDialog
         {
             Title = "Generate Weekly Movements PDF", Filter = "PDF file (*.pdf)|*.pdf",
-            FileName = $"BinTracker_Weekly_Movements_{result.WeekStart:yyyyMMdd}_{result.WeekEnd:yyyyMMdd}_{(summaryView ? "Summary" : "Detail")}.pdf",
+            FileName = $"BinTracker_Weekly_Movements_{result.WeekStart:yyyyMMdd}_{result.WeekEnd:yyyyMMdd}_{(summaryView ? "Overview" : "Detail")}.pdf",
             AddExtension = true, DefaultExt = "pdf"
         };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         try
         {
             Enabled = false; UseWaitCursor = true;
-            await pdfReports.GeneratePdfAsync(result, dialog.FileName, summaryView, includeNotesInPdf.Checked);
+            await pdfReports.GeneratePdfAsync(result, dialog.FileName, summaryView, includeNotesInExports.Checked);
             if (openAfter) System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             { FileName = dialog.FileName, UseShellExecute = true });
         }
@@ -333,34 +361,87 @@ public sealed class WeeklyMovementsReportForm : Form
 
     private void ExportCsv()
     {
-        if (current is null) { MessageBox.Show(this,"Run the report first."); return; }
+        if (current is null)
+        {
+            MessageBox.Show(this, "Run the report first.");
+            return;
+        }
+
+        var overviewView = tabs.SelectedIndex == 1;
+        var viewName = overviewView ? "Overview" : "Detail";
+
         using var dialog = new SaveFileDialog
         {
-            Title="Export Weekly Movements",
-            Filter="CSV file (*.csv)|*.csv",
-            FileName=$"BinTracker_Weekly_Movements_{current.WeekStart:yyyyMMdd}_{current.WeekEnd:yyyyMMdd}.csv",
-            AddExtension=true, DefaultExt="csv"
+            Title = "Export Weekly Movements",
+            Filter = "CSV file (*.csv)|*.csv",
+            FileName =
+                $"BinTracker_Weekly_Movements_{current.WeekStart:yyyyMMdd}_{current.WeekEnd:yyyyMMdd}_{viewName}.csv",
+            AddExtension = true,
+            DefaultExt = "csv"
         };
-        if(dialog.ShowDialog(this)!=DialogResult.OK) return;
 
-        using var writer=new StreamWriter(dialog.FileName,false,new System.Text.UTF8Encoding(true));
-        writer.WriteLine(includeNotesInExport.Checked
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+            return;
+
+        using var writer = new StreamWriter(
+            dialog.FileName,
+            false,
+            new System.Text.UTF8Encoding(true));
+
+        if (overviewView)
+        {
+            writer.WriteLine(
+                "Customer Code,Customer Name,Container,OUT,IN,Net");
+
+            foreach (DataGridViewRow gridRow in summaryGrid.Rows)
+            {
+                if (gridRow.Tag is not WeeklyMovementSummaryRow row)
+                    continue;
+
+                writer.WriteLine(string.Join(",",
+                    Csv(row.CustomerCode),
+                    Csv(row.CustomerName),
+                    Csv(row.ContainerType),
+                    row.OutQuantity.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture),
+                    row.InQuantity.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture),
+                    row.NetQuantity.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture)));
+            }
+
+            return;
+        }
+
+        writer.WriteLine(includeNotesInExports.Checked
             ? "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Notes,Entered By"
             : "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Entered By");
 
-        foreach(DataGridViewRow gridRow in detailGrid.Rows)
+        foreach (DataGridViewRow gridRow in detailGrid.Rows)
         {
-            if(gridRow.Tag is not WeeklyMovementReportRow row) continue;
-            var fields=new List<string>
+            if (gridRow.Tag is not WeeklyMovementReportRow row)
+                continue;
+
+            var fields = new List<string>
             {
-                Csv(row.MovementDate.ToString("dd/MM/yyyy")),Csv(row.CustomerCode),Csv(row.CustomerName),
-                Csv(CustomerTypeText(row.CustomerType)),Csv(row.ContainerType),Csv(row.DirectionText),
-                row.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                Csv(row.SourceText),Csv(row.Reference)
+                Csv(row.MovementDate.ToString("dd/MM/yyyy")),
+                Csv(row.CustomerCode),
+                Csv(row.CustomerName),
+                Csv(CustomerTypeText(row.CustomerType)),
+                Csv(row.ContainerType),
+                Csv(row.DirectionText),
+                row.Quantity.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture),
+                Csv(row.SourceText),
+                Csv(row.Reference)
             };
-            if(includeNotesInExport.Checked) fields.Add(Csv(row.Notes));
+
+            if (includeNotesInExports.Checked)
+                fields.Add(Csv(row.Notes));
+
             fields.Add(Csv(row.EnteredBy));
-            writer.WriteLine(string.Join(",",fields));
+
+            writer.WriteLine(string.Join(",", fields));
         }
     }
 

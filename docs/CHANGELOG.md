@@ -650,3 +650,26 @@
 - Added audited WEEKLY_MOVEMENTS_REPORT_GENERATED events including week, view, totals, Notes option and output filename.
 - Expanded the mandatory Dashboard design gate to compare WinForms v1 with future WinUI 3 v2, explicitly including the Reports launcher and individual report screens as reference UI.
 - Reconciled roadmap, functional specification, test checklist and audit coverage.
+
+## v0.4.0-alpha.21.2
+- Fixed Weekly Generate & Open literal ampersand rendering.
+- Renamed Weekly tabs to Daily Detail and Weekly Overview.
+- Formalised weekly Customer/Container OUT/IN/Net overview inside the existing Weekly report.
+- Made CSV, like PDF, export the currently selected report tab and current sort order.
+- Disabled detail Notes options while Weekly Overview is selected.
+- Reconciled the complete documentation/audit set and retained future WinUI 3 Dashboard/Reports launcher/report-window evaluation requirements.
+
+## v0.4.0-alpha.21.3
+- Unified Weekly Notes export option across PDF and CSV.
+- Prevented future Weekly report selection and future movement leakage.
+- Added current-week activity-through-date semantics.
+- Switched Weekly Container filter from Outstanding totals to authoritative Container Type master data.
+- Preserved inactive Container Types for historical filtering with explicit inactive labels.
+- Added future-date integration regression coverage and reconciled full documentation.
+
+## v0.4.0-alpha.21.4
+- Prevented Daily Movements date selection after today.
+- Added service-level future-date clamping for Daily Movements.
+- Added integration regression coverage for future Daily report dates.
+- Added Business Information logo/custom-header/generated-output branding design milestone.
+- Reconciled full documentation/audit state.

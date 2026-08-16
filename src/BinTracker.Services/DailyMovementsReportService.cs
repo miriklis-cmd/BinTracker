@@ -79,12 +79,17 @@ internal sealed class DailyMovementsReportService(
         DailyMovementsReportQuery query,
         CancellationToken cancellationToken = default)
     {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var reportDate = query.ReportDate > today
+            ? today
+            : query.ReportDate;
+
         await using var db =
             await factory.CreateDbContextAsync(cancellationToken);
 
         var movements = db.BinMovements
             .AsNoTracking()
-            .Where(x => x.MovementDate == query.ReportDate);
+            .Where(x => x.MovementDate == reportDate);
 
         if (!query.IncludeAdjustments)
             movements = movements.Where(
@@ -175,7 +180,7 @@ internal sealed class DailyMovementsReportService(
             .ToList();
 
         return new DailyMovementsReportResult(
-            query.ReportDate,
+            reportDate,
             rows,
             totals);
     }

@@ -41,7 +41,7 @@ internal sealed class WeeklyMovementsReportPdfService(
                 {
                     header.Item().Text($"{business.ReportHeader} - Weekly Movements").FontSize(17).SemiBold();
                     header.Item().PaddingTop(3)
-                        .Text($"{result.WeekStart:dd/MM/yyyy} - {result.WeekEnd:dd/MM/yyyy} • {(summaryView ? "Customer / Container Summary" : "Movement Detail")}")
+                        .Text($"{result.WeekStart:dd/MM/yyyy} - {result.WeekEnd:dd/MM/yyyy} • {(summaryView ? "Weekly Overview" : "Daily Detail")}")
                         .FontSize(11).SemiBold();
                     header.Item().PaddingTop(2)
                         .Text($"{result.Rows.Count:N0} movement row(s) • {result.OutQuantity:N0} OUT • {result.InQuantity:N0} IN • Net {result.NetQuantity:+#;-#;0}")
@@ -71,7 +71,7 @@ internal sealed class WeeklyMovementsReportPdfService(
             "Report",
             $"{result.WeekStart:yyyy-MM-dd}:{result.WeekEnd:yyyy-MM-dd}",
             $"Weekly Movements PDF generated for {result.WeekStart:dd/MM/yyyy} - {result.WeekEnd:dd/MM/yyyy}: " +
-            $"{result.Rows.Count:N0} row(s), {result.OutQuantity:N0} OUT, {result.InQuantity:N0} IN, view {(summaryView ? "summary" : "detail")}.",
+            $"{result.Rows.Count:N0} row(s), {result.OutQuantity:N0} OUT, {result.InQuantity:N0} IN, view {(summaryView ? "weekly overview" : "daily detail")}.",
             after: new
             {
                 result.WeekStart,
@@ -81,8 +81,9 @@ internal sealed class WeeklyMovementsReportPdfService(
                 result.OutQuantity,
                 result.InQuantity,
                 result.NetQuantity,
-                View = summaryView ? "Summary" : "Detail",
+                View = summaryView ? "Weekly Overview" : "Daily Detail",
                 IncludeNotes = includeNotes,
+                DataThroughDate = result.DataThroughDate,
                 FileName = Path.GetFileName(outputPath)
             },
             cancellationToken: cancellationToken);
