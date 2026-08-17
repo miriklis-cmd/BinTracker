@@ -2,7 +2,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class FirstRunAdminForm : Form
+public sealed class FirstRunAdminForm : BinTrackerForm
 {
     private readonly IAuthenticationService auth;
     private readonly TextBox username = new() { Dock = DockStyle.Fill, Text = "admin" };

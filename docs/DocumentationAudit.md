@@ -74,3 +74,34 @@ This file is not a one-off audit artifact. Every packaged build must append or r
 - [x] Version references reconciled with `Directory.Build.props`.
 - [x] Changelog and Release Notes updated.
 - [x] Test requirement classified as **full smoke test**.
+
+
+## Candidate: v0.4.0-alpha.22.2
+
+- [x] 21 Markdown files enumerated/reviewed.
+- [x] Weekly wrapped-layout fix and Customer Enter cue reconciled across UI standard documentation.
+- [x] BinTracker product icon/logo documented separately from business branding.
+- [x] Roadmap Coverage Matrix reviewed; no agreed workstream removed.
+- [x] Version references reconciled with `Directory.Build.props`.
+- [x] Changelog and Release Notes updated.
+- [x] Test requirement classified as **full smoke test**.
+
+
+## Candidate: v0.4.0-alpha.22.3.1
+
+- [x] 21 Markdown files enumerated/reviewed.
+- [x] Weekly wrapped-layout defect and structural fix documented.
+- [x] Roadmap Coverage Matrix reviewed; no agreed workstream removed.
+- [x] Version references reconciled.
+- [x] Changelog / Release Notes / Testing / Test Checklist / Tech Debt reconciled.
+- [x] Test requirement classified as **full smoke test**.
+
+
+## Candidate: v0.4.0-alpha.22.3.2
+
+- [x] 21 Markdown files enumerated/reviewed.
+- [x] Application icon/sidebar branding behaviour reconciled across specs/business rules/testing/roadmap/tech debt.
+- [x] Roadmap Coverage Matrix reviewed; no agreed workstream removed.
+- [x] Version references reconciled.
+- [x] Changelog and Release Notes updated.
+- [x] Test requirement classified as **full smoke test**.

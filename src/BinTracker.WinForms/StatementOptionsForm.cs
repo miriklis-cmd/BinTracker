@@ -1,6 +1,6 @@
 namespace BinTracker.WinForms;
 
-public sealed class StatementOptionsForm : Form
+public sealed class StatementOptionsForm : BinTrackerForm
 {
     private readonly DateTimePicker from = new()
     {

@@ -3,7 +3,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class ContainerTokenMappingForm : Form
+public sealed class ContainerTokenMappingForm : BinTrackerForm
 {
     private readonly IContainerTypeService service;
     private readonly IReadOnlyList<string> tokens;

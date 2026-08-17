@@ -3,7 +3,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class UsersForm : Form
+public sealed class UsersForm : BinTrackerForm
 {
     private sealed record UserGridRow(
         int Id,
@@ -371,7 +371,7 @@ public sealed class UsersForm : Form
 }
 
 
-internal sealed class ChangeRoleForm : Form
+internal sealed class ChangeRoleForm : BinTrackerForm
 {
     private readonly ComboBox role = new()
     {
@@ -480,7 +480,7 @@ internal sealed class ChangeRoleForm : Form
     }
 }
 
-internal sealed class AddUserForm : Form
+internal sealed class AddUserForm : BinTrackerForm
 {
     private readonly TextBox username = new() { Dock = DockStyle.Fill };
     private readonly TextBox display = new() { Dock = DockStyle.Fill };
@@ -630,7 +630,7 @@ internal sealed class AddUserForm : Form
 }
 
 
-internal sealed class ResetPasswordForm : Form
+internal sealed class ResetPasswordForm : BinTrackerForm
 {
     private readonly TextBox password = new() { Dock = DockStyle.Fill, UseSystemPasswordChar = true };
     private readonly TextBox confirm = new() { Dock = DockStyle.Fill, UseSystemPasswordChar = true };

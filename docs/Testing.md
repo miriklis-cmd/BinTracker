@@ -247,3 +247,25 @@ For Outstanding Containers, Daily Movements, Weekly Movements and Movement Histo
 - Pressing Enter in Customer applies the search.
 - Shortcut buttons still refresh immediately.
 - Export/PDF continues to use the resulting on-screen dataset/order.
+
+
+## Report wrapped-layout/customer-cue acceptance
+
+- Weekly Movements at laptop width may wrap filters, but all shortcut/PDF/CSV buttons remain fully visible.
+- Outstanding, Daily, Weekly and Movement History visibly explain that Customer search applies on Enter.
+- Customer Enter continues to refresh exactly once.
+- Live dropdown/date/checkbox behaviour remains unchanged.
+- BinTracker executable/window icon uses the supplied product icon and the sidebar displays the supplied product logo without dominating the navigation.
+
+
+## Weekly wrapped-control layout regression
+
+Weekly Movements controls must remain fully visible when the filter row wraps at laptop width/DPI scaling. The filter/options/action area must contribute its true preferred height before the summary/grid rows are laid out. Test with the Source filter wrapped to a second line and verify all action buttons are fully visible.
+
+
+## Application icon/branding acceptance
+
+- Launch BinTracker and verify Login shows the BinTracker icon in its title bar and taskbar before authentication.
+- Verify Main, Outstanding, Daily, Weekly, Movement History, Import/Admin and other breakout/dialog Forms use the same icon.
+- Verify the left navigation shows the BinTracker product logo beside the BinTracker wordmark.
+- Verify no form fails to open if icon extraction unexpectedly fails.

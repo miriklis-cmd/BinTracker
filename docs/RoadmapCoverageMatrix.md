@@ -18,6 +18,7 @@ Audited: 16 August 2026
 | PostgreSQL/Multi-computer | Readiness before v1 | Preserve Services + IDbContextFactory; central deployment follows readiness decision |
 | Installer/Upgrade | Yes | Production package and safe upgrade path |
 | Full per-build audit discipline | Always | Mandatory gate on every packaged build; includes all Markdown/current-state/version/roadmap reconciliation |
+| BinTracker product branding | v1 | Supplied product icon/logo used by Windows shell and restrained in-app branding; separate from business branding |
 | WinUI 3 Windows UI v2 | No — post-v1 | Evaluate/migrate after v1 publication |
 | Customer portal | Post-v1 | Explicit candidate |
 | Barcode scanning | Post-v1 | Explicit candidate |

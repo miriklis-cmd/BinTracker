@@ -2,7 +2,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class ExcelImportForm : Form
+public sealed class ExcelImportForm : BinTrackerForm
 {
     private readonly IExcelImportService service;
     private readonly ICustomerService customerService;

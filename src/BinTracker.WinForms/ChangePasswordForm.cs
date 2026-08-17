@@ -2,7 +2,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class ChangePasswordForm : Form
+public sealed class ChangePasswordForm : BinTrackerForm
 {
     private readonly IAuthenticationService auth;
     private readonly bool required;

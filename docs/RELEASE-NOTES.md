@@ -1,25 +1,22 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.22.1
+## v0.4.0-alpha.22.3.2
 
-### Live interactive report filtering
+### Application icon / sidebar branding consistency
 
-Removed the separate **Run Report** action from interactive report windows.
+Fixed BinTracker branding before and after login.
 
-Outstanding Containers, Daily Movements, Weekly Movements and Movement History now use the same interaction standard:
-
-- date changes refresh automatically;
-- dropdown filters refresh automatically;
-- result-affecting checkboxes refresh automatically;
-- Customer text waits for Enter rather than querying on every keystroke;
-- date/range shortcut buttons continue to refresh immediately.
-
-Movement History's **This Month** action was widened so its full label is visible.
+- Added common `BinTrackerForm` base class.
+- Login, Main, report breakouts, import/admin dialogs and nested WinForms dialogs now inherit the BinTracker executable icon automatically.
+- Login therefore presents the BinTracker icon in the title bar/taskbar before authentication.
+- Removed ad-hoc icon loading from Main/Weekly.
+- Rebuilt sidebar product branding as a two-column layout so the logo cannot be hidden beneath the BinTracker wordmark.
+- Product branding remains separate from future Business Information/customer branding.
 
 ### Mandatory full audit
 
-All Markdown files were enumerated/reviewed and current-state documentation, Roadmap Coverage, version references, specifications, business rules, testing, Known Issues, Tech Debt, changelog, release notes and Documentation Audit were reconciled.
+All Markdown/current-state documentation and roadmap coverage were reviewed and reconciled.
 
 ### Test requirement
 
-**Full smoke test** because multiple report UIs and interaction behaviour changed.
+**Full smoke test** because shared Form inheritance and application-shell branding changed.

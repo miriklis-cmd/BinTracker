@@ -7,7 +7,7 @@ internal enum UnsavedChangesChoice
     Cancel
 }
 
-internal sealed class UnsavedChangesDialog : Form
+internal sealed class UnsavedChangesDialog : BinTrackerForm
 {
     private UnsavedChangesChoice choice = UnsavedChangesChoice.Cancel;
 

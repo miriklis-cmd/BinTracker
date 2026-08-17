@@ -2,7 +2,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class BusinessInformationForm : Form
+public sealed class BusinessInformationForm : BinTrackerForm
 {
     private readonly IBusinessInformationService service;
 

@@ -262,3 +262,18 @@
 - BT-REPORT-HISTORY-009: PDF and CSV preserve current visible grid order.
 - BT-REPORT-HISTORY-010: One Include notes in exports option controls Notes in both PDF and CSV.
 - BT-REPORT-HISTORY-011: PDF generation is audited as `MOVEMENT_HISTORY_REPORT_GENERATED`.
+
+
+## BinTracker Product Branding
+
+- BT-BRAND-PRODUCT-001: The supplied BinTracker fish/bin artwork is the **product** logo and Windows application icon.
+- BT-BRAND-PRODUCT-002: Product branding is separate from future customer/business branding configured in Business Information.
+- BT-BRAND-PRODUCT-003: Product branding should be restrained in WinForms v1 and may be reconsidered during the post-v1 WinUI 3 redesign.
+
+
+## BinTracker application branding
+
+- BT-BRAND-APP-001: The BinTracker executable icon is the authoritative window/taskbar icon for Login, main shell, report breakouts, import/admin dialogs and other WinForms windows.
+- BT-BRAND-APP-002: Windows Forms inherit application icon behaviour from a common BinTracker form base rather than setting icons ad hoc.
+- BT-BRAND-APP-003: The main left navigation shows the BinTracker product logo separately from future customer/business branding.
+- BT-BRAND-APP-004: BinTracker product branding and configurable Business Information branding are separate concepts.

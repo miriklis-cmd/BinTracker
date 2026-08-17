@@ -2,7 +2,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class LoginForm : Form
+public sealed class LoginForm : BinTrackerForm
 {
     private readonly IAuthenticationService auth;
     private readonly TextBox username = new() { Dock = DockStyle.Top, Width = 385 };

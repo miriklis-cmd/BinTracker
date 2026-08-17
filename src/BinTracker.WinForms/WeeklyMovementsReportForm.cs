@@ -3,7 +3,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class WeeklyMovementsReportForm : Form
+public sealed class WeeklyMovementsReportForm : BinTrackerForm
 {
     private readonly IWeeklyMovementsReportService reports;
     private readonly IWeeklyMovementsReportPdfService pdfReports;
@@ -18,7 +18,7 @@ public sealed class WeeklyMovementsReportForm : Form
     private readonly TextBox customerSearch = new()
     {
         Width = 220,
-        PlaceholderText = "Customer code or name"
+        PlaceholderText = "Type, then press Enter"
     };
     private readonly ComboBox containerFilter = ChoiceBox(175);
     private readonly ComboBox sourceFilter = ChoiceBox(155);
@@ -155,15 +155,25 @@ public sealed class WeeklyMovementsReportForm : Form
         }, 0, 1);
         root.Controls.Add(header, 0, 0);
 
-        var controlsCard = new Panel
+        // Use an auto-sizing TableLayoutPanel rather than a Panel with a
+        // docked child.  A WinForms Panel can under-measure a docked
+        // AutoSize child after FlowLayoutPanel wrapping, which allowed the
+        // summary row to overlap/clamp the action buttons.
+        var controlsCard = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            RowCount = 1,
             BackColor = Color.White,
             Padding = new Padding(16, 12, 16, 12),
             Margin = new Padding(0, 0, 0, 10)
         };
+        controlsCard.ColumnStyles.Add(
+            new ColumnStyle(SizeType.Percent, 100F));
+        controlsCard.RowStyles.Add(
+            new RowStyle(SizeType.AutoSize));
         var rows = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
@@ -172,6 +182,9 @@ public sealed class WeeklyMovementsReportForm : Form
             ColumnCount = 1,
             RowCount = 3
         };
+        rows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        rows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        rows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         var filters = Flow();
         filters.Controls.Add(ControlLabel("Select date"));
         filters.Controls.Add(weekPicker);
@@ -187,9 +200,20 @@ public sealed class WeeklyMovementsReportForm : Form
         options.Padding = new Padding(0, 6, 0, 4);
         options.Controls.Add(includeAdjustments);
         options.Controls.Add(includeNotesInExports);
+        options.Controls.Add(new Label
+        {
+            Text = "Customer search: type code/name and press Enter",
+            AutoSize = true,
+            ForeColor = Color.DimGray,
+            Margin = new Padding(22, 3, 0, 0)
+        });
 
         var actions = Flow();
-        actions.Padding = new Padding(0, 8, 0, 0);
+        // This row is measured by the surrounding AutoSize TableLayoutPanels,
+        // so wrapped buttons contribute their full preferred height.
+        actions.Padding = new Padding(0, 8, 0, 8);
+        actions.AutoSize = true;
+        actions.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         actions.Controls.Add(ActionButton(
             "This Week",
             110,
@@ -208,7 +232,7 @@ public sealed class WeeklyMovementsReportForm : Form
         rows.Controls.Add(filters,0,0);
         rows.Controls.Add(options,0,1);
         rows.Controls.Add(actions,0,2);
-        controlsCard.Controls.Add(rows);
+        controlsCard.Controls.Add(rows, 0, 0);
         root.Controls.Add(controlsCard,0,1);
 
         var summaryCard = new Panel

@@ -229,3 +229,17 @@ Important security, master-data and movement changes create audit events.
 - Free-text Customer search does **not** query on every keystroke; pressing Enter applies the customer filter.
 - Shortcut buttons such as Today, Yesterday, This Week, Last Week, Last 7 Days, Last 30 Days and This Month apply their date selection and refresh immediately.
 - This interaction standard applies to Outstanding Containers, Daily Movements, Weekly Movements, Movement History and future interactive report windows unless a report has a specific reason to behave differently.
+
+
+## Report customer-search cue
+
+- Interactive report customer fields visibly tell the operator to **press Enter** to apply a free-text customer search.
+- This cue exists because dropdown/date/checkbox filters are live but customer text deliberately does not query per keystroke.
+
+
+## BinTracker product branding
+
+- BinTracker's product icon/logo identifies the application itself.
+- Login and every breakout/dialog window should use the BinTracker executable icon in title bars/taskbar.
+- The main sidebar shows the BinTracker product logo.
+- Future Business Information logo/header configuration belongs to the user's business and must not replace/confuse the BinTracker application identity.

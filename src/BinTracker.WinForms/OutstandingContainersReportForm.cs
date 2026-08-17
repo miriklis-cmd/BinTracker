@@ -2,7 +2,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class OutstandingContainersReportForm : Form
+public sealed class OutstandingContainersReportForm : BinTrackerForm
 {
     private readonly IOutstandingReportService outstanding;
     private readonly IOutstandingReportPdfService pdfReports;
@@ -17,7 +17,7 @@ public sealed class OutstandingContainersReportForm : Form
     private readonly TextBox customerSearch = new()
     {
         Width = 220,
-        PlaceholderText = "Customer code or name"
+        PlaceholderText = "Type, then press Enter"
     };
 
     private readonly ComboBox containerFilter = new()
@@ -223,6 +223,13 @@ public sealed class OutstandingContainersReportForm : Form
         filters.Controls.Add(containerFilter);
         filters.Controls.Add(includeCredits);
         filters.Controls.Add(includeInactive);
+        filters.Controls.Add(new Label
+        {
+            Text = "Customer: press Enter to search",
+            AutoSize = true,
+            ForeColor = Color.DimGray,
+            Margin = new Padding(14, 9, 0, 0)
+        });
 
         var actions = new FlowLayoutPanel
         {

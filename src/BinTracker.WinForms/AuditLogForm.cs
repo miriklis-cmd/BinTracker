@@ -2,7 +2,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class AuditLogForm : Form
+public sealed class AuditLogForm : BinTrackerForm
 {
     private readonly IAuditService audit;
     private readonly Label countLabel = new() { AutoSize = true, ForeColor = Color.DimGray, TextAlign = ContentAlignment.MiddleLeft };

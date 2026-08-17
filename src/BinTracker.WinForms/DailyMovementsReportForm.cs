@@ -3,7 +3,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class DailyMovementsReportForm : Form
+public sealed class DailyMovementsReportForm : BinTrackerForm
 {
     private readonly IDailyMovementsReportService reports;
     private readonly IDailyMovementsReportPdfService pdfReports;
@@ -19,7 +19,7 @@ public sealed class DailyMovementsReportForm : Form
     private readonly TextBox customerSearch = new()
     {
         Width = 220,
-        PlaceholderText = "Customer code or name"
+        PlaceholderText = "Type, then press Enter"
     };
 
     private readonly ComboBox containerFilter = ChoiceBox(175);

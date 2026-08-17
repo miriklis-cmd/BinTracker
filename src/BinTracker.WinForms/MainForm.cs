@@ -4,7 +4,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class MainForm : Form
+public sealed class MainForm : BinTrackerForm
 {
     private readonly Label title = new();
     private readonly Panel content = new();
@@ -131,16 +131,41 @@ public sealed class MainForm : Form
         side.Controls.Add(Nav("nav_batch", "Batch Entry", ShowBatchEntry));
         side.Controls.Add(Nav("nav_customers", "Customers", ShowCustomers));
         side.Controls.Add(Nav("nav_dashboard", "Dashboard", ShowDashboard));
-        side.Controls.Add(new Label
+        var brand = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            Height = 82,
+            BackColor = Color.Transparent,
+            ColumnCount = 2,
+            RowCount = 1,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+        brand.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 58F));
+        brand.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        brand.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+        brand.Controls.Add(new PictureBox
+        {
+            Image = IconAssets.Get("bintracker_logo"),
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 12, 8, 12),
+            BackColor = Color.Transparent
+        }, 0, 0);
+
+        brand.Controls.Add(new Label
         {
             Text = "BinTracker",
-            Dock = DockStyle.Top,
-            Height = 78,
+            Dock = DockStyle.Fill,
             ForeColor = Color.White,
             Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold),
             TextAlign = ContentAlignment.MiddleLeft,
-            AutoEllipsis = false
-        });
+            AutoEllipsis = false,
+            Margin = Padding.Empty
+        }, 1, 0);
+
+        side.Controls.Add(brand);
 
         var header = new TableLayoutPanel
         {

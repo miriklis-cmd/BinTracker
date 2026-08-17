@@ -3,7 +3,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class MovementHistoryReportForm : Form
+public sealed class MovementHistoryReportForm : BinTrackerForm
 {
     private readonly IMovementHistoryReportService reports;
     private readonly IMovementHistoryReportPdfService pdfReports;
@@ -26,7 +26,7 @@ public sealed class MovementHistoryReportForm : Form
     private readonly TextBox customerSearch = new()
     {
         Width = 220,
-        PlaceholderText = "Customer code or name"
+        PlaceholderText = "Type, then press Enter"
     };
 
     private readonly ComboBox containerFilter = ChoiceBox(175);
@@ -239,6 +239,13 @@ public sealed class MovementHistoryReportForm : Form
         options.Padding = new Padding(0, 6, 0, 4);
         options.Controls.Add(includeAdjustments);
         options.Controls.Add(includeNotesInExports);
+        options.Controls.Add(new Label
+        {
+            Text = "Customer search: type code/name and press Enter",
+            AutoSize = true,
+            ForeColor = Color.DimGray,
+            Margin = new Padding(22, 3, 0, 0)
+        });
 
         var actions = Flow();
         actions.Padding = new Padding(0, 8, 0, 0);

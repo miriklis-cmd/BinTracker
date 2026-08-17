@@ -8,6 +8,7 @@
     <AssemblyName>BinTracker</AssemblyName>
     <RootNamespace>BinTracker.WinForms</RootNamespace>
     <Product>BinTracker</Product>
+    <ApplicationIcon>Assets\BinTrackerIcon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\BinTracker.Core\BinTracker.Core.csproj" />
@@ -19,5 +20,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Assets\*.png" />
+    <Content Include="Assets\BinTrackerIcon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>BinTrackerIcon.ico</Link>
+    </Content>
   </ItemGroup>
 </Project>

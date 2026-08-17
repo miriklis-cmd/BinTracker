@@ -2,7 +2,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class ContainerTypesForm : Form
+public sealed class ContainerTypesForm : BinTrackerForm
 {
     private readonly IContainerTypeService service;
     private readonly TextBox search = new() { PlaceholderText = "Search name or short code...", Dock = DockStyle.Fill };

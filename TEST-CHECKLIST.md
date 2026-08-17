@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.22.1**
+Current baseline: **v0.4.0-alpha.22.3.2**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.22.1.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.22.3.2.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -381,3 +381,35 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [ ] Report shortcut buttons still refresh immediately.
 - [ ] Movement History button reads **This Month** in full.
 - [ ] Existing PDF/CSV exports still reflect the current displayed dataset/order.
+
+
+## alpha.22.2 report layout/search cue/product branding
+
+- [ ] Weekly Movements filter wrapping does not clip This Week / Last Week / PDF / Generate & Open / CSV buttons.
+- [ ] Weekly works at laptop resolution and scales normally on a larger monitor.
+- [ ] Outstanding Customer field/cue clearly says Enter is required.
+- [ ] Daily Customer field/cue clearly says Enter is required.
+- [ ] Weekly Customer field/cue clearly says Enter is required.
+- [ ] Movement History Customer field/cue clearly says Enter is required.
+- [ ] Customer Enter refresh works on all four reports.
+- [ ] Supplied BinTracker icon appears as the Windows application icon.
+- [ ] Sidebar shows the supplied BinTracker product logo at a restrained size.
+- [ ] Existing report PDF/CSV behaviour remains unchanged.
+
+
+## alpha.22.3.1 Weekly wrapped layout
+
+- [ ] At the laptop width/DPI that previously wrapped Source to a second line, all Weekly action buttons are completely visible.
+- [ ] This Week / Last Week / Generate PDF / Generate & Open / Export CSV are not overlapped by the summary panel.
+- [ ] Resizing narrower/wider does not cause the summary to cover the controls.
+- [ ] Daily Detail / Weekly Overview grid still fills the remaining window space.
+
+
+## alpha.22.3.2 application branding
+
+- [ ] Login title bar uses BinTracker icon.
+- [ ] Taskbar uses BinTracker icon while Login is the only visible BinTracker window.
+- [ ] Main shell uses BinTracker icon after login.
+- [ ] Outstanding/Daily/Weekly/Movement History breakout forms use BinTracker icon.
+- [ ] Import/admin/settings dialogs use BinTracker icon.
+- [ ] Left navigation visibly shows BinTracker logo + BinTracker wordmark without overlap.

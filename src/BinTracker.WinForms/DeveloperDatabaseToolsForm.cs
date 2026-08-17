@@ -2,7 +2,7 @@ using BinTracker.Data;
 
 namespace BinTracker.WinForms;
 
-public sealed class DeveloperDatabaseToolsForm : Form
+public sealed class DeveloperDatabaseToolsForm : BinTrackerForm
 {
     private readonly IDeveloperDatabaseService service;
     private readonly Action requestRestart;

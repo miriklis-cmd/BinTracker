@@ -718,3 +718,26 @@
 - Fixed Movement History This Month button sizing.
 - Established live-filter behaviour as the standard for future interactive report windows.
 - Completed mandatory full documentation/current-state audit.
+
+
+## v0.4.0-alpha.22.2
+- Fixed Weekly Movements wrapped-row action-button clipping.
+- Added visible Enter-to-search cues to interactive report Customer searches.
+- Integrated supplied BinTracker product icon and restrained sidebar logo.
+- Documented product-vs-business branding separation.
+- Completed mandatory full documentation/current-state audit.
+
+
+## v0.4.0-alpha.22.3.1
+- Replaced Weekly Movements auto-sized Panel control-card boundary with an auto-sizing TableLayoutPanel.
+- Removed brittle fixed action-row height workaround.
+- Fixed summary-row overlap when Weekly filters wrap at laptop width/DPI.
+- Completed mandatory full documentation audit.
+
+
+## v0.4.0-alpha.22.3.2
+- Centralized WinForms application icon behaviour in `BinTrackerForm`.
+- Applied BinTracker icon automatically to Login, reports, import/admin dialogs and other Forms.
+- Fixed pre-login taskbar/title-bar icon.
+- Reworked sidebar product-logo layout so image and wordmark cannot overlap.
+- Completed mandatory full documentation/current-state audit.

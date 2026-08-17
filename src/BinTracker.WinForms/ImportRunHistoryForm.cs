@@ -2,7 +2,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class ImportRunHistoryForm : Form
+public sealed class ImportRunHistoryForm : BinTrackerForm
 {
     private readonly IImportRunHistoryService service;
 

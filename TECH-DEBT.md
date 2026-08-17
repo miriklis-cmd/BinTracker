@@ -184,3 +184,19 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 - Live filter refresh uses asynchronous report queries. If future reports become slow or network-backed, consider cancellation/debouncing so rapidly changed filters cannot waste work or allow an older query to overwrite a newer result.
 - Customer free-text deliberately refreshes on Enter rather than every keystroke to avoid unnecessary queries.
+
+
+## Product-vs-business branding separation
+
+- Keep the BinTracker product logo/icon separate from Business Information branding assets. Report/email identity must not accidentally substitute the BinTracker logo for the operator's own business logo.
+- WinForms v1 uses restrained product branding; richer visual treatment belongs in the later WinUI 3 evaluation.
+
+
+## WinForms docked-Panel autosize
+
+- Avoid using an AutoSize `Panel` as a sizing boundary around docked/wrapping report controls. Weekly demonstrated that the parent can under-measure a docked AutoSize child after FlowLayout wrapping. Prefer AutoSize `TableLayoutPanel` containers when child preferred height must drive following rows.
+
+
+## Form branding inheritance
+
+- All WinForms windows now inherit `BinTrackerForm` so application icon behaviour is centralized. New forms should inherit `BinTrackerForm`; do not reintroduce per-form icon file loading.

@@ -3,7 +3,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class ExistingCustomerMatchForm : Form
+public sealed class ExistingCustomerMatchForm : BinTrackerForm
 {
     private readonly ImportReviewPlan review;
     private readonly IReadOnlyList<CustomerListRow> customers;

@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.22.1**
+Current planning baseline: **v0.4.0-alpha.22.2**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -392,3 +392,13 @@ Weekly Movements is explicitly historical/actual reporting: future dates are una
 ### Mandatory per-build audit discipline
 
 The full audit is part of **every** build, not a periodic cleanup task. No candidate is considered complete until code/state, all Markdown files, roadmap coverage, version references, specifications, known issues, tech debt, test requirements, changelog and current release notes have been reconciled.
+
+
+### BinTracker product branding
+
+The supplied fish/ice/yellow-bin artwork is the BinTracker **product** identity. v1 uses it for the Windows application icon and restrained in-app branding. This remains separate from the pre-v1 Business Information logo/custom-header system, which brands the operator's own business reports/emails. WinUI 3 v2 can revisit richer product-brand presentation.
+
+
+### Application branding consistency
+
+BinTracker product icon/logo is now treated as application-shell infrastructure: all Forms inherit the executable icon, while the sidebar displays the product logo. Future Business Information branding remains a separate customer/business-output system.

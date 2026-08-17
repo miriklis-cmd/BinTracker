@@ -2,7 +2,7 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class CustomerDecisionForm : Form
+public sealed class CustomerDecisionForm : BinTrackerForm
 {
     private readonly ImportReviewPlan review;
     private readonly Dictionary<string, ImportCustomerDecision> decisions;
