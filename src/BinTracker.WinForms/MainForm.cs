@@ -14,6 +14,8 @@ public sealed class MainForm : BinTrackerForm
     private DailyMovementsReportForm? dailyMovementsReportForm;
     private WeeklyMovementsReportForm? weeklyMovementsReportForm;
     private MovementHistoryReportForm? movementHistoryReportForm;
+    private CustomerStatementReportForm? customerStatementReportForm;
+    private MonthlySummaryReportForm? monthlySummaryReportForm;
     private bool bypassCustomerClosePrompt;
     private readonly UserSession session;
     private readonly IUserService users;
@@ -32,6 +34,8 @@ public sealed class MainForm : BinTrackerForm
     private readonly IWeeklyMovementsReportPdfService weeklyMovementReportPdfs;
     private readonly IMovementHistoryReportService movementHistoryReports;
     private readonly IMovementHistoryReportPdfService movementHistoryReportPdfs;
+    private readonly IMonthlySummaryReportService monthlySummaryReports;
+    private readonly IMonthlySummaryReportPdfService monthlySummaryReportPdfs;
     private readonly IContainerTypeService containerTypes;
     private readonly IBusinessInformationService businessInformation;
     private readonly IExcelImportService excelImport;
@@ -65,6 +69,8 @@ public sealed class MainForm : BinTrackerForm
         IWeeklyMovementsReportPdfService weeklyMovementReportPdfs,
         IMovementHistoryReportService movementHistoryReports,
         IMovementHistoryReportPdfService movementHistoryReportPdfs,
+        IMonthlySummaryReportService monthlySummaryReports,
+        IMonthlySummaryReportPdfService monthlySummaryReportPdfs,
         IContainerTypeService containerTypes,
         IBusinessInformationService businessInformation,
         IExcelImportService excelImport,
@@ -90,6 +96,8 @@ public sealed class MainForm : BinTrackerForm
         this.weeklyMovementReportPdfs = weeklyMovementReportPdfs;
         this.movementHistoryReports = movementHistoryReports;
         this.movementHistoryReportPdfs = movementHistoryReportPdfs;
+        this.monthlySummaryReports = monthlySummaryReports;
+        this.monthlySummaryReportPdfs = monthlySummaryReportPdfs;
         this.containerTypes = containerTypes;
         this.businessInformation = businessInformation;
         this.excelImport = excelImport;
@@ -119,8 +127,8 @@ public sealed class MainForm : BinTrackerForm
         var side = new Panel
         {
             Dock = DockStyle.Left,
-            Width = 250,
-            MinimumSize = new Size(230, 0),
+            Width = 260,
+            MinimumSize = new Size(245, 0),
             BackColor = Color.FromArgb(29, 39, 54),
             Padding = new Padding(16)
         };
@@ -141,7 +149,7 @@ public sealed class MainForm : BinTrackerForm
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
-        brand.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 58F));
+        brand.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 52F));
         brand.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         brand.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
@@ -150,7 +158,7 @@ public sealed class MainForm : BinTrackerForm
             Image = IconAssets.Get("bintracker_logo"),
             SizeMode = PictureBoxSizeMode.Zoom,
             Dock = DockStyle.Fill,
-            Margin = new Padding(0, 12, 8, 12),
+            Margin = new Padding(2, 14, 6, 14),
             BackColor = Color.Transparent
         }, 0, 0);
 
@@ -159,10 +167,11 @@ public sealed class MainForm : BinTrackerForm
             Text = "BinTracker",
             Dock = DockStyle.Fill,
             ForeColor = Color.White,
-            Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold),
+            Font = new Font("Segoe UI Semibold", 16F, FontStyle.Bold),
             TextAlign = ContentAlignment.MiddleLeft,
             AutoEllipsis = false,
-            Margin = Padding.Empty
+            Margin = new Padding(0, 0, 2, 0),
+            Padding = new Padding(0, 0, 0, 1)
         }, 1, 0);
 
         side.Controls.Add(brand);
@@ -467,7 +476,9 @@ public sealed class MainForm : BinTrackerForm
                 OpenOutstandingReport,
                 OpenDailyMovementsReport,
                 OpenWeeklyMovementsReport,
-                OpenMovementHistoryReport));
+                OpenMovementHistoryReport,
+                OpenCustomerStatementReport,
+                OpenMonthlySummaryReport));
     }
 
     private void OpenOutstandingReport()
@@ -490,7 +501,8 @@ public sealed class MainForm : BinTrackerForm
         outstandingReportForm =
             new OutstandingContainersReportForm(
                 outstandingReports,
-                outstandingReportPdfs);
+                outstandingReportPdfs,
+                audit);
 
         outstandingReportForm.FormClosed += (_, _) =>
         {
@@ -521,7 +533,8 @@ public sealed class MainForm : BinTrackerForm
             new DailyMovementsReportForm(
                 dailyMovementReports,
                 dailyMovementReportPdfs,
-                outstandingReports);
+                outstandingReports,
+                audit);
 
         dailyMovementsReportForm.FormClosed += (_, _) =>
         {
@@ -545,7 +558,7 @@ public sealed class MainForm : BinTrackerForm
         }
 
         weeklyMovementsReportForm =
-            new WeeklyMovementsReportForm(weeklyMovementReports, weeklyMovementReportPdfs, containerTypes);
+            new WeeklyMovementsReportForm(weeklyMovementReports, weeklyMovementReportPdfs, containerTypes, audit);
 
         weeklyMovementsReportForm.FormClosed += (_, _) =>
         {
@@ -576,7 +589,8 @@ public sealed class MainForm : BinTrackerForm
             new MovementHistoryReportForm(
                 movementHistoryReports,
                 movementHistoryReportPdfs,
-                containerTypes);
+                containerTypes,
+                audit);
 
         movementHistoryReportForm.FormClosed += (_, _) =>
         {
@@ -584,6 +598,68 @@ public sealed class MainForm : BinTrackerForm
         };
 
         movementHistoryReportForm.Show(this);
+    }
+
+    private void OpenCustomerStatementReport()
+    {
+        if (customerStatementReportForm is not null &&
+            !customerStatementReportForm.IsDisposed)
+        {
+            if (customerStatementReportForm.WindowState ==
+                FormWindowState.Minimized)
+            {
+                customerStatementReportForm.WindowState =
+                    FormWindowState.Normal;
+            }
+
+            customerStatementReportForm.BringToFront();
+            customerStatementReportForm.Activate();
+            return;
+        }
+
+        customerStatementReportForm =
+            new CustomerStatementReportForm(
+                customers,
+                statementReports);
+
+        customerStatementReportForm.FormClosed += (_, _) =>
+        {
+            customerStatementReportForm = null;
+        };
+
+        customerStatementReportForm.Show(this);
+    }
+
+    private void OpenMonthlySummaryReport()
+    {
+        if (monthlySummaryReportForm is not null &&
+            !monthlySummaryReportForm.IsDisposed)
+        {
+            if (monthlySummaryReportForm.WindowState ==
+                FormWindowState.Minimized)
+            {
+                monthlySummaryReportForm.WindowState =
+                    FormWindowState.Normal;
+            }
+
+            monthlySummaryReportForm.BringToFront();
+            monthlySummaryReportForm.Activate();
+            return;
+        }
+
+        monthlySummaryReportForm =
+            new MonthlySummaryReportForm(
+                monthlySummaryReports,
+                monthlySummaryReportPdfs,
+                containerTypes,
+                audit);
+
+        monthlySummaryReportForm.FormClosed += (_, _) =>
+        {
+            monthlySummaryReportForm = null;
+        };
+
+        monthlySummaryReportForm.Show(this);
     }
 
     private void ShowSettings()

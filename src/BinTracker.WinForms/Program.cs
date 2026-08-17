@@ -13,6 +13,11 @@ internal static class Program
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         ApplicationConfiguration.Initialize();
 
+        using var splash = new SplashForm();
+        splash.Show();
+        splash.Refresh();
+        Application.DoEvents();
+
         try
         {
             DeveloperDatabaseStartup.ApplyPendingOperation();
@@ -52,6 +57,8 @@ internal static class Program
                 MessageBoxIcon.Error);
             return;
         }
+
+        splash.Close();
 
         using var scope = host.Services.CreateScope();
         var auth = scope.ServiceProvider.GetRequiredService<IAuthenticationService>();

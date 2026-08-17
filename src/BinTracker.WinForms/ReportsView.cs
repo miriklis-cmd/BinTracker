@@ -10,6 +10,8 @@ public sealed class ReportsView : UserControl
     private readonly Action openDailyMovements;
     private readonly Action openWeeklyMovements;
     private readonly Action openMovementHistory;
+    private readonly Action openCustomerStatement;
+    private readonly Action openMonthlySummary;
 
     private readonly DateTimePicker reportDate = new()
     {
@@ -30,13 +32,18 @@ public sealed class ReportsView : UserControl
         Action openOutstanding,
         Action openDailyMovements,
         Action openWeeklyMovements,
-        Action openMovementHistory)
+        Action openMovementHistory,
+        Action openCustomerStatement,
+        Action openMonthlySummary)
     {
+        AutoScroll = true;
         this.marketFloor = marketFloor;
         this.openOutstanding = openOutstanding;
         this.openDailyMovements = openDailyMovements;
         this.openWeeklyMovements = openWeeklyMovements;
         this.openMovementHistory = openMovementHistory;
+        this.openCustomerStatement = openCustomerStatement;
+        this.openMonthlySummary = openMonthlySummary;
 
         Dock = DockStyle.Fill;
         BackColor = Color.FromArgb(245, 247, 250);
@@ -167,7 +174,7 @@ public sealed class ReportsView : UserControl
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 2,
-            RowCount = 3
+            RowCount = 4
         };
 
         layout.ColumnStyles.Add(
@@ -220,6 +227,22 @@ public sealed class ReportsView : UserControl
                 openMovementHistory),
             1,
             2);
+
+        layout.Controls.Add(
+            ReportLauncher(
+                "Customer Statement",
+                "Select a customer and generate, open or print a statement for the required period.",
+                openCustomerStatement),
+            0,
+            3);
+
+        layout.Controls.Add(
+            ReportLauncher(
+                "Monthly Summary",
+                "Selected-month OUT, IN and net movement totals by customer and container, with PDF and CSV.",
+                openMonthlySummary),
+            1,
+            3);
 
         panel.Controls.Add(layout);
         return panel;
@@ -346,7 +369,7 @@ public sealed class ReportsView : UserControl
         layout.Controls.Add(new Label
         {
             Text =
-                "Next: Monthly Summary  •  Customer Statement workflow  •  Daily Print Pack",
+                "Next: Daily Print Pack",
             AutoSize = true,
             ForeColor = Color.DimGray
         });

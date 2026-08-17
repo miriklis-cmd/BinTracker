@@ -1,22 +1,19 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.22.3.2
+## v0.4.0-alpha.23.4.1
 
-### Application icon / sidebar branding consistency
+### Build tooling self-heal
 
-Fixed BinTracker branding before and after login.
+Corrected the remaining build-tooling failures exposed by running alpha.23.4 over an existing extracted folder.
 
-- Added common `BinTrackerForm` base class.
-- Login, Main, report breakouts, import/admin dialogs and nested WinForms dialogs now inherit the BinTracker executable icon automatically.
-- Login therefore presents the BinTracker icon in the title bar/taskbar before authentication.
-- Removed ad-hoc icon loading from Main/Weekly.
-- Rebuilt sidebar product branding as a two-column layout so the logo cannot be hidden beneath the BinTracker wordmark.
-- Product branding remains separate from future Business Information/customer branding.
+- Detects and removes the exact obsolete `global.json` created by alpha.23.3.
+- Does not delete unrelated/user-managed `global.json` files.
+- Uses direct `dotnet ... || goto :fail` command guards for restore, build and test.
+- A failed restore/build/test can no longer continue to later stages or print BUILD SUCCESSFUL.
+- Retains stale build-server cleanup and conservative MSBuild settings.
 
-### Mandatory full audit
-
-All Markdown/current-state documentation and roadmap coverage were reviewed and reconciled.
+The obsolete SDK pin persisted because ZIP extraction cannot delete a file that existed in an older extracted folder but is absent from a newer archive.
 
 ### Test requirement
 
-**Full smoke test** because shared Form inheritance and application-shell branding changed.
+Run this build over the existing folder once. It should report removal of the obsolete global.json, use SDK 10.0.400, and complete restore/build/tests normally.

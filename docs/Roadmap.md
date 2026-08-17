@@ -38,7 +38,7 @@ The remaining importer failure-detail message and deferred Review cosmetics can 
 
 This order is the authoritative pre-v1 sequence. Milestone numbers after v0.4 remain flexible and follow genuine scope.
 
-1. **Finish v0.4 Reporting** — validate Movement History, then Monthly Summary, Customer Statement open/view/print, Daily Print Pack and remaining report consistency work.
+1. **Finish v0.4 Reporting** — validate Monthly Summary, then Daily Print Pack and remaining report consistency/acceptance work.
 2. **Batch Entry acceptance cleanup** — verify Esc, post-entry field clearing/focus, and implement/decide crash/power-loss draft recovery before production.
 3. **Movement Correction / Reversal** — controlled, linked, audited correction of saved movements; never silently edit/delete history.
 4. **Business Information & Branding** — logo, custom header/branding text, and one reusable branding source for reports/statements/email and generated output.
@@ -124,12 +124,12 @@ Still required:
 - [x] **Outstanding Containers report** — current/as-of-date on-screen query, customer/container filters, inactive/credit options, CSV export and audited landscape PDF generation are implemented. **Customer → Container grouping** keeps Blue/Yellow/Bulk/etc. adjacent for each customer.
 - [x] **Historical Outstanding / As-of-Date foundation** — ledger-derived end-of-date customer/container positions are implemented and tested; future movements are excluded and containers remain separate.
 - [x] **Weekly Movements report** — Monday-to-Sunday Daily Detail + Weekly Overview, This Week/Last Week shortcuts, authoritative Container Type filter, future-date guard/current-week activity-through-today semantics, PDF/Generate & Open and CSV export preserving selected-view sort.
-- [ ] **Customer Statement view/print workflow** — generate, open/view and print the statement directly from the operational workflow, not only save a PDF.
+- [x] **Customer Statement view/print workflow** — shared workflow supports Generate PDF and Generate & Open from Customers; Reports now has a Customer Statement launcher with customer search/selection. Opened PDFs are printable through the Windows PDF viewer.
 - [x] **Daily Movements report** — dedicated responsive report window with today/yesterday shortcuts, customer/container/direction/source filters, physical-movement default, optional opening adjustments, typed sorting, audited PDF and CSV preserving the current grid order.
 - [x] **Movement History report** — inclusive date range, customer/container/direction/source filters, opening-adjustment opt-in, future-date guards, quick range shortcuts, typed sorting, audited PDF and CSV preserving current grid order.
-- [ ] **Monthly Summary** — selected-month OUT, IN, net movement and useful customer/container breakdowns, including quick access to **last month**.
+- [x] **Monthly Summary** — selected-month OUT, IN and net movement totals with customer/container breakdown, This Month/Last Month shortcuts, customer/container/source filters, optional opening adjustments, typed numeric sorting, audited PDF and CSV preserving current grid order.
 - [ ] **Daily Print Pack** required by the Functional Specification: Outstanding Summary + Movement Detail.
-- [ ] Define the on-screen interaction pattern for **Monthly Summary** when implemented; Daily and Weekly already have dedicated on-screen grids.
+- [x] **Monthly Summary on-screen interaction** — dedicated responsive window with live dropdown/date/checkbox refresh, Customer-on-Enter search and sortable summary grid.
 - [ ] Add CSV/Excel export where operationally useful.
 - [ ] Stress-test Market Floor with a genuinely high Yellow-bin day; adaptive sizing is accepted for now but remains a real-world validation item.
 
@@ -322,7 +322,7 @@ The roadmap was reconciled against the project history rather than only the most
 
 - [ ] **Batch Entry:** verify Esc semantics; clear/reset appropriate fields and return focus after successful entry; resolve crash/power-loss draft persistence.
 - [ ] **Customer operations:** sort by code/name/outstanding/credit/last movement; lifetime OUT and IN totals where useful.
-- [ ] **Customer Statement:** operational view/open/print workflow, not PDF-save-only.
+- [x] **Customer Statement:** operational save/open/print workflow available from both Customers and Reports.
 - [ ] **Movement History:** date-range/customer/container/source reporting.
 - [ ] **Monthly Summary:** selected month plus Last Month shortcut, OUT/IN/net and customer/container breakdown.
 - [ ] **Daily Print Pack:** Outstanding Summary + Movement Detail.

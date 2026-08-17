@@ -105,3 +105,92 @@ This file is not a one-off audit artifact. Every packaged build must append or r
 - [x] Version references reconciled.
 - [x] Changelog and Release Notes updated.
 - [x] Test requirement classified as **full smoke test**.
+
+
+## Candidate: v0.4.0-alpha.22.3.3
+
+- [x] Source tree and Markdown/current-state documentation reviewed.
+- [x] Weekly Movements reclaimed-grid-space change documented.
+- [x] Sidebar circular transparent product-logo treatment documented.
+- [x] Startup splash implementation documented.
+- [x] Roadmap/current workstreams reviewed; no agreed workstream removed.
+- [x] Version references reconciled with `Directory.Build.props`.
+- [x] Changelog and Release Notes updated.
+- [x] Test requirement classified as **full smoke test**.
+
+
+## Candidate: v0.4.0-alpha.22.6
+
+- [x] 21 Markdown files enumerated/reviewed.
+- [x] Sidebar branding regression documented.
+- [x] Roadmap Coverage Matrix reviewed; no agreed workstream removed.
+- [x] Version references reconciled.
+- [x] Changelog / Release Notes / Testing / Test Checklist / Tech Debt reconciled.
+- [x] Test requirement classified as **targeted UI smoke test**.
+
+
+## Candidate: v0.4.0-alpha.22.6
+
+- [x] 21 Markdown files enumerated/reviewed.
+- [x] Customer Statement generate/save/open workflow documented.
+- [x] Statement future-date restriction documented.
+- [x] Roadmap/current-state workstreams checked: Movement Correction, SMS, Email, Dashboard, WinUI 3, branding.
+- [x] Changelog / Release Notes / Testing / Test Checklist reconciled.
+- [x] Test requirement classified as **targeted functional/UI test**.
+
+
+## Candidate: v0.4.0-alpha.22.6
+
+- [x] 21 Markdown files enumerated/reviewed.
+- [x] Customer Statement Reports entry point and shared workflow reconciled.
+- [x] Roadmap/coverage updated to mark Customer Statement workflow complete.
+- [x] Major workstreams retained: Movement Correction, SMS, Email, Dashboard, WinUI 3, branding, Monthly Summary, Daily Print Pack.
+- [x] Changelog / Release Notes / Testing / Test Checklist / Tech Debt reconciled.
+- [x] Test requirement classified as **full smoke test**.
+
+
+## Candidate: v0.4.0-alpha.22.6.4
+
+- [x] 21 Markdown files enumerated/reviewed.
+- [x] Compile defect and owner-interface fix documented.
+- [x] Roadmap Coverage Matrix reviewed; no agreed workstream removed.
+- [x] Version references reconciled.
+- [x] Changelog / Release Notes / Testing / Test Checklist / Tech Debt reconciled.
+- [x] Test requirement classified as **automated build gate + existing Customer Statement smoke test**.
+
+
+## Candidate: v0.4.0-alpha.23
+
+- [x] 21 Markdown files enumerated/reviewed.
+- [x] Monthly Summary implementation/status reconciled across README, Known Issues, Roadmap, Coverage Matrix, Functional Specification, Business Rules and Testing.
+- [x] PostgreSQL/provider-neutral report boundary documented.
+- [x] Agreed workstreams retained: Movement Correction, SMS, Email, Dashboard, WinUI 3, branding, Daily Print Pack, PostgreSQL.
+- [x] Changelog and Release Notes updated.
+- [x] Test requirement classified as **full smoke test**.
+
+
+## Candidate: v0.4.0-alpha.23.1
+- [x] 21 Markdown files enumerated/reviewed.
+- [x] Both Windows failures diagnosed as new integration-test fixture/setup defects.
+- [x] Production date behaviour retained.
+- [x] Changelog / Release Notes / Test Checklist reconciled.
+- [x] Test requirement remains full smoke test after automated suite passes.
+
+
+## Candidate: v0.4.0-alpha.23.4.1
+- [x] 21 Markdown files enumerated/reviewed.
+- [x] CSV audit gap audited across all current CSV-capable reports.
+- [x] Export auditing rules added to Functional Specification and Business Rules.
+- [x] Monthly Summary year-picker regression included in acceptance checks.
+- [x] Roadmap workstreams retained.
+- [x] Test requirement classified as full report-export smoke test.
+
+
+## Candidate: v0.4.0-alpha.23.4.1
+
+- [x] 21 Markdown files enumerated/reviewed.
+- [x] alpha.23.3 SDK-pinning mistake documented and corrected.
+- [x] BAT false-success failure path documented and corrected.
+- [x] Useful MSBuild worker-resilience changes retained.
+- [x] Agreed roadmap workstreams retained: Movement Correction, SMS, Email, Dashboard, WinUI 3, branding, Daily Print Pack, PostgreSQL.
+- [x] Changelog / Release Notes / Development Workflow / Testing / Test Checklist / Tech Debt reconciled.

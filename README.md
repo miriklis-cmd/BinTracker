@@ -1,4 +1,4 @@
-# BinTracker v0.4.0-alpha.22.3.2
+# BinTracker v0.4.0-alpha.22.6.4
 
 BinTracker is a .NET 8 Windows desktop application for tracking reusable container movements, customer/container balances, operational reporting and audited business activity.
 
@@ -12,11 +12,13 @@ BinTracker is a .NET 8 Windows desktop application for tracking reusable contain
 - Batch Entry and Single Entry IN/OUT movements.
 - Container-specific balances and customer movement history.
 - PDF Customer Statements.
+- Customer Statement is available from both Customers and Reports with shared save/open workflow.
 - Two-page Market Floor report.
 - As-of-Date Outstanding Containers query with PDF/CSV export in a dedicated report window.
 - Daily Movements report with Today/Yesterday shortcuts, future-date guard, filters and PDF/CSV export.
 - Weekly Movements report with Monday-Sunday selection, Daily Detail / Weekly Overview, filters, PDF/CSV export and current-week activity-through-today semantics.
 - Movement History report with inclusive date-range search, filters, future-date guard and PDF/CSV export.
+- Monthly Summary report with selected-month OUT/IN/net totals, customer/container breakdown, filters, PDF and CSV.
 - Compact Reports launcher architecture: Market Floor inline, detailed reports in dedicated single-instance windows.
 - Configurable Business Information/report identity.
 - Transactional legacy Excel Import Wizard with Analyse, Map, Review, balance reconciliation and Step 4 execution.
@@ -32,7 +34,7 @@ See `KNOWN-ISSUES.md` and `docs/Roadmap.md`.
 
 Most important remaining items include:
 
-- Remaining reporting: Monthly Summary, Customer Statement open/view/print workflow and Daily Print Pack;
+- Remaining reporting: Daily Print Pack and final report acceptance/consistency pass;
 - Batch Entry acceptance cleanup (Esc, post-entry reset/focus, crash/power-loss draft recovery decision);
 - dashboard operational pass;
 - Business Information branding expansion: logo + shared report/email output identity;

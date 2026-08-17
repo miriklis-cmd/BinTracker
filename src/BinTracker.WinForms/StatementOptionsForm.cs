@@ -16,6 +16,7 @@ public sealed class StatementOptionsForm : BinTrackerForm
 
     public DateOnly FromDate => DateOnly.FromDateTime(from.Value.Date);
     public DateOnly ToDate => DateOnly.FromDateTime(to.Value.Date);
+    public bool OpenAfterGenerate { get; private set; }
 
     public StatementOptionsForm()
     {
@@ -28,6 +29,8 @@ public sealed class StatementOptionsForm : BinTrackerForm
         MaximizeBox = false;
         MinimizeBox = false;
 
+        from.MaxDate = DateTime.Today;
+        to.MaxDate = DateTime.Today;
         to.Value = DateTime.Today;
         from.Value = DateTime.Today.AddDays(-90);
 
@@ -52,9 +55,16 @@ public sealed class StatementOptionsForm : BinTrackerForm
         var generate = new Button
         {
             Text = "Generate PDF",
-            DialogResult = DialogResult.OK,
             AutoSize = false,
-            Size = new Size(160, 46),
+            Size = new Size(145, 46),
+            Margin = new Padding(0, 0, 10, 0)
+        };
+
+        var generateOpen = new Button
+        {
+            Text = "Generate && Open",
+            AutoSize = false,
+            Size = new Size(165, 46),
             Margin = new Padding(0, 0, 10, 0)
         };
 
@@ -63,11 +73,13 @@ public sealed class StatementOptionsForm : BinTrackerForm
             Text = "Cancel",
             DialogResult = DialogResult.Cancel,
             AutoSize = false,
-            Size = new Size(120, 46),
+            Size = new Size(100, 46),
             Margin = new Padding(0)
         };
 
+        actions.Width = 430;
         actions.Controls.Add(generate);
+        actions.Controls.Add(generateOpen);
         actions.Controls.Add(cancel);
         actionBar.Controls.Add(actions);
 
@@ -113,21 +125,34 @@ public sealed class StatementOptionsForm : BinTrackerForm
         Controls.Add(body);
         Controls.Add(actionBar);
 
-        AcceptButton = generate;
+        AcceptButton = generateOpen;
         CancelButton = cancel;
+
+        bool ValidatePeriod()
+        {
+            if (to.Value.Date >= from.Value.Date)
+                return true;
+
+            MessageBox.Show(
+                "The statement end date must be on or after the start date.",
+                "Customer Statement",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+            return false;
+        }
 
         generate.Click += (_, _) =>
         {
-            if (to.Value.Date < from.Value.Date)
-            {
-                MessageBox.Show(
-                    "The statement end date must be on or after the start date.",
-                    "Customer Statement",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+            if (!ValidatePeriod()) return;
+            OpenAfterGenerate = false;
+            DialogResult = DialogResult.OK;
+        };
 
-                DialogResult = DialogResult.None;
-            }
+        generateOpen.Click += (_, _) =>
+        {
+            if (!ValidatePeriod()) return;
+            OpenAfterGenerate = true;
+            DialogResult = DialogResult.OK;
         };
     }
 

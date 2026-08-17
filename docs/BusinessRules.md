@@ -243,3 +243,30 @@ Important security, master-data and movement changes create audit events.
 - Login and every breakout/dialog window should use the BinTracker executable icon in title bars/taskbar.
 - The main sidebar shows the BinTracker product logo.
 - Future Business Information logo/header configuration belongs to the user's business and must not replace/confuse the BinTracker application identity.
+
+
+## Customer Statement entry points
+
+- Customers → selected customer → Customer Statement is the contextual shortcut.
+- Reports → Customer Statement is the report-discovery path for users who start from Reports.
+- Both paths use the same shared statement generation workflow and therefore the same date validation, Generate PDF and Generate & Open behaviour.
+- Inactive customers remain available from the Reports statement selector when explicitly included because historical statements remain legitimate.
+
+
+## Monthly Summary reporting
+
+- Monthly Summary reports calendar-month movement, not outstanding balances.
+- OUT and IN are physical movement quantities unless Opening Adjustments are explicitly included.
+- Net is `OUT - IN`; positive Net means more containers went OUT than came IN during the selected month.
+- Current-month data stops at today and future months are not permitted.
+- Customer/container rows remain separated by configured Container Type.
+- Historical inactive Container Types remain selectable because their historical movements remain valid.
+- PDF/CSV follow the currently displayed row order.
+
+
+## Report export audit trail
+
+- PDF generation and CSV export are auditable report-output actions.
+- CSV audit events identify the report, user/time through the audit system, date/range, row count, filename and filters/context.
+- Do not store full exported report contents in AuditEvent data.
+- A CSV successfully written to disk with a failed audit write must produce an operator warning.

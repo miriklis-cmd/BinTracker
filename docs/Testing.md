@@ -269,3 +269,86 @@ Weekly Movements controls must remain fully visible when the filter row wraps at
 - Verify Main, Outstanding, Daily, Weekly, Movement History, Import/Admin and other breakout/dialog Forms use the same icon.
 - Verify the left navigation shows the BinTracker product logo beside the BinTracker wordmark.
 - Verify no form fails to open if icon extraction unexpectedly fails.
+
+
+## Sidebar wordmark clipping regression
+
+- Verify the full `BinTracker` wordmark is visible at the standard laptop resolution/DPI.
+- Verify logo and wordmark remain vertically aligned.
+- Verify the wider sidebar does not cause navigation labels or main content to clip.
+- Verify logo still reads cleanly against the navy background.
+
+
+## Customer Statement generate/open workflow
+
+- Select a customer and open Customer Statement.
+- Confirm From/To cannot be moved beyond today.
+- Confirm an invalid From/To range is rejected.
+- Confirm **Generate PDF** prompts for a PDF location and saves a valid statement.
+- Confirm **Generate & Open** does not prompt for a save location and opens the generated PDF in the Windows default PDF application.
+- From the opened PDF viewer, confirm the statement can be printed normally.
+- Confirm the generated statement still uses the selected customer and selected period.
+
+
+## Customer Statement Reports launcher
+
+- Open Reports → Customer Statement.
+- Confirm typing Customer text does not search on each keystroke; Enter applies the search.
+- Confirm Include inactive refreshes the customer list.
+- Confirm double-click and Customer Statement button launch the same period/generation workflow used from Customers.
+- Confirm Generate PDF / Generate & Open results are identical regardless of whether the workflow was entered from Customers or Reports.
+
+
+## Customer Statement owner compile boundary
+
+The shared Customer Statement workflow accepts `IWin32Window` as its owner. Callers must explicitly provide a compatible `IWin32Window`; do not use `FindForm() ?? this` where the operands have different concrete types (`Form` and `UserControl`).
+
+
+## Monthly Summary coverage
+
+`MonthlySummaryReportSqliteTests` verifies:
+
+- inclusive calendar-month boundaries;
+- default exclusion of Opening Adjustments;
+- OUT / IN / Net calculations;
+- customer/container/source filtering;
+- future-month clamping to the current month and activity-through-today semantics.
+
+Manual acceptance verifies This Month / Last Month shortcuts, authoritative Container Type choices, live filter behaviour, Customer-on-Enter search, numeric sorting and PDF/CSV visible-order consistency.
+
+
+## CSV export audit coverage
+
+Manually export CSV from Outstanding Containers, Daily Movements, Weekly Movements (both views), Movement History and Monthly Summary. Confirm each successful export creates its report-specific `*_CSV_EXPORTED` AuditEvent with filename, row count and relevant report/filter context.
+
+
+## Build tooling resilience
+
+Build acceptance includes running `Build-BinTracker.bat` repeatedly from a normal Windows developer shell.
+
+Verify:
+- the header reports an 8.0.x SDK;
+- stale build-server shutdown does not block the build;
+- restore/build/test complete with MSBuild server/node reuse disabled;
+- the build no longer intermittently reports MSB4242 SDK Resolver Failure / worker node shutdown under normal use;
+- a machine without a compatible .NET 8 SDK receives a clear prerequisite failure.
+
+
+## Build script failure-path regression
+
+For build-tooling changes, verify both success and failure paths:
+
+- normal build reports the installed/resolved SDK and completes successfully;
+- a deliberately invalid solution/project argument returns `BUILD FAILED`;
+- restore failure stops immediately and does not continue to build/test;
+- build failure stops immediately and does not continue to tests;
+- test failure returns `BUILD FAILED`;
+- the script must never print `BUILD SUCCESSFUL` after any failed dotnet command.
+
+
+## Stale global.json self-heal regression
+
+- Place the exact alpha.23.3 generated `global.json` beside `Build-BinTracker.bat`.
+- Run the BAT and confirm it deletes that obsolete file, resolves the installed SDK and continues.
+- Place a different/user-managed `global.json` beside the BAT and confirm BinTracker refuses to delete it and reports BUILD FAILED.
+- Force a restore/build/test failure and confirm the `command || goto :fail` path prints BUILD FAILED and never BUILD SUCCESSFUL.

@@ -9,7 +9,7 @@ This file contains current defects/limitations that affect testing or production
 ### Reports catalogue is incomplete
 **Area:** Reports
 
-Market Floor, Customer Statement PDF, Outstanding Containers, Daily Movements and Weekly Movements are implemented. Monthly Summary, Customer Statement operational open/view/print workflow and the Daily Print Pack remain.
+Market Floor, Customer Statement PDF, Outstanding Containers, Daily Movements and Weekly Movements are implemented. Daily Print Pack remains; Monthly Summary is implemented and requires acceptance testing.
 
 ### Dashboard is still the first-pass operational dashboard
 **Area:** Dashboard

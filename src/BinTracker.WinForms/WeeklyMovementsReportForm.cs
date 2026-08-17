@@ -48,17 +48,21 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
     };
     private readonly DataGridView detailGrid = Grid();
     private readonly DataGridView summaryGrid = Grid();
+    private readonly IAuditService audit;
     private WeeklyMovementsReportResult? current;
     private bool autoRefreshReady;
 
     public WeeklyMovementsReportForm(
         IWeeklyMovementsReportService reports,
         IWeeklyMovementsReportPdfService pdfReports,
-        IContainerTypeService containerTypes)
+        IContainerTypeService containerTypes,
+        IAuditService audit)
     {
         this.reports = reports;
         this.pdfReports = pdfReports;
         this.containerTypes = containerTypes;
+
+        this.audit = audit;
 
         Text = "Weekly Movements";
         StartPosition = FormStartPosition.Manual;
@@ -155,32 +159,19 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
         }, 0, 1);
         root.Controls.Add(header, 0, 0);
 
-        // Use an auto-sizing TableLayoutPanel rather than a Panel with a
-        // docked child.  A WinForms Panel can under-measure a docked
-        // AutoSize child after FlowLayoutPanel wrapping, which allowed the
-        // summary row to overlap/clamp the action buttons.
-        var controlsCard = new TableLayoutPanel
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 1,
-            RowCount = 1,
-            BackColor = Color.White,
-            Padding = new Padding(16, 12, 16, 12),
-            Margin = new Padding(0, 0, 0, 10)
-        };
-        controlsCard.ColumnStyles.Add(
-            new ColumnStyle(SizeType.Percent, 100F));
-        controlsCard.RowStyles.Add(
-            new RowStyle(SizeType.AutoSize));
+        // Keep the filter/action area content-sized.  The previous nested
+        // controls card could absorb spare vertical space at some DPI/window
+        // sizes, leaving a large blank band above the report dataset.
         var rows = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 1,
-            RowCount = 3
+            RowCount = 3,
+            BackColor = Color.White,
+            Padding = new Padding(16, 12, 16, 12),
+            Margin = new Padding(0, 0, 0, 10)
         };
         rows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         rows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -226,14 +217,13 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
         actions.Controls.Add(ActionButton("Generate PDF", 140, async () => await GeneratePdfAsync(false)));
         actions.Controls.Add(ActionButton("Generate && Open", 175, async () => await GeneratePdfAsync(true)));
         var csv = new Button { Text = "Export CSV", Size = new Size(135, 40), Margin = new Padding(8,0,0,0) };
-        csv.Click += (_, _) => ExportCsv();
+        csv.Click += async (_, _) => await ExportCsvAsync();
         actions.Controls.Add(csv);
 
         rows.Controls.Add(filters,0,0);
         rows.Controls.Add(options,0,1);
         rows.Controls.Add(actions,0,2);
-        controlsCard.Controls.Add(rows, 0, 0);
-        root.Controls.Add(controlsCard,0,1);
+        root.Controls.Add(rows,0,1);
 
         var summaryCard = new Panel
         {
@@ -426,7 +416,7 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
         summaryGrid.Columns["Code"].Width = WidthFor(summaryGrid, "Code", current.Summary.Select(x => x.CustomerCode), 150, 260);
     }
 
-    private void ExportCsv()
+    private async Task ExportCsvAsync()
     {
         if (current is null)
         {
@@ -477,6 +467,24 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
                         System.Globalization.CultureInfo.InvariantCulture)));
             }
 
+            writer.Flush();
+
+            await ReportCsvAudit.WriteAsync(
+                this, audit,
+                "WEEKLY_MOVEMENTS_CSV_EXPORTED",
+                $"{current.WeekStart:yyyy-MM-dd}:{current.WeekEnd:yyyy-MM-dd}",
+                $"Weekly Movements CSV exported for {current.WeekStart:dd/MM/yyyy} - {current.WeekEnd:dd/MM/yyyy}: {summaryGrid.Rows.Count:N0} overview row(s).",
+                dialog.FileName,
+                summaryGrid.Rows.Cast<DataGridViewRow>().Count(x => x.Tag is WeeklyMovementSummaryRow),
+                new
+                {
+                    current.WeekStart, current.WeekEnd,
+                    View = "Weekly Overview",
+                    CustomerSearch = customerSearch.Text.Trim(),
+                    Container = containerFilter.Text,
+                    Source = sourceFilter.Text,
+                    IncludeAdjustments = includeAdjustments.Checked
+                });
             return;
         }
 
@@ -510,6 +518,26 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
 
             writer.WriteLine(string.Join(",", fields));
         }
+
+        writer.Flush();
+
+        await ReportCsvAudit.WriteAsync(
+            this, audit,
+            "WEEKLY_MOVEMENTS_CSV_EXPORTED",
+            $"{current.WeekStart:yyyy-MM-dd}:{current.WeekEnd:yyyy-MM-dd}",
+            $"Weekly Movements CSV exported for {current.WeekStart:dd/MM/yyyy} - {current.WeekEnd:dd/MM/yyyy}: {detailGrid.Rows.Cast<DataGridViewRow>().Count(x => x.Tag is WeeklyMovementReportRow):N0} detail row(s).",
+            dialog.FileName,
+            detailGrid.Rows.Cast<DataGridViewRow>().Count(x => x.Tag is WeeklyMovementReportRow),
+            new
+            {
+                current.WeekStart, current.WeekEnd,
+                View = "Daily Detail",
+                CustomerSearch = customerSearch.Text.Trim(),
+                Container = containerFilter.Text,
+                Source = sourceFilter.Text,
+                IncludeAdjustments = includeAdjustments.Checked,
+                IncludeNotes = includeNotesInExports.Checked
+            });
     }
 
     private void ConfigureDetailGrid()

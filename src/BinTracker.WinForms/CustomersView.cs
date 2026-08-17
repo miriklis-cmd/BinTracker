@@ -555,33 +555,19 @@ public sealed class CustomersView : UserControl
 
     private async Task GenerateStatementAsync()
     {
-        if (selectedId == 0) return;
-        var customer = await service.GetAsync(selectedId);
-        if (customer is null) return;
+        if (selectedId == 0)
+            return;
 
-        using var options = new StatementOptionsForm();
-        if (options.ShowDialog(FindForm()) != DialogResult.OK) return;
+        IWin32Window owner =
+            FindForm() is Form form
+                ? form
+                : this;
 
-        var safeCode = string.Join("_", customer.CustomerCode.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
-        using var dialog = new SaveFileDialog
-        {
-            Title = "Save Customer Statement",
-            Filter = "PDF document (*.pdf)|*.pdf",
-            FileName = $"BinTracker_Statement_{safeCode}_{options.FromDate:yyyyMMdd}-{options.ToDate:yyyyMMdd}.pdf",
-            AddExtension = true,
-            DefaultExt = "pdf"
-        };
-        if (dialog.ShowDialog(FindForm()) != DialogResult.OK) return;
-
-        try
-        {
-            await statementReports.GeneratePdfAsync(selectedId, options.FromDate, options.ToDate, dialog.FileName);
-            MessageBox.Show($"Statement created successfully.\n\n{dialog.FileName}", "Customer Statement", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.Message, "Customer Statement", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
+        await CustomerStatementWorkflow.RunAsync(
+            owner,
+            selectedId,
+            service,
+            statementReports);
     }
 
     private async Task ToggleActiveAsync()

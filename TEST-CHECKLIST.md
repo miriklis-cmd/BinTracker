@@ -1,12 +1,12 @@
 # BinTracker Test Checklist
 
-Current baseline: **v0.4.0-alpha.22.3.2**
+Current baseline: **v0.4.0-alpha.22.6.4**
 
 Historical alpha checklists have been removed from this file. Defect history remains in `docs/CHANGELOG.md`.
 
 ## Build gate
 
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.22.3.2.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.22.6.4.
 - [ ] Restore succeeds.
 - [ ] Full solution builds with zero warnings.
 - [ ] All unit tests pass.
@@ -413,3 +413,140 @@ Historical alpha checklists have been removed from this file. Defect history rem
 - [ ] Outstanding/Daily/Weekly/Movement History breakout forms use BinTracker icon.
 - [ ] Import/admin/settings dialogs use BinTracker icon.
 - [ ] Left navigation visibly shows BinTracker logo + BinTracker wordmark without overlap.
+
+
+## alpha.22.3.3 Weekly layout / splash / sidebar branding
+
+- [ ] Weekly Movements has no large blank band between actions and summary/dataset.
+- [ ] Daily Detail and Weekly Overview grids expand into the reclaimed vertical space.
+- [ ] Weekly action buttons remain fully visible at the laptop width/DPI previously reported.
+- [ ] Sidebar logo has no square white background and remains legible on navy.
+- [ ] Sidebar BinTracker wordmark is vertically aligned with the logo.
+- [ ] Splash appears during startup before Login/Main.
+- [ ] Splash displays BinTracker product branding and current version.
+- [ ] Login/taskbar and breakout-form icons remain BinTracker branded.
+- [x] Version references reconciled with `Directory.Build.props`.
+- [x] Changelog and Release Notes updated.
+- [x] Mandatory documentation/current-state audit completed.
+
+
+## alpha.22.3.4 sidebar branding
+
+- [ ] Full `BinTracker` wordmark is visible; no final letters are clipped.
+- [ ] Logo and wordmark are vertically aligned.
+- [ ] Navigation buttons remain fully visible.
+- [ ] Main content still lays out correctly with the slightly wider sidebar.
+
+
+## alpha.22.5 Customer Statement workflow
+
+- [ ] Customer Statement period cannot extend beyond today.
+- [ ] Generate PDF saves to a user-selected location.
+- [ ] Generate & Open opens a generated PDF without a save dialog.
+- [ ] Opened statement is printable through the Windows PDF viewer.
+- [ ] Customer, date range, balances and movement detail remain correct.
+- [ ] Customer screen layout remains unclipped.
+
+
+## alpha.22.6 Customer Statement in Reports
+
+- [ ] Reports launcher includes Customer Statement.
+- [ ] Customer Statement report window searches on Enter.
+- [ ] Include inactive works.
+- [ ] Customer list shows code/name/type/net position/status.
+- [ ] Double-click opens statement workflow.
+- [ ] Customer Statement button opens statement workflow.
+- [ ] Customers-screen statement button still works.
+- [ ] Both entry points use identical Generate PDF / Generate & Open behaviour.
+- [ ] Only one Customer Statement report window opens at a time.
+
+
+## alpha.22.6.1 compile fix
+
+- [ ] WinForms project compiles successfully.
+- [ ] Customers → Customer Statement still opens the shared workflow.
+- [ ] Reports → Customer Statement still opens the shared workflow.
+
+
+## alpha.22.6.2 Reports launcher accessibility
+
+- [ ] Open Reports at approximately the same height as the reported screenshot.
+- [ ] Scroll down and confirm the full Customer Statement card and Open Report button are reachable.
+- [ ] Open Customer Statement from Reports and confirm the shared workflow launches.
+
+
+## alpha.22.6.3 Customer Statement action bar
+- [ ] Confirm bottom buttons are aligned.
+- [ ] Confirm full **Customer Statement** label is visible.
+- [ ] Confirm **Close** remains visible and functional.
+- [ ] Confirm Customer Statement action opens the statement period workflow.
+
+
+## alpha.22.6.4 Customer Statement button label
+
+- [ ] Reports → Customer Statement shows `Customer Statement` in full on the bottom action button.
+- [ ] `Customer Statement` and `Close` remain aligned at the bottom-right.
+- [ ] Clicking `Customer Statement` opens the statement period workflow.
+
+
+## alpha.23 Monthly Summary
+
+- [ ] Reports launcher includes Monthly Summary and it opens as a single-instance responsive window.
+- [ ] Month selector cannot select a future month.
+- [ ] This Month and Last Month choose the correct calendar month.
+- [ ] Customer search applies when Enter is pressed.
+- [ ] Container and Source filters refresh live.
+- [ ] Opening Adjustments are excluded by default and included only explicitly.
+- [ ] OUT / IN / Net totals are correct.
+- [ ] Customer/container rows remain separated by Container Type.
+- [ ] OUT / IN / Net sort numerically.
+- [ ] PDF follows the current visible grid order.
+- [ ] CSV follows the current visible grid order.
+- [ ] Current-month report states activity-through-today.
+- [ ] `MONTHLY_SUMMARY_REPORT_GENERATED` audit event is written for PDF generation.
+
+
+## alpha.23.1 Monthly Summary test correction
+- [ ] Build-BinTracker.bat completes with all automated tests green.
+- [ ] Continue the alpha.23 Monthly Summary full smoke test after automated tests pass.
+
+
+## alpha.23.2 CSV audit pass
+
+- [ ] Outstanding Containers CSV creates `OUTSTANDING_CONTAINERS_CSV_EXPORTED`.
+- [ ] Daily Movements CSV creates `DAILY_MOVEMENTS_CSV_EXPORTED`.
+- [ ] Weekly Overview CSV creates `WEEKLY_MOVEMENTS_CSV_EXPORTED`.
+- [ ] Weekly Daily Detail CSV creates `WEEKLY_MOVEMENTS_CSV_EXPORTED`.
+- [ ] Movement History CSV creates `MOVEMENT_HISTORY_CSV_EXPORTED`.
+- [ ] Monthly Summary CSV creates `MONTHLY_SUMMARY_CSV_EXPORTED`.
+- [ ] CSV audit events contain filename, row count and relevant date/filter context.
+- [ ] Monthly Summary month/year picker displays the complete year at production DPI.
+
+
+## alpha.23.3 build tooling
+
+- [ ] `Build-BinTracker.bat` reports a .NET 8.0.x SDK.
+- [ ] Run the BAT at least three consecutive times; all runs complete without MSB4242 worker-node SDK resolver failures.
+- [ ] Automated test suite remains green.
+- [ ] Normal compile/test failures still produce `BUILD FAILED` and a non-zero exit code.
+
+
+## alpha.23.4 build-tooling correction
+
+- [ ] BAT reports the actually installed SDK (currently 10.0.400 on the development PC).
+- [ ] Restore succeeds without a `global.json` SDK-not-found error.
+- [ ] Build succeeds.
+- [ ] Automated tests are green.
+- [ ] Run BAT three consecutive times and confirm no intermittent MSB4242 worker-node failure.
+- [ ] Confirm a real restore/build/test failure cannot be followed by `BUILD SUCCESSFUL`.
+
+
+## alpha.23.4.1 tooling self-heal
+
+- [ ] Run over the existing alpha.23.4 folder that still contains the alpha.23.3 `global.json`.
+- [ ] BAT reports `Removed obsolete alpha.23.3 global.json.`
+- [ ] BAT resolves SDK 10.0.400 on the current development PC.
+- [ ] Restore succeeds.
+- [ ] Build succeeds.
+- [ ] Automated tests are green.
+- [ ] No failed dotnet command can be followed by BUILD SUCCESSFUL.

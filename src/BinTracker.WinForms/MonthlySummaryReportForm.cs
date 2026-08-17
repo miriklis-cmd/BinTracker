@@ -3,23 +3,18 @@ using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
-public sealed class MovementHistoryReportForm : BinTrackerForm
+public sealed class MonthlySummaryReportForm : BinTrackerForm
 {
-    private readonly IMovementHistoryReportService reports;
-    private readonly IMovementHistoryReportPdfService pdfReports;
+    private readonly IMonthlySummaryReportService reports;
+    private readonly IMonthlySummaryReportPdfService pdfReports;
     private readonly IContainerTypeService containerTypes;
 
-    private readonly DateTimePicker startDate = new()
+    private readonly DateTimePicker monthPicker = new()
     {
-        Format = DateTimePickerFormat.Short,
-        Width = 140,
-        Value = DateTime.Today.AddDays(-29)
-    };
-
-    private readonly DateTimePicker endDate = new()
-    {
-        Format = DateTimePickerFormat.Short,
-        Width = 140,
+        Format = DateTimePickerFormat.Custom,
+        CustomFormat = "MMMM yyyy",
+        ShowUpDown = true,
+        Width = 205,
         Value = DateTime.Today
     };
 
@@ -29,9 +24,8 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         PlaceholderText = "Type, then press Enter"
     };
 
-    private readonly ComboBox containerFilter = ChoiceBox(175);
-    private readonly ComboBox directionFilter = ChoiceBox(165);
-    private readonly ComboBox sourceFilter = ChoiceBox(155);
+    private readonly ComboBox containerFilter = ChoiceBox(180);
+    private readonly ComboBox sourceFilter = ChoiceBox(160);
 
     private readonly CheckBox includeAdjustments = new()
     {
@@ -39,18 +33,11 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         AutoSize = true
     };
 
-    private readonly CheckBox includeNotesInExports = new()
-    {
-        Text = "Include notes in exports",
-        AutoSize = true,
-        Margin = new Padding(22, 0, 0, 0)
-    };
-
     private readonly Label summary = new()
     {
         AutoSize = true,
         ForeColor = Color.FromArgb(60, 75, 95),
-        MaximumSize = new Size(1400, 0)
+        MaximumSize = new Size(1450, 0)
     };
 
     private readonly DataGridView grid = new()
@@ -70,12 +57,12 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     };
 
     private readonly IAuditService audit;
-    private MovementHistoryReportResult? currentResult;
+    private MonthlySummaryReportResult? current;
     private bool autoRefreshReady;
 
-    public MovementHistoryReportForm(
-        IMovementHistoryReportService reports,
-        IMovementHistoryReportPdfService pdfReports,
+    public MonthlySummaryReportForm(
+        IMonthlySummaryReportService reports,
+        IMonthlySummaryReportPdfService pdfReports,
         IContainerTypeService containerTypes,
         IAuditService audit)
     {
@@ -85,30 +72,17 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
         this.audit = audit;
 
-        Text = "Movement History";
+        Text = "Monthly Summary";
         StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.Dpi;
-        MinimumSize = new Size(1120, 720);
+        MinimumSize = new Size(1050, 700);
         Font = new Font("Segoe UI", 10F);
         BackColor = Color.FromArgb(245, 247, 250);
 
-        startDate.MaxDate = DateTime.Today;
-        endDate.MaxDate = DateTime.Today;
+        monthPicker.MaxDate = DateTime.Today;
 
-        startDate.ValueChanged += async (_, _) =>
+        monthPicker.ValueChanged += async (_, _) =>
         {
-            if (startDate.Value.Date > endDate.Value.Date)
-                endDate.Value = startDate.Value.Date;
-
-            if (autoRefreshReady)
-                await LoadReportAsync();
-        };
-
-        endDate.ValueChanged += async (_, _) =>
-        {
-            if (endDate.Value.Date < startDate.Value.Date)
-                startDate.Value = endDate.Value.Date;
-
             if (autoRefreshReady)
                 await LoadReportAsync();
         };
@@ -125,12 +99,6 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         };
 
         containerFilter.SelectedIndexChanged += async (_, _) =>
-        {
-            if (autoRefreshReady)
-                await LoadReportAsync();
-        };
-
-        directionFilter.SelectedIndexChanged += async (_, _) =>
         {
             if (autoRefreshReady)
                 await LoadReportAsync();
@@ -187,7 +155,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
         header.Controls.Add(new Label
         {
-            Text = "Movement History",
+            Text = "Monthly Summary",
             AutoSize = true,
             Font = new Font("Segoe UI Semibold", 19F, FontStyle.Bold),
             Margin = new Padding(0, 0, 0, 5)
@@ -196,7 +164,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         header.Controls.Add(new Label
         {
             Text =
-                "Search actual IN/OUT movement history across a selected date range. Future dates are not permitted.",
+                "Monthly OUT, IN and net movement totals by customer and container. Opening adjustments are excluded by default.",
             AutoSize = true,
             ForeColor = Color.FromArgb(80, 90, 105),
             MaximumSize = new Size(1250, 0)
@@ -204,75 +172,55 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
         root.Controls.Add(header, 0, 0);
 
-        var controlsCard = new Panel
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            BackColor = Color.White,
-            Padding = new Padding(16, 12, 16, 12),
-            Margin = new Padding(0, 0, 0, 10)
-        };
-
-        var rows = new TableLayoutPanel
+        var controlsCard = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 1,
             RowCount = 3,
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
+            BackColor = Color.White,
+            Padding = new Padding(16, 12, 16, 12),
+            Margin = new Padding(0, 0, 0, 10)
         };
+        controlsCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        controlsCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        controlsCard.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         var filters = Flow();
-        filters.Controls.Add(ControlLabel("From"));
-        filters.Controls.Add(startDate);
-        filters.Controls.Add(ControlLabel("To", 14));
-        filters.Controls.Add(endDate);
-        filters.Controls.Add(ControlLabel("Customer", 14));
+        filters.Controls.Add(ControlLabel("Month"));
+        filters.Controls.Add(monthPicker);
+        filters.Controls.Add(ControlLabel("Customer", 16));
         filters.Controls.Add(customerSearch);
-        filters.Controls.Add(ControlLabel("Container", 14));
+        filters.Controls.Add(new Label
+        {
+            Text = "Press Enter to search",
+            AutoSize = true,
+            ForeColor = Color.DimGray,
+            Margin = new Padding(8, 9, 0, 0)
+        });
+        filters.Controls.Add(ControlLabel("Container", 16));
         filters.Controls.Add(containerFilter);
-        filters.Controls.Add(ControlLabel("Direction", 14));
-        filters.Controls.Add(directionFilter);
-        filters.Controls.Add(ControlLabel("Source", 14));
+        filters.Controls.Add(ControlLabel("Source", 16));
         filters.Controls.Add(sourceFilter);
 
         var options = Flow();
-        options.Padding = new Padding(0, 6, 0, 4);
+        options.Padding = new Padding(0, 8, 0, 2);
         options.Controls.Add(includeAdjustments);
-        options.Controls.Add(includeNotesInExports);
-        options.Controls.Add(new Label
-        {
-            Text = "Customer search: type code/name and press Enter",
-            AutoSize = true,
-            ForeColor = Color.DimGray,
-            Margin = new Padding(22, 3, 0, 0)
-        });
 
         var actions = Flow();
-        actions.Padding = new Padding(0, 8, 0, 0);
-        actions.Controls.Add(ActionButton(
-            "Last 7 Days",
-            115,
-            async () => await SetRangeAndRefreshAsync(
-                DateTime.Today.AddDays(-6),
-                DateTime.Today)));
-
-        actions.Controls.Add(ActionButton(
-            "Last 30 Days",
-            125,
-            async () => await SetRangeAndRefreshAsync(
-                DateTime.Today.AddDays(-29),
-                DateTime.Today)));
+        actions.Padding = new Padding(0, 8, 0, 4);
 
         actions.Controls.Add(ActionButton(
             "This Month",
-            135,
-            async () => await SetRangeAndRefreshAsync(
-                new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1),
-                DateTime.Today)));
+            125,
+            async () => await SetMonthAndRefreshAsync(DateTime.Today)));
+
+        actions.Controls.Add(ActionButton(
+            "Last Month",
+            125,
+            async () => await SetMonthAndRefreshAsync(
+                DateTime.Today.AddMonths(-1))));
 
         actions.Controls.Add(ActionButton(
             "Generate PDF",
@@ -293,10 +241,10 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         csv.Click += async (_, _) => await ExportCsvAsync();
         actions.Controls.Add(csv);
 
-        rows.Controls.Add(filters, 0, 0);
-        rows.Controls.Add(options, 0, 1);
-        rows.Controls.Add(actions, 0, 2);
-        controlsCard.Controls.Add(rows);
+        controlsCard.Controls.Add(filters, 0, 0);
+        controlsCard.Controls.Add(options, 0, 1);
+        controlsCard.Controls.Add(actions, 0, 2);
+
         root.Controls.Add(controlsCard, 0, 1);
 
         var summaryCard = new Panel
@@ -344,10 +292,9 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         containerFilter.Items.Add(
             new Choice<int?>(null, "All containers"));
 
-        var configured =
-            await containerTypes.SearchAsync(
-                search: null,
-                includeInactive: true);
+        var configured = await containerTypes.SearchAsync(
+            search: null,
+            includeInactive: true);
 
         foreach (var container in configured)
         {
@@ -360,14 +307,6 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         }
 
         containerFilter.SelectedIndex = 0;
-
-        directionFilter.Items.Add(
-            new Choice<MovementType?>(null, "All directions"));
-        directionFilter.Items.Add(
-            new Choice<MovementType?>(MovementType.Out, "OUT"));
-        directionFilter.Items.Add(
-            new Choice<MovementType?>(MovementType.In, "IN"));
-        directionFilter.SelectedIndex = 0;
 
         sourceFilter.Items.Add(
             new Choice<MovementSource?>(null, "All sources"));
@@ -389,11 +328,10 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         await LoadReportAsync();
     }
 
-    private async Task SetRangeAndRefreshAsync(DateTime from, DateTime to)
+    private async Task SetMonthAndRefreshAsync(DateTime month)
     {
         autoRefreshReady = false;
-        startDate.Value = from;
-        endDate.Value = to;
+        monthPicker.Value = month;
         autoRefreshReady = true;
         await LoadReportAsync();
     }
@@ -405,62 +343,60 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             Enabled = false;
             UseWaitCursor = true;
 
-            var result = await reports.QueryAsync(
-                new MovementHistoryReportQuery(
-                    DateOnly.FromDateTime(startDate.Value.Date),
-                    DateOnly.FromDateTime(endDate.Value.Date),
+            current = await reports.QueryAsync(
+                new MonthlySummaryReportQuery(
+                    DateOnly.FromDateTime(monthPicker.Value.Date),
                     customerSearch.Text,
                     (containerFilter.SelectedItem as Choice<int?>)?.Value,
-                    (directionFilter.SelectedItem as Choice<MovementType?>)?.Value,
                     (sourceFilter.SelectedItem as Choice<MovementSource?>)?.Value,
                     includeAdjustments.Checked));
 
-            currentResult = result;
             grid.Rows.Clear();
 
-            foreach (var row in result.Rows)
+            foreach (var row in current.Rows)
             {
                 var index = grid.Rows.Add(
-                    row.MovementDate.ToString("ddd dd/MM/yyyy"),
                     row.CustomerCode,
                     row.CustomerName,
-                    CustomerTypeText(row.CustomerType),
                     row.ContainerType,
-                    row.DirectionText,
-                    row.Quantity.ToString("N0"),
-                    row.SourceText,
-                    row.Reference,
-                    row.Notes,
-                    row.EnteredBy);
+                    row.OutQuantity.ToString("N0"),
+                    row.InQuantity.ToString("N0"),
+                    row.NetQuantity.ToString("N0"));
 
                 grid.Rows[index].Tag = row;
             }
 
-            ResizeContentColumns();
+            AdjustGridWidths();
 
-            var totals = result.ContainerTotals.Select(x =>
-                $"{x.ContainerType}: " +
-                $"{x.OutQuantity:N0} OUT / " +
-                $"{x.InQuantity:N0} IN / " +
-                $"Net {x.NetQuantity:+#;-#;0}");
+            var period =
+                current.DataThroughDate < current.MonthEnd
+                    ? $"{current.MonthStart:MMMM yyyy} • activity through " +
+                      $"{current.DataThroughDate:dd/MM/yyyy}"
+                    : $"{current.MonthStart:MMMM yyyy}";
+
+            var containerText = current.ContainerTotals.Count == 0
+                ? "No matching movements."
+                : string.Join(
+                    "   •   ",
+                    current.ContainerTotals.Select(x =>
+                        $"{x.ContainerType}: " +
+                        $"{x.OutQuantity:N0} OUT / " +
+                        $"{x.InQuantity:N0} IN / " +
+                        $"Net {x.NetQuantity:+#;-#;0}"));
 
             summary.Text =
-                $"{result.StartDate:dd/MM/yyyy} – {result.EndDate:dd/MM/yyyy} — " +
-                $"{result.Rows.Count:N0} movement row(s) • " +
-                $"{result.OutQuantity:N0} OUT • " +
-                $"{result.InQuantity:N0} IN • " +
-                $"Net {result.NetQuantity:+#;-#;0}" +
-                (result.ContainerTotals.Count > 0
-                    ? Environment.NewLine +
-                      string.Join("   •   ", totals)
-                    : Environment.NewLine + "No matching movements.");
+                $"{period} — {current.OutQuantity:N0} OUT • " +
+                $"{current.InQuantity:N0} IN • " +
+                $"Net {current.NetQuantity:+#;-#;0}" +
+                Environment.NewLine +
+                containerText;
         }
         catch (Exception ex)
         {
             MessageBox.Show(
                 this,
                 ex.Message,
-                "Movement History",
+                "Monthly Summary",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
         }
@@ -471,64 +407,17 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         }
     }
 
-    private void ConfigureGrid()
+    private MonthlySummaryReportResult BuildDisplayedResult()
     {
-        grid.Columns.Add(Column("Date", 135, "Date"));
-        grid.Columns.Add(Column("Code", 145, "Code"));
-        grid.Columns.Add(Column(
-            "Customer",
-            220,
-            "Customer",
-            DataGridViewAutoSizeColumnMode.Fill));
-        grid.Columns.Add(Column("Type", 115, "Type"));
-        grid.Columns.Add(Column("Container", 135, "Container"));
-        grid.Columns.Add(Column("Direction", 100, "Direction"));
-        grid.Columns.Add(Column("Qty", 80, "Quantity"));
-        grid.Columns.Add(Column("Source", 140, "Source"));
-        grid.Columns.Add(Column("Reference", 145, "Reference"));
-        grid.Columns.Add(Column("Notes", 180, "Notes"));
-        grid.Columns.Add(Column("Entered by", 110, "EnteredBy"));
-
-        grid.SortCompare += Grid_SortCompare;
-    }
-
-    private void Grid_SortCompare(
-        object? sender,
-        DataGridViewSortCompareEventArgs e)
-    {
-        if (grid.Rows[e.RowIndex1].Tag is not MovementHistoryReportRow left ||
-            grid.Rows[e.RowIndex2].Tag is not MovementHistoryReportRow right)
-            return;
-
-        var column = grid.Columns[e.Column.Index].Name;
-
-        e.SortResult = column switch
-        {
-            "Date" => left.MovementDate.CompareTo(right.MovementDate),
-            "Quantity" => left.Quantity.CompareTo(right.Quantity),
-            _ => 0
-        };
-
-        if (column is not ("Date" or "Quantity"))
-            return;
-
-        if (e.SortResult == 0)
-            e.SortResult = left.MovementId.CompareTo(right.MovementId);
-
-        e.Handled = true;
-    }
-
-    private MovementHistoryReportResult BuildDisplayedResult()
-    {
-        var source = currentResult ??
-            throw new InvalidOperationException("Run the report first.");
+        var source = current ??
+            throw new InvalidOperationException("Open the report first.");
 
         var rows = grid.Rows
             .Cast<DataGridViewRow>()
             .Where(x => !x.IsNewRow)
-            .Select(x => x.Tag as MovementHistoryReportRow)
+            .Select(x => x.Tag as MonthlySummaryReportRow)
             .Where(x => x is not null)
-            .Cast<MovementHistoryReportRow>()
+            .Cast<MonthlySummaryReportRow>()
             .ToList();
 
         var totals = rows
@@ -538,30 +427,29 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
                 x.ContainerType,
                 x.ContainerDisplayOrder
             })
-            .Select(g => new MovementHistoryContainerTotal(
+            .Select(g => new MonthlySummaryContainerTotal(
                 g.Key.ContainerTypeId,
                 g.Key.ContainerType,
                 g.Key.ContainerDisplayOrder,
-                g.Where(x => x.Direction == MovementType.Out)
-                    .Sum(x => x.Quantity),
-                g.Where(x => x.Direction == MovementType.In)
-                    .Sum(x => x.Quantity)))
+                g.Sum(x => x.OutQuantity),
+                g.Sum(x => x.InQuantity)))
             .OrderBy(x => x.DisplayOrder)
             .ThenBy(x => x.ContainerType)
             .ToList();
 
-        return new MovementHistoryReportResult(
-            source.StartDate,
-            source.EndDate,
+        return new MonthlySummaryReportResult(
+            source.MonthStart,
+            source.MonthEnd,
+            source.DataThroughDate,
             rows,
             totals);
     }
 
     private async Task GeneratePdfAsync(bool openAfter)
     {
-        if (currentResult is null)
+        if (current is null)
         {
-            MessageBox.Show(this, "Run the report first.");
+            MessageBox.Show(this, "Open the report first.");
             return;
         }
 
@@ -569,10 +457,10 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
         using var dialog = new SaveFileDialog
         {
-            Title = "Generate Movement History PDF",
+            Title = "Generate Monthly Summary PDF",
             Filter = "PDF file (*.pdf)|*.pdf",
             FileName =
-                $"BinTracker_Movement_History_{result.StartDate:yyyyMMdd}_{result.EndDate:yyyyMMdd}.pdf",
+                $"BinTracker_Monthly_Summary_{result.MonthStart:yyyyMM}.pdf",
             AddExtension = true,
             DefaultExt = "pdf"
         };
@@ -587,8 +475,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
             await pdfReports.GeneratePdfAsync(
                 result,
-                dialog.FileName,
-                includeNotesInExports.Checked);
+                dialog.FileName);
 
             if (openAfter)
             {
@@ -605,7 +492,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             MessageBox.Show(
                 this,
                 ex.Message,
-                "Movement History PDF",
+                "Monthly Summary PDF",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
         }
@@ -618,9 +505,9 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
     private async Task ExportCsvAsync()
     {
-        if (currentResult is null)
+        if (current is null)
         {
-            MessageBox.Show(this, "Run the report first.");
+            MessageBox.Show(this, "Open the report first.");
             return;
         }
 
@@ -628,10 +515,10 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
         using var dialog = new SaveFileDialog
         {
-            Title = "Export Movement History",
+            Title = "Export Monthly Summary",
             Filter = "CSV file (*.csv)|*.csv",
             FileName =
-                $"BinTracker_Movement_History_{result.StartDate:yyyyMMdd}_{result.EndDate:yyyyMMdd}.csv",
+                $"BinTracker_Monthly_Summary_{result.MonthStart:yyyyMM}.csv",
             AddExtension = true,
             DefaultExt = "csv"
         };
@@ -644,106 +531,108 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             false,
             new System.Text.UTF8Encoding(true));
 
-        writer.WriteLine(includeNotesInExports.Checked
-            ? "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Notes,Entered By"
-            : "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Entered By");
+        writer.WriteLine(
+            "Customer Code,Customer Name,Container,OUT,IN,Net");
 
         foreach (var row in result.Rows)
         {
-            var fields = new List<string>
-            {
-                Csv(row.MovementDate.ToString("dd/MM/yyyy")),
+            writer.WriteLine(string.Join(",",
                 Csv(row.CustomerCode),
                 Csv(row.CustomerName),
-                Csv(CustomerTypeText(row.CustomerType)),
                 Csv(row.ContainerType),
-                Csv(row.DirectionText),
-                row.Quantity.ToString(
+                row.OutQuantity.ToString(
                     System.Globalization.CultureInfo.InvariantCulture),
-                Csv(row.SourceText),
-                Csv(row.Reference)
-            };
-
-            if (includeNotesInExports.Checked)
-                fields.Add(Csv(row.Notes));
-
-            fields.Add(Csv(row.EnteredBy));
-            writer.WriteLine(string.Join(",", fields));
+                row.InQuantity.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture),
+                row.NetQuantity.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture)));
         }
 
         writer.Flush();
 
         await ReportCsvAudit.WriteAsync(
             this, audit,
-            "MOVEMENT_HISTORY_CSV_EXPORTED",
-            $"{result.StartDate:yyyy-MM-dd}:{result.EndDate:yyyy-MM-dd}",
-            $"Movement History CSV exported for {result.StartDate:dd/MM/yyyy} - {result.EndDate:dd/MM/yyyy}: {result.Rows.Count:N0} row(s).",
+            "MONTHLY_SUMMARY_CSV_EXPORTED",
+            result.MonthStart.ToString("yyyy-MM"),
+            $"Monthly Summary CSV exported for {result.MonthStart:MMMM yyyy}: {result.Rows.Count:N0} row(s), {result.OutQuantity:N0} OUT, {result.InQuantity:N0} IN, Net {result.NetQuantity:+#;-#;0}.",
             dialog.FileName,
             result.Rows.Count,
             new
             {
-                result.StartDate,
-                result.EndDate,
+                result.MonthStart,
+                result.MonthEnd,
+                result.DataThroughDate,
                 CustomerSearch = customerSearch.Text.Trim(),
                 Container = containerFilter.Text,
-                Direction = directionFilter.Text,
                 Source = sourceFilter.Text,
-                IncludeAdjustments = includeAdjustments.Checked,
-                IncludeNotes = includeNotesInExports.Checked
+                IncludeAdjustments = includeAdjustments.Checked
             });
     }
 
-    private void ResizeContentColumns()
+    private void ConfigureGrid()
     {
-        ResizeColumn(
-            "Date",
-            grid.Rows.Cast<DataGridViewRow>()
-                .Where(x => x.Tag is MovementHistoryReportRow)
-                .Select(x =>
-                    ((MovementHistoryReportRow)x.Tag!).MovementDate
-                        .ToString("ddd dd/MM/yyyy")),
-            135,
-            180);
+        grid.Columns.Add(Column("Code", 155, "Code"));
+        grid.Columns.Add(Column(
+            "Customer",
+            270,
+            "Customer",
+            DataGridViewAutoSizeColumnMode.Fill));
+        grid.Columns.Add(Column("Container", 160, "Container"));
+        grid.Columns.Add(Column("OUT", 110, "Out"));
+        grid.Columns.Add(Column("IN", 110, "In"));
+        grid.Columns.Add(Column("Net", 110, "Net"));
 
-        ResizeColumn(
-            "Code",
-            grid.Rows.Cast<DataGridViewRow>()
-                .Where(x => x.Tag is MovementHistoryReportRow)
-                .Select(x =>
-                    ((MovementHistoryReportRow)x.Tag!).CustomerCode),
-            145,
-            300);
+        grid.SortCompare += (_, e) =>
+        {
+            if (grid.Rows[e.RowIndex1].Tag is not MonthlySummaryReportRow left ||
+                grid.Rows[e.RowIndex2].Tag is not MonthlySummaryReportRow right)
+                return;
 
-        ResizeColumn(
-            "Container",
-            grid.Rows.Cast<DataGridViewRow>()
-                .Where(x => x.Tag is MovementHistoryReportRow)
-                .Select(x =>
-                    ((MovementHistoryReportRow)x.Tag!).ContainerType),
-            135,
-            240);
+            e.SortResult = grid.Columns[e.Column.Index].Name switch
+            {
+                "Out" => left.OutQuantity.CompareTo(right.OutQuantity),
+                "In" => left.InQuantity.CompareTo(right.InQuantity),
+                "Net" => left.NetQuantity.CompareTo(right.NetQuantity),
+                _ => 0
+            };
+
+            if (grid.Columns[e.Column.Index].Name is "Out" or "In" or "Net")
+                e.Handled = true;
+        };
     }
 
-    private void ResizeColumn(
+    private void AdjustGridWidths()
+    {
+        if (current is null)
+            return;
+
+        grid.Columns["Code"].Width = WidthFor(
+            "Code",
+            current.Rows.Select(x => x.CustomerCode),
+            155,
+            300);
+
+        grid.Columns["Container"].Width = WidthFor(
+            "Container",
+            current.Rows.Select(x => x.ContainerType),
+            160,
+            260);
+    }
+
+    private int WidthFor(
         string columnName,
         IEnumerable<string> values,
         int minimum,
         int maximum)
     {
-        var column = grid.Columns[columnName];
-        var font = grid.DefaultCellStyle.Font ?? Font;
-
+        var header = grid.Columns[columnName].HeaderText;
         var longest = values
-            .Append(column.HeaderText)
-            .Select(x => TextRenderer.MeasureText(x ?? "", font).Width)
-            .DefaultIfEmpty(minimum)
-            .Max();
+            .Append(header)
+            .OrderByDescending(x => x?.Length ?? 0)
+            .FirstOrDefault() ?? header;
 
-        column.AutoSizeMode =
-            DataGridViewAutoSizeColumnMode.None;
-        column.MinimumWidth = minimum;
-        column.Width = Math.Clamp(
-            longest + 34,
+        return Math.Clamp(
+            TextRenderer.MeasureText(longest, grid.Font).Width + 34,
             minimum,
             maximum);
     }
@@ -757,14 +646,14 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         var area = screen.WorkingArea;
 
         Width = Math.Clamp(
-            (int)Math.Round(area.Width * 0.92),
+            (int)Math.Round(area.Width * 0.90),
             MinimumSize.Width,
-            1900);
+            1800);
 
         Height = Math.Clamp(
-            (int)Math.Round(area.Height * 0.88),
+            (int)Math.Round(area.Height * 0.86),
             MinimumSize.Height,
-            1100);
+            1050);
 
         Left = area.Left + Math.Max(0, (area.Width - Width) / 2);
         Top = area.Top + Math.Max(0, (area.Height - Height) / 2);
@@ -829,11 +718,6 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             AutoSizeMode = autoSize,
             SortMode = DataGridViewColumnSortMode.Automatic
         };
-
-    private static string CustomerTypeText(CustomerType type) =>
-        type == CustomerType.Account
-            ? "Account"
-            : "Cash / COD";
 
     private static string Csv(string value)
     {

@@ -75,3 +75,33 @@ For every build:
    - record material documentation reconciliation in `docs/DocumentationAudit.md`.
 
 A build is **not complete** merely because code was changed or static checks passed. The audit is part of the build itself.
+
+
+
+
+## Local SDK and MSBuild worker policy
+
+BinTracker targets `net8.0` / `net8.0-windows`, but the local build SDK is not pinned to .NET 8. The development machine currently has .NET SDK 10.0.400 installed and that SDK can build the project's .NET 8 target frameworks.
+
+Do not add a restrictive `global.json` unless the required SDK is first confirmed installed on the development machine.
+
+`Build-BinTracker.bat` hardens local builds against intermittent MSBuild SDK-resolver worker shutdowns by:
+
+- shutting down stale `dotnet` build-server processes before restore;
+- setting `DOTNET_CLI_USE_MSBUILD_SERVER=0`;
+- setting `MSBUILDDISABLENODEREUSE=1`;
+- passing `/nr:false`;
+- using single-node MSBuild (`-m:1`);
+- using non-parallel NuGet restore (`--disable-parallel`);
+- printing the resolved SDK version.
+
+Every restore/build/test command is executed through a BAT subroutine and its exit code is checked immediately. A failed command must never fall through to `BUILD SUCCESSFUL`.
+
+
+## ZIP overlay stale-file handling
+
+Extracting a newer BinTracker ZIP over an existing build folder overwrites matching files but does not remove files that were deleted from the newer package.
+
+alpha.23.4.1 specifically self-heals the obsolete `global.json` created by alpha.23.3. The BAT deletes it only when its contents exactly identify the BinTracker-created SDK 8.0.100 / `latestFeature` pin. An unrelated/user-managed `global.json` is never deleted automatically.
+
+For the cleanest manual workflow, deleting the old extracted BinTracker folder before extracting a new full ZIP remains preferable.

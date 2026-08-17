@@ -63,15 +63,19 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         BorderStyle = BorderStyle.FixedSingle
     };
 
+    private readonly IAuditService audit;
     private OutstandingReportResult? currentResult;
     private bool autoRefreshReady;
 
     public OutstandingContainersReportForm(
         IOutstandingReportService outstanding,
-        IOutstandingReportPdfService pdfReports)
+        IOutstandingReportPdfService pdfReports,
+        IAuditService audit)
     {
         this.outstanding = outstanding;
         this.pdfReports = pdfReports;
+
+        this.audit = audit;
 
         Text = "Outstanding Containers";
         StartPosition = FormStartPosition.Manual;
@@ -282,7 +286,7 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
             Size = new Size(135, 40),
             Margin = new Padding(8, 0, 0, 0)
         };
-        export.Click += (_, _) => ExportCsv();
+        export.Click += async (_, _) => await ExportCsvAsync();
 
         actions.Controls.Add(today);
         actions.Controls.Add(pdf);
@@ -684,7 +688,7 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         }
     }
 
-    private void ExportCsv()
+    private async Task ExportCsvAsync()
     {
         var result = currentResult;
 
@@ -746,6 +750,22 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         summary.Text +=
             Environment.NewLine +
             $"Exported CSV: {dialog.FileName}";
+
+        await ReportCsvAudit.WriteAsync(
+            this, audit,
+            "OUTSTANDING_CONTAINERS_CSV_EXPORTED",
+            exportResult.AsOfDate.ToString("yyyy-MM-dd"),
+            $"Outstanding Containers CSV exported for {exportResult.AsOfDate:dd/MM/yyyy}: {exportResult.Rows.Count:N0} row(s).",
+            dialog.FileName,
+            exportResult.Rows.Count,
+            new
+            {
+                AsOfDate = exportResult.AsOfDate,
+                CustomerSearch = customerSearch.Text.Trim(),
+                Container = containerFilter.Text,
+                IncludeCredits = includeCredits.Checked,
+                IncludeInactive = includeInactive.Checked
+            });
     }
 
     private static Label ControlLabel(

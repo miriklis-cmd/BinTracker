@@ -200,3 +200,40 @@ Engineering improvements that are not currently user-facing defects. Product wor
 ## Form branding inheritance
 
 - All WinForms windows now inherit `BinTrackerForm` so application icon behaviour is centralized. New forms should inherit `BinTrackerForm`; do not reintroduce per-form icon file loading.
+
+
+## Sidebar branding width
+
+- Keep product-branding dimensions tied to the real sidebar width rather than relying on a large fixed logo column plus oversized wordmark font. Recheck at non-100% DPI when sidebar branding changes.
+
+
+## Customer Statement workflow ownership
+
+- `CustomerStatementWorkflow` is the single WinForms orchestration point for statement period selection, save/open path and PDF launching. Keep Customers and Reports entry points thin so future Email Statement support can be added once rather than twice.
+
+
+## IWin32Window owner typing
+
+- Shared WinForms workflows should accept `IWin32Window` owners, but callers must avoid null-coalescing different concrete control types without first normalising to the interface type.
+
+
+## Monthly report query scaling
+
+- Monthly Summary currently filters the movement set in EF Core and performs the final customer/container grouping in application memory. This stays provider-neutral for SQLite/PostgreSQL. If movement volume becomes large after central PostgreSQL deployment, benchmark and move grouping into a provider-neutral SQL-translatable LINQ projection where useful.
+
+
+## Local build SDK drift
+
+- Resolved for the current .NET 8 product line with repository-root `global.json`. Revisit the pin deliberately when BinTracker upgrades target framework; do not let Visual Studio's newest installed major SDK implicitly change the build host.
+
+
+## Build SDK policy correction
+
+- alpha.23.3 incorrectly pinned the repository to an uninstalled .NET 8 SDK. The pin was removed in alpha.23.4.
+- BinTracker continues targeting .NET 8 while using a compatible installed SDK as the build host.
+- If deterministic SDK pinning is introduced later, first install/standardise that SDK on development/CI machines and test the failure path.
+
+
+## Full-ZIP overlay semantics
+
+- Full release ZIPs cannot delete stale files when extracted over an older folder. Build tooling now self-heals the one known dangerous obsolete file (`global.json` from alpha.23.3), but development instructions should continue to prefer extracting full builds into a clean folder.

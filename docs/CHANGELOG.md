@@ -741,3 +741,77 @@
 - Fixed pre-login taskbar/title-bar icon.
 - Reworked sidebar product-logo layout so image and wordmark cannot overlap.
 - Completed mandatory full documentation/current-state audit.
+
+## v0.4.0-alpha.22.3.3
+- Removed the Weekly Movements dead vertical space so the report grid receives the available height.
+- Converted the sidebar product mark to a circular transparent asset with a light contrast ring for the navy navigation background.
+- Fine-tuned sidebar BinTracker wordmark alignment with the product mark.
+- Added a real BinTracker startup splash screen while startup/database initialisation runs.
+- Kept splash/login/report/admin windows on the shared `BinTrackerForm` icon path.
+- Completed mandatory source/documentation/current-state audit for this patch.
+
+
+## v0.4.0-alpha.22.6
+- Fixed clipped BinTracker sidebar wordmark.
+- Slightly widened sidebar, reduced logo column and wordmark size, and adjusted alignment.
+- Completed mandatory full documentation/current-state audit.
+
+
+## v0.4.0-alpha.22.6
+- Customer Statement workflow upgraded from save-only generation.
+- Added **Generate PDF** and **Generate & Open** choices.
+- Generate & Open creates the statement in BinTracker's temporary statement area and opens it with the Windows default PDF application for immediate viewing/printing.
+- Statement date pickers now prevent future dates.
+- Completed mandatory full documentation/current-state audit.
+
+
+## v0.4.0-alpha.22.6
+- Added Customer Statement to the Reports launcher.
+- Added dedicated searchable customer-selection window for statements.
+- Extracted shared `CustomerStatementWorkflow` used by Customers and Reports.
+- Preserved Generate PDF / Generate & Open behaviour while eliminating duplicated orchestration.
+- Marked Customer Statement operational workflow complete in the reporting roadmap.
+- Completed mandatory full documentation/current-state audit.
+
+
+## v0.4.0-alpha.22.6.4
+- Fixed WinForms compile failure caused by `FindForm() ?? this` mixing `Form` and `CustomersView`.
+- Normalised Customer Statement workflow owner to `IWin32Window`.
+- Completed mandatory full documentation/current-state audit.
+
+
+## v0.4.0-alpha.22.6.4
+- Fixed Customer Statement bottom action bar: full Customer Statement label, consistent button sizing, and bottom-right alignment.
+- Mandatory documentation/current-state audit completed.
+
+
+## v0.4.0-alpha.23
+- Added Monthly Summary report with calendar-month OUT/IN/Net totals.
+- Added This Month / Last Month shortcuts and future-month/current-month guards.
+- Added customer/container/source filters and optional Opening Adjustments.
+- Added typed numeric sorting, audited PDF, Generate & Open and CSV preserving visible order.
+- Added SQLite integration coverage while keeping report architecture provider-neutral for PostgreSQL.
+- Updated Reports launcher and marked Monthly Summary implemented in the roadmap.
+- Completed mandatory full documentation/current-state audit.
+
+
+## v0.4.0-alpha.23.1
+- Fixed Monthly Summary integration-test fixtures/setup found by the Windows automated test run.
+- Kept production current-month activity-through-today behaviour unchanged.
+- Completed mandatory documentation/current-state audit.
+
+
+## v0.4.0-alpha.23.4.1
+- Added audit events for CSV exports from every current CSV-capable report.
+- Added shared CSV audit helper with explicit warning if audit persistence fails after file creation.
+- Added report/filter/date/row-count/filename context without storing CSV contents in audit events.
+- Widened Monthly Summary month/year picker.
+- Completed mandatory full documentation/current-state audit.
+
+
+## v0.4.0-alpha.23.4.1
+- Removed the invalid SDK 8.0.100 `global.json` pin introduced in alpha.23.3.
+- Restored use of the compatible installed SDK (10.0.400 on the development PC).
+- Fixed BAT exit-code handling so restore/build/test failures cannot falsely report BUILD SUCCESSFUL.
+- Retained stale build-server cleanup, disabled node/server reuse and conservative parallelism.
+- Completed mandatory full documentation/current-state audit.

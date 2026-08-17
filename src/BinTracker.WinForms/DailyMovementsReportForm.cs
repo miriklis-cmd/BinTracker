@@ -63,17 +63,21 @@ public sealed class DailyMovementsReportForm : BinTrackerForm
         ScrollBars = ScrollBars.Both
     };
 
+    private readonly IAuditService audit;
     private DailyMovementsReportResult? currentResult;
     private bool autoRefreshReady;
 
     public DailyMovementsReportForm(
         IDailyMovementsReportService reports,
         IDailyMovementsReportPdfService pdfReports,
-        IOutstandingReportService outstanding)
+        IOutstandingReportService outstanding,
+        IAuditService audit)
     {
         this.reports = reports;
         this.pdfReports = pdfReports;
         this.outstanding = outstanding;
+
+        this.audit = audit;
 
         Text = "Daily Movements";
         StartPosition = FormStartPosition.Manual;
@@ -277,7 +281,7 @@ actions.Controls.Add(ActionButton(
             Size = new Size(135, 40),
             Margin = new Padding(8, 0, 0, 0)
         };
-        csv.Click += (_, _) => ExportCsv();
+        csv.Click += async (_, _) => await ExportCsvAsync();
         actions.Controls.Add(csv);
 
         controlRows.Controls.Add(filters, 0, 0);
@@ -555,7 +559,7 @@ actions.Controls.Add(ActionButton(
         }
     }
 
-    private void ExportCsv()
+    private async Task ExportCsvAsync()
     {
         if (currentResult is null)
         {
@@ -616,6 +620,26 @@ actions.Controls.Add(ActionButton(
 
             writer.WriteLine(string.Join(",", fields));
         }
+
+        writer.Flush();
+
+        await ReportCsvAudit.WriteAsync(
+            this, audit,
+            "DAILY_MOVEMENTS_CSV_EXPORTED",
+            result.ReportDate.ToString("yyyy-MM-dd"),
+            $"Daily Movements CSV exported for {result.ReportDate:dd/MM/yyyy}: {result.Rows.Count:N0} row(s).",
+            dialog.FileName,
+            result.Rows.Count,
+            new
+            {
+                ReportDate = result.ReportDate,
+                CustomerSearch = customerSearch.Text.Trim(),
+                Container = containerFilter.Text,
+                Direction = directionFilter.Text,
+                Source = sourceFilter.Text,
+                IncludeAdjustments = includeAdjustments.Checked,
+                IncludeNotes = includeNotesInPdf.Checked
+            });
     }
 
     private void ResizeContentColumns()

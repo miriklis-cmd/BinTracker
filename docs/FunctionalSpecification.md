@@ -277,3 +277,34 @@
 - BT-BRAND-APP-002: Windows Forms inherit application icon behaviour from a common BinTracker form base rather than setting icons ad hoc.
 - BT-BRAND-APP-003: The main left navigation shows the BinTracker product logo separately from future customer/business branding.
 - BT-BRAND-APP-004: BinTracker product branding and configurable Business Information branding are separate concepts.
+
+
+## Customer Statement entry points
+
+- BT-REPORT-STATEMENT-010: Customer Statement workflow is available from both the Customers screen and the Reports launcher.
+- BT-REPORT-STATEMENT-011: Both entry points use one shared generation workflow; do not duplicate save/open logic.
+- BT-REPORT-STATEMENT-012: Reports entry point supports Customer search on Enter, optional inactive-customer inclusion, customer selection and statement generation.
+- BT-REPORT-STATEMENT-013: Double-clicking a customer in the Reports statement window opens the shared statement workflow.
+
+
+## Monthly Summary Report
+
+- BT-REPORT-MONTHLY-001: Select a calendar month and summarize physical OUT, IN and Net movement.
+- BT-REPORT-MONTHLY-002: Future months are not selectable; service logic defensively clamps future requests to the current month.
+- BT-REPORT-MONTHLY-003: Current-month activity runs only through today.
+- BT-REPORT-MONTHLY-004: Provide This Month and Last Month shortcuts.
+- BT-REPORT-MONTHLY-005: Filter by customer, authoritative configured Container Type and normal movement Source.
+- BT-REPORT-MONTHLY-006: Opening Adjustments are excluded by default and included only explicitly.
+- BT-REPORT-MONTHLY-007: Customer free-text filter applies on Enter; month/dropdown/checkbox filters refresh live.
+- BT-REPORT-MONTHLY-008: Summary rows are grouped by customer + Container Type and show OUT, IN and Net.
+- BT-REPORT-MONTHLY-009: OUT/IN/Net columns sort by numeric values, not formatted strings.
+- BT-REPORT-MONTHLY-010: PDF and CSV preserve the current visible grid order.
+- BT-REPORT-MONTHLY-011: PDF generation is audited as `MONTHLY_SUMMARY_REPORT_GENERATED`.
+
+
+## Report export auditing
+
+- BT-REPORT-EXPORT-AUDIT-001: Every successful report CSV export writes an audit event.
+- BT-REPORT-EXPORT-AUDIT-002: CSV audit context records report identity, relevant date/date range, row count, exported filename and applicable filters/view options.
+- BT-REPORT-EXPORT-AUDIT-003: CSV contents are not copied into the audit trail.
+- BT-REPORT-EXPORT-AUDIT-004: If the CSV file is created but audit persistence fails, warn the operator explicitly rather than silently pretending the export was audited.
