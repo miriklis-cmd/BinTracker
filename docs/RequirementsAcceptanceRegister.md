@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.4.0-alpha.24.2.4**
+Current baseline: **v0.4.0-alpha.24.2.6**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -173,7 +173,8 @@ Provenance tags:
 | BT-RPT-009 | v1 | PLANNED-V1 | Decide whether native Excel export adds sufficient value beyond CSV before v1. | CURRENT-DOC |
 | BT-RPT-010 | v1 | PLANNED-V1 | Final cross-report consistency/print/DPI/real-world acceptance pass before reporting milestone closes. | CURRENT-DOC,CHAT-SURFACED |
 | BT-RPT-011 | v1 | IMPLEMENTED-STATIC | Report container selectors use configured Container Types master data, including inactive types for historical filtering; choices must not be inferred from current outstanding balances. | CHAT-SURFACED,CURRENT-DOC,CODE |
-| BT-RPT-012 | v1 | IMPLEMENTED-STATIC | Reports landing page must fit the available viewport without a horizontal scrollbar at supported Windows scaling, and report action buttons use reliable drawn document/external-link icons rather than font-dependent symbol glyphs. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-RPT-012 | v1 | IMPLEMENTED-STATIC | Reports landing page must fit the normal maximised viewport without page scrollbars at supported Windows scaling, and report action buttons must render their document/external-link icon plus full single-line caption without wrapping or clipping. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-RPT-013 | v1 | IMPLEMENTED-STATIC | Reports landing page omits the redundant bottom PDF/CSV/date information bar so available vertical space is reserved for fully visible report-card content. | CHAT-SURFACED,CURRENT-DOC,CODE |
 
 ## Market Floor / Outstanding / movements / statements / summaries
 

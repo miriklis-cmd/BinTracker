@@ -128,13 +128,19 @@ if (-not ($reqRows.Id -contains "BT-RPT-011")) {
 if (-not ($reqRows.Id -contains "BT-RPT-012")) {
     Fail "Requirements register is missing mandatory requirement BT-RPT-012."
 }
+if (-not ($reqRows.Id -contains "BT-RPT-013")) {
+    Fail "Requirements register is missing mandatory requirement BT-RPT-013."
+}
 
 # Reports landing-page viewport/icon guard (BT-RPT-012).
 $reportsView = Get-Content -Raw -LiteralPath 'src/BinTracker.WinForms/ReportsView.cs'
-if ($reportsView -notmatch 'AutoScroll\s*=\s*false') { Fail 'ReportsView itself must not own AutoScroll; the dedicated vertical host prevents horizontal overflow.' }
-if ($reportsView -notmatch 'var\s+scrollHost\s*=\s*new\s+Panel' -or $reportsView -notmatch 'FitRootToViewport') { Fail 'Reports landing page lost its viewport-fitting scroll host.' }
+if ($reportsView -notmatch 'AutoScroll\s*=\s*false') { Fail 'ReportsView itself must remain non-scrollable at the normal landing-page viewport.' }
+if ($reportsView -match 'var\s+scrollHost\s*=\s*new\s+Panel' -or $reportsView -match 'FitRootToViewport') { Fail 'Reports landing page reverted to the scrollbar/viewport-compensation approach.' }
+if ($reportsView -notmatch 'var\s+root\s*=\s*new\s+TableLayoutPanel' -or $reportsView -notmatch 'Dock\s*=\s*DockStyle\.Fill') { Fail 'Reports landing page lost its viewport-filling root layout.' }
+if ($reportsView -notmatch 'ConfigureActionButton' -or $reportsView -notmatch 'TextFormatFlags\.SingleLine' -or $reportsView -notmatch 'TextFormatFlags\.NoPrefix') { Fail 'Reports action buttons lost their single-line custom caption rendering.' }
 if ($reportsView -notmatch 'CreateDocumentIcon' -or $reportsView -notmatch 'CreateExternalLinkIcon') { Fail 'Reports action buttons lost their reliable drawn document/external-link icons.' }
 if ($reportsView -match 'PrimaryActionButton\("↗') { Fail 'Reports action buttons reverted to a font-dependent arrow glyph.' }
+if ($reportsView -match 'InformationBar\s*\(' -or $reportsView -match 'All reports can be exported to PDF and CSV') { Fail 'Reports landing page regained the redundant bottom information bar.' }
 
 # Every report Container Type selector must use configured master data, including
 # inactive types for historical filtering. Do not derive choices from current

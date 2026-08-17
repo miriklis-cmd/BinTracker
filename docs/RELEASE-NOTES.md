@@ -1,6 +1,29 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.24.2.4
+## v0.4.0-alpha.24.2.6
+
+### Reports landing-page vertical-fit correction
+
+- Removed the informational PDF/CSV/date notice bar from the bottom of the Reports landing page.
+- Reallocated the reclaimed vertical space to the report-card regions, with a larger share reserved for Explore Reports so descriptions and action buttons remain fully visible at the display scaling that exposed alpha.24.2.5 clipping.
+- The existing report export/date rules remain enforced by the report workflows; only the redundant landing-page notice was removed.
+
+### Acceptance requirement
+
+Run `Build-BinTracker.bat`, then verify the Reports landing page at the same Windows scaling: there is no bottom information bar, both lines of every Explore description are visible, all Open captions are complete, and the page remains free of horizontal scrolling.
+
+## v0.4.0-alpha.24.2.5
+
+### Reports landing-page layout/button correction
+
+- Removed the Reports landing-page scroll host entirely at normal application size and changed the page to a viewport-filling TableLayout layout. Fixed header/footer rows remain fixed while Quick Reports and Explore Reports share the available height, eliminating the scrollbar instead of trying to compensate for it after WinForms AutoScroll calculations.
+- Reworked Generate PDF, Generate & Open and Explore Open button rendering so icon + caption are painted as one centred single-line unit. This avoids WinForms ImageBeforeText wrapping/clipping at DPI-scaled sizes and preserves descenders such as the `p` in Open.
+- Increased Explore action-button height and footer allowance so the complete caption remains visible.
+
+### Acceptance requirement
+
+Run `Build-BinTracker.bat`, then verify the Reports page at the same display scale that exposed alpha.24.2.4: no page scrollbar, both Generate & Open captions remain on one line, every Explore Open caption is fully visible, and Generate PDF retains the small document icon.
+
 
 ### Reports landing-page viewport and action-icon correction
 

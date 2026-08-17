@@ -59,10 +59,9 @@ public sealed class ReportsView : UserControl
         Dock = DockStyle.Fill;
         BackColor = PageBackground;
         Font = new Font("Segoe UI", 10F);
-        // ReportsView uses one dedicated vertical scroll host.  Do not make the
-        // UserControl itself scrollable: WinForms can otherwise expose a tiny
-        // horizontal scrollbar when the vertical scrollbar reduces ClientSize
-        // after DPI scaling.
+        // The landing page is sized directly to the host viewport. Do not make
+        // the UserControl scrollable: the report card regions flex to use the
+        // available height instead of introducing a normal-page scrollbar.
         AutoScroll = false;
         Padding = new Padding(0);
 
@@ -73,28 +72,27 @@ public sealed class ReportsView : UserControl
     {
         SuspendLayout();
 
-        var scrollHost = new Panel
+        // The Reports landing page is sized to the host viewport rather than
+        // scrolling.  Fixed headers/footer use absolute rows while the two card
+        // regions share the remaining height.  This avoids the WinForms
+        // AutoScroll feedback loop that repeatedly introduced a scrollbar at
+        // normal maximised desktop sizes and at DPI-scaled widths.
+        var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            AutoScroll = true,
-            AutoScrollMargin = Size.Empty,
+            AutoSize = false,
+            ColumnCount = 1,
+            RowCount = 5,
             Padding = Padding.Empty,
             Margin = Padding.Empty,
             BackColor = PageBackground
         };
-
-        var root = new TableLayoutPanel
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 1,
-            RowCount = 6,
-            Padding = new Padding(0),
-            Margin = new Padding(0),
-            BackColor = PageBackground
-        };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 36F));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 18F));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 64F));
 
         root.Controls.Add(SectionHeader(
             "reports_quick_section",
@@ -102,14 +100,12 @@ public sealed class ReportsView : UserControl
 
         var quickGrid = new TableLayoutPanel
         {
-            Dock = DockStyle.Top,
+            Dock = DockStyle.Fill,
             AutoSize = false,
-            Height = 270,
-            MinimumSize = new Size(0, 270),
             ColumnCount = 2,
             RowCount = 1,
-            Margin = new Padding(0, 8, 0, 20),
-            Padding = new Padding(0)
+            Margin = new Padding(0, 6, 0, 10),
+            Padding = Padding.Empty
         };
         quickGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
         quickGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -134,7 +130,6 @@ public sealed class ReportsView : UserControl
             1, 0);
 
         root.Controls.Add(quickGrid, 0, 1);
-
         root.Controls.Add(Separator(), 0, 2);
 
         root.Controls.Add(SectionHeader(
@@ -143,14 +138,12 @@ public sealed class ReportsView : UserControl
 
         var exploreGrid = new TableLayoutPanel
         {
-            Dock = DockStyle.Top,
+            Dock = DockStyle.Fill,
             AutoSize = false,
-            Height = 390,
-            MinimumSize = new Size(0, 390),
             ColumnCount = 3,
             RowCount = 2,
-            Margin = new Padding(0, 8, 0, 16),
-            Padding = new Padding(0)
+            Margin = new Padding(0, 6, 0, 8),
+            Padding = Padding.Empty
         };
 
         exploreGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.333F));
@@ -209,29 +202,7 @@ public sealed class ReportsView : UserControl
 
         root.Controls.Add(exploreGrid, 0, 4);
 
-        root.Controls.Add(InformationBar(), 0, 5);
-
-        // Keep the content exactly inside the scroll host's current client
-        // width.  This is deliberately explicit rather than relying only on
-        // Dock=Top because the vertical scrollbar changes ClientSize after
-        // layout at 125%/150% DPI.
-        void FitRootToViewport()
-        {
-            var width = Math.Max(1, scrollHost.ClientSize.Width);
-            if (root.Width != width)
-                root.Width = width;
-        }
-
-        scrollHost.Controls.Add(root);
-        scrollHost.ClientSizeChanged += (_, _) => FitRootToViewport();
-        root.SizeChanged += (_, _) =>
-        {
-            if (root.Width > scrollHost.ClientSize.Width)
-                FitRootToViewport();
-        };
-
-        Controls.Add(scrollHost);
-        FitRootToViewport();
+        Controls.Add(root);
         ResumeLayout(true);
     }
 
@@ -249,7 +220,7 @@ public sealed class ReportsView : UserControl
             BackColor = CardBackground,
             BorderColor = CardBorder,
             CornerRadius = 10,
-            Padding = new Padding(22, 20, 22, 20),
+            Padding = new Padding(20, 16, 20, 14),
             Margin = new Padding(0, 0, 12, 0)
         };
 
@@ -271,7 +242,7 @@ public sealed class ReportsView : UserControl
         {
             Image = IconAssets.Get(iconName),
             SizeMode = PictureBoxSizeMode.Zoom,
-            Size = new Size(82, 82),
+            Size = new Size(76, 76),
             Margin = new Padding(0, 0, 10, 0),
             BackColor = Color.Transparent
         };
@@ -313,7 +284,7 @@ public sealed class ReportsView : UserControl
             AutoSize = true,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
-            Margin = new Padding(8, 18, 0, 0),
+            Margin = new Padding(8, 12, 0, 0),
             Padding = Padding.Empty
         };
         dateRow.Controls.Add(new Label
@@ -334,18 +305,24 @@ public sealed class ReportsView : UserControl
             AutoSize = true,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
-            Margin = new Padding(8, 18, 0, 0),
+            Margin = new Padding(8, 12, 0, 0),
             Padding = Padding.Empty
         };
 
         var generatePdf = SecondaryActionButton("Generate PDF", 182);
-        generatePdf.Image = CreateDocumentIcon(Color.FromArgb(24, 28, 36));
-        ConfigureButtonImage(generatePdf);
+        ConfigureActionButton(
+            generatePdf,
+            "Generate PDF",
+            CreateDocumentIcon(Color.FromArgb(24, 28, 36)),
+            Color.FromArgb(24, 28, 36));
         generatePdf.Click += async (_, _) => await generate(false);
 
-        var generateOpen = PrimaryActionButton("Generate && Open", 210);
-        generateOpen.Image = CreateExternalLinkIcon(Color.White);
-        ConfigureButtonImage(generateOpen);
+        var generateOpen = PrimaryActionButton("Generate & Open", 218);
+        ConfigureActionButton(
+            generateOpen,
+            "Generate & Open",
+            CreateExternalLinkIcon(Color.White),
+            Color.White);
         generateOpen.Margin = new Padding(12, 0, 0, 0);
         generateOpen.Click += async (_, _) => await generate(true);
 
@@ -398,7 +375,7 @@ public sealed class ReportsView : UserControl
         body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 82F));
         body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         body.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-        body.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
+        body.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
 
         var icon = new PictureBox
         {
@@ -461,16 +438,19 @@ public sealed class ReportsView : UserControl
             e.Graphics.DrawLine(pen, 0, 0, footer.Width, 0);
         };
 
-        var openButton = PrimaryActionButton("Open", 112);
-        openButton.Image = CreateExternalLinkIcon(Color.White);
-        ConfigureButtonImage(openButton);
-        openButton.Size = new Size(112, 34);
+        var openButton = PrimaryActionButton("Open", 118);
+        ConfigureActionButton(
+            openButton,
+            "Open",
+            CreateExternalLinkIcon(Color.White),
+            Color.White);
+        openButton.Size = new Size(118, 40);
         openButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-        openButton.Location = new Point(Math.Max(0, footer.Width - openButton.Width), 7);
+        openButton.Location = new Point(Math.Max(0, footer.Width - openButton.Width), 3);
         footer.Resize += (_, _) =>
             openButton.Location = new Point(
                 Math.Max(0, footer.Width - openButton.Width),
-                7);
+                3);
 
         footer.Controls.Add(openButton);
         body.Controls.Add(footer, 0, 1);
@@ -528,52 +508,8 @@ public sealed class ReportsView : UserControl
         Dock = DockStyle.Top,
         Height = 1,
         BackColor = Color.FromArgb(225, 229, 235),
-        Margin = new Padding(0, 4, 0, 18)
+        Margin = new Padding(0, 4, 0, 8)
     };
-
-    private static Control InformationBar()
-    {
-        var panel = new RoundedPanel
-        {
-            Dock = DockStyle.Top,
-            Height = 52,
-            BackColor = Color.FromArgb(243, 246, 251),
-            BorderColor = Color.FromArgb(232, 236, 242),
-            CornerRadius = 8,
-            Padding = new Padding(14, 8, 14, 8),
-            Margin = new Padding(0, 0, 12, 0)
-        };
-
-        var row = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
-            Margin = Padding.Empty,
-            Padding = Padding.Empty,
-            BackColor = Color.Transparent
-        };
-
-        row.Controls.Add(new PictureBox
-        {
-            Image = IconAssets.Get("reports_info"),
-            SizeMode = PictureBoxSizeMode.Zoom,
-            Size = new Size(24, 24),
-            Margin = new Padding(0, 4, 8, 0),
-            BackColor = Color.Transparent
-        });
-
-        row.Controls.Add(new Label
-        {
-            Text = "All reports can be exported to PDF and CSV. Dates up to today only.",
-            AutoSize = true,
-            ForeColor = MutedText,
-            Margin = new Padding(0, 6, 0, 0)
-        });
-
-        panel.Controls.Add(row);
-        return panel;
-    }
 
     private async Task GenerateMarketFloorAsync(bool openAfter)
     {
@@ -683,12 +619,45 @@ public sealed class ReportsView : UserControl
     };
 
 
-    private static void ConfigureButtonImage(Button button)
+    private static void ConfigureActionButton(
+        Button button,
+        string displayText,
+        Image icon,
+        Color textColor)
     {
-        button.TextImageRelation = TextImageRelation.ImageBeforeText;
-        button.ImageAlign = ContentAlignment.MiddleCenter;
-        button.TextAlign = ContentAlignment.MiddleCenter;
-        button.Padding = new Padding(8, 0, 8, 0);
+        // WinForms' built-in ImageBeforeText layout can wrap or clip button
+        // captions at non-100% DPI. Paint the icon/caption as one centred,
+        // single-line unit instead so descenders and ampersands remain intact.
+        button.Text = string.Empty;
+        button.Image = null;
+        button.Padding = Padding.Empty;
+        button.AccessibleName = displayText;
+        button.UseMnemonic = false;
+
+        button.Paint += (_, e) =>
+        {
+            var flags = TextFormatFlags.SingleLine
+                | TextFormatFlags.VerticalCenter
+                | TextFormatFlags.NoPrefix
+                | TextFormatFlags.NoPadding;
+            var textSize = TextRenderer.MeasureText(
+                e.Graphics, displayText, button.Font, Size.Empty, flags);
+
+            const int iconSize = 18;
+            const int gap = 8;
+            var totalWidth = iconSize + gap + textSize.Width;
+            var startX = Math.Max(6, (button.ClientSize.Width - totalWidth) / 2);
+            var iconY = Math.Max(0, (button.ClientSize.Height - iconSize) / 2);
+            e.Graphics.DrawImage(icon, new Rectangle(startX, iconY, iconSize, iconSize));
+
+            var textRect = new Rectangle(
+                startX + iconSize + gap,
+                0,
+                Math.Max(1, button.ClientSize.Width - startX - iconSize - gap - 4),
+                button.ClientSize.Height);
+            TextRenderer.DrawText(
+                e.Graphics, displayText, button.Font, textRect, textColor, flags);
+        };
     }
 
     private static Image CreateDocumentIcon(Color color)
@@ -767,7 +736,7 @@ public sealed class ReportsView : UserControl
     {
         Text = text,
         AutoSize = false,
-        Size = new Size(width, 42),
+        Size = new Size(width, 44),
         FlatStyle = FlatStyle.Flat,
         BackColor = Color.White,
         ForeColor = Color.FromArgb(24, 28, 36),
@@ -782,7 +751,7 @@ public sealed class ReportsView : UserControl
         {
             Text = text,
             AutoSize = false,
-            Size = new Size(width, 42),
+            Size = new Size(width, 44),
             FlatStyle = FlatStyle.Flat,
             BackColor = Primary,
             ForeColor = Color.White,

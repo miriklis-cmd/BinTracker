@@ -1,17 +1,17 @@
 # BinTracker Active Test Checklist
 
-Current baseline: **v0.4.0-alpha.24.2.4**
+Current baseline: **v0.4.0-alpha.24.2.6**
 
 Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
 
 ## Release / audit / packaging gate
 
 - [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.24.2.4 and the actually resolved installed SDK.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.24.2.6 and the actually resolved installed SDK.
 - [ ] Restore succeeds; full solution builds with zero warnings.
 - [ ] All unit tests pass; all integration tests pass.
 - [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
-- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.4.0-alpha.24.2.4`.
+- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.4.0-alpha.24.2.6`.
 - [ ] No unexpected `global.json` is packaged.
 
 ## Authentication / users / shell
@@ -171,6 +171,8 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 - [ ] Customer Statement opens.
 - [ ] No report controls or card text are clipped at 100% DPI.
 - [ ] Repeat visual pass at 125% and 150% DPI.
+- [ ] Reports landing page shows no page scrollbar when maximized at the supported test scales.
+- [ ] Generate PDF shows the small document icon; Generate & Open stays on one line; every Explore Open button shows the full word `Open` without clipping.
 - [ ] Containers is a dedicated left-navigation destination immediately below Customers; no duplicate Container Types administration entry remains in Settings.
 
 
@@ -195,3 +197,5 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 - [ ] Build-BinTracker.bat passes the source/package-state audit.
 - [ ] Audit reports the permanent requirement count rather than a false BT-CT-005 missing error.
 - [ ] Continue the alpha.24.2 Reports visual smoke test after build/tests pass.
+
+- [ ] Reports landing page has no bottom PDF/CSV/date information bar and all Explore report descriptions/Open captions are fully visible at the affected display scaling.

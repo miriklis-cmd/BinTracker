@@ -386,6 +386,7 @@ Verify the approved alpha.24 Reports mock-up implementation:
 - Every Explore Reports card uses the approved icon artwork and Open → footer action.
 - Report cards open the same existing report windows; no report behavior was duplicated or replaced.
 - Reports header subtitle reads `Generate operational sheets and explore detailed reports.`
-- Normal 1080p desktop should not require excessive vertical scrolling.
+- Normal maximized 1080p desktop must not show a Reports landing-page scrollbar.
+- Generate PDF must show its document icon; Generate & Open must stay on one line; every Explore Open button must render the full word `Open` without clipping.
 - Test at 100%, 125% and 150% Windows display scaling.
 - Verify Containers appears immediately below Customers in the left navigation for every signed-in role; non-admin users receive a clearly read-only view and Settings does not duplicate Container Types administration.

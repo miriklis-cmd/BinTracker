@@ -198,6 +198,11 @@
 - Added SQLite schema migration v7 without changing existing container IDs.
 - Market Floor Sheet now uses explicit special-container metadata.
 
+## v0.4.0-alpha.24.2.6
+
+- Removed the redundant Reports landing-page PDF/CSV/date information bar.
+- Rebalanced the viewport-filling Reports layout to give Explore Reports more vertical room, addressing clipped descriptions/buttons at the affected DPI/display size.
+
 ## v0.3.0-alpha.2
 - Future-proofed SQLite migration tests by deriving the expected latest schema version.
 - Added Container Type master-data migration regression coverage.
@@ -865,6 +870,14 @@
 - Removed duplicate host scrolling from the Reports landing page to eliminate the stray horizontal scrollbar.
 - Added permanent audit coverage for report container-filter master-data semantics.
 
+
+
+## v0.4.0-alpha.24.2.5
+
+- Replaced the Reports landing-page AutoScroll/viewport-fitting approach with a viewport-filling TableLayout that allocates remaining height between Quick Reports and Explore Reports.
+- Removed the normal Reports-page scrollbar rather than compensating for scrollbar-induced client-size changes.
+- Custom-painted report action icon/caption pairs as single-line content to prevent DPI wrapping and glyph clipping.
+- Increased Explore Open button/footer height so the full word `Open`, including its descender, remains visible.
 
 
 ## v0.4.0-alpha.24.2.4
