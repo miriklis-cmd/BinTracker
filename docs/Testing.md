@@ -374,3 +374,18 @@ Run `Audit-BinTracker.ps1` and confirm it rejects a deliberately stale README/cu
 - Confirm Scope/Status values are from the approved register enums.
 - Remove or duplicate a required ID in a temporary copy and confirm `Audit-BinTracker.ps1` fails.
 - Introduce a known stale phrase (old SDK pin, stale importer remaining item, separate Run Report expectation) and confirm the audit fails.
+
+
+## Reports landing-page redesign acceptance
+
+Verify the approved alpha.24 Reports mock-up implementation:
+
+- Quick Reports shows exactly two prominent side-by-side cards: Market Floor Sheet and Daily Print Pack.
+- Quick Report cards use the approved report icons, Date selector, Generate PDF and blue Generate & Open action.
+- Explore Reports is 3 columns × 2 rows at normal desktop width and contains the six approved report cards.
+- Every Explore Reports card uses the approved icon artwork and Open → footer action.
+- Report cards open the same existing report windows; no report behavior was duplicated or replaced.
+- Reports header subtitle reads `Generate operational sheets and explore detailed reports.`
+- Normal 1080p desktop should not require excessive vertical scrolling.
+- Test at 100%, 125% and 150% Windows display scaling.
+- Verify Containers appears immediately below Customers in the left navigation for every signed-in role; non-admin users receive a clearly read-only view and Settings does not duplicate Container Types administration.

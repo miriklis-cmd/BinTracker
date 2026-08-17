@@ -68,7 +68,11 @@ $staleChecks = @(
     @{ Path='TECH-DEBT.md'; Text='Resolved for the current .NET 8 product line with repository-root `global.json`'; Why='obsolete global.json policy' },
     @{ Path='docs/ImportWizard.md'; Text='still needs the controlled difference/replacement workflow'; Why='Replace/Correct is implemented' },
     @{ Path='docs/ImportWizard.md'; Text='- Import Run history/details UI;'; Why='Import History UI is implemented' },
-    @{ Path='TEST-CHECKLIST.md'; Text='exposes Run Report / Today / Export CSV'; Why='interactive reports use live refresh and Customer-on-Enter' }
+    @{ Path='TEST-CHECKLIST.md'; Text='exposes Run Report / Today / Export CSV'; Why='interactive reports use live refresh and Customer-on-Enter' },
+    @{ Path='TEST-CHECKLIST.md'; Text='Containers remains in Settings pending explicit navigation decision.'; Why='Containers navigation decision is implemented' },
+    @{ Path='docs/RELEASE-NOTES.md'; Text='Container Types/Containers remains inside Settings pending an explicit navigation decision.'; Why='Containers navigation decision is implemented' },
+    @{ Path='docs/Roadmap.md'; Text='Container Types/Containers left-navigation placement remains a separate pending decision'; Why='Containers navigation decision is implemented' },
+    @{ Path='docs/Testing.md'; Text='Containers remains in Settings until an explicit navigation decision is approved.'; Why='Containers navigation decision is implemented' }
 )
 foreach ($check in $staleChecks) {
     if ((Get-Content -Raw -LiteralPath $check.Path).Contains($check.Text)) { Fail "$($check.Path) retains $($check.Why)." }
@@ -101,6 +105,52 @@ foreach ($check in $csvEventChecks) {
     if ((Get-Content -Raw -LiteralPath $check.Path) -notmatch [regex]::Escape($check.Event)) { Fail "$($check.Path) lost CSV audit event $($check.Event)." }
 }
 
+# Containers navigation/permission compromise (BT-CT-005 / BT-UI-012) must remain mechanically represented in source.
+$mainForm = Get-Content -Raw -LiteralPath 'src/BinTracker.WinForms/MainForm.cs'
+$containerForm = Get-Content -Raw -LiteralPath 'src/BinTracker.WinForms/ContainerTypesForm.cs'
+if ($mainForm -notmatch 'Nav\("nav_containers",\s*"Containers",\s*ShowContainers\)') { Fail 'Containers left-navigation destination is missing.' }
+if ($mainForm -notmatch 'canEdit:\s*session\.Role\s*==\s*UserRole\.Administrator') { Fail 'Containers administrator edit gate is missing.' }
+if ($mainForm -notmatch 'Container Types are managed from the Containers navigation page') { Fail 'Settings still lacks the expected Containers handoff text.' }
+if ($containerForm -notmatch 'View only — administrator access is required to add or change container types\.') { Fail 'Containers non-admin read-only state is missing.' }
+if ($containerForm -notmatch 'add\.Visible\s*=\s*canEdit' -or $containerForm -notmatch 'save\.Visible\s*=\s*canEdit' -or $containerForm -notmatch 'deactivate\.Visible\s*=\s*canEdit') { Fail 'Containers mutation controls are not hidden for read-only users.' }
+if ($containerForm -notmatch 'public\s+Task<bool>\s+ConfirmCanLeaveAsync') { Fail 'Containers unsaved-change navigation protection is missing.' }
+
 $mdFiles = @(Get-ChildItem -Recurse -File -Filter '*.md')
+if (-not ($reqRows.Id -contains "BT-CT-005")) {
+    Fail "Requirements register is missing mandatory requirement BT-CT-005."
+}
+if (-not ($reqRows.Id -contains "BT-UI-013")) {
+    Fail "Requirements register is missing mandatory requirement BT-UI-013."
+}
+if (-not ($reqRows.Id -contains "BT-RPT-011")) {
+    Fail "Requirements register is missing mandatory requirement BT-RPT-011."
+}
+if (-not ($reqRows.Id -contains "BT-RPT-012")) {
+    Fail "Requirements register is missing mandatory requirement BT-RPT-012."
+}
+
+# Reports landing-page viewport/icon guard (BT-RPT-012).
+$reportsView = Get-Content -Raw -LiteralPath 'src/BinTracker.WinForms/ReportsView.cs'
+if ($reportsView -notmatch 'AutoScroll\s*=\s*false') { Fail 'ReportsView itself must not own AutoScroll; the dedicated vertical host prevents horizontal overflow.' }
+if ($reportsView -notmatch 'var\s+scrollHost\s*=\s*new\s+Panel' -or $reportsView -notmatch 'FitRootToViewport') { Fail 'Reports landing page lost its viewport-fitting scroll host.' }
+if ($reportsView -notmatch 'CreateDocumentIcon' -or $reportsView -notmatch 'CreateExternalLinkIcon') { Fail 'Reports action buttons lost their reliable drawn document/external-link icons.' }
+if ($reportsView -match 'PrimaryActionButton\("↗') { Fail 'Reports action buttons reverted to a font-dependent arrow glyph.' }
+
+# Every report Container Type selector must use configured master data, including
+# inactive types for historical filtering. Do not derive choices from current
+# outstanding balances.
+$reportFilterForms = @(
+    'src/BinTracker.WinForms/OutstandingContainersReportForm.cs',
+    'src/BinTracker.WinForms/DailyMovementsReportForm.cs',
+    'src/BinTracker.WinForms/WeeklyMovementsReportForm.cs',
+    'src/BinTracker.WinForms/MovementHistoryReportForm.cs',
+    'src/BinTracker.WinForms/MonthlySummaryReportForm.cs'
+)
+foreach ($path in $reportFilterForms) {
+    $source = Get-Content -Raw -LiteralPath $path
+    if ($source -notmatch 'containerTypes\.SearchAsync\(') { Fail "$path no longer uses configured Container Types for its report filter." }
+    if ($source -notmatch 'includeInactive:\s*true') { Fail "$path no longer keeps inactive historical Container Types filterable." }
+}
+
 Write-Host "Audit passed: $expected; $($reqRows.Count) permanent requirement IDs; $($mdFiles.Count) Markdown files; current-state contradiction checks passed." -ForegroundColor Green
 exit 0

@@ -221,7 +221,7 @@ Test classification: **full report smoke/print test** after Windows automated bu
 
 The reconciliation found candidate headings that had been corrupted by prior broad version-string replacement. Headings were repaired only where the section content and archived build chronology identified the candidate unambiguously: sidebar branding → alpha.22.3.4; Customer Statement generate/open → alpha.22.5; compile owner fix → alpha.22.6.1; CSV audit pass → alpha.23.2; SDK/build correction → alpha.23.4. The Customer Statement Reports-entry section remains alpha.22.6. No unverified historical claim was invented.
 
-## Candidate: v0.4.0-alpha.23.5.2
+## Candidate: v0.4.0-alpha.24.2.1
 
 - [x] Reconciliation inspected current source/docs plus 166 archived BinTracker ZIPs and all BinTracker history surfaced in the current conversation context.
 - [x] Personal-context history query returned no additional BinTracker entries; raw complete chat transcript access was not claimed.
@@ -232,3 +232,19 @@ The reconciliation found candidate headings that had been corrupted by prior bro
 - [x] Audit gate strengthened and packaging identity verifier added.
 - [x] Lost detailed post-v1 import requirements restored.
 - [x] Current package identity mechanically verified before delivery.
+
+
+## Candidate: v0.4.0-alpha.24.2.1
+- [x] Containers navigation decision reconciled into the permanent Requirements & Acceptance Register.
+- [x] Permission compromise implemented: view for all roles; mutations Administrator-only.
+- [x] Settings duplication removed.
+- [x] Unsaved-change navigation protection preserved.
+- [x] 176 unique permanent requirement IDs verified.
+- [x] Package/version metadata gate required before handoff.
+
+
+## Candidate: v0.4.0-alpha.24.2.1
+- [x] False BT-CT-005 audit failure root cause identified as undefined `$requirementsText`.
+- [x] Requirement presence checks now use parsed `$reqRows.Id`.
+- [x] BT-UI-013 is also explicitly guarded by the mechanical gate.
+- [x] Version/package metadata reconciled.

@@ -7,7 +7,7 @@ public sealed class DailyMovementsReportForm : BinTrackerForm
 {
     private readonly IDailyMovementsReportService reports;
     private readonly IDailyMovementsReportPdfService pdfReports;
-    private readonly IOutstandingReportService outstanding;
+    private readonly IContainerTypeService containerTypes;
 
     private readonly DateTimePicker reportDate = new()
     {
@@ -70,12 +70,12 @@ public sealed class DailyMovementsReportForm : BinTrackerForm
     public DailyMovementsReportForm(
         IDailyMovementsReportService reports,
         IDailyMovementsReportPdfService pdfReports,
-        IOutstandingReportService outstanding,
+        IContainerTypeService containerTypes,
         IAuditService audit)
     {
         this.reports = reports;
         this.pdfReports = pdfReports;
-        this.outstanding = outstanding;
+        this.containerTypes = containerTypes;
 
         this.audit = audit;
 
@@ -356,18 +356,21 @@ actions.Controls.Add(ActionButton(
     {
         containerFilter.Items.Add(new Choice<int?>(null, "All containers"));
 
-        var containerSource = await outstanding.QueryAsync(
-            new OutstandingReportQuery(
-                DateOnly.FromDateTime(DateTime.Today),
-                IncludeCredits: true,
-                IncludeInactiveCustomers: true));
+        // Use Container Types master data rather than today's outstanding
+        // balances. A container with a zero balance today may still have
+        // movements on the selected historical date and must remain filterable.
+        var configuredContainers = await containerTypes.SearchAsync(
+            search: null,
+            includeInactive: true);
 
-        foreach (var container in containerSource.ContainerTotals)
+        foreach (var container in configuredContainers)
         {
+            var label = container.IsActive
+                ? container.Name
+                : $"{container.Name} (inactive)";
+
             containerFilter.Items.Add(
-                new Choice<int?>(
-                    container.ContainerTypeId,
-                    container.ContainerType));
+                new Choice<int?>(container.Id, label));
         }
         containerFilter.SelectedIndex = 0;
 

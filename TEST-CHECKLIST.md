@@ -1,17 +1,17 @@
 # BinTracker Active Test Checklist
 
-Current baseline: **v0.4.0-alpha.23.5.2**
+Current baseline: **v0.4.0-alpha.24.2.4**
 
 Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
 
 ## Release / audit / packaging gate
 
 - [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.23.5.2 and the actually resolved installed SDK.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.24.2.4 and the actually resolved installed SDK.
 - [ ] Restore succeeds; full solution builds with zero warnings.
 - [ ] All unit tests pass; all integration tests pass.
 - [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
-- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.4.0-alpha.23.5.2`.
+- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.4.0-alpha.24.2.4`.
 - [ ] No unexpected `global.json` is packaged.
 
 ## Authentication / users / shell
@@ -152,3 +152,46 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 - [ ] Security/reliability/Release/DPI hardening.
 - [ ] Installer/upgrade/deployment acceptance.
 - [ ] Full v1 regression/production acceptance.
+
+
+## alpha.24 Reports landing page
+
+- [ ] Reports header/subtitle matches approved mock-up.
+- [ ] Quick Reports contains Market Floor Sheet and Daily Print Pack side-by-side.
+- [ ] Quick Reports uses exact approved icon artwork.
+- [ ] Market Floor date / Generate PDF / Generate & Open still work.
+- [ ] Daily Print Pack date / Generate PDF / Generate & Open still work.
+- [ ] Explore Reports is 3×2 at normal desktop width.
+- [ ] All six Explore report icons match the approved mock-up.
+- [ ] Outstanding Containers opens.
+- [ ] Daily Movements opens.
+- [ ] Weekly Movements opens.
+- [ ] Movement History opens.
+- [ ] Monthly Summary opens.
+- [ ] Customer Statement opens.
+- [ ] No report controls or card text are clipped at 100% DPI.
+- [ ] Repeat visual pass at 125% and 150% DPI.
+- [ ] Containers is a dedicated left-navigation destination immediately below Customers; no duplicate Container Types administration entry remains in Settings.
+
+
+## alpha.24.1 Containers navigation
+- [ ] Containers appears immediately below Customers in the left navigation.
+- [ ] Administrator can add, rename, reorder, deactivate/reactivate and save Container Types.
+- [ ] Operator can open Containers and search/view active/inactive Container Types but cannot modify them.
+- [ ] Viewer can open Containers and search/view active/inactive Container Types but cannot modify them.
+- [ ] Unsaved Administrator edits prompt before navigating away from Containers.
+- [ ] Settings no longer contains a duplicate Container Types button.
+
+
+## alpha.24.2 Reports layout
+- [ ] Reports page subtitle is fully visible beneath the Reports heading.
+- [ ] Both Quick Reports cards show title, description, date and both buttons without clipping.
+- [ ] All six Explore Reports cards show the complete two-line description.
+- [ ] All six Explore Reports cards show the complete Open footer.
+- [ ] No report card overlaps or clips at the Windows display scaling used for the acceptance workstation.
+
+
+## alpha.24.2.1 audit gate
+- [ ] Build-BinTracker.bat passes the source/package-state audit.
+- [ ] Audit reports the permanent requirement count rather than a false BT-CT-005 missing error.
+- [ ] Continue the alpha.24.2 Reports visual smoke test after build/tests pass.

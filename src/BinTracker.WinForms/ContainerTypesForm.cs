@@ -5,6 +5,7 @@ namespace BinTracker.WinForms;
 public sealed class ContainerTypesForm : BinTrackerForm
 {
     private readonly IContainerTypeService service;
+    private readonly bool canEdit;
     private readonly TextBox search = new() { PlaceholderText = "Search name or short code...", Dock = DockStyle.Fill };
     private readonly CheckBox includeInactive = new() { Text = "Inactive", AutoSize = true };
     private readonly DataGridView grid = new()
@@ -32,9 +33,12 @@ public sealed class ContainerTypesForm : BinTrackerForm
     private bool bypassClosePrompt;
     private ContainerEditorSnapshot? savedSnapshot;
 
-    public ContainerTypesForm(IContainerTypeService service)
+    public ContainerTypesForm(
+        IContainerTypeService service,
+        bool canEdit = true)
     {
         this.service = service;
+        this.canEdit = canEdit;
         Text = "Container Types";
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleMode = AutoScaleMode.Dpi;
@@ -46,6 +50,17 @@ public sealed class ContainerTypesForm : BinTrackerForm
         Shown += async (_,_) => await ReloadAsync();
         FormClosing += ContainerTypesForm_FormClosing;
     }
+
+    public bool HasUnsavedChanges =>
+        canEdit && HasUnsavedChangesInternal();
+
+    public Task<bool> ConfirmCanLeaveAsync() =>
+        canEdit
+            ? ConfirmLeaveCurrentAsync()
+            : Task.FromResult(true);
+
+    public void PrepareForHostClose() =>
+        bypassClosePrompt = true;
 
     private void Build()
     {
@@ -77,13 +92,38 @@ public sealed class ContainerTypesForm : BinTrackerForm
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent,100));
-        layout.Controls.Add(new Label { Text="Container Types", AutoSize=true, Font=new Font("Segoe UI Semibold",16F,FontStyle.Bold), Margin=new Padding(0,0,0,12) },0,0);
+        var heading = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            Margin = new Padding(0, 0, 0, 12)
+        };
+        heading.Controls.Add(new Label
+        {
+            Text = "Container Types",
+            AutoSize = true,
+            Font = new Font("Segoe UI Semibold", 16F, FontStyle.Bold)
+        });
+        if (!canEdit)
+        {
+            heading.Controls.Add(new Label
+            {
+                Text = "View only — administrator access is required to add or change container types.",
+                AutoSize = true,
+                ForeColor = Color.DimGray,
+                MaximumSize = new Size(430, 0),
+                Margin = new Padding(0, 4, 0, 0)
+            });
+        }
+        layout.Controls.Add(heading,0,0);
         var tools=new TableLayoutPanel { Dock=DockStyle.Top, AutoSize=true, ColumnCount=2 };
         tools.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100)); tools.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         tools.Controls.Add(search,0,0); tools.Controls.Add(includeInactive,1,0);
         search.TextChanged += async (_,_) =>
         {
-            if (!HasUnsavedChanges())
+            if (!HasUnsavedChangesInternal())
                 await ReloadAsync(selectedId == 0 ? null : selectedId);
         };
         includeInactive.CheckedChanged += async (_,_) =>
@@ -94,11 +134,16 @@ public sealed class ContainerTypesForm : BinTrackerForm
                 includeInactive.Checked = !includeInactive.Checked;
         };
         layout.Controls.Add(tools,0,1);
-        var add=ButtonOf("+ New Container",150); add.Margin=new Padding(0,10,0,10); add.Click += async (_,_) =>
+        var add=ButtonOf("+ New Container",150);
+        add.Margin=new Padding(0,10,0,10);
+        add.Visible = canEdit;
+        add.Enabled = canEdit;
+        add.Click += async (_,_) =>
         {
-            if (await ConfirmLeaveCurrentAsync())
+            if (canEdit && await ConfirmLeaveCurrentAsync())
                 NewContainer();
-        }; layout.Controls.Add(add,0,2);
+        };
+        layout.Controls.Add(add,0,2);
         layout.Controls.Add(grid,0,3); panel.Controls.Add(layout); return panel;
     }
 
@@ -116,14 +161,33 @@ public sealed class ContainerTypesForm : BinTrackerForm
         dashboardColour.PlaceholderText="Reserved for dashboard/chart styling"; Add(form,"Dashboard Colour",dashboardColour);
         Add(form,"",active); Add(form,"",special);
 
+        if (!canEdit)
+        {
+            name.ReadOnly = true;
+            shortCode.ReadOnly = true;
+            description.ReadOnly = true;
+            notes.ReadOnly = true;
+            dashboardColour.ReadOnly = true;
+            displayOrder.Enabled = false;
+            active.Enabled = false;
+            special.Enabled = false;
+        }
+
         var usageHeading=new Label { Text="Usage", AutoSize=true, Font=new Font("Segoe UI Semibold",12F,FontStyle.Bold), Margin=new Padding(0,14,0,4) };
         var row=form.RowCount++; form.RowStyles.Add(new RowStyle(SizeType.AutoSize)); form.Controls.Add(usageHeading,0,row); form.SetColumnSpan(usageHeading,2);
         row=form.RowCount++; form.RowStyles.Add(new RowStyle(SizeType.AutoSize)); usage.Margin=new Padding(0,4,0,12); form.Controls.Add(usage,0,row); form.SetColumnSpan(usage,2);
         row=form.RowCount++; form.RowStyles.Add(new RowStyle(SizeType.AutoSize)); form.Controls.Add(validation,0,row); form.SetColumnSpan(validation,2);
 
         var actions=new FlowLayoutPanel { Dock=DockStyle.Top, AutoSize=true, FlowDirection=FlowDirection.LeftToRight, Margin=new Padding(0,14,0,0) };
-        var save=ButtonOf("Save",110); save.Click += async (_,_) => await SaveAsync(); deactivate.Click += async (_,_) => await ToggleActiveAsync();
-        actions.Controls.Add(save); actions.Controls.Add(deactivate);
+        var save=ButtonOf("Save",110);
+        save.Visible = canEdit;
+        save.Enabled = canEdit;
+        deactivate.Visible = canEdit;
+        deactivate.Enabled = canEdit;
+        save.Click += async (_,_) => await SaveAsync();
+        deactivate.Click += async (_,_) => await ToggleActiveAsync();
+        actions.Controls.Add(save);
+        actions.Controls.Add(deactivate);
         row=form.RowCount++; form.RowStyles.Add(new RowStyle(SizeType.AutoSize)); form.Controls.Add(actions,0,row); form.SetColumnSpan(actions,2);
         panel.Controls.Add(form); return panel;
     }
@@ -206,6 +270,8 @@ public sealed class ContainerTypesForm : BinTrackerForm
 
     private void NewContainer()
     {
+        if (!canEdit)
+            return;
         suppressSelectionChanged=true;
         try
         {
@@ -221,13 +287,16 @@ public sealed class ContainerTypesForm : BinTrackerForm
 
     private async Task<bool> SaveAsync()
     {
+        if (!canEdit)
+            return false;
+
         try
         {
             validation.Text="";
             var existing=selectedId==0?null:await service.GetAsync(selectedId);
             var model=new ContainerTypeEditModel(selectedId,name.Text,shortCode.Text,existing?.SystemCode??"",description.Text,notes.Text,(int)displayOrder.Value,active.Checked,special.Checked,dashboardColour.Text,existing?.Usage??new ContainerTypeUsage(0,0,null,null));
             selectedId=await service.SaveAsync(model);
-            deactivate.Enabled=true;
+            deactivate.Enabled=canEdit;
             await ReloadAsync(selectedId);
             savedSnapshot=CaptureSnapshot();
             return true;
@@ -251,13 +320,13 @@ public sealed class ContainerTypesForm : BinTrackerForm
             special.Checked,
             dashboardColour.Text);
 
-    private bool HasUnsavedChanges() =>
+    private bool HasUnsavedChangesInternal() =>
         savedSnapshot is not null &&
         CaptureSnapshot() != savedSnapshot;
 
     private async Task<bool> ConfirmLeaveCurrentAsync()
     {
-        if(!HasUnsavedChanges())
+        if(!HasUnsavedChangesInternal())
             return true;
 
         var label=string.IsNullOrWhiteSpace(name.Text)
@@ -282,7 +351,7 @@ public sealed class ContainerTypesForm : BinTrackerForm
         object? sender,
         FormClosingEventArgs e)
     {
-        if(bypassClosePrompt || !HasUnsavedChanges())
+        if(bypassClosePrompt || !HasUnsavedChangesInternal())
             return;
 
         e.Cancel=true;
@@ -296,7 +365,7 @@ public sealed class ContainerTypesForm : BinTrackerForm
 
     private async Task ToggleActiveAsync()
     {
-        if(selectedId==0) return;
+        if(!canEdit || selectedId==0) return;
         var item=await service.GetAsync(selectedId); if(item is null) return;
         var action=item.IsActive?"deactivate":"reactivate";
         if(MessageBox.Show($"{char.ToUpper(action[0])+action[1..]} {item.Name}?", "Container Type", MessageBoxButtons.YesNo, MessageBoxIcon.Question)!=DialogResult.Yes) return;

@@ -191,10 +191,10 @@ Important security, master-data and movement changes create audit events.
 - For the current Monday-Sunday week, the displayed week remains the calendar week but movement data stops at today; future days are never interpreted as zero activity.
 - Future/predictive reporting belongs to later forecasting/analytics work, not Weekly Movements.
 
-## Weekly report container filters
+## Report container filters
 
-- Container choices come from configured BinTracker Container Types, not from current outstanding balances.
-- Active and inactive configured container types are available so historical reports can still filter a container type that has since been deactivated.
+- Container selectors are populated from configured BinTracker Container Types master data, not from whichever types happen to have a non-zero current outstanding balance.
+- Active and inactive configured container types are available so historical reports can still filter a type that has since been deactivated.
 - Inactive types are explicitly labelled `(inactive)`.
 
 

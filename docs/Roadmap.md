@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.23.5.2**
+Current planning baseline: **v0.4.0-alpha.24.2.4**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -409,3 +409,8 @@ BinTracker product icon/logo is now treated as application-shell infrastructure:
 ### Requirements register governance
 
 `docs/RequirementsAcceptanceRegister.md` is the permanent requirements ledger. Roadmap sequencing may be shortened, but registered v1/post-v1/candidate items must not silently disappear. Material scope/status changes require an explicit changelog/decision record.
+
+## Reporting launcher visual consistency
+
+- [x] Reports landing page redesigned to the approved **Quick Reports + Explore Reports** card mock-up, with the approved icon artwork embedded directly from the mock-up.
+- [x] Containers is a dedicated left-navigation destination immediately below Customers; Container Types is no longer duplicated in Settings. Non-admin access is view/search only and administrator-only mutation controls remain protected.

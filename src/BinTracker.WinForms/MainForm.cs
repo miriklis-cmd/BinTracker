@@ -7,9 +7,11 @@ namespace BinTracker.WinForms;
 public sealed class MainForm : BinTrackerForm
 {
     private readonly Label title = new();
+    private readonly Label pageSubtitle = new();
     private readonly Panel content = new();
     private Control? selectedNav;
     private CustomersView? activeCustomersView;
+    private ContainerTypesForm? activeContainerTypesForm;
     private OutstandingContainersReportForm? outstandingReportForm;
     private DailyMovementsReportForm? dailyMovementsReportForm;
     private WeeklyMovementsReportForm? weeklyMovementsReportForm;
@@ -140,6 +142,7 @@ public sealed class MainForm : BinTrackerForm
         side.Controls.Add(Nav("nav_reports", "Reports", ShowReports));
         side.Controls.Add(Nav("nav_single", "Single Entry", ShowSingleEntry));
         side.Controls.Add(Nav("nav_batch", "Batch Entry", ShowBatchEntry));
+        side.Controls.Add(Nav("nav_containers", "Containers", ShowContainers));
         side.Controls.Add(Nav("nav_customers", "Customers", ShowCustomers));
         side.Controls.Add(Nav("nav_dashboard", "Dashboard", ShowDashboard));
         var brand = new TableLayoutPanel
@@ -182,8 +185,8 @@ public sealed class MainForm : BinTrackerForm
         var header = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 84,
-            MinimumSize = new Size(0, 84),
+            Height = 96,
+            MinimumSize = new Size(0, 96),
             BackColor = Color.White,
             Padding = new Padding(24, 10, 24, 8),
             ColumnCount = 2,
@@ -195,13 +198,32 @@ public sealed class MainForm : BinTrackerForm
         // AutoSize avoids the slight glyph clipping that can occur at
         // non-100% Windows scaling when a fixed-height Label renders Segoe UI.
         title.AutoSize = true;
-        title.Anchor = AnchorStyles.Left;
         title.Font = new Font("Segoe UI Semibold", 20F, FontStyle.Bold);
         title.ForeColor = Color.FromArgb(29, 39, 54);
         title.TextAlign = ContentAlignment.MiddleLeft;
         title.AutoEllipsis = false;
-        title.Margin = new Padding(0, 2, 0, 0);
-        title.Padding = new Padding(0, 0, 0, 3);
+        title.Margin = new Padding(0, 0, 0, 1);
+        title.Padding = new Padding(0, 0, 0, 2);
+
+        pageSubtitle.AutoSize = true;
+        pageSubtitle.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
+        pageSubtitle.ForeColor = Color.FromArgb(75, 82, 96);
+        pageSubtitle.Margin = Padding.Empty;
+        pageSubtitle.Visible = false;
+
+        var titleStack = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = false,
+            ColumnCount = 1,
+            RowCount = 2,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+        titleStack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        titleStack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        titleStack.Controls.Add(title, 0, 0);
+        titleStack.Controls.Add(pageSubtitle, 0, 1);
 
         var sessionArea = new FlowLayoutPanel
         {
@@ -237,7 +259,7 @@ public sealed class MainForm : BinTrackerForm
         sessionArea.Controls.Add(logout);
         sessionArea.Controls.Add(signedIn);
 
-        header.Controls.Add(title, 0, 0);
+        header.Controls.Add(titleStack, 0, 0);
         header.Controls.Add(sessionArea, 1, 0);
 
         content.Dock = DockStyle.Fill;
@@ -272,7 +294,7 @@ public sealed class MainForm : BinTrackerForm
 
     private async void Logout()
     {
-        if(!await ConfirmCanLeaveActiveCustomerAsync())
+        if(!await ConfirmCanLeaveCurrentPageAsync())
             return;
 
         var draftMessage = appState.DraftBatch.HasLines
@@ -342,7 +364,7 @@ public sealed class MainForm : BinTrackerForm
             if(ReferenceEquals(selectedNav, row))
                 return;
 
-            if(!await ConfirmCanLeaveActiveCustomerAsync())
+            if(!await ConfirmCanLeaveCurrentPageAsync())
                 return;
 
             if (selectedNav is Panel previous)
@@ -461,6 +483,27 @@ public sealed class MainForm : BinTrackerForm
         content.Controls.Add(activeCustomersView);
     }
 
+    private void ShowContainers()
+    {
+        SetPage(
+            "Containers",
+            "View configured container types. Administrators can add, rename, reorder, deactivate and reactivate them.");
+
+        content.AutoScroll = false;
+
+        activeContainerTypesForm = new ContainerTypesForm(
+            containerTypes,
+            canEdit: session.Role == UserRole.Administrator)
+        {
+            TopLevel = false,
+            FormBorderStyle = FormBorderStyle.None,
+            Dock = DockStyle.Fill
+        };
+
+        content.Controls.Add(activeContainerTypesForm);
+        activeContainerTypesForm.Show();
+    }
+
     private void ShowSingleEntry()
     {
         SetPage("Single Entry");
@@ -471,8 +514,12 @@ public sealed class MainForm : BinTrackerForm
 
     private void ShowReports()
     {
-        SetPage("Reports");
-        content.AutoScroll = true;
+        SetPage(
+            "Reports",
+            "Generate operational sheets and explore detailed reports.");
+        // ReportsView owns its scrolling. Keeping the host scrollable as well
+        // creates a second horizontal scrollbar at some DPI/working-area sizes.
+        content.AutoScroll = false;
         content.Controls.Add(
             new ReportsView(
                 marketFloorReports,
@@ -506,6 +553,7 @@ public sealed class MainForm : BinTrackerForm
             new OutstandingContainersReportForm(
                 outstandingReports,
                 outstandingReportPdfs,
+                containerTypes,
                 audit);
 
         outstandingReportForm.FormClosed += (_, _) =>
@@ -537,7 +585,7 @@ public sealed class MainForm : BinTrackerForm
             new DailyMovementsReportForm(
                 dailyMovementReports,
                 dailyMovementReportPdfs,
-                outstandingReports,
+                containerTypes,
                 audit);
 
         dailyMovementsReportForm.FormClosed += (_, _) =>
@@ -746,7 +794,7 @@ public sealed class MainForm : BinTrackerForm
 
         var description = new Label
         {
-            Text = "Manage authorised users, container types, business information, Excel import/history and inspect the audit trail.",
+            Text = "Manage authorised users, business information, Excel import/history and inspect the audit trail. Container Types are managed from the Containers navigation page.",
             AutoSize = true,
             ForeColor = Color.FromArgb(80, 90, 105),
             MaximumSize = new Size(900, 0),
@@ -783,22 +831,6 @@ public sealed class MainForm : BinTrackerForm
             usersButton.Click += (_, _) =>
             {
                 using var form = new UsersForm(users);
-                form.ShowDialog(this);
-            };
-
-            var containerTypesButton = new Button
-            {
-                Text = "Container Types",
-                AutoSize = false,
-                Size = new Size(165, 44),
-                Margin = new Padding(0, 0, 12, 0),
-                TextAlign = ContentAlignment.MiddleCenter,
-                UseCompatibleTextRendering = false
-            };
-
-            containerTypesButton.Click += (_, _) =>
-            {
-                using var form = new ContainerTypesForm(containerTypes);
                 form.ShowDialog(this);
             };
 
@@ -872,7 +904,6 @@ public sealed class MainForm : BinTrackerForm
             };
 
             actions.Controls.Add(usersButton);
-            actions.Controls.Add(containerTypesButton);
             actions.Controls.Add(businessInformationButton);
             actions.Controls.Add(importExcelButton);
             actions.Controls.Add(importHistoryButton);
@@ -882,7 +913,7 @@ public sealed class MainForm : BinTrackerForm
         {
             actions.Controls.Add(new Label
             {
-                Text = "Administrator access is required for user, container type, business information and audit controls.",
+                Text = "Administrator access is required for user, business information and audit controls. Container Types can be viewed from Containers but only administrators can change them.",
                 AutoSize = true,
                 ForeColor = Color.Firebrick,
                 MaximumSize = new Size(720, 0),
@@ -1029,7 +1060,22 @@ public sealed class MainForm : BinTrackerForm
         return panel;
     }
 
-    private async Task<bool> ConfirmCanLeaveActiveCustomerAsync() =>
+        private async Task<bool> ConfirmCanLeaveCurrentPageAsync()
+    {
+        if (!await ConfirmCanLeaveActiveCustomerAsync())
+            return false;
+
+        if (activeContainerTypesForm is not null &&
+            !activeContainerTypesForm.IsDisposed &&
+            !await activeContainerTypesForm.ConfirmCanLeaveAsync())
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+private async Task<bool> ConfirmCanLeaveActiveCustomerAsync() =>
         activeCustomersView is null ||
         await activeCustomersView.ConfirmCanLeaveAsync();
 
@@ -1055,9 +1101,18 @@ public sealed class MainForm : BinTrackerForm
         content.Controls.Add(PanelBox(page, text));
     }
 
-    private void SetPage(string page)
+    private void SetPage(string page, string? subtitle = null)
     {
+        if (activeContainerTypesForm is not null)
+        {
+            activeContainerTypesForm.PrepareForHostClose();
+            activeContainerTypesForm.Dispose();
+            activeContainerTypesForm = null;
+        }
+
         title.Text = page;
+        pageSubtitle.Text = subtitle ?? string.Empty;
+        pageSubtitle.Visible = !string.IsNullOrWhiteSpace(subtitle);
         content.Controls.Clear();
         activeCustomersView = null;
         content.AutoScroll = true;

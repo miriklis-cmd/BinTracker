@@ -6,6 +6,7 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
 {
     private readonly IOutstandingReportService outstanding;
     private readonly IOutstandingReportPdfService pdfReports;
+    private readonly IContainerTypeService containerTypes;
 
     private readonly DateTimePicker reportDate = new()
     {
@@ -70,10 +71,12 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
     public OutstandingContainersReportForm(
         IOutstandingReportService outstanding,
         IOutstandingReportPdfService pdfReports,
+        IContainerTypeService containerTypes,
         IAuditService audit)
     {
         this.outstanding = outstanding;
         this.pdfReports = pdfReports;
+        this.containerTypes = containerTypes;
 
         this.audit = audit;
 
@@ -465,18 +468,23 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
             containerFilter.Items.Add(
                 new ContainerChoice(null, "All containers"));
 
-            var current = await outstanding.QueryAsync(
-                new OutstandingReportQuery(
-                    DateOnly.FromDateTime(DateTime.Today),
-                    IncludeCredits: true,
-                    IncludeInactiveCustomers: true));
+            // Report filters must come from configured Container Types, not
+            // from today's non-zero outstanding balances. Otherwise a valid
+            // historical type disappears from every as-of-date filter when its
+            // current balance happens to be zero. Include inactive types so
+            // historical reporting remains possible after deactivation.
+            var configured = await containerTypes.SearchAsync(
+                search: null,
+                includeInactive: true);
 
-            foreach (var total in current.ContainerTotals)
+            foreach (var container in configured)
             {
+                var label = container.IsActive
+                    ? container.Name
+                    : $"{container.Name} (inactive)";
+
                 containerFilter.Items.Add(
-                    new ContainerChoice(
-                        total.ContainerTypeId,
-                        total.ContainerType));
+                    new ContainerChoice(container.Id, label));
             }
 
             containerFilter.SelectedIndex = 0;

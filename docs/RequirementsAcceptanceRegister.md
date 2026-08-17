@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.4.0-alpha.23.5.2**
+Current baseline: **v0.4.0-alpha.24.2.4**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -80,6 +80,9 @@ Provenance tags:
 | BT-UI-008 | v1 | IMPLEMENTED-STATIC | Navigation icon/text controls remain fully visible and clickable at laptop production DPI. | HIST-BUILD,CODE |
 | BT-UI-009 | post-v1 | POST-V1 | WinUI 3 / Windows UI v2 discussion is tabled until after v1 publication. | CHAT-SURFACED,CURRENT-DOC |
 | BT-UI-010 | post-v1 | POST-V1 | WinUI 3 evaluation explicitly compares Dashboard, Reports launcher, individual reports and import workflow; rewrite is not predetermined. | CHAT-SURFACED,CURRENT-DOC |
+| BT-UI-011 | v1 | IMPLEMENTED-STATIC | Reports landing page uses the approved Quick Reports + Explore Reports card hierarchy, exact approved report-icon artwork, compact 3x2 explorer grid and no unnecessary vertical scrolling at normal 1080p desktop size. | CHAT-SURFACED,CODE |
+| BT-UI-012 | v1 | IMPLEMENTED-STATIC | Containers is a dedicated left-navigation destination immediately below Customers; Container Types are no longer buried in Settings. | CHAT-SURFACED,CODE |
+| BT-UI-013 | v1 | IMPLEMENTED-STATIC | Reports landing-page cards, descriptions, action rows and page subtitle must remain fully visible at supported Windows DPI scaling; fixed layout rows must not collapse around AutoSize content. | CHAT-SURFACED,CODE |
 
 ## Customers / master data / business information
 
@@ -95,6 +98,7 @@ Provenance tags:
 | BT-CT-002 | v1 | IMPLEMENTED-STATIC | Container rename preserves movement/history links; display order controls entry dropdown order. | HIST-BUILD,CODE |
 | BT-CT-003 | v1 | IMPLEMENTED-STATIC | Inactive types disappear from new entry while historical reporting remains valid/selectable where needed. | CURRENT-DOC,HIST-BUILD,CODE |
 | BT-CT-004 | v1 | IMPLEMENTED-STATIC | Special Floor Report Container flag controls special-container treatment. | CURRENT-DOC,HIST-BUILD,CODE |
+| BT-CT-005 | v1 | IMPLEMENTED-STATIC | All signed-in users may view configured Container Types from Containers; add/rename/reorder/deactivate/reactivate controls are restricted to Administrators. | CHAT-SURFACED,CODE |
 | BT-BIZ-001 | v1 | IMPLEMENTED-STATIC | Business Information persists business/trading identity and Default Report Header; update is audited. | CURRENT-DOC,HIST-BUILD,CODE |
 | BT-BIZ-002 | v1 | IMPLEMENTED-STATIC | Report header fallback: Default Report Header → Trading Name → Business Name → BinTracker. | CURRENT-DOC,HIST-BUILD,CODE |
 | BT-BIZ-003 | v1 | PLANNED-V1 | Business Information supports operator/business logo. | CHAT-SURFACED,CURRENT-DOC |
@@ -168,6 +172,8 @@ Provenance tags:
 | BT-RPT-008 | v1 | IMPLEMENTED-STATIC | Report filter/options/actions use auto-sized layout so wrapped controls cannot clip action buttons. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-RPT-009 | v1 | PLANNED-V1 | Decide whether native Excel export adds sufficient value beyond CSV before v1. | CURRENT-DOC |
 | BT-RPT-010 | v1 | PLANNED-V1 | Final cross-report consistency/print/DPI/real-world acceptance pass before reporting milestone closes. | CURRENT-DOC,CHAT-SURFACED |
+| BT-RPT-011 | v1 | IMPLEMENTED-STATIC | Report container selectors use configured Container Types master data, including inactive types for historical filtering; choices must not be inferred from current outstanding balances. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-RPT-012 | v1 | IMPLEMENTED-STATIC | Reports landing page must fit the available viewport without a horizontal scrollbar at supported Windows scaling, and report action buttons use reliable drawn document/external-link icons rather than font-dependent symbol glyphs. | CHAT-SURFACED,CURRENT-DOC,CODE |
 
 ## Market Floor / Outstanding / movements / statements / summaries
 

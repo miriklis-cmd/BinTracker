@@ -143,8 +143,8 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Report filter master data
 
-- Weekly Movements now uses `IContainerTypeService` as the authoritative configured Container Type source rather than deriving choices from outstanding balances.
-- Daily Movements still derives its container filter choices from Outstanding reporting; migrate Daily to the same authoritative master-data approach in a later cleanup so all report filters share consistent semantics.
+- Detailed report Container Type selectors now use `IContainerTypeService` as the authoritative configured master-data source rather than deriving choices from current outstanding balances.
+- Include inactive configured types in historical report selectors; deactivation must not make historical activity unfilterable.
 
 
 ## Multi-view report export consistency
@@ -244,3 +244,9 @@ Engineering improvements that are not currently user-facing defects. Product wor
 - Source/current-document version consistency is now mechanically checked by `Audit-BinTracker.ps1` before Windows restore/build/test.
 - ZIP filename/root-folder identity still requires the packaging step to validate the archive itself before delivery.
 - Do not rely on a prose claim that the audit was completed when these checks have not actually run.
+
+
+## Reports launcher mock-up assets
+
+- alpha.24 embeds the approved report icon artwork directly from the approved Reports mock-up to prevent later icon substitution/drift.
+- If the Reports hub is reimplemented in WinUI 3 post-v1, treat these visual assets and hierarchy as design reference unless a new design is explicitly approved.

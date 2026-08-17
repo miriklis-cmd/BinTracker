@@ -824,3 +824,53 @@
 - Added `Audit-BinTracker.ps1` and wired it into Build-BinTracker.bat before restore/build/test.
 - Made exact ZIP/root/version/current-document identity an explicit release-blocking package gate.
 \n\n## v0.4.0-alpha.23.5.2\n- Performed historical requirements reconciliation using current conversation context plus 166 archived BinTracker ZIPs.\n- Added permanent Requirements & Acceptance Register and Reconciliation Report.\n- Rebuilt active Test Checklist and removed contradictory historical-alpha blocks after migrating permanent behaviors.\n- Corrected stale SDK/global.json, ImportWizard and Technical Debt contradictions.\n- Repaired identifiable corrupted DocumentationAudit candidate headings.\n- Restored detailed post-v1 customer-list/import-intent/Import-Profile requirements.\n- Strengthened source audit and added mechanical ZIP package verifier.\n
+
+
+## v0.4.0-alpha.24.2.1
+- Redesigned Reports launcher to approved Quick Reports + Explore Reports mock-up.
+- Embedded the exact approved report-card icon artwork from the mock-up.
+- Added compact 3×2 Explore Reports grid and two side-by-side Quick Report cards.
+- Added Reports page subtitle to the main header.
+- Preserved report generation/filter/date behavior.
+- Recorded Containers-in-left-nav as a pending decision rather than silently changing navigation.
+- Completed mandatory source/current-state/documentation/version/package audit.
+
+
+## v0.4.0-alpha.24.2.1
+- Promoted Containers to the main left navigation directly below Customers.
+- Added permission-aware read-only Container Types access for Operator/Viewer roles.
+- Kept Container Type mutations Administrator-only.
+- Removed Container Types from the Settings administration button group.
+- Added navigation unsaved-change protection for embedded Container Types management.
+- Added dedicated Containers navigation icon.
+
+
+## v0.4.0-alpha.24.2.1
+- Fixed false audit failure for BT-CT-005 caused by checking an undefined PowerShell variable.
+- Audit now validates BT-CT-005 and BT-UI-013 against the parsed requirements-register IDs.
+- Includes the alpha.24.2 Reports layout correction and alpha.24.1 Containers navigation change.
+
+## v0.4.0-alpha.24.2.2
+- Reconciled BT-CT-005 Containers navigation/permission requirements with current source and documentation.
+- Removed stale active documentation claiming Containers remained in Settings or was still pending a navigation decision.
+- Strengthened the permanent audit gate to reject those known Containers-state contradictions.
+- Preserved parsed-register validation for BT-CT-005 and BT-UI-013.
+
+## v0.4.0-alpha.24.2.3
+
+- Corrected Outstanding Containers and Daily Movements report filters to use configured Container Types master data instead of today's Outstanding totals.
+- Preserved inactive Container Types in report filters for historical reporting.
+- Converted Explore Reports `Open` footer text to actual blue buttons.
+- Removed the broken font-dependent Generate PDF pseudo-icon.
+- Removed duplicate host scrolling from the Reports landing page to eliminate the stray horizontal scrollbar.
+- Added permanent audit coverage for report container-filter master-data semantics.
+
+
+
+## v0.4.0-alpha.24.2.4
+
+- Reworked Reports scrolling to fit content to the live client viewport and prevent the residual horizontal scrollbar at DPI-scaled sizes.
+- Removed report-card minimum widths that could force horizontal overflow.
+- Added vector-drawn document icons to Generate PDF buttons.
+- Replaced text-arrow glyphs on Generate & Open / Open actions with vector-drawn external-link icons.
+- Added permanent requirement and audit coverage for Reports viewport/action-icon behaviour.
