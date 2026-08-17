@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.22.2**
+Current planning baseline: **v0.4.0-alpha.23.5.2**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -38,7 +38,7 @@ The remaining importer failure-detail message and deferred Review cosmetics can 
 
 This order is the authoritative pre-v1 sequence. Milestone numbers after v0.4 remain flexible and follow genuine scope.
 
-1. **Finish v0.4 Reporting** — validate Monthly Summary, then Daily Print Pack and remaining report consistency/acceptance work.
+1. **Finish v0.4 Reporting** — validate Monthly Summary and Daily Print Pack, then complete the final report consistency/real-world print acceptance pass.
 2. **Batch Entry acceptance cleanup** — verify Esc, post-entry field clearing/focus, and implement/decide crash/power-loss draft recovery before production.
 3. **Movement Correction / Reversal** — controlled, linked, audited correction of saved movements; never silently edit/delete history.
 4. **Business Information & Branding** — logo, custom header/branding text, and one reusable branding source for reports/statements/email and generated output.
@@ -128,9 +128,10 @@ Still required:
 - [x] **Daily Movements report** — dedicated responsive report window with today/yesterday shortcuts, customer/container/direction/source filters, physical-movement default, optional opening adjustments, typed sorting, audited PDF and CSV preserving the current grid order.
 - [x] **Movement History report** — inclusive date range, customer/container/direction/source filters, opening-adjustment opt-in, future-date guards, quick range shortcuts, typed sorting, audited PDF and CSV preserving current grid order.
 - [x] **Monthly Summary** — selected-month OUT, IN and net movement totals with customer/container breakdown, This Month/Last Month shortcuts, customer/container/source filters, optional opening adjustments, typed numeric sorting, audited PDF and CSV preserving current grid order.
-- [ ] **Daily Print Pack** required by the Functional Specification: Outstanding Summary + Movement Detail.
+- [x] **Daily Print Pack** — selected-date Outstanding Summary + physical Movement Detail in one audited PDF; acceptance testing remains.
 - [x] **Monthly Summary on-screen interaction** — dedicated responsive window with live dropdown/date/checkbox refresh, Customer-on-Enter search and sortable summary grid.
-- [ ] Add CSV/Excel export where operationally useful.
+- [x] CSV export is implemented for Outstanding Containers, Daily Movements, Weekly Movements, Movement History and Monthly Summary, with audited export events.
+- [ ] Decide whether native Excel export adds enough operational value beyond CSV before v1; do not add it merely for feature parity.
 - [ ] Stress-test Market Floor with a genuinely high Yellow-bin day; adaptive sizing is accepted for now but remains a real-world validation item.
 
 ### Batch Entry — acceptance cleanup, not a redesign
@@ -295,9 +296,10 @@ Do after the functional/data-integrity items above unless a defect blocks use.
 - [ ] If WinForms remains fit for purpose, keep it. If WinUI 3 provides enough concrete benefit to justify migration cost/risk, create a separate Windows UI v2 implementation roadmap.
 
 
-- Customer-list-only import mode.
-- Reusable Import Profiles and standard BinTracker import template.
-- Opt-in fuzzy customer-match suggestions, never automatic fuzzy merge.
+- **Customer-list-only import mode**: support names-only, code + name, CSV/XLSX customer masters and custom workbook sources.
+- **Explicit import intent**: Customers only; Customers + opening balances; Full migration (customers + balances + movements). Customer-only mode reuses matching/normalisation/merge preview but does not require container mapping, B/Fwd, OUT/IN or balance reconciliation.
+- **Reusable Import Profiles**: legacy/custom workbook profiles, standard BinTracker import template, configurable mappings for other businesses, and future persistence of legacy token aliases.
+- **Opt-in fuzzy customer-match suggestions**, never automatic fuzzy merge.
 - Custom Report Designer.
 - Legacy/custom report-template import.
 - iPhone application.
@@ -323,9 +325,9 @@ The roadmap was reconciled against the project history rather than only the most
 - [ ] **Batch Entry:** verify Esc semantics; clear/reset appropriate fields and return focus after successful entry; resolve crash/power-loss draft persistence.
 - [ ] **Customer operations:** sort by code/name/outstanding/credit/last movement; lifetime OUT and IN totals where useful.
 - [x] **Customer Statement:** operational save/open/print workflow available from both Customers and Reports.
-- [ ] **Movement History:** date-range/customer/container/source reporting.
-- [ ] **Monthly Summary:** selected month plus Last Month shortcut, OUT/IN/net and customer/container breakdown.
-- [ ] **Daily Print Pack:** Outstanding Summary + Movement Detail.
+- [x] **Movement History:** date-range/customer/container/source reporting implemented with PDF/CSV export and current-grid ordering.
+- [x] **Monthly Summary:** selected month plus Last Month shortcut, OUT/IN/net and customer/container breakdown implemented; acceptance remains.
+- [x] **Daily Print Pack:** Outstanding Summary + physical Movement Detail implemented in one audited PDF; acceptance remains.
 - [ ] **Movement Correction / Reversal:** linked original/correction records, reason, actor/time, permissions and audit; no destructive edit.
 - [ ] **Business Information & Branding:** logo/custom header and reusable output branding.
 - [ ] **Email/SMS communications:** Google Workspace email + Texto SMS direction; customer Email/SMS/Opt-out settings; Friday-or-earlier empty-bin reminder direction; manual/bulk/automatic sends; templates; delivery history; retry/idempotency; audit; statement attachment/link decision.
@@ -402,3 +404,8 @@ The supplied fish/ice/yellow-bin artwork is the BinTracker **product** identity.
 ### Application branding consistency
 
 BinTracker product icon/logo is now treated as application-shell infrastructure: all Forms inherit the executable icon, while the sidebar displays the product logo. Future Business Information branding remains a separate customer/business-output system.
+
+
+### Requirements register governance
+
+`docs/RequirementsAcceptanceRegister.md` is the permanent requirements ledger. Roadmap sequencing may be shortened, but registered v1/post-v1/candidate items must not silently disappear. Material scope/status changes require an explicit changelog/decision record.

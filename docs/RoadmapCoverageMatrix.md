@@ -5,7 +5,7 @@ Audited: 16 August 2026
 | Workstream | v1? | Roadmap status / gate |
 |---|---|---|
 | Excel Import safety/provenance | Yes | Core complete; transactional failure detail + cosmetic validation remain |
-| Reports | Yes | Current v0.4 milestone; Customer Statement + Monthly Summary implemented, Daily Print Pack/final acceptance remain |
+| Reports | Yes | Current v0.4 milestone; Customer Statement + Monthly Summary + Daily Print Pack implemented; final consistency/print acceptance remains |
 | Batch Entry acceptance/recovery | Yes | Esc, field reset/focus, crash/power-loss recovery remain |
 | Movement Correction/Reversal | Yes | Explicit milestone before branding/communications/dashboard |
 | Business Information & Branding | Yes | Textual Default Report Header exists; logo + shared report/email branding remain |
@@ -29,3 +29,8 @@ Audited: 16 August 2026
 - Business-logic change: targeted smoke test.
 - UI change: full smoke test.
 - Milestone closure: automated tests + relevant smoke tests + documentation/audit reconciliation.
+
+
+## Permanent requirements ledger
+
+`docs/RequirementsAcceptanceRegister.md` is the permanent ID/status ledger used to prevent roadmap shortening from dropping agreed work. `docs/ReconciliationReport.md` records the 23.5.2 historical reconciliation and provenance limits.

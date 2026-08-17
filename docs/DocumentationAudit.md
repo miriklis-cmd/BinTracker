@@ -119,7 +119,7 @@ This file is not a one-off audit artifact. Every packaged build must append or r
 - [x] Test requirement classified as **full smoke test**.
 
 
-## Candidate: v0.4.0-alpha.22.6
+## Candidate: v0.4.0-alpha.22.3.4
 
 - [x] 21 Markdown files enumerated/reviewed.
 - [x] Sidebar branding regression documented.
@@ -129,7 +129,7 @@ This file is not a one-off audit artifact. Every packaged build must append or r
 - [x] Test requirement classified as **targeted UI smoke test**.
 
 
-## Candidate: v0.4.0-alpha.22.6
+## Candidate: v0.4.0-alpha.22.5
 
 - [x] 21 Markdown files enumerated/reviewed.
 - [x] Customer Statement generate/save/open workflow documented.
@@ -149,7 +149,7 @@ This file is not a one-off audit artifact. Every packaged build must append or r
 - [x] Test requirement classified as **full smoke test**.
 
 
-## Candidate: v0.4.0-alpha.22.6.4
+## Candidate: v0.4.0-alpha.22.6.1
 
 - [x] 21 Markdown files enumerated/reviewed.
 - [x] Compile defect and owner-interface fix documented.
@@ -177,7 +177,7 @@ This file is not a one-off audit artifact. Every packaged build must append or r
 - [x] Test requirement remains full smoke test after automated suite passes.
 
 
-## Candidate: v0.4.0-alpha.23.4.1
+## Candidate: v0.4.0-alpha.23.2
 - [x] 21 Markdown files enumerated/reviewed.
 - [x] CSV audit gap audited across all current CSV-capable reports.
 - [x] Export auditing rules added to Functional Specification and Business Rules.
@@ -186,7 +186,7 @@ This file is not a one-off audit artifact. Every packaged build must append or r
 - [x] Test requirement classified as full report-export smoke test.
 
 
-## Candidate: v0.4.0-alpha.23.4.1
+## Candidate: v0.4.0-alpha.23.4
 
 - [x] 21 Markdown files enumerated/reviewed.
 - [x] alpha.23.3 SDK-pinning mistake documented and corrected.
@@ -194,3 +194,41 @@ This file is not a one-off audit artifact. Every packaged build must append or r
 - [x] Useful MSBuild worker-resilience changes retained.
 - [x] Agreed roadmap workstreams retained: Movement Correction, SMS, Email, Dashboard, WinUI 3, branding, Daily Print Pack, PostgreSQL.
 - [x] Changelog / Release Notes / Development Workflow / Testing / Test Checklist / Tech Debt reconciled.
+
+
+## Candidate: v0.4.0-alpha.23.5.1
+
+Full audit performed after alpha.23.5 packaging drift was reported.
+
+Findings corrected:
+- [x] alpha.23.5 ZIP/root/Version/InformationalVersion identity was checked directly.
+- [x] `docs/RELEASE-NOTES.md` was stale at alpha.23.4.1 and replaced.
+- [x] `docs/Roadmap.md` planning baseline was stale at alpha.22.2 and reconciled.
+- [x] `KNOWN-ISSUES.md` current release was stale at alpha.22.2 and reconciled.
+- [x] Historical-requirements section incorrectly still marked Movement History, Monthly Summary and Daily Print Pack pending; reconciled.
+- [x] Audit Coverage omitted Movement History, Monthly Summary, Daily Print Pack and CSV exports; reconciled.
+- [x] Development Workflow described obsolete BAT subroutine handling; reconciled to direct command guards.
+- [x] Inline Market Floor / Daily Print Pack selectors lacked the future-date UI guard used by breakout reports; fixed.
+- [x] 21 Markdown files enumerated and reviewed as current-state/historical documents.
+- [x] Major pre-v1/post-v1 workstreams retained: Batch Entry cleanup, Movement Correction, Branding, Email/SMS, Dashboard design gate, Backup/Restore, PostgreSQL readiness, installer/acceptance, post-v1 WinUI 3.
+- [x] Mechanical source audit added to stop current-version-document drift before build.
+- [x] Package identity gate documented as mandatory.
+
+Test classification: **full report smoke/print test** after Windows automated build/test gate.
+
+
+## Historical audit-log repair — alpha.23.5.2
+
+The reconciliation found candidate headings that had been corrupted by prior broad version-string replacement. Headings were repaired only where the section content and archived build chronology identified the candidate unambiguously: sidebar branding → alpha.22.3.4; Customer Statement generate/open → alpha.22.5; compile owner fix → alpha.22.6.1; CSV audit pass → alpha.23.2; SDK/build correction → alpha.23.4. The Customer Statement Reports-entry section remains alpha.22.6. No unverified historical claim was invented.
+
+## Candidate: v0.4.0-alpha.23.5.2
+
+- [x] Reconciliation inspected current source/docs plus 166 archived BinTracker ZIPs and all BinTracker history surfaced in the current conversation context.
+- [x] Personal-context history query returned no additional BinTracker entries; raw complete chat transcript access was not claimed.
+- [x] Permanent Requirements & Acceptance Register created with stable IDs/scope/status/provenance.
+- [x] Active Test Checklist rebuilt; historical alpha-specific blocks removed after permanent behaviors were migrated.
+- [x] Stale SDK, importer and tech-debt contradictions corrected.
+- [x] Historical DocumentationAudit headings repaired where archived chronology/content made identity unambiguous.
+- [x] Audit gate strengthened and packaging identity verifier added.
+- [x] Lost detailed post-v1 import requirements restored.
+- [x] Current package identity mechanically verified before delivery.

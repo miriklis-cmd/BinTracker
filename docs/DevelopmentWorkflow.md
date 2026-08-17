@@ -95,7 +95,7 @@ Do not add a restrictive `global.json` unless the required SDK is first confirme
 - using non-parallel NuGet restore (`--disable-parallel`);
 - printing the resolved SDK version.
 
-Every restore/build/test command is executed through a BAT subroutine and its exit code is checked immediately. A failed command must never fall through to `BUILD SUCCESSFUL`.
+Restore/build/test commands use direct `command || goto :fail` guards. A failed command must never fall through to `BUILD SUCCESSFUL`.
 
 
 ## ZIP overlay stale-file handling
@@ -105,3 +105,10 @@ Extracting a newer BinTracker ZIP over an existing build folder overwrites match
 alpha.23.4.1 specifically self-heals the obsolete `global.json` created by alpha.23.3. The BAT deletes it only when its contents exactly identify the BinTracker-created SDK 8.0.100 / `latestFeature` pin. An unrelated/user-managed `global.json` is never deleted automatically.
 
 For the cleanest manual workflow, deleting the old extracted BinTracker folder before extracting a new full ZIP remains preferable.
+
+
+## Mechanical source/package-state audit
+
+`Audit-BinTracker.ps1` is run by `Build-BinTracker.bat` before restore. It validates current version documents, the permanent Requirements & Acceptance Register (unique IDs and approved scope/status values), required documentation, known stale/contradictory current-state phrases, unexpected `global.json`, major roadmap workstreams and selected implemented source paths. `Package-BinTracker.ps1` separately creates and reopens a version-authoritative ZIP and verifies the sole root folder plus embedded Version/InformationalVersion.
+
+Before a ZIP is handed to the operator, packaging must additionally verify that the ZIP filename, single top-level folder, `Version` and `InformationalVersion` all identify the exact same candidate. A mismatch is a failed artifact and must not be delivered.

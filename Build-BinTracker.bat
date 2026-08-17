@@ -17,6 +17,10 @@ echo  Configuration : Debug
 echo ==========================================================
 echo.
 
+echo Running BinTracker source/package-state audit...
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Audit-BinTracker.ps1 || goto :fail
+echo.
+
 rem Self-heal the exact obsolete global.json created by BinTracker alpha.23.3.
 rem A newer ZIP cannot delete a file left behind when extracted over an older folder.
 if exist ".\global.json" (

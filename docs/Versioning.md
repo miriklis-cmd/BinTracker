@@ -81,3 +81,22 @@ The existing `0.4.0-alpha.20.0.x` history is retained as historical truth and is
 ## Bug-fix builds in the current legacy 0.4 series
 
 Until the next clean milestone starts, a direct bug-fix to an already-issued legacy candidate may use one additional `.1`, `.2`, etc. suffix solely to avoid rewriting history. This is transitional only and must not continue into the new milestone scheme.
+
+
+## Package identity gate
+
+For every packaged candidate, all of the following must match exactly:
+
+- ZIP filename version;
+- the ZIP's single top-level folder version;
+- `Directory.Build.props` `Version`;
+- `Directory.Build.props` `InformationalVersion`;
+- build-script displayed version;
+- README / Known Issues / current Release Notes / Roadmap current baseline.
+
+Packaging mismatch is a release-blocking audit failure.
+
+
+## Mechanical package gate
+
+`Package-BinTracker.ps1` must create `BinTracker-v<Version>.zip`, stage the sole root as `BinTracker-v<Version>`, reopen the archive, and verify embedded Version/InformationalVersion before a package is treated as releasable. `docs/RequirementsAcceptanceRegister.md` is also part of the source audit gate.

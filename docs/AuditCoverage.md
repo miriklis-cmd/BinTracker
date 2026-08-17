@@ -12,7 +12,8 @@ This is the pre-v1 audit-coverage checklist. Audit history is append-only eviden
 - Movement correction/reversal when implemented.
 - Excel Import completion, failure where appropriate, and Replace/Correct.
 - Import Run provenance/replacement relationship.
-- Report generation, including Customer Statement, Market Floor, Outstanding Containers, Daily Movements and Weekly Movements PDF output.
+- Report generation, including Customer Statement, Market Floor, Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Monthly Summary and Daily Print Pack PDF output.
+- CSV export for Outstanding Containers, Daily Movements, Weekly Movements, Movement History and Monthly Summary.
 - Business Information/settings changes, including future logo/branding changes when implemented.
 - Reminder runs and individual Email/SMS delivery attempts.
 - Production Backup/Restore and database upgrade operations when implemented.
@@ -29,3 +30,8 @@ Where relevant, events should preserve:
 - meaningful before/after values or a concise description.
 
 Before v1.0, test this matrix end-to-end and explicitly document any intentionally unaudited operation.
+
+
+## Requirements/register governance
+
+The product audit-coverage matrix and the Requirements & Acceptance Register are both release-gated documents. Report PDF/CSV generation, imports, corrections, communications, backup/restore and security/admin actions must remain represented as their implementation status changes.

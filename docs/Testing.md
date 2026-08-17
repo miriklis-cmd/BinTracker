@@ -327,11 +327,11 @@ Manually export CSV from Outstanding Containers, Daily Movements, Weekly Movemen
 Build acceptance includes running `Build-BinTracker.bat` repeatedly from a normal Windows developer shell.
 
 Verify:
-- the header reports an 8.0.x SDK;
+- the header reports the actually resolved compatible installed SDK (currently 10.0.400 on the development PC);
 - stale build-server shutdown does not block the build;
 - restore/build/test complete with MSBuild server/node reuse disabled;
 - the build no longer intermittently reports MSB4242 SDK Resolver Failure / worker node shutdown under normal use;
-- a machine without a compatible .NET 8 SDK receives a clear prerequisite failure.
+- the project continues targeting net8.0/net8.0-windows without requiring an uninstalled restrictive SDK pin.
 
 
 ## Build script failure-path regression
@@ -352,3 +352,25 @@ For build-tooling changes, verify both success and failure paths:
 - Run the BAT and confirm it deletes that obsolete file, resolves the installed SDK and continues.
 - Place a different/user-managed `global.json` beside the BAT and confirm BinTracker refuses to delete it and reports BUILD FAILED.
 - Force a restore/build/test failure and confirm the `command || goto :fail` path prints BUILD FAILED and never BUILD SUCCESSFUL.
+
+
+## Daily Print Pack acceptance
+
+- Reports inline Market Floor and Daily Print Pack date pickers cannot select a future date.
+- Daily Print Pack Outstanding Summary is calculated as at the selected date.
+- Movement Detail contains physical movements only; Opening Adjustments are excluded.
+- Generate PDF and Generate & Open produce one readable two-section PDF.
+- `DAILY_PRINT_PACK_GENERATED` is written exactly once per generated pack.
+- Real preview/print validation is required before the Reporting milestone closes.
+
+## Mechanical audit regression
+
+Run `Audit-BinTracker.ps1` and confirm it rejects a deliberately stale README/current Release Notes/Roadmap baseline, unexpected `global.json`, or mismatched Version/InformationalVersion, and passes after reconciliation.
+
+
+## Requirements register audit regression
+
+- Confirm every table requirement ID in `docs/RequirementsAcceptanceRegister.md` is unique.
+- Confirm Scope/Status values are from the approved register enums.
+- Remove or duplicate a required ID in a temporary copy and confirm `Audit-BinTracker.ps1` fails.
+- Introduce a known stale phrase (old SDK pin, stale importer remaining item, separate Run Report expectation) and confirm the audit fails.

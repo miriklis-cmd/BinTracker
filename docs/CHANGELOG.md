@@ -815,3 +815,12 @@
 - Fixed BAT exit-code handling so restore/build/test failures cannot falsely report BUILD SUCCESSFUL.
 - Retained stale build-server cleanup, disabled node/server reuse and conservative parallelism.
 - Completed mandatory full documentation/current-state audit.
+
+
+## v0.4.0-alpha.23.5.1
+- Full audit corrected stale current-state documentation left in the alpha.23.5 package.
+- Reconciled README, Known Issues, Roadmap, Coverage Matrix and Audit Coverage with implemented reports.
+- Added future-date UI guards to inline Market Floor and Daily Print Pack selectors.
+- Added `Audit-BinTracker.ps1` and wired it into Build-BinTracker.bat before restore/build/test.
+- Made exact ZIP/root/version/current-document identity an explicit release-blocking package gate.
+\n\n## v0.4.0-alpha.23.5.2\n- Performed historical requirements reconciliation using current conversation context plus 166 archived BinTracker ZIPs.\n- Added permanent Requirements & Acceptance Register and Reconciliation Report.\n- Rebuilt active Test Checklist and removed contradictory historical-alpha blocks after migrating permanent behaviors.\n- Corrected stale SDK/global.json, ImportWizard and Technical Debt contradictions.\n- Repaired identifiable corrupted DocumentationAudit candidate headings.\n- Restored detailed post-v1 customer-list/import-intent/Import-Profile requirements.\n- Strengthened source audit and added mechanical ZIP package verifier.\n

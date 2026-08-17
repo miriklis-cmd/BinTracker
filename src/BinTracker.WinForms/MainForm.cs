@@ -26,6 +26,7 @@ public sealed class MainForm : BinTrackerForm
     private readonly IMovementService movements;
     private readonly ApplicationState appState;
     private readonly IMarketFloorReportService marketFloorReports;
+    private readonly IDailyPrintPackService dailyPrintPack;
     private readonly IOutstandingReportService outstandingReports;
     private readonly IOutstandingReportPdfService outstandingReportPdfs;
     private readonly IDailyMovementsReportService dailyMovementReports;
@@ -61,6 +62,7 @@ public sealed class MainForm : BinTrackerForm
         IMovementService movements,
         ApplicationState appState,
         IMarketFloorReportService marketFloorReports,
+        IDailyPrintPackService dailyPrintPack,
         IOutstandingReportService outstandingReports,
         IOutstandingReportPdfService outstandingReportPdfs,
         IDailyMovementsReportService dailyMovementReports,
@@ -88,6 +90,7 @@ public sealed class MainForm : BinTrackerForm
         this.movements = movements;
         this.appState = appState;
         this.marketFloorReports = marketFloorReports;
+        this.dailyPrintPack = dailyPrintPack;
         this.outstandingReports = outstandingReports;
         this.outstandingReportPdfs = outstandingReportPdfs;
         this.dailyMovementReports = dailyMovementReports;
@@ -473,6 +476,7 @@ public sealed class MainForm : BinTrackerForm
         content.Controls.Add(
             new ReportsView(
                 marketFloorReports,
+                dailyPrintPack,
                 OpenOutstandingReport,
                 OpenDailyMovementsReport,
                 OpenWeeklyMovementsReport,

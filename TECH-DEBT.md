@@ -222,9 +222,9 @@ Engineering improvements that are not currently user-facing defects. Product wor
 - Monthly Summary currently filters the movement set in EF Core and performs the final customer/container grouping in application memory. This stays provider-neutral for SQLite/PostgreSQL. If movement volume becomes large after central PostgreSQL deployment, benchmark and move grouping into a provider-neutral SQL-translatable LINQ projection where useful.
 
 
-## Local build SDK drift
+## Local build SDK selection
 
-- Resolved for the current .NET 8 product line with repository-root `global.json`. Revisit the pin deliberately when BinTracker upgrades target framework; do not let Visual Studio's newest installed major SDK implicitly change the build host.
+- BinTracker targets .NET 8 but currently uses a compatible installed SDK as the build host (10.0.400 on the development PC). The invalid alpha.23.3 restrictive `global.json` pin was removed. If deterministic pinning is introduced later, standardise/install the selected SDK on developer/CI machines first and test the failure path.
 
 
 ## Build SDK policy correction
@@ -237,3 +237,10 @@ Engineering improvements that are not currently user-facing defects. Product wor
 ## Full-ZIP overlay semantics
 
 - Full release ZIPs cannot delete stale files when extracted over an older folder. Build tooling now self-heals the one known dangerous obsolete file (`global.json` from alpha.23.3), but development instructions should continue to prefer extracting full builds into a clean folder.
+
+
+## Packaging/version drift prevention
+
+- Source/current-document version consistency is now mechanically checked by `Audit-BinTracker.ps1` before Windows restore/build/test.
+- ZIP filename/root-folder identity still requires the packaging step to validate the archive itself before delivery.
+- Do not rely on a prose claim that the audit was completed when these checks have not actually run.

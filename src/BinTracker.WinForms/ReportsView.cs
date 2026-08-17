@@ -6,6 +6,7 @@ namespace BinTracker.WinForms;
 public sealed class ReportsView : UserControl
 {
     private readonly IMarketFloorReportService marketFloor;
+    private readonly IDailyPrintPackService dailyPrintPack;
     private readonly Action openOutstanding;
     private readonly Action openDailyMovements;
     private readonly Action openWeeklyMovements;
@@ -20,6 +21,20 @@ public sealed class ReportsView : UserControl
         Value = DateTime.Today
     };
 
+    private readonly DateTimePicker printPackDate = new()
+    {
+        Format = DateTimePickerFormat.Short,
+        Width = 145,
+        Value = DateTime.Today
+    };
+
+    private readonly Label printPackStatus = new()
+    {
+        AutoSize = true,
+        ForeColor = Color.DimGray,
+        MaximumSize = new Size(900, 0)
+    };
+
     private readonly Label status = new()
     {
         AutoSize = true,
@@ -29,6 +44,7 @@ public sealed class ReportsView : UserControl
 
     public ReportsView(
         IMarketFloorReportService marketFloor,
+        IDailyPrintPackService dailyPrintPack,
         Action openOutstanding,
         Action openDailyMovements,
         Action openWeeklyMovements,
@@ -38,12 +54,17 @@ public sealed class ReportsView : UserControl
     {
         AutoScroll = true;
         this.marketFloor = marketFloor;
+        this.dailyPrintPack = dailyPrintPack;
         this.openOutstanding = openOutstanding;
         this.openDailyMovements = openDailyMovements;
         this.openWeeklyMovements = openWeeklyMovements;
         this.openMovementHistory = openMovementHistory;
         this.openCustomerStatement = openCustomerStatement;
         this.openMonthlySummary = openMonthlySummary;
+
+        // Historical/operational reports must not allow dates after today.
+        reportDate.MaxDate = DateTime.Today;
+        printPackDate.MaxDate = DateTime.Today;
 
         Dock = DockStyle.Fill;
         BackColor = Color.FromArgb(245, 247, 250);
@@ -66,8 +87,8 @@ public sealed class ReportsView : UserControl
         };
 
         root.Controls.Add(BuildMarketFloorCard(), 0, 0);
-        root.Controls.Add(BuildReportLauncherSection(), 0, 1);
-        root.Controls.Add(BuildComingReports(), 0, 2);
+        root.Controls.Add(BuildDailyPrintPackCard(), 0, 1);
+        root.Controls.Add(BuildReportLauncherSection(), 0, 2);
 
         Controls.Add(root);
     }
@@ -298,53 +319,7 @@ public sealed class ReportsView : UserControl
         return card;
     }
 
-    private static Control ComingSoonLauncher(
-        string title,
-        string description)
-    {
-        var card = LauncherCard();
-
-        var layout = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            ColumnCount = 1,
-            RowCount = 3
-        };
-
-        layout.Controls.Add(new Label
-        {
-            Text = title,
-            AutoSize = true,
-            Font = new Font(
-                "Segoe UI Semibold",
-                13F,
-                FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 6)
-        }, 0, 0);
-
-        layout.Controls.Add(new Label
-        {
-            Text = description,
-            AutoSize = true,
-            ForeColor = Color.FromArgb(80, 90, 105),
-            MaximumSize = new Size(470, 0),
-            Margin = new Padding(0, 0, 0, 12)
-        }, 0, 1);
-
-        layout.Controls.Add(new Label
-        {
-            Text = "Coming during the Reports phase",
-            AutoSize = true,
-            ForeColor = Color.DimGray,
-            Margin = Padding.Empty
-        }, 0, 2);
-
-        card.Controls.Add(layout);
-        return card;
-    }
-
-    private Control BuildComingReports()
+    private Control BuildDailyPrintPackCard()
     {
         var panel = Card();
 
@@ -352,30 +327,123 @@ public sealed class ReportsView : UserControl
         {
             Dock = DockStyle.Top,
             AutoSize = true,
-            ColumnCount = 1
+            ColumnCount = 1,
+            RowCount = 5
         };
 
         layout.Controls.Add(new Label
         {
-            Text = "Reports phase",
+            Text = "Daily Print Pack",
             AutoSize = true,
-            Font = new Font(
-                "Segoe UI Semibold",
-                15F,
-                FontStyle.Bold),
+            Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold),
             Margin = new Padding(0, 0, 0, 8)
-        });
+        }, 0, 0);
 
         layout.Controls.Add(new Label
         {
-            Text =
-                "Next: Daily Print Pack",
+            Text = "One operational PDF containing the Outstanding Summary followed by the selected day's physical Movement Detail.",
             AutoSize = true,
-            ForeColor = Color.DimGray
-        });
+            ForeColor = Color.FromArgb(80, 90, 105),
+            MaximumSize = new Size(980, 0),
+            Margin = new Padding(0, 0, 0, 14)
+        }, 0, 1);
 
+        var controls = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true
+        };
+
+        controls.Controls.Add(new Label
+        {
+            Text = "Report date",
+            AutoSize = true,
+            Margin = new Padding(0, 9, 8, 0)
+        });
+        controls.Controls.Add(printPackDate);
+
+        var generate = new Button
+        {
+            Text = "Generate PDF",
+            AutoSize = false,
+            Size = new Size(145, 40),
+            Margin = new Padding(16, 0, 0, 0)
+        };
+        generate.Click += async (_, _) => await GeneratePrintPackAsync(openAfter: false);
+
+        var generateAndOpen = new Button
+        {
+            Text = "Generate && Open",
+            AutoSize = false,
+            Size = new Size(190, 40),
+            Margin = new Padding(10, 0, 0, 0)
+        };
+        generateAndOpen.Click += async (_, _) => await GeneratePrintPackAsync(openAfter: true);
+
+        controls.Controls.Add(generate);
+        controls.Controls.Add(generateAndOpen);
+        layout.Controls.Add(controls, 0, 2);
+
+        layout.Controls.Add(new Label
+        {
+            Text = "Outstanding is calculated as at the selected date. Movement Detail excludes opening adjustments and shows physical activity only.",
+            AutoSize = true,
+            ForeColor = Color.DimGray,
+            Margin = new Padding(0, 12, 0, 6)
+        }, 0, 3);
+
+        layout.Controls.Add(printPackStatus, 0, 4);
         panel.Controls.Add(layout);
         return panel;
+    }
+
+    private async Task GeneratePrintPackAsync(bool openAfter)
+    {
+        printPackStatus.Text = string.Empty;
+        var date = DateOnly.FromDateTime(printPackDate.Value.Date);
+
+        using var dialog = new SaveFileDialog
+        {
+            Title = "Save Daily Print Pack",
+            Filter = "PDF document (*.pdf)|*.pdf",
+            FileName = $"BinTracker_Daily_Print_Pack_{date:yyyyMMdd}.pdf",
+            AddExtension = true,
+            DefaultExt = "pdf"
+        };
+
+        if (dialog.ShowDialog(FindForm()) != DialogResult.OK)
+            return;
+
+        try
+        {
+            Enabled = false;
+            await dailyPrintPack.GeneratePdfAsync(date, dialog.FileName);
+            printPackStatus.Text =
+                $"Created Daily Print Pack for {date:dd/MM/yyyy}: {dialog.FileName}";
+
+            if (openAfter)
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = dialog.FileName,
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                ex.Message,
+                "Daily Print Pack",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+        finally
+        {
+            Enabled = true;
+        }
     }
 
     private async Task GenerateAsync(bool openAfter)

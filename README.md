@@ -1,4 +1,4 @@
-# BinTracker v0.4.0-alpha.22.6.4
+# BinTracker v0.4.0-alpha.23.5.2
 
 BinTracker is a .NET 8 Windows desktop application for tracking reusable container movements, customer/container balances, operational reporting and audited business activity.
 
@@ -19,6 +19,7 @@ BinTracker is a .NET 8 Windows desktop application for tracking reusable contain
 - Weekly Movements report with Monday-Sunday selection, Daily Detail / Weekly Overview, filters, PDF/CSV export and current-week activity-through-today semantics.
 - Movement History report with inclusive date-range search, filters, future-date guard and PDF/CSV export.
 - Monthly Summary report with selected-month OUT/IN/net totals, customer/container breakdown, filters, PDF and CSV.
+- Daily Print Pack combining selected-date Outstanding Summary and physical Movement Detail in one audited PDF.
 - Compact Reports launcher architecture: Market Floor inline, detailed reports in dedicated single-instance windows.
 - Configurable Business Information/report identity.
 - Transactional legacy Excel Import Wizard with Analyse, Map, Review, balance reconciliation and Step 4 execution.
@@ -34,7 +35,7 @@ See `KNOWN-ISSUES.md` and `docs/Roadmap.md`.
 
 Most important remaining items include:
 
-- Remaining reporting: Daily Print Pack and final report acceptance/consistency pass;
+- Remaining reporting: Daily Print Pack acceptance and final report consistency/real-world print pass;
 - Batch Entry acceptance cleanup (Esc, post-entry reset/focus, crash/power-loss draft recovery decision);
 - dashboard operational pass;
 - Business Information branding expansion: logo + shared report/email output identity;
@@ -103,3 +104,8 @@ A valid local build requires successful restore, build and automated tests.
 The application version is defined in `Directory.Build.props`.
 
 - Interactive report windows use live filter refresh; Customer free-text applies on Enter and no Run Report button is required.
+
+
+## Requirements source of truth
+
+See `docs/RequirementsAcceptanceRegister.md` for permanent requirement IDs/status/scope and `docs/ReconciliationReport.md` for the alpha.23.5.2 historical reconciliation.

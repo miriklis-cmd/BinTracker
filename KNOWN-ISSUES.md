@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.22.2**
+Current release: **v0.4.0-alpha.23.5.2**
 
 This file contains current defects/limitations that affect testing or production readiness. Completed history is in `docs/CHANGELOG.md`; future features are in `docs/Roadmap.md`; engineering cleanup is in `TECH-DEBT.md`.
 
@@ -9,7 +9,7 @@ This file contains current defects/limitations that affect testing or production
 ### Reports catalogue is incomplete
 **Area:** Reports
 
-Market Floor, Customer Statement PDF, Outstanding Containers, Daily Movements and Weekly Movements are implemented. Daily Print Pack remains; Monthly Summary is implemented and requires acceptance testing.
+Market Floor, Customer Statement, Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Monthly Summary and Daily Print Pack are implemented. Monthly Summary and Daily Print Pack still require final operator acceptance/real-world print validation before the Reporting milestone closes.
 
 ### Dashboard is still the first-pass operational dashboard
 **Area:** Dashboard
@@ -59,3 +59,8 @@ The Zahos/BIG search/list-detail synchronization bug is fixed but should remain 
 - Import Review action icons remain smaller/cropped compared with the approved mockup, particularly container-related icons.
 - Review metric tiles do not yet have the approved rounded corners.
 - Password eye / Logout artwork is functional but not final visual polish.
+
+
+## Requirements reconciliation
+
+- alpha.23.5.2 repaired stale/contradictory documentation and strengthened the mechanical audit gate. Windows build/tests and open manual acceptance items remain authoritative; static reconciliation is not a substitute for runtime acceptance.

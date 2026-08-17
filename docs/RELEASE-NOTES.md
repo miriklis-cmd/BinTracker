@@ -1,19 +1,33 @@
 # BinTracker Current Release Notes
 
-## v0.4.0-alpha.23.4.1
+## v0.4.0-alpha.23.5.2
 
-### Build tooling self-heal
+### Full historical requirements reconciliation / audit-gate hardening
 
-Corrected the remaining build-tooling failures exposed by running alpha.23.4 over an existing extracted folder.
+This candidate is intentionally documentation/audit/release-discipline focused. It was created after the operator correctly raised concern that prior audits had allowed version, packaging and current-state contradictions through.
 
-- Detects and removes the exact obsolete `global.json` created by alpha.23.3.
-- Does not delete unrelated/user-managed `global.json` files.
-- Uses direct `dotnet ... || goto :fail` command guards for restore, build and test.
-- A failed restore/build/test can no longer continue to later stages or print BUILD SUCCESSFUL.
-- Retains stale build-server cleanup and conservative MSBuild settings.
+Actual reconciliation sources:
+- all BinTracker history surfaced in the current conversation context;
+- current alpha.23.5.1 source package;
+- 166 archived BinTracker ZIPs available in the working archive;
+- recovered historical roadmaps/readmes/test checklists/specifications;
+- current C# source/test inventory and Markdown documentation.
 
-The obsolete SDK pin persisted because ZIP extraction cannot delete a file that existed in an older extracted folder but is absent from a newer archive.
+Important limitation: a direct personal-context query returned no additional BinTracker chat history, so this release does **not** falsely claim a raw-turn review of every historical ChatGPT conversation.
+
+Changes:
+- added `docs/RequirementsAcceptanceRegister.md` permanent requirements ledger;
+- added `docs/ReconciliationReport.md` with sources, limitations, findings and recovered requirements;
+- rebuilt active `TEST-CHECKLIST.md` and migrated permanent small behaviors out of historical alpha blocks;
+- corrected stale .NET SDK/global.json statements;
+- corrected stale ImportWizard Replace/Correct and Import History “remaining” statements;
+- repaired identifiable corrupted headings in `docs/DocumentationAudit.md`;
+- restored detailed post-v1 customer-list/import-intent/Import-Profile requirements;
+- strengthened `Audit-BinTracker.ps1` to validate register identity/status/scope, current checklist version, required docs and known stale contradictions;
+- added `Package-BinTracker.ps1` to create and reopen a version-matched ZIP and verify sole root + version metadata.
+
+No product business behavior was deliberately changed in this reconciliation candidate.
 
 ### Test requirement
 
-Run this build over the existing folder once. It should report removal of the obsolete global.json, use SDK 10.0.400, and complete restore/build/tests normally.
+Run `Build-BinTracker.bat` once. The strengthened source audit must pass before restore. Windows compile/tests remain the authoritative executable gate. Daily Print Pack / Monthly Summary manual acceptance remains open from the preceding Reporting work.

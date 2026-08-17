@@ -125,7 +125,7 @@ Automatic matches require operator confirmation or override before Import readin
 
 Exact successful workbook fingerprints are blocked.
 
-A different workbook for the same cutover date still needs the controlled difference/replacement workflow described in `ReimportSafety.md`.
+A different workbook for the same cutover date enters the implemented controlled Replace/Correct workflow described in `ReimportSafety.md`; it is compared before execution and requires explicit operator confirmation.
 
 ## Core importer status
 
@@ -133,17 +133,18 @@ Analyse, Map, Review, transactional execution, exact-reimport blocking, changed-
 
 ## Remaining importer work before v1.0
 
-- Import Run history/details UI;
-- improved execution failure report;
+- improved execution failure report with useful row/customer/container context;
 - deferred Review icon/rounded-card polish.
+
+Import Run history/details UI is implemented and is no longer a remaining item.
 
 ## Post-v1.0 import ideas
 
-- Customers-only import intent.
-- Customers + opening balances intent.
-- Reusable Import Profiles.
-- Standard BinTracker import template.
-- Optional fuzzy-match suggestions requiring explicit operator approval.
+- Explicit import intent: **Customers only**, **Customers + opening balances**, or **Full migration (customers + balances + movements)**.
+- Customer-only import may accept names-only lists, code + name, CSV/XLSX customer masters or custom workbooks; it reuses matching/normalisation/merge preview but does not require container mapping, B/Fwd, OUT/IN or balance reconciliation.
+- Reusable Import Profiles: legacy/custom profiles, a standard BinTracker import template and configurable mappings for other businesses.
+- Persist legacy token aliases inside future Import Profiles rather than only the current wizard session.
+- Optional fuzzy-match suggestions requiring explicit operator approval; never automatic fuzzy merge.
 
 ## Changed-workbook correction
 
