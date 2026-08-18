@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.4.0-alpha.24.2.10**
+Current baseline: **v0.4.0-alpha.24.2.11**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -177,7 +177,7 @@ Provenance tags:
 | BT-RPT-013 | v1 | IMPLEMENTED-STATIC | Reports landing page omits the redundant bottom PDF/CSV/date information bar so available vertical space is reserved for fully visible report-card content. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-RPT-014 | v1 | IMPLEMENTED-STATIC | Outstanding Containers provides an explicit balance filter with Outstanding only (default), Credits only, and All non-zero modes; the selected mode applies consistently to on-screen results and exported PDF/CSV output. | USER-REQUEST,CODE,TEST |
 | BT-RPT-015 | v1 | IMPLEMENTED-ACCEPTED | Outstanding Containers keeps the Balance selector fully readable at supported DPI and provides trial multi-column grid sorting: click sets the primary sort and Shift+click adds/toggles secondary or later sort columns while preserving the displayed order in PDF/CSV snapshots. | USER-REQUEST,CODE,USER-ACCEPTED |
-| BT-RPT-016 | v1 | IMPLEMENTED-STATIC | All applicable report grids provide consistent type-aware multi-column sorting: click sets a primary sort, Shift+click adds/toggles later sort levels, numeric quantities/positions sort numerically rather than lexically, report dates sort chronologically, active sorts persist across report refreshes, and each grid displays an on-screen usage hint; Outstanding Containers keeps its filter/action controls fully visible at supported DPI. | USER-APPROVED,CODE |
+| BT-RPT-016 | v1 | IMPLEMENTED-STATIC | All applicable report grids provide consistent type-aware multi-column sorting: click sets a primary sort, Shift+click adds/toggles later sort levels, numeric quantities/positions sort by their true business value rather than display text (including CREDIT as negative and OUT as positive), report dates sort chronologically, active sorts persist across report refreshes, and each grid displays an on-screen usage hint; Outstanding Containers keeps its filter/action controls fully visible at supported DPI. | USER-APPROVED,CODE |
 
 ## Market Floor / Outstanding / movements / statements / summaries
 

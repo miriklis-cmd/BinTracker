@@ -8,6 +8,7 @@ internal static class ReportGridMultiSort
 {
     private sealed record SortCriterion(string ColumnName, SortOrder Direction);
     private static readonly Dictionary<DataGridView, List<SortCriterion>> States = new();
+    private static readonly Dictionary<DataGridView, Dictionary<string, Func<DataGridViewRow, object?>>> TypedValueSelectors = new();
     private static readonly Regex LeadingNumber = new(
         @"^\s*([+-]?(?:\d{1,3}(?:,\d{3})*|\d+)(?:\.\d+)?)\b",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -42,11 +43,22 @@ internal static class ReportGridMultiSort
     {
         if (States.ContainsKey(grid)) return;
         States[grid] = [];
+        TypedValueSelectors[grid] = new(StringComparer.Ordinal);
         foreach (DataGridViewColumn column in grid.Columns)
             ConfigureColumn(column);
 
         grid.ColumnAdded += (_, e) => ConfigureColumn(e.Column);
         grid.ColumnHeaderMouseClick += OnColumnHeaderMouseClick;
+    }
+
+
+    public static void SetTypedSortValue(
+        DataGridView grid,
+        string columnName,
+        Func<DataGridViewRow, object?> selector)
+    {
+        Attach(grid);
+        TypedValueSelectors[grid][columnName] = selector;
     }
 
     public static void Reapply(DataGridView grid)
@@ -112,18 +124,28 @@ internal static class ReportGridMultiSort
             .Where(row => !row.IsNewRow)
             .Select((row, index) => (row, index))
             .ToDictionary(x => x.row, x => x.index);
-        grid.Sort(new GridComparer(state.ToArray(), originalOrder));
+        var typedSelectors = TypedValueSelectors.TryGetValue(grid, out var selectors)
+            ? selectors
+            : new Dictionary<string, Func<DataGridViewRow, object?>>(StringComparer.Ordinal);
+        grid.Sort(new GridComparer(state.ToArray(), originalOrder, typedSelectors));
     }
 
-    private sealed class GridComparer(IReadOnlyList<SortCriterion> criteria, IReadOnlyDictionary<DataGridViewRow, int> originalOrder) : IComparer
+    private sealed class GridComparer(
+        IReadOnlyList<SortCriterion> criteria,
+        IReadOnlyDictionary<DataGridViewRow, int> originalOrder,
+        IReadOnlyDictionary<string, Func<DataGridViewRow, object?>> typedSelectors) : IComparer
     {
         public int Compare(object? x, object? y)
         {
             if (x is not DataGridViewRow left || y is not DataGridViewRow right) return 0;
             foreach (var criterion in criteria)
             {
-                var a = left.Cells[criterion.ColumnName].Value;
-                var b = right.Cells[criterion.ColumnName].Value;
+                var a = typedSelectors.TryGetValue(criterion.ColumnName, out var selector)
+                    ? selector(left)
+                    : left.Cells[criterion.ColumnName].Value;
+                var b = typedSelectors.TryGetValue(criterion.ColumnName, out selector)
+                    ? selector(right)
+                    : right.Cells[criterion.ColumnName].Value;
                 var result = CompareValues(a, b);
                 if (result != 0) return criterion.Direction == SortOrder.Descending ? -result : result;
             }
@@ -191,7 +213,15 @@ internal static class ReportGridMultiSort
                 NumberStyles.Number | NumberStyles.AllowLeadingSign,
                 CultureInfo.InvariantCulture,
                 out number))
+        {
+            // Formatted container positions display credits as an absolute
+            // magnitude plus the word CREDIT. Their business value is signed:
+            // CREDIT is negative, OUT is positive. Keep this generic fallback
+            // for report grids that expose formatted position text.
+            if (text.Contains("CREDIT", StringComparison.OrdinalIgnoreCase))
+                number = -Math.Abs(number);
             return true;
+        }
 
         number = default;
         return false;

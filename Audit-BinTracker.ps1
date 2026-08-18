@@ -162,7 +162,12 @@ if ($multiSortText -notmatch 'Shift\+click to add another column' -or
     $multiSortText -notmatch 'TryDecimal' -or
     $multiSortText -notmatch 'LeadingNumber' -or
     $multiSortText -notmatch 'TryDate' -or
+    $multiSortText -notmatch 'SetTypedSortValue' -or
+    $multiSortText -notmatch 'Contains\("CREDIT"' -or
     $multiSortText -notmatch 'public static void Reapply' -or
+    $outstandingText -notmatch 'SetTypedSortValue\(' -or
+    $outstandingText -notmatch '"Position"' -or
+    $outstandingText -notmatch 'OutstandingReportRow\)\?\.Balance' -or
     $outstandingText -match 'OutstandingGridComparer' -or
     $outstandingText -match 'Grid_ColumnHeaderMouseClick' -or
     $outstandingText -notmatch 'ReportGridMultiSort\.Reapply\(grid\)' -or

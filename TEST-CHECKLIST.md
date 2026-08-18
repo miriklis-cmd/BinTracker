@@ -1,17 +1,17 @@
 # BinTracker Active Test Checklist
 
-Current baseline: **v0.4.0-alpha.24.2.10**
+Current baseline: **v0.4.0-alpha.24.2.11**
 
 Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
 
 ## Release / audit / packaging gate
 
 - [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.24.2.10 and the actually resolved installed SDK.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.24.2.11 and the actually resolved installed SDK.
 - [ ] Restore succeeds; full solution builds with zero warnings.
 - [ ] All unit tests pass; all integration tests pass.
 - [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
-- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.4.0-alpha.24.2.10`.
+- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.4.0-alpha.24.2.11`.
 - [ ] No unexpected `global.json` is packaged.
 
 ## Authentication / users / shell
@@ -119,6 +119,7 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 
 - [ ] Balance selector displays `Outstanding only`, `Credits only` and `All non-zero` without clipping.
 - [ ] Click **Type** to sort by customer type, then Shift+click **Code**; Account/Cash-COD grouping remains primary and Code is alphabetical within each group.
+- [ ] Outstanding Containers: Position ascending treats CREDIT as negative and OUT as positive; descending reverses that signed order.
 - [ ] Shift+click an existing sort column toggles its direction without discarding the other sort levels.
 - [ ] A plain click on a column returns to a single-column sort.
 - [ ] Generated PDF/CSV follows the current multi-column grid order.

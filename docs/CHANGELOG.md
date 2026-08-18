@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0-alpha.24.2.11
+
+- Fixed report Position sorting so CREDIT values use their true negative business balance and OUT values use their positive balance.
+- Added typed sort-value selectors to the shared report multi-sort engine.
+- Outstanding Containers now sorts Position directly from `OutstandingReportRow.Balance` and Last movement from its typed date.
+- Added a defensive generic CREDIT-as-negative numeric fallback and strengthened BT-RPT-016 audit coverage.
+
 ## 0.4.0-alpha.24.2.10
 
 - Fixed shared report multi-column sorting to compare numeric quantities/positions numerically instead of lexically.

@@ -465,6 +465,19 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         grid.Columns.Add(Column("Position", 120, name: "Position"));
         grid.Columns.Add(Column("Last movement", 130, name: "LastMovement"));
         grid.Columns.Add(Column("Status", 95, name: "Status"));
+
+        // Position is rendered as e.g. "5 OUT" / "5 CREDIT", but sorting must
+        // use the signed business balance. Credits are negative. Using the
+        // report-row model also avoids reverse-engineering display text.
+        ReportGridMultiSort.SetTypedSortValue(
+            grid,
+            "Position",
+            row => (row.Tag as OutstandingReportRow)?.Balance);
+
+        ReportGridMultiSort.SetTypedSortValue(
+            grid,
+            "LastMovement",
+            row => (row.Tag as OutstandingReportRow)?.LastMovementDate);
     }
 
     private async Task InitialiseAsync()
