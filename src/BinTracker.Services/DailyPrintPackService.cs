@@ -29,7 +29,7 @@ internal sealed class DailyPrintPackService(
         var outstandingTask = outstandingReports.QueryAsync(
             new OutstandingReportQuery(
                 reportDate,
-                IncludeCredits: false,
+                BalanceFilter: OutstandingBalanceFilter.OutstandingOnly,
                 IncludeInactiveCustomers: false),
             cancellationToken);
 

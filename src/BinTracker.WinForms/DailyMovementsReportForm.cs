@@ -308,7 +308,7 @@ actions.Controls.Add(ActionButton(
             BackColor = Color.White,
             Padding = new Padding(10)
         };
-        gridCard.Controls.Add(grid);
+        gridCard.Controls.Add(ReportGridMultiSort.Wrap(grid));
         root.Controls.Add(gridCard, 0, 3);
 
         var close = new Button
@@ -434,6 +434,7 @@ actions.Controls.Add(ActionButton(
             }
 
             ResizeContentColumns();
+            ReportGridMultiSort.Reapply(grid);
 
             var totals = result.ContainerTotals.Select(x =>
                 $"{x.ContainerType}: {x.OutQuantity:N0} OUT / {x.InQuantity:N0} IN");

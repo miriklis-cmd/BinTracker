@@ -27,11 +27,10 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         DropDownStyle = ComboBoxStyle.DropDownList
     };
 
-    private readonly CheckBox includeCredits = new()
+    private readonly ComboBox balanceFilter = new()
     {
-        Text = "Include credits",
-        AutoSize = true,
-        Margin = new Padding(14, 9, 0, 0)
+        Width = 215,
+        DropDownStyle = ComboBoxStyle.DropDownList
     };
 
     private readonly CheckBox includeInactive = new()
@@ -112,7 +111,7 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
                 await LoadReportAsync();
         };
 
-        includeCredits.CheckedChanged += async (_, _) =>
+        balanceFilter.SelectedIndexChanged += async (_, _) =>
         {
             if (autoRefreshReady)
                 await LoadReportAsync();
@@ -192,7 +191,7 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
             Dock = DockStyle.Top,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            MinimumSize = new Size(0, 118),
+            MinimumSize = new Size(0, 168),
             BackColor = Color.White,
             Padding = new Padding(16, 12, 16, 12),
             Margin = new Padding(0, 0, 0, 10)
@@ -228,15 +227,9 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         filters.Controls.Add(customerSearch);
         filters.Controls.Add(ControlLabel("Container", 14));
         filters.Controls.Add(containerFilter);
-        filters.Controls.Add(includeCredits);
+        filters.Controls.Add(ControlLabel("Balance", 14));
+        filters.Controls.Add(balanceFilter);
         filters.Controls.Add(includeInactive);
-        filters.Controls.Add(new Label
-        {
-            Text = "Customer: press Enter to search",
-            AutoSize = true,
-            ForeColor = Color.DimGray,
-            Margin = new Padding(14, 9, 0, 0)
-        });
 
         var actions = new FlowLayoutPanel
         {
@@ -296,8 +289,22 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         actions.Controls.Add(pdfOpen);
         actions.Controls.Add(export);
 
+        var customerHint = new Label
+        {
+            Text = "Customer: press Enter to search",
+            AutoSize = true,
+            ForeColor = Color.DimGray,
+            Margin = new Padding(0, 2, 0, 4)
+        };
+
+        controlRows.RowCount = 3;
+        controlRows.RowStyles.Clear();
+        controlRows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        controlRows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        controlRows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         controlRows.Controls.Add(filters, 0, 0);
-        controlRows.Controls.Add(actions, 0, 1);
+        controlRows.Controls.Add(customerHint, 0, 1);
+        controlRows.Controls.Add(actions, 0, 2);
 
         controlsCard.Controls.Add(controlRows);
         root.Controls.Add(controlsCard, 0, 1);
@@ -322,7 +329,7 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
             Padding = new Padding(10),
             Margin = Padding.Empty
         };
-        gridCard.Controls.Add(grid);
+        gridCard.Controls.Add(ReportGridMultiSort.Wrap(grid));
         root.Controls.Add(gridCard, 0, 3);
 
         var close = new Button
@@ -446,7 +453,6 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         grid.AutoSizeRowsMode =
             DataGridViewAutoSizeRowsMode.None;
         grid.ScrollBars = ScrollBars.Both;
-        grid.SortCompare += Grid_SortCompare;
 
         grid.Columns.Add(Column("Code", 115, name: "Code"));
         grid.Columns.Add(Column(
@@ -490,6 +496,17 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
             containerFilter.SelectedIndex = 0;
         }
 
+        if (balanceFilter.Items.Count == 0)
+        {
+            balanceFilter.Items.Add(new BalanceChoice(
+                OutstandingBalanceFilter.OutstandingOnly, "Outstanding only"));
+            balanceFilter.Items.Add(new BalanceChoice(
+                OutstandingBalanceFilter.CreditsOnly, "Credits only"));
+            balanceFilter.Items.Add(new BalanceChoice(
+                OutstandingBalanceFilter.AllNonZero, "All non-zero"));
+            balanceFilter.SelectedIndex = 0;
+        }
+
         autoRefreshReady = true;
         await LoadReportAsync();
     }
@@ -504,11 +521,14 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
             var selected =
                 containerFilter.SelectedItem as ContainerChoice;
 
+            var selectedBalance =
+                balanceFilter.SelectedItem as BalanceChoice;
+
             var query = new OutstandingReportQuery(
                 DateOnly.FromDateTime(reportDate.Value.Date),
                 customerSearch.Text,
                 selected?.Id,
-                includeCredits.Checked,
+                selectedBalance?.Filter ?? OutstandingBalanceFilter.OutstandingOnly,
                 includeInactive.Checked);
 
             var result = await outstanding.QueryAsync(query);
@@ -531,39 +551,40 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
                     row.IsActive ? "Active" : "Inactive");
 
                 grid.Rows[rowIndex].Tag = row;
+                grid.Rows[rowIndex].HeaderCell.Tag = rowIndex;
             }
 
             ResizeContentColumns();
+            ReportGridMultiSort.Reapply(grid);
 
             var totals = result.ContainerTotals
-                .Select(x =>
+                .Select(x => result.BalanceFilter switch
                 {
-                    var text =
-                        $"{x.ContainerType}: " +
-                        $"{x.OutstandingQuantity:N0} OUT";
-
-                    if (includeCredits.Checked &&
-                        x.CreditQuantity > 0)
-                    {
-                        text +=
-                            $" / {x.CreditQuantity:N0} CREDIT";
-                    }
-
-                    return text;
+                    OutstandingBalanceFilter.CreditsOnly =>
+                        $"{x.ContainerType}: {x.CreditQuantity:N0} CREDIT",
+                    OutstandingBalanceFilter.AllNonZero =>
+                        $"{x.ContainerType}: {x.OutstandingQuantity:N0} OUT / {x.CreditQuantity:N0} CREDIT",
+                    _ => $"{x.ContainerType}: {x.OutstandingQuantity:N0} OUT"
                 })
                 .ToList();
 
+            var positionSummary = result.BalanceFilter switch
+            {
+                OutstandingBalanceFilter.CreditsOnly =>
+                    $"{result.CreditPositionCount:N0} credit position(s)",
+                OutstandingBalanceFilter.AllNonZero =>
+                    $"{result.OutstandingPositionCount:N0} outstanding position(s) • {result.CreditPositionCount:N0} credit position(s)",
+                _ => $"{result.OutstandingPositionCount:N0} outstanding position(s)"
+            };
+
             summary.Text =
-                $"As at {result.AsOfDate:dd/MM/yyyy} — " +
-                $"{result.OutstandingPositionCount:N0} outstanding position(s)" +
-                (includeCredits.Checked
-                    ? $" • {result.CreditPositionCount:N0} credit position(s)"
-                    : string.Empty) +
+                $"As at {result.AsOfDate:dd/MM/yyyy} — {positionSummary}" +
                 (totals.Count > 0
-                    ? Environment.NewLine +
-                      string.Join("   •   ", totals)
+                    ? Environment.NewLine + string.Join("   •   ", totals)
                     : Environment.NewLine +
-                      "No matching outstanding positions.");
+                      (result.BalanceFilter == OutstandingBalanceFilter.CreditsOnly
+                          ? "No matching credit positions."
+                          : "No matching outstanding positions."));
         }
         catch (Exception ex)
         {
@@ -579,38 +600,6 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
             Enabled = true;
             UseWaitCursor = false;
         }
-    }
-
-    private void Grid_SortCompare(
-        object? sender,
-        DataGridViewSortCompareEventArgs e)
-    {
-        if (grid.Columns[e.Column.Index].Name != "Position")
-        {
-            return;
-        }
-
-        var left = grid.Rows[e.RowIndex1].Tag as OutstandingReportRow;
-        var right = grid.Rows[e.RowIndex2].Tag as OutstandingReportRow;
-
-        if (left is null || right is null)
-        {
-            return;
-        }
-
-        // Position is a numeric balance, not display text. Without this,
-        // DataGridView compares "9 OUT", "72 OUT", etc. lexicographically.
-        e.SortResult = left.Balance.CompareTo(right.Balance);
-
-        if (e.SortResult == 0)
-        {
-            e.SortResult = string.Compare(
-                left.CustomerCode,
-                right.CustomerCode,
-                StringComparison.OrdinalIgnoreCase);
-        }
-
-        e.Handled = true;
     }
 
     private OutstandingReportResult BuildDisplayedResultFromCurrentGrid(
@@ -629,7 +618,8 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         return new OutstandingReportResult(
             result.AsOfDate,
             displayedRows,
-            result.ContainerTotals);
+            result.ContainerTotals,
+            result.BalanceFilter);
     }
 
     private async Task GeneratePdfAsync(bool openAfter)
@@ -651,7 +641,9 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         {
             Title = "Generate Outstanding Containers PDF",
             Filter = "PDF file (*.pdf)|*.pdf",
-            FileName = $"BinTracker_Outstanding_{result.AsOfDate:yyyyMMdd}.pdf",
+            FileName = result.BalanceFilter == OutstandingBalanceFilter.CreditsOnly
+                ? $"BinTracker_Credits_{result.AsOfDate:yyyyMMdd}.pdf"
+                : $"BinTracker_Outstanding_{result.AsOfDate:yyyyMMdd}.pdf",
             AddExtension = true,
             DefaultExt = "pdf"
         };
@@ -719,8 +711,9 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         {
             Title = "Export Outstanding Containers",
             Filter = "CSV file (*.csv)|*.csv",
-            FileName =
-                $"BinTracker_Outstanding_{exportResult.AsOfDate:yyyyMMdd}.csv",
+            FileName = exportResult.BalanceFilter == OutstandingBalanceFilter.CreditsOnly
+                ? $"BinTracker_Credits_{exportResult.AsOfDate:yyyyMMdd}.csv"
+                : $"BinTracker_Outstanding_{exportResult.AsOfDate:yyyyMMdd}.csv",
             AddExtension = true,
             DefaultExt = "csv"
         };
@@ -771,7 +764,7 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
                 AsOfDate = exportResult.AsOfDate,
                 CustomerSearch = customerSearch.Text.Trim(),
                 Container = containerFilter.Text,
-                IncludeCredits = includeCredits.Checked,
+                BalanceFilter = exportResult.BalanceFilter.ToString(),
                 IncludeInactive = includeInactive.Checked
             });
     }
@@ -799,7 +792,7 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
             Width = width,
             AutoSizeMode = autoSize,
             MinimumWidth = Math.Min(width, 90),
-            SortMode = DataGridViewColumnSortMode.Automatic
+            SortMode = DataGridViewColumnSortMode.Programmatic
         };
 
     private static string Csv(string value)
@@ -812,6 +805,11 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
                value.Contains('\n')
             ? $"\"{escaped}\""
             : escaped;
+    }
+
+    private sealed record BalanceChoice(OutstandingBalanceFilter Filter, string Name)
+    {
+        public override string ToString() => Name;
     }
 
     private sealed record ContainerChoice(

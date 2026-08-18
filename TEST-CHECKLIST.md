@@ -1,17 +1,17 @@
 # BinTracker Active Test Checklist
 
-Current baseline: **v0.4.0-alpha.24.2.6**
+Current baseline: **v0.4.0-alpha.24.2.10**
 
 Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
 
 ## Release / audit / packaging gate
 
 - [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.24.2.6 and the actually resolved installed SDK.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.24.2.10 and the actually resolved installed SDK.
 - [ ] Restore succeeds; full solution builds with zero warnings.
 - [ ] All unit tests pass; all integration tests pass.
 - [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
-- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.4.0-alpha.24.2.6`.
+- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.4.0-alpha.24.2.10`.
 - [ ] No unexpected `global.json` is packaged.
 
 ## Authentication / users / shell
@@ -115,14 +115,23 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 - [ ] Generate PDF saves to chosen location; Generate & Open opens without requiring a chosen save path.
 - [ ] Statement opening/movement/closing balances reconcile by container and opened PDF prints normally.
 
+## Outstanding Containers multi-sort trial
+
+- [ ] Balance selector displays `Outstanding only`, `Credits only` and `All non-zero` without clipping.
+- [ ] Click **Type** to sort by customer type, then Shift+click **Code**; Account/Cash-COD grouping remains primary and Code is alphabetical within each group.
+- [ ] Shift+click an existing sort column toggles its direction without discarding the other sort levels.
+- [ ] A plain click on a column returns to a single-column sort.
+- [ ] Generated PDF/CSV follows the current multi-column grid order.
+
 ## Monthly Summary
 
-- [ ] Month/year picker shows full year and cannot select future month.
-- [ ] This Month / Last Month select correct calendar month.
-- [ ] Customer Enter search; Container/Source live filters; adjustment opt-in work.
-- [ ] OUT/IN/Net totals and customer/container rows are correct and sort numerically.
-- [ ] Current month states activity through today.
-- [ ] PDF/Generate & Open/CSV preserve grid order and audit correctly.
+- [x] Month/year picker shows full year and cannot select future month.
+- [x] This Month / Last Month select correct calendar month.
+- [x] Customer Enter search; Container/Source live filters; adjustment opt-in work.
+- [x] OUT/IN/Net totals and customer/container rows are correct and sort numerically.
+- [x] Current month states activity through today.
+- [x] PDF/Generate & Open/CSV preserve grid order and audit correctly.
+- [x] User acceptance/sign-off recorded during v0.4.0-alpha.24.2.7 review.
 
 ## Daily Print Pack
 
@@ -164,6 +173,7 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 - [ ] Explore Reports is 3×2 at normal desktop width.
 - [ ] All six Explore report icons match the approved mock-up.
 - [ ] Outstanding Containers opens.
+- [ ] Outstanding Containers Balance filter defaults to Outstanding only; Credits only shows only negative/credit positions; All non-zero shows both, and PDF/CSV match the selected mode.
 - [ ] Daily Movements opens.
 - [ ] Weekly Movements opens.
 - [ ] Movement History opens.
@@ -199,3 +209,11 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 - [ ] Continue the alpha.24.2 Reports visual smoke test after build/tests pass.
 
 - [ ] Reports landing page has no bottom PDF/CSV/date information bar and all Explore report descriptions/Open captions are fully visible at the affected display scaling.
+
+### Report multi-column sorting
+- [ ] Each applicable report grid shows the sort hint.
+- [ ] Click a column for primary sort; Shift+click a second column and confirm grouping is preserved with the second sort inside each group.
+- [ ] Numeric report columns sort numerically (for example 2, 3, 21, 26), not lexically (2, 21, 26, 3).
+- [ ] Date columns sort chronologically, including weekday-prefixed dates.
+- [ ] Active multi-column sort order is preserved after changing report filters/reloading results.
+- [ ] Outstanding Containers shows Today, Generate PDF, Generate & Open and Export CSV without clipping at normal Windows scaling.

@@ -264,7 +264,7 @@ public sealed class MonthlySummaryReportForm : BinTrackerForm
             BackColor = Color.White,
             Padding = new Padding(10)
         };
-        gridCard.Controls.Add(grid);
+        gridCard.Controls.Add(ReportGridMultiSort.Wrap(grid));
         root.Controls.Add(gridCard, 0, 3);
 
         var close = new Button
@@ -367,6 +367,7 @@ public sealed class MonthlySummaryReportForm : BinTrackerForm
             }
 
             AdjustGridWidths();
+            ReportGridMultiSort.Reapply(grid);
 
             var period =
                 current.DataThroughDate < current.MonthEnd

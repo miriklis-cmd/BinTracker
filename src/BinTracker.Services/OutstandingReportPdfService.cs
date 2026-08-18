@@ -35,7 +35,13 @@ internal sealed class OutstandingReportPdfService(
 
                 page.Header().Column(header =>
                 {
-                    header.Item().Text($"{business.ReportHeader} - Outstanding Containers")
+                    var reportTitle = result.BalanceFilter == OutstandingBalanceFilter.CreditsOnly
+                        ? "Container Credits"
+                        : result.BalanceFilter == OutstandingBalanceFilter.AllNonZero
+                            ? "Container Positions"
+                            : "Outstanding Containers";
+
+                    header.Item().Text($"{business.ReportHeader} - {reportTitle}")
                         .FontSize(17).SemiBold();
                     header.Item().PaddingTop(3)
                         .Text($"As at {result.AsOfDate:dd/MM/yyyy}")
@@ -81,7 +87,9 @@ internal sealed class OutstandingReportPdfService(
                         if (result.Rows.Count == 0)
                         {
                             table.Cell().ColumnSpan(7).Padding(6)
-                                .Text("No matching outstanding positions.").Italic();
+                                .Text(result.BalanceFilter == OutstandingBalanceFilter.CreditsOnly
+                                    ? "No matching credit positions."
+                                    : "No matching container positions.").Italic();
                         }
                         else
                         {
@@ -102,7 +110,9 @@ internal sealed class OutstandingReportPdfService(
 
                 page.Footer().AlignCenter().Text(text =>
                 {
-                    text.Span("BinTracker outstanding containers  •  Page ");
+                    text.Span(result.BalanceFilter == OutstandingBalanceFilter.CreditsOnly
+                        ? "BinTracker container credits  •  Page "
+                        : "BinTracker outstanding containers  •  Page ");
                     text.CurrentPageNumber();
                     text.Span(" of ");
                     text.TotalPages();
@@ -114,12 +124,13 @@ internal sealed class OutstandingReportPdfService(
             "OUTSTANDING_REPORT_GENERATED",
             "Report",
             result.AsOfDate.ToString("yyyy-MM-dd"),
-            $"Outstanding Containers PDF generated as at {result.AsOfDate:dd/MM/yyyy}: " +
+            $"{(result.BalanceFilter == OutstandingBalanceFilter.CreditsOnly ? "Container Credits" : "Outstanding Containers")} PDF generated as at {result.AsOfDate:dd/MM/yyyy}: " +
             $"{result.Rows.Count:N0} position row(s).",
             after: new
             {
                 AsOfDate = result.AsOfDate,
                 RowCount = result.Rows.Count,
+                BalanceFilter = result.BalanceFilter.ToString(),
                 FileName = Path.GetFileName(outputPath)
             },
             cancellationToken: cancellationToken);

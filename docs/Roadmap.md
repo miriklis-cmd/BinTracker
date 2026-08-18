@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.24.2.6**
+Current planning baseline: **v0.4.0-alpha.24.2.10**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -38,7 +38,7 @@ The remaining importer failure-detail message and deferred Review cosmetics can 
 
 This order is the authoritative pre-v1 sequence. Milestone numbers after v0.4 remain flexible and follow genuine scope.
 
-1. **Finish v0.4 Reporting** — validate Monthly Summary and Daily Print Pack, then complete the final report consistency/real-world print acceptance pass.
+1. **Finish v0.4 Reporting** — Monthly Summary is user-accepted; validate Daily Print Pack, then complete the final report consistency/real-world print acceptance pass.
 2. **Batch Entry acceptance cleanup** — verify Esc, post-entry field clearing/focus, and implement/decide crash/power-loss draft recovery before production.
 3. **Movement Correction / Reversal** — controlled, linked, audited correction of saved movements; never silently edit/delete history.
 4. **Business Information & Branding** — logo, custom header/branding text, and one reusable branding source for reports/statements/email and generated output.
@@ -326,7 +326,7 @@ The roadmap was reconciled against the project history rather than only the most
 - [ ] **Customer operations:** sort by code/name/outstanding/credit/last movement; lifetime OUT and IN totals where useful.
 - [x] **Customer Statement:** operational save/open/print workflow available from both Customers and Reports.
 - [x] **Movement History:** date-range/customer/container/source reporting implemented with PDF/CSV export and current-grid ordering.
-- [x] **Monthly Summary:** selected month plus Last Month shortcut, OUT/IN/net and customer/container breakdown implemented; acceptance remains.
+- [x] **Monthly Summary:** selected month plus Last Month shortcut, OUT/IN/net and customer/container breakdown implemented and user-accepted.
 - [x] **Daily Print Pack:** Outstanding Summary + physical Movement Detail implemented in one audited PDF; acceptance remains.
 - [ ] **Movement Correction / Reversal:** linked original/correction records, reason, actor/time, permissions and audit; no destructive edit.
 - [ ] **Business Information & Branding:** logo/custom header and reusable output branding.

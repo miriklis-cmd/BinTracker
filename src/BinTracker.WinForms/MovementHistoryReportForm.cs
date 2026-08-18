@@ -316,7 +316,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             BackColor = Color.White,
             Padding = new Padding(10)
         };
-        gridCard.Controls.Add(grid);
+        gridCard.Controls.Add(ReportGridMultiSort.Wrap(grid));
         root.Controls.Add(gridCard, 0, 3);
 
         var close = new Button
@@ -437,6 +437,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             }
 
             ResizeContentColumns();
+            ReportGridMultiSort.Reapply(grid);
 
             var totals = result.ContainerTotals.Select(x =>
                 $"{x.ContainerType}: " +

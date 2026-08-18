@@ -220,7 +220,7 @@ public sealed class CustomerStatementReportForm : BinTrackerForm
             BackColor = Color.White,
             Padding = new Padding(10)
         };
-        gridCard.Controls.Add(grid);
+        gridCard.Controls.Add(ReportGridMultiSort.Wrap(grid));
         root.Controls.Add(gridCard, 0, 3);
 
         var actions = new FlowLayoutPanel
@@ -290,6 +290,8 @@ public sealed class CustomerStatementReportForm : BinTrackerForm
 
                 grid.Rows[index].Tag = row.Id;
             }
+
+            ReportGridMultiSort.Reapply(grid);
 
             if (grid.Rows.Count > 0)
             {

@@ -5,7 +5,7 @@ Audited: 17 August 2026
 | Workstream | v1? | Roadmap status / gate |
 |---|---|---|
 | Excel Import safety/provenance | Yes | Core complete; transactional failure detail + cosmetic validation remain |
-| Reports | Yes | Current v0.4 milestone; configured Container Type filters reconciled across detailed reports; Customer Statement + Monthly Summary + Daily Print Pack implemented; final consistency/print acceptance remains |
+| Reports | Yes | Current v0.4 milestone; configured Container Type filters reconciled across detailed reports; Customer Statement implemented; Monthly Summary user-accepted; Daily Print Pack implemented awaiting real preview/print acceptance; final consistency/print acceptance remains |
 | Batch Entry acceptance/recovery | Yes | Esc, field reset/focus, crash/power-loss recovery remain |
 | Movement Correction/Reversal | Yes | Explicit milestone before branding/communications/dashboard |
 | Business Information & Branding | Yes | Textual Default Report Header exists; logo + shared report/email branding remain |

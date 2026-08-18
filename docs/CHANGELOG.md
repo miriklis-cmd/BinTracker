@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0-alpha.24.2.10
+
+- Fixed shared report multi-column sorting to compare numeric quantities/positions numerically instead of lexically.
+- Added chronological report-date sorting.
+- Removed the obsolete Outstanding Containers-specific sorting implementation.
+- Reapply active multi-column sort criteria after report refreshes.
+- Strengthened BT-RPT-016 audit coverage for type-aware shared sorting.
+
 ## 0.1.0-alpha.3
 
 - Added local login and role-based access foundation.
@@ -197,6 +205,19 @@
 - Added configurable Container Type master data and management UI.
 - Added SQLite schema migration v7 without changing existing container IDs.
 - Market Floor Sheet now uses explicit special-container metadata.
+
+## v0.4.0-alpha.24.2.10
+
+- Widened Outstanding Containers Balance selector for DPI-safe readability.
+- Added trial Shift+click multi-column sorting to Outstanding Containers, retaining sorted grid order in PDF/CSV.
+- Recorded Monthly Summary user acceptance.
+- Added permanent requirement BT-RPT-015.
+
+## v0.4.0-alpha.24.2.7
+
+- Added explicit Outstanding Containers balance modes: Outstanding only, Credits only, and All non-zero.
+- Added integration coverage for credits-only historical positions.
+- Added permanent requirement BT-RPT-014.
 
 ## v0.4.0-alpha.24.2.6
 

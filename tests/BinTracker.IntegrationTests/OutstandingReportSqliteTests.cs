@@ -160,11 +160,21 @@ public sealed class OutstandingReportSqliteTests
         var withCredits = await service.QueryAsync(
             new OutstandingReportQuery(
                 new DateOnly(2026, 8, 10),
-                IncludeCredits: true));
+                BalanceFilter: OutstandingBalanceFilter.AllNonZero));
 
         var row = Assert.Single(withCredits.Rows);
         Assert.Equal(-5, row.Balance);
         Assert.Equal("5 CREDIT", row.PositionText);
+
+        var creditsOnly = await service.QueryAsync(
+            new OutstandingReportQuery(
+                new DateOnly(2026, 8, 10),
+                BalanceFilter: OutstandingBalanceFilter.CreditsOnly));
+
+        var creditRow = Assert.Single(creditsOnly.Rows);
+        Assert.Equal(-5, creditRow.Balance);
+        Assert.Equal(0, creditsOnly.OutstandingPositionCount);
+        Assert.Equal(1, creditsOnly.CreditPositionCount);
     }
 
     [Fact]

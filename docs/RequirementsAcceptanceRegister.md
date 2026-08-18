@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.4.0-alpha.24.2.6**
+Current baseline: **v0.4.0-alpha.24.2.10**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -175,6 +175,9 @@ Provenance tags:
 | BT-RPT-011 | v1 | IMPLEMENTED-STATIC | Report container selectors use configured Container Types master data, including inactive types for historical filtering; choices must not be inferred from current outstanding balances. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-RPT-012 | v1 | IMPLEMENTED-STATIC | Reports landing page must fit the normal maximised viewport without page scrollbars at supported Windows scaling, and report action buttons must render their document/external-link icon plus full single-line caption without wrapping or clipping. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-RPT-013 | v1 | IMPLEMENTED-STATIC | Reports landing page omits the redundant bottom PDF/CSV/date information bar so available vertical space is reserved for fully visible report-card content. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-RPT-014 | v1 | IMPLEMENTED-STATIC | Outstanding Containers provides an explicit balance filter with Outstanding only (default), Credits only, and All non-zero modes; the selected mode applies consistently to on-screen results and exported PDF/CSV output. | USER-REQUEST,CODE,TEST |
+| BT-RPT-015 | v1 | IMPLEMENTED-ACCEPTED | Outstanding Containers keeps the Balance selector fully readable at supported DPI and provides trial multi-column grid sorting: click sets the primary sort and Shift+click adds/toggles secondary or later sort columns while preserving the displayed order in PDF/CSV snapshots. | USER-REQUEST,CODE,USER-ACCEPTED |
+| BT-RPT-016 | v1 | IMPLEMENTED-STATIC | All applicable report grids provide consistent type-aware multi-column sorting: click sets a primary sort, Shift+click adds/toggles later sort levels, numeric quantities/positions sort numerically rather than lexically, report dates sort chronologically, active sorts persist across report refreshes, and each grid displays an on-screen usage hint; Outstanding Containers keeps its filter/action controls fully visible at supported DPI. | USER-APPROVED,CODE |
 
 ## Market Floor / Outstanding / movements / statements / summaries
 
@@ -198,8 +201,8 @@ Provenance tags:
 | BT-STMT-001 | v1 | IMPLEMENTED-ACCEPTED | Customer Statement workflow available from both Customers and Reports using one shared implementation. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-STMT-002 | v1 | IMPLEMENTED-ACCEPTED | Statement supports Generate PDF and Generate & Open; opened PDF is printable via Windows viewer; dates cannot exceed today. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-STMT-003 | v1 | IMPLEMENTED-STATIC | Statement running balances reconcile opening, movement and closing positions by container. | CURRENT-DOC,HIST-BUILD,CODE |
-| BT-MON-001 | v1 | IMPLEMENTED-STATIC | Monthly Summary has selected month, This Month/Last Month, OUT/IN/Net and customer/container breakdown. | CHAT-SURFACED,CURRENT-DOC,CODE |
-| BT-MON-002 | v1 | IMPLEMENTED-STATIC | Monthly filters customer/container/source, optional adjustments, numeric sorting, audited PDF/CSV and activity-through-today semantics. | CURRENT-DOC,CODE |
+| BT-MON-001 | v1 | IMPLEMENTED-ACCEPTED | Monthly Summary has selected month, This Month/Last Month, OUT/IN/Net and customer/container breakdown; user acceptance completed on v0.4.0-alpha.24.2.7. | CHAT-SURFACED,CURRENT-DOC,CODE,USER-ACCEPTED |
+| BT-MON-002 | v1 | IMPLEMENTED-ACCEPTED | Monthly filters customer/container/source, optional adjustments, numeric sorting, audited PDF/CSV and activity-through-today semantics; user acceptance completed on v0.4.0-alpha.24.2.7. | CURRENT-DOC,CODE,USER-ACCEPTED |
 | BT-PACK-001 | v1 | IMPLEMENTED-STATIC | Daily Print Pack generates one selected-date PDF: Outstanding Summary first, physical Movement Detail second. | CURRENT-DOC,CODE |
 | BT-PACK-002 | v1 | IMPLEMENTED-STATIC | Daily Print Pack excludes Opening Adjustments from physical movement detail and blocks future dates. | CURRENT-DOC,CODE |
 | BT-PACK-003 | v1 | IMPLEMENTED-STATIC | Daily Print Pack supports Generate PDF / Generate & Open and writes one `DAILY_PRINT_PACK_GENERATED` audit event. | CURRENT-DOC,CODE |

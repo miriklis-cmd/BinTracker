@@ -132,6 +132,44 @@ if (-not ($reqRows.Id -contains "BT-RPT-013")) {
     Fail "Requirements register is missing mandatory requirement BT-RPT-013."
 }
 
+if (-not ($reqRows.Id -contains "BT-RPT-014")) {
+    Fail "Requirements register is missing mandatory requirement BT-RPT-014."
+}
+if (-not ($reqRows.Id -contains "BT-RPT-015")) {
+    Fail "Requirements register is missing mandatory requirement BT-RPT-015."
+}
+if (-not ($reqRows.Id -contains "BT-RPT-016")) {
+    Fail "Requirements register is missing mandatory requirement BT-RPT-016."
+}
+
+$outstandingService = Get-Content -Raw (Join-Path $root "src\BinTracker.Services\OutstandingReportService.cs")
+$outstandingForm = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\OutstandingContainersReportForm.cs")
+if ($outstandingService -notmatch "CreditsOnly" -or $outstandingService -notmatch "AllNonZero" -or $outstandingForm -notmatch '"Credits only"' -or $outstandingForm -notmatch '"All non-zero"') {
+    Fail "BT-RPT-014 source gate failed: Outstanding Containers balance modes are incomplete."
+}
+if ($outstandingForm -notmatch 'Width\s*=\s*215' -or $outstandingForm -notmatch 'ReportGridMultiSort\.Wrap\(grid\)') {
+    Fail "BT-RPT-015 source gate failed: Outstanding Containers DPI-safe balance selector or approved multi-column sort is incomplete."
+}
+
+
+# Shared report multi-column sorting/hint + Outstanding control visibility guard (BT-RPT-016).
+$multiSortPath = Join-Path $root "src\BinTracker.WinForms\ReportGridMultiSort.cs"
+$outstandingPath = Join-Path $root "src\BinTracker.WinForms\OutstandingContainersReportForm.cs"
+$multiSortText = Get-Content -LiteralPath $multiSortPath -Raw
+$outstandingText = Get-Content -LiteralPath $outstandingPath -Raw
+if ($multiSortText -notmatch 'Shift\+click to add another column' -or
+    $multiSortText -notmatch 'ColumnHeaderMouseClick' -or
+    $multiSortText -notmatch 'TryDecimal' -or
+    $multiSortText -notmatch 'LeadingNumber' -or
+    $multiSortText -notmatch 'TryDate' -or
+    $multiSortText -notmatch 'public static void Reapply' -or
+    $outstandingText -match 'OutstandingGridComparer' -or
+    $outstandingText -match 'Grid_ColumnHeaderMouseClick' -or
+    $outstandingText -notmatch 'ReportGridMultiSort\.Reapply\(grid\)' -or
+    $outstandingText -notmatch 'controlRows.Controls.Add\(actions, 0, 2\)') {
+    Fail "BT-RPT-016 source gate failed: type-aware shared report multi-sort/hint, refresh persistence, or Outstanding action-row visibility is incomplete."
+}
+
 # Reports landing-page viewport/icon guard (BT-RPT-012).
 $reportsView = Get-Content -Raw -LiteralPath 'src/BinTracker.WinForms/ReportsView.cs'
 if ($reportsView -notmatch 'AutoScroll\s*=\s*false') { Fail 'ReportsView itself must remain non-scrollable at the normal landing-page viewport.' }

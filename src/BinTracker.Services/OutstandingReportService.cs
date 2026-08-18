@@ -4,11 +4,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BinTracker.Services;
 
+public enum OutstandingBalanceFilter
+{
+    OutstandingOnly,
+    CreditsOnly,
+    AllNonZero
+}
+
 public sealed record OutstandingReportQuery(
     DateOnly AsOfDate,
     string? CustomerSearch = null,
     int? ContainerTypeId = null,
-    bool IncludeCredits = false,
+    OutstandingBalanceFilter BalanceFilter = OutstandingBalanceFilter.OutstandingOnly,
     bool IncludeInactiveCustomers = true);
 
 public sealed record OutstandingReportRow(
@@ -42,7 +49,8 @@ public sealed record OutstandingContainerTotal(
 public sealed record OutstandingReportResult(
     DateOnly AsOfDate,
     IReadOnlyList<OutstandingReportRow> Rows,
-    IReadOnlyList<OutstandingContainerTotal> ContainerTotals)
+    IReadOnlyList<OutstandingContainerTotal> ContainerTotals,
+    OutstandingBalanceFilter BalanceFilter = OutstandingBalanceFilter.OutstandingOnly)
 {
     public int OutstandingPositionCount =>
         Rows.Count(x => x.Balance > 0);
@@ -104,7 +112,8 @@ internal sealed class OutstandingReportService(
             return new OutstandingReportResult(
                 query.AsOfDate,
                 [],
-                []);
+                [],
+                query.BalanceFilter);
         }
 
         var customers = await db.Customers
@@ -147,15 +156,16 @@ internal sealed class OutstandingReportService(
                 continue;
             }
 
-            if (query.IncludeCredits)
+            var includePosition = query.BalanceFilter switch
             {
-                if (total.Balance == 0)
-                    continue;
-            }
-            else if (total.Balance <= 0)
-            {
+                OutstandingBalanceFilter.OutstandingOnly => total.Balance > 0,
+                OutstandingBalanceFilter.CreditsOnly => total.Balance < 0,
+                OutstandingBalanceFilter.AllNonZero => total.Balance != 0,
+                _ => false
+            };
+
+            if (!includePosition)
                 continue;
-            }
 
             rows.Add(new OutstandingReportRow(
                 customer.Id,
@@ -200,7 +210,8 @@ internal sealed class OutstandingReportService(
         return new OutstandingReportResult(
             query.AsOfDate,
             rows,
-            containerTotals);
+            containerTotals,
+            query.BalanceFilter);
     }
 
     private static bool ContainsIgnoreCase(

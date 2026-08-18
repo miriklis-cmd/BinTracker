@@ -1,5 +1,18 @@
 # BinTracker Current Release Notes
 
+## v0.4.0-alpha.24.2.10
+
+- Corrected shared report multi-column sorting so numeric values such as `2 OUT`, `3 OUT`, `21 OUT` and `26 OUT` sort by their numeric value rather than their displayed text.
+- Added chronological comparison for report date cells, including weekday-prefixed report dates.
+- Removed the obsolete Outstanding Containers-specific sorter so the report now uses the same shared sorting engine as the other report grids.
+- Active multi-column sort criteria are reapplied after report data refreshes.
+- Preserved the approved on-screen Shift+click sorting hint and Outstanding Containers action/filter layout.
+- BT-RPT-016 now explicitly gates type-aware numeric/date sorting.
+
+## v0.4.0-alpha.24.2.7
+
+- Outstanding Containers now has a Balance filter: Outstanding only (default), Credits only, or All non-zero. Credits-only results flow through the screen, PDF and CSV exports.
+
 ## v0.4.0-alpha.24.2.6
 
 ### Reports landing-page vertical-fit correction

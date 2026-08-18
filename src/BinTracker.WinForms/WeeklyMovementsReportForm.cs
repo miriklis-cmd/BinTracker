@@ -237,9 +237,9 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
         root.Controls.Add(summaryCard,0,2);
 
         var detailPage = new TabPage("Daily Detail") { Padding = new Padding(8) };
-        detailPage.Controls.Add(detailGrid);
+        detailPage.Controls.Add(ReportGridMultiSort.Wrap(detailGrid));
         var summaryPage = new TabPage("Weekly Overview") { Padding = new Padding(8) };
-        summaryPage.Controls.Add(summaryGrid);
+        summaryPage.Controls.Add(ReportGridMultiSort.Wrap(summaryGrid));
         tabs.TabPages.Add(detailPage);
         tabs.TabPages.Add(summaryPage);
         tabs.SelectedIndexChanged += (_, _) => UpdateViewOptions();
@@ -338,6 +338,9 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
                     row.NetQuantity.ToString("N0"));
                 summaryGrid.Rows[i].Tag=row;
             }
+
+            ReportGridMultiSort.Reapply(detailGrid);
+            ReportGridMultiSort.Reapply(summaryGrid);
 
             resolvedWeekLabel.Text =
                 current.DataThroughDate < current.WeekEnd
