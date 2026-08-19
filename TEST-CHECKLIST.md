@@ -1,17 +1,17 @@
 # BinTracker Active Test Checklist
 
-Current baseline: **v0.4.0-alpha.24.2.19**
+Current baseline: **v0.4.0-alpha.24.2.24**
 
 Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
 
 ## Release / audit / packaging gate
 
 - [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.24.2.19 and the actually resolved installed SDK.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.24.2.24 and the actually resolved installed SDK.
 - [ ] Restore succeeds; full solution builds with zero warnings.
 - [ ] All unit tests pass; all integration tests pass.
 - [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
-- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.4.0-alpha.24.2.19`.
+- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.4.0-alpha.24.2.24`.
 - [ ] No unexpected `global.json` is packaged.
 
 ## Authentication / users / shell
@@ -22,7 +22,7 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 - [ ] Change/reset password and role/active controls work.
 - [ ] Password fields start masked; all supported eye controls reveal/re-hide correctly.
 - [ ] Audit Trail / Settings admin actions respect roles.
-- [ ] Login, Main, breakout reports and dialogs use BinTracker icon; taskbar is branded before login. For v0.4.0-alpha.24.2.19, visually compare the newly supplied hybrid icon trial and either approve it or request reversion.
+- [ ] Login, Main, breakout reports and dialogs use BinTracker icon; taskbar is branded before login. For v0.4.0-alpha.24.2.24, visually compare the newly supplied hybrid icon trial and either approve it or request reversion.
 - [ ] Splash shows BinTracker branding/version during startup.
 - [ ] Sidebar logo + full BinTracker wordmark remain aligned/unclipped.
 
@@ -49,18 +49,23 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 ## Batch Entry
 
 - [ ] `Ctrl+Enter` saves transactionally; Tab/Shift+Tab flow works.
-- [ ] Enter from Quantity/Reference/Notes adds or updates pending line.
+- [ ] Enter from Quantity/Reference/Notes adds a new line in Add mode and updates the selected line in Edit mode; it never appends a duplicate while editing.
 - [ ] Pending rows affect Current vs With Draft preview.
-- [ ] Clicking draft line loads edit fields; update/remove/container change recalculates preview.
-- [ ] Esc exits draft-line edit mode.
+- [ ] Clicking a draft line loads edit fields; Update Line replaces that row, then clears Customer/Quantity/Reference/Notes/preview and returns to Add to Batch mode.
+- [ ] Remove clears the editor and exits edit mode; removing the final row leaves Add to Batch ready for the next new line with no ghost edit state.
+- [ ] Esc while editing cancels edit mode, clears the editor/preview, retains every draft line, and shows the retained-draft status beneath the line/container summary.
+- [ ] After Esc cancels an edit, the pending grid has no live CurrentCell/CurrentRow selection capable of asynchronously restoring `Update Line`; button remains `Add to Batch`.
 - [ ] Draft survives navigation and logout/login while application process remains running.
-- [ ] Esc while editing a pending row cancels edit mode and retains every draft line.
 - [ ] Esc with current unsaved entry data clears Customer/Quantity/Reference/Notes/customer preview only, retains the draft, and focuses Customer.
-- [ ] Esc with no edit/current entry leaves Batch Entry for Dashboard and retains the draft.
+- [ ] Esc with no edit/current entry leaves Batch Entry for Dashboard, highlights Dashboard in left navigation, and retains the draft; Batch Entry can immediately be clicked to return.
 - [ ] Add to Batch clears Customer/Quantity/Reference/Notes/customer preview, focuses Customer, carries Movement Date / Batch Type / Container Type forward, leaves no draft row selected, and does not reload the just-added row into the editor.
-- [ ] Add at least two draft lines, terminate BinTracker without saving, relaunch/login, and confirm date/direction/lines/quantities/reference/notes restore.
-- [ ] After restored draft, Save Batch removes recovery state: restart and confirm no draft returns.
-- [ ] Clear Batch also removes recovery state: restart and confirm no draft returns.
+- [ ] Add at least two draft lines, then close/terminate BinTracker without saving (normal close, Stop Debugging, crash/power loss equivalent), relaunch/login, and confirm the Unsaved Batch Recovered prompt appears with date/direction/line count/total/last-saved details.
+- [ ] Recovery prompt buttons appear left-to-right as Continue Batch, Save Batch, Discard Batch.
+- [ ] Continue Batch restores the draft without saving it.
+- [ ] Save Batch saves the recovered movements and removes recovery state: restart and confirm no draft returns.
+- [ ] Discard Batch requires confirmation and removes recovery state: restart and confirm no draft returns.
+- [ ] Clear Batch also removes recovery state: restart and confirm no draft returns. If Clear Batch is pressed while editing (including when no draft rows remain), it clears the editor/preview and returns immediately to Add to Batch mode with no stale Update Line state.
+- [ ] Cancelling edit with Esc cannot be undone by a late asynchronous customer/row load: after Esc the editor stays cleared and Add to Batch remains active.
 
 ## Excel import / re-import
 

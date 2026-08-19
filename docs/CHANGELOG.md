@@ -1,3 +1,24 @@
+## v0.4.0-alpha.24.2.24
+
+- Fixed Batch Entry Esc/reset edit-state resurrection at the DataGridView source: reset now suppresses SelectionChanged, clears selection and clears CurrentCell so CurrentRow cannot immediately reload Update Line.
+- Added the dedicated Security, Data Integrity & Code Quality Hardening roadmap workstream immediately after Movement Correction/Reversal and before Branding/Communications.
+- Added `docs/SecurityHardeningRegister.md` with permanent BT-SH-001..BT-SH-050 tracking for all external audit findings supplied on 19 August 2026.
+- Added BT-SEC-008..011 governance requirements and a per-build hard gate protecting finding completeness/dispositions and roadmap ordering; v1.0 is mechanically blocked while CONFIRMED-V1/REVIEW-V1 findings remain.
+
+## 0.4.0-alpha.24.2.24
+
+- Fixed the remaining Batch Entry async edit-state race: a late customer lookup can no longer restore Update Line after Esc/Clear has cancelled edit mode.
+- Clear Batch now fully resets Customer/Quantity/Reference/Notes/preview and Add to Batch state even when no draft rows remain.
+- Normalised recovered-batch action button layout so Continue Batch / Save Batch / Discard Batch use a common fixed row, vertical alignment and text centring.
+- Retained the current larger application-icon trial unchanged.
+
+## 0.4.0-alpha.24.2.20
+
+- Fixed Batch Entry Enter/update/remove/Esc editor-state regressions found during operator smoke testing.
+- Synchronised programmatic Dashboard navigation with the selected left-nav item.
+- Moved Batch Entry status text beneath the pending totals and clarified unfinished-batch recovery across normal close/restart/crash/power loss.
+- Restored the previous larger application-icon trial.
+
 ## 0.4.0-alpha.24.2.19
 
 - Fixed Batch Entry grid-rebind auto-selection that repopulated Customer/Quantity immediately after Add to Batch.

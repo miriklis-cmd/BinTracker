@@ -6,8 +6,9 @@ Audited: 17 August 2026
 |---|---|---|
 | Excel Import safety/provenance | Yes | Core complete; transactional failure detail + cosmetic validation remain |
 | Reports | Yes | Current v0.4 milestone; configured Container Type filters reconciled across detailed reports; Customer Statement implemented; Monthly Summary user-accepted; Daily Print Pack implemented awaiting real preview/print acceptance; final consistency/print acceptance remains |
-| Batch Entry acceptance/recovery | Yes | Esc, corrected field reset/focus and explicit Continue/Save/Discard crash-recovery choice are implemented; operator smoke acceptance remains |
+| Batch Entry acceptance/recovery | Yes | post-add reset and recovery choice are operator-confirmed; edit/remove/Enter/Esc-navigation cleanup is implemented and pending focused smoke acceptance |
 | Movement Correction/Reversal | Yes | Explicit milestone before branding/communications/dashboard |
+| Security, Data Integrity & Code Quality Hardening | Yes — HARD GATE | Dedicated post-correction/pre-branding workstream; 50 external audit findings permanently tracked in SecurityHardeningRegister; per-build completeness/order gate and v1.0 unresolved-finding release block |
 | Business Information & Branding | Yes | Textual Default Report Header exists; logo + shared report/email branding remain |
 | Email/SMS Customer Communications | Yes | Google Workspace + Texto direction; reminder/send/history/audit workflow |
 | Dashboard | Yes | Design discussion mandatory before coding |

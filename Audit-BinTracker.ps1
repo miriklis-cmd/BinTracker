@@ -38,7 +38,7 @@ $requiredDocuments = @(
  'docs/DevelopmentWorkflow.md','docs/DocumentationAudit.md','docs/FunctionalSpecification.md',
  'docs/ImportWizard.md','docs/LegacyContainerRules.md','docs/MasterData.md','docs/RELEASE-NOTES.md',
  'docs/ReimportSafety.md','docs/Roadmap.md','docs/RoadmapCoverageMatrix.md','docs/Testing.md',
- 'docs/Versioning.md','docs/RequirementsAcceptanceRegister.md','docs/ReconciliationReport.md'
+ 'docs/Versioning.md','docs/RequirementsAcceptanceRegister.md','docs/ReconciliationReport.md','docs/SecurityHardeningRegister.md'
 )
 foreach ($doc in $requiredDocuments) { if (-not (Test-Path -LiteralPath $doc)) { Fail "Missing required audited document: $doc" } }
 
@@ -78,7 +78,37 @@ foreach ($check in $staleChecks) {
     if ((Get-Content -Raw -LiteralPath $check.Path).Contains($check.Text)) { Fail "$($check.Path) retains $($check.Why)." }
 }
 
+# Security/Data Integrity/Code Quality hard gate.
+$securityRegisterPath = 'docs/SecurityHardeningRegister.md'
+if (-not (Test-Path -LiteralPath $securityRegisterPath)) { Fail 'Security hardening finding register is missing.' }
+$securityRegister = Get-Content -Raw -LiteralPath $securityRegisterPath
+$securityRows = [regex]::Matches($securityRegister, '(?m)^\|\s*(BT-SH-\d{3})\s*\|\s*([A-Z0-9-]+)\s*\|')
+if ($securityRows.Count -ne 50) { Fail "Security hardening register must contain exactly the original 50 audit findings; found $($securityRows.Count)." }
+$securityIds = @($securityRows | ForEach-Object { $_.Groups[1].Value })
+for ($i = 1; $i -le 50; $i++) {
+    $id = 'BT-SH-{0:D3}' -f $i
+    if ($securityIds -notcontains $id) { Fail "Security hardening register lost finding $id." }
+}
+$allowedSecurityDispositions = @('CONFIRMED-V1','REVIEW-V1','POST-V1','NOT-APPLICABLE','FIXED')
+foreach ($match in $securityRows) {
+    $disposition = $match.Groups[2].Value
+    if ($allowedSecurityDispositions -notcontains $disposition) { Fail "Invalid security finding disposition for $($match.Groups[1].Value): $disposition" }
+}
+foreach ($id in @('BT-SEC-008','BT-SEC-009','BT-SEC-010','BT-SEC-011')) {
+    if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost security hard-gate requirement: $id" }
+}
+
 $roadmap = Get-Content -Raw -LiteralPath 'docs/Roadmap.md'
+$movementIndex = $roadmap.IndexOf('**Movement Correction / Reversal**')
+$hardeningIndex = $roadmap.IndexOf('**Security, Data Integrity & Code Quality Hardening — HARD GATE**')
+$brandingIndex = $roadmap.IndexOf('**Business Information & Branding**')
+if ($movementIndex -lt 0 -or $hardeningIndex -lt 0 -or $brandingIndex -lt 0 -or -not ($movementIndex -lt $hardeningIndex -and $hardeningIndex -lt $brandingIndex)) {
+    Fail 'Roadmap hard gate failed: Security/Data Integrity/Code Quality Hardening must remain after Movement Correction/Reversal and before Branding.'
+}
+if ($version -match '^1\.0' -and $securityRegister -match '(?m)^\|\s*BT-SH-\d{3}\s*\|\s*(CONFIRMED-V1|REVIEW-V1)\s*\|') {
+    Fail 'v1.0 release blocked: unresolved v1 security hardening findings remain.'
+}
+
 $requiredRoadmapTerms = @('Movement Correction','Business Information & Branding','Email, SMS','Dashboard','WinUI 3','Daily Print Pack','PostgreSQL','Customer-list-only import mode','Import Profiles')
 foreach ($term in $requiredRoadmapTerms) { if ($roadmap -notmatch [regex]::Escape($term)) { Fail "Roadmap lost required workstream/detail: $term" } }
 
@@ -193,6 +223,7 @@ if ($multiSortText -notmatch 'var indicator = item.Direction == SortOrder.Descen
 # Batch Entry acceptance/recovery source guard (BT-BATCH-008/009/010/011).
 $batchViewText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\BatchEntryView.cs")
 $movementServicesText = Get-Content -Raw (Join-Path $root "src\BinTracker.Services\MovementServices.cs")
+if ($batchViewText -notmatch 'suppressPendingSelectionChanged = true' -or $batchViewText -notmatch 'pending\.CurrentCell = null') { Fail 'BT-BATCH-006 source gate failed: edit reset must suppress pending selection and clear CurrentCell.' }
 $batchStoreText = Get-Content -Raw (Join-Path $root "src\BinTracker.Services\FileBatchDraftStore.cs")
 $mainFormText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\MainForm.cs")
 if ($batchViewText -notmatch 'HasCurrentLineInput' -or
@@ -202,7 +233,13 @@ if ($batchViewText -notmatch 'HasCurrentLineInput' -or
     $batchViewText -notmatch 'appState\.ClearDraft\(\)' -or
     $batchViewText -notmatch 'clearContainer:\s*false' -or
     $batchViewText -notmatch 'suppressPendingSelectionChanged' -or
+    $batchViewText -notmatch 'editLoadGeneration' -or
+    $batchViewText -notmatch 'generation != editLoadGeneration' -or
     $batchViewText -notmatch 'pending\.CurrentCell = null' -or
+    $batchViewText -notmatch 'ClearCurrentLineEntry\(clearContainer:\s*false\)' -or
+    $batchViewText -notmatch 'SubmitCurrentLineAsync' -or
+    $batchViewText -notmatch 'editingLine is null \? AddLineAsync\(\) : UpdateLineAsync\(\)' -or
+    $batchViewText -notmatch 'bar\.Controls\.Add\(status, 0, 1\)' -or
     $movementServicesText -notmatch 'IBatchDraftStore' -or
     $movementServicesText -notmatch 'PersistDraft' -or
     $movementServicesText -notmatch 'RecoveryPromptPending' -or
@@ -217,7 +254,8 @@ if ($batchViewText -notmatch 'HasCurrentLineInput' -or
     $mainFormText -notmatch 'SaveRecoveredBatchAsync' -or
     $mainFormText -notmatch 'RecoveredBatchAction\.Continue' -or
     $mainFormText -notmatch 'RecoveredBatchAction\.Save' -or
-    $mainFormText -notmatch 'RecoveredBatchAction\.Discard') {
+    $mainFormText -notmatch 'RecoveredBatchAction\.Discard' -or
+    $mainFormText -notmatch 'SelectNavigationForPage\(page\)') {
     Fail "Batch Entry source gate failed: BT-BATCH-008/009/010/011 Esc/reset/recovery implementation is incomplete."
 }
 $recoveredDialogText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\RecoveredBatchDialog.cs")
@@ -226,8 +264,11 @@ if ($recoveredDialogText -notmatch 'Continue Batch' -or
     $recoveredDialogText -notmatch 'Discard Batch' -or
     $recoveredDialogText -notmatch 'Pending lines' -or
     $recoveredDialogText -notmatch 'Total containers' -or
-    $recoveredDialogText -notmatch 'Last saved') {
-    Fail "BT-BATCH-011 source gate failed: recovered-batch decision dialog is incomplete."
+    $recoveredDialogText -notmatch 'Last saved' -or
+    $recoveredDialogText -notmatch 'TableLayoutPanel' -or
+    $recoveredDialogText -notmatch 'TextAlign = ContentAlignment\.MiddleCenter' -or
+    $recoveredDialogText -notmatch 'UseCompatibleTextRendering = false') {
+    Fail "BT-BATCH-011 source gate failed: recovered-batch decision dialog/alignment is incomplete."
 }
 
 # Reports landing-page viewport/icon guard (BT-RPT-012).

@@ -1,3 +1,19 @@
+## v0.4.0-alpha.24.2.24
+
+- Fixed the final Batch Entry edit-mode persistence defect found in operator smoke testing: asynchronous row/customer resolution is generation-guarded, so Esc or Clear cannot be followed by a stale continuation that puts the UI back into Update Line mode.
+- Clear Batch is now also a complete editor reset when the draft is already empty or the user is mid-edit.
+- Recovery-dialog buttons are laid out in one fixed-height row with consistent centred text while preserving Continue Batch / Save Batch / Discard Batch order.
+- Current larger icon trial is unchanged pending final branding approval.
+
+## v0.4.0-alpha.24.2.20
+
+- Fixed Batch Entry edit-state regressions found in operator smoke testing: Esc while editing now clears the editor, Enter in Edit mode updates rather than duplicates, Update/Remove clear the editor and return to Add to Batch mode, and removing the final row cannot leave a ghost Update state.
+- Esc-to-Dashboard now synchronises the left-navigation highlight, so Batch Entry can be clicked immediately to return to the retained draft.
+- Moved Batch Entry status feedback beneath the pending line/container summary.
+- Unfinished-batch recovery is explicitly documented for accidental normal close as well as restart/crash/power loss; recovery actions are ordered Continue Batch / Save Batch / Discard Batch.
+- Reverted the application icon to the previous larger visual trial after the newest Win32 trial appeared smaller on the taskbar.
+- Operator smoke acceptance remains required for the editor-state fixes.
+
 ## v0.4.0-alpha.24.2.19
 
 - Fixed the Batch Entry post-add reset regression: rebinding the pending grid no longer auto-selects the first draft row and reloads its Customer/Quantity into the editor. Customer, Quantity, Reference, Notes and customer preview now remain cleared after Add to Batch while Date / Batch Type / Container Type carry forward.

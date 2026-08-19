@@ -122,6 +122,7 @@ public sealed class BatchEntryView : UserControl
     private DraftMovementLine? editingLine;
     private Button? addOrUpdateButton;
     private bool suppressPendingSelectionChanged;
+    private int editLoadGeneration;
 
     public BatchEntryView(
         IMovementService movements,
@@ -159,7 +160,8 @@ public sealed class BatchEntryView : UserControl
         {
             if (editingLine is not null)
             {
-                CancelEdit();
+                CancelEdit(clearCustomer: true);
+                ClearCurrentLineEntry(clearContainer: false);
                 status.Text = "Edit cancelled. Draft retained.";
                 return true;
             }
@@ -433,7 +435,7 @@ public sealed class BatchEntryView : UserControl
             if (e.KeyCode == Keys.Enter)
             {
                 e.SuppressKeyPress = true;
-                await AddLineAsync();
+                await SubmitCurrentLineAsync();
             }
         };
 
@@ -442,7 +444,7 @@ public sealed class BatchEntryView : UserControl
             if (e.KeyCode == Keys.Enter)
             {
                 e.SuppressKeyPress = true;
-                await AddLineAsync();
+                await SubmitCurrentLineAsync();
             }
         };
 
@@ -451,7 +453,7 @@ public sealed class BatchEntryView : UserControl
             if (e.KeyCode == Keys.Enter && !e.Shift)
             {
                 e.SuppressKeyPress = true;
-                await AddLineAsync();
+                await SubmitCurrentLineAsync();
             }
         };
 
@@ -466,11 +468,14 @@ public sealed class BatchEntryView : UserControl
             Dock = DockStyle.Top,
             AutoSize = true,
             ColumnCount = 2,
+            RowCount = 2,
             Margin = new Padding(0, 14, 0, 0)
         };
 
         bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        bar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        bar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         var left = new FlowLayoutPanel
         {
@@ -523,6 +528,9 @@ public sealed class BatchEntryView : UserControl
 
         bar.Controls.Add(left, 0, 0);
         bar.Controls.Add(right, 1, 0);
+        status.Margin = new Padding(8, 4, 0, 0);
+        bar.Controls.Add(status, 0, 1);
+        bar.SetColumnSpan(status, 2);
 
         return bar;
     }
@@ -535,13 +543,12 @@ public sealed class BatchEntryView : UserControl
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 4,
+            RowCount = 3,
             Padding = new Padding(20)
         };
 
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         layout.Controls.Add(new Label
@@ -563,7 +570,6 @@ public sealed class BatchEntryView : UserControl
             Margin = new Padding(0, 12, 0, 8)
         }, 0, 2);
 
-        layout.Controls.Add(status, 0, 3);
 
         panel.Controls.Add(layout);
         return panel;
@@ -694,6 +700,9 @@ public sealed class BatchEntryView : UserControl
         balances.DataSource = rows;
     }
 
+    private Task SubmitCurrentLineAsync() =>
+        editingLine is null ? AddLineAsync() : UpdateLineAsync();
+
     private async Task AddLineAsync()
     {
         validation.Text = string.Empty;
@@ -751,6 +760,7 @@ public sealed class BatchEntryView : UserControl
 
     private async Task LoadLineForEditAsync(DraftMovementLine line)
     {
+        var generation = ++editLoadGeneration;
         editingLine = line;
         customerCode.Text = line.CustomerCode;
         quantity.Value = Math.Clamp(line.Quantity, (int)quantity.Minimum, (int)quantity.Maximum);
@@ -768,6 +778,12 @@ public sealed class BatchEntryView : UserControl
         }
 
         await ResolveCustomerAsync();
+
+        // ResolveCustomerAsync is asynchronous. The user may press Esc, remove/clear
+        // the draft, or otherwise leave edit mode while that lookup is running.
+        // Never let a stale continuation resurrect Update Line mode afterwards.
+        if (generation != editLoadGeneration || editingLine != line)
+            return;
 
         if (addOrUpdateButton is not null)
             addOrUpdateButton.Text = "Update Line";
@@ -815,13 +831,15 @@ public sealed class BatchEntryView : UserControl
 
         var code = selectedCustomer.Code;
         RefreshPendingGrid();
-        RefreshPreview();
-        CancelEdit(clearCustomer: false);
+        CancelEdit(clearCustomer: true);
+        ClearCurrentLineEntry(clearContainer: false);
         status.Text = $"Draft line updated for {code}.";
     }
 
     private void CancelEdit(bool clearCustomer = true)
     {
+        // Invalidate any in-flight asynchronous row-load before resetting the UI.
+        editLoadGeneration++;
         editingLine = null;
 
         if (addOrUpdateButton is not null)
@@ -840,7 +858,19 @@ public sealed class BatchEntryView : UserControl
             selectedCustomer = null;
         }
 
-        pending.ClearSelection();
+        // DataGridView.ClearSelection() does not clear CurrentRow/CurrentCell.
+        // SelectionChanged can therefore fire during an Esc/reset and reload the
+        // same row asynchronously, putting the editor straight back into Update mode.
+        suppressPendingSelectionChanged = true;
+        try
+        {
+            pending.ClearSelection();
+            pending.CurrentCell = null;
+        }
+        finally
+        {
+            suppressPendingSelectionChanged = false;
+        }
     }
 
     private void RemoveSelected()
@@ -851,30 +881,29 @@ public sealed class BatchEntryView : UserControl
         Draft.Lines.Remove(line);
         appState.PersistDraft();
 
-        if (editingLine == line)
-            CancelEdit();
-
         RefreshPendingGrid();
-        RefreshPreview();
-        pending.ClearSelection();
+        CancelEdit(clearCustomer: true);
+        ClearCurrentLineEntry(clearContainer: false);
 
         status.Text = "Draft line removed.";
     }
 
     private void ClearBatch()
     {
-        if (!Draft.HasLines)
-            return;
-
-        if (MessageBox.Show(
+        if (Draft.HasLines && MessageBox.Show(
                 "Clear every unsaved movement from this batch?",
                 "Clear Batch",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question) != DialogResult.Yes)
             return;
 
-        appState.ClearDraft();
-        CancelEdit();
+        // Clear Batch is also the explicit escape hatch from any stale/partial edit
+        // state. Even with zero draft rows it must leave the editor ready to add.
+        if (Draft.HasLines)
+            appState.ClearDraft();
+
+        CancelEdit(clearCustomer: true);
+        ClearCurrentLineEntry(clearContainer: false);
 
         loadingDraft = true;
         movementDate.Value = Draft.MovementDate.ToDateTime(TimeOnly.MinValue);

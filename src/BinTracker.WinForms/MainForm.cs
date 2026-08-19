@@ -10,6 +10,7 @@ public sealed class MainForm : BinTrackerForm
     private readonly Label pageSubtitle = new();
     private readonly Panel content = new();
     private Control? selectedNav;
+    private readonly Dictionary<string, Panel> navByPage = new(StringComparer.OrdinalIgnoreCase);
     private CustomersView? activeCustomersView;
     private ContainerTypesForm? activeContainerTypesForm;
     private OutstandingContainersReportForm? outstandingReportForm;
@@ -388,7 +389,29 @@ public sealed class MainForm : BinTrackerForm
 
         row.Controls.Add(caption);
         row.Controls.Add(icon);
+        navByPage[text] = row;
         return row;
+    }
+
+    private void SelectNavigationForPage(string page)
+    {
+        if (!navByPage.TryGetValue(page, out var row))
+            return;
+
+        var normal = Color.FromArgb(29, 39, 54);
+        var selected = Color.FromArgb(40, 78, 128);
+
+        if (selectedNav is Panel previous && !ReferenceEquals(previous, row))
+        {
+            previous.BackColor = normal;
+            foreach (Control child in previous.Controls)
+                child.BackColor = child is PictureBox ? Color.Transparent : normal;
+        }
+
+        selectedNav = row;
+        row.BackColor = selected;
+        foreach (Control child in row.Controls)
+            child.BackColor = child is PictureBox ? Color.Transparent : selected;
     }
 
     private async void ShowDashboard()
@@ -1200,6 +1223,7 @@ private async Task<bool> ConfirmCanLeaveActiveCustomerAsync() =>
             activeContainerTypesForm = null;
         }
 
+        SelectNavigationForPage(page);
         title.Text = page;
         pageSubtitle.Text = subtitle ?? string.Empty;
         pageSubtitle.Visible = !string.IsNullOrWhiteSpace(subtitle);

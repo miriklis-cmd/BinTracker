@@ -91,8 +91,9 @@ Important security, master-data and movement changes create audit events.
 ## Batch Entry
 
 - Successful Add to Batch clears Customer, Quantity, Reference, Notes and the customer-position preview, then returns focus to Customer entry. Movement Date, Batch Type and Container Type intentionally carry forward for rapid entry.
-- Esc is state-based: cancel draft-line edit; otherwise clear only the current unsaved entry; otherwise leave Batch Entry for Dashboard. Existing draft lines are retained in all three cases.
-- Draft lines/date/direction persist to an atomic LocalApplicationData recovery file. After process restart/crash/power loss, BinTracker explicitly offers Continue Batch / Save Batch / Discard Batch rather than silently resuming. Discard is destructive and confirmed; Save Batch and Clear Batch remove the recovery file.
+- Esc is state-based: cancel draft-line edit and clear its editor; otherwise clear only the current unsaved entry; otherwise leave Batch Entry for Dashboard. Existing draft lines are retained in all three cases, and Dashboard navigation state must stay synchronised.
+- Draft lines/date/direction persist to an atomic LocalApplicationData recovery file. After normal close, process restart, crash or power loss, BinTracker explicitly offers Continue Batch / Save Batch / Discard Batch (in that visual order) rather than silently resuming. Discard is destructive and confirmed; successful Save Batch, Clear Batch and confirmed Discard remove the recovery file.
+- In Edit mode, Enter from Quantity/Reference/Notes updates the selected draft row rather than adding another row. Successful Update or Remove clears the editor and returns to Add to Batch mode; deleting the final row must not leave stale edit state.
 
 ## Communications
 

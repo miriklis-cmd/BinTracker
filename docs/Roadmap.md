@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.24.2.19**
+Current planning baseline: **v0.4.0-alpha.24.2.24**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -41,16 +41,17 @@ This order is the authoritative pre-v1 sequence. Milestone numbers after v0.4 re
 1. **Finish v0.4 Reporting** — Monthly Summary is user-accepted; validate Daily Print Pack, then complete the final report consistency/real-world print acceptance pass.
 2. **Batch Entry acceptance cleanup** — verify Esc, post-entry field clearing/focus, and implement/decide crash/power-loss draft recovery before production.
 3. **Movement Correction / Reversal** — controlled, linked, audited correction of saved movements; never silently edit/delete history.
-4. **Business Information & Branding** — logo, custom header/branding text, and one reusable branding source for reports/statements/email and generated output.
-5. **Email, SMS & Customer Communications** — Google Workspace email + Texto SMS direction, manual and automatic reminders, templates, delivery history/retries/audit, statement attachment/link decision.
-6. **Dashboard** — mandatory design discussion before implementation: KPIs, charts, forecasting/ML hooks, drill-through, attention states, responsive/large-monitor behaviour, plus explicit WinForms-v1 vs WinUI-3-v2 comparison for Dashboard, Reports launcher, individual report screens and import workflow.
-7. **Customer operational analytics/polish** — useful sorting by outstanding/credit/last movement, lifetime OUT/IN totals, and statement workflow integration.
-8. **Production Backup / Restore / Recovery** — user backup, validated restore, scheduled automatic backups, retention, pre-upgrade backup and recovery drill.
-9. **Security, audit & reliability hardening** — authorization matrix, audit-coverage matrix, secrets, logging, crash/restart, database integrity, Release build and DPI testing.
-10. **PostgreSQL / multi-computer readiness** — preserve Services + `IDbContextFactory`; audit SQLite assumptions, central-provider migration, concurrency/configuration and central backup strategy.
-11. **Installer / upgrade / deployment** — Windows package, safe upgrades, signing decision and production configuration.
-12. **Full v1 acceptance / regression** — fresh install/database, real workbook import, balances, entries, corrections, reports, communications, branding, dashboard, backup/restore, restart/crash and upgrade testing.
-13. **v1.0 production release** — BinTracker is accepted as the replacement for the daily Excel workflow.
+4. **Security, Data Integrity & Code Quality Hardening — HARD GATE** — reconcile and remediate the external security/code-quality audit before branding/communications. Every finding in `docs/SecurityHardeningRegister.md` must remain tracked; accepted v1 findings must be fixed or explicitly dispositioned before v1 release. The build audit mechanically protects the register and this roadmap ordering.
+5. **Business Information & Branding** — logo, custom header/branding text, and one reusable branding source for reports/statements/email and generated output.
+6. **Email, SMS & Customer Communications** — Google Workspace email + Texto SMS direction, manual and automatic reminders, templates, delivery history/retries/audit, statement attachment/link decision.
+7. **Dashboard** — mandatory design discussion before implementation: KPIs, charts, forecasting/ML hooks, drill-through, attention states, responsive/large-monitor behaviour, plus explicit WinForms-v1 vs WinUI-3-v2 comparison for Dashboard, Reports launcher, individual report screens and import workflow.
+8. **Customer operational analytics/polish** — useful sorting by outstanding/credit/last movement, lifetime OUT/IN totals, and statement workflow integration.
+9. **Production Backup / Restore / Recovery** — user backup, validated restore, scheduled automatic backups, retention, pre-upgrade backup and recovery drill.
+10. **Final security, audit & reliability release review** — authorization matrix, audit-coverage matrix, secrets, logging, crash/restart, database integrity, Release build and DPI testing.
+11. **PostgreSQL / multi-computer readiness** — preserve Services + `IDbContextFactory`; audit SQLite assumptions, central-provider migration, concurrency/configuration and central backup strategy.
+12. **Installer / upgrade / deployment** — Windows package, safe upgrades, signing decision and production configuration.
+13. **Full v1 acceptance / regression** — fresh install/database, real workbook import, balances, entries, corrections, reports, communications, branding, dashboard, backup/restore, restart/crash and upgrade testing.
+14. **v1.0 production release** — BinTracker is accepted as the replacement for the daily Excel workflow.
 
 Post-v1 remains separate: **Windows UI v2 / WinUI 3**, customer portal, barcode scanning, multiple depots and other commercial/expansion work.
 
@@ -176,7 +177,16 @@ Required dashboard pass:
 - [ ] Preserve original + reversal/correction linkage and audit trail.
 - [ ] Decide roles permitted to reverse/correct.
 
-### 5A. Business Information & Branding
+
+### 5A. Security, Data Integrity & Code Quality Hardening — HARD GATE
+
+This dedicated pre-v1 workstream begins immediately after Movement Correction/Reversal and before Business Information/Branding or Communications. `docs/SecurityHardeningRegister.md` is the authoritative finding ledger for the external code/security audit.
+
+Implementation is deliberately split into controlled batches: security boundaries; data integrity/concurrency; hostile-input/filesystem resilience; supply-chain/release integrity; then maintainability/code reduction. Findings are not to be silently dropped merely because they are inconvenient or become less visible during feature work.
+
+The repository audit must fail if the register disappears, loses an audit finding, contains an invalid disposition, or if this workstream is moved behind Branding/Communications. A v1.0 release must additionally fail while any accepted v1 finding remains unresolved.
+
+### 5B. Business Information & Branding
 
 This is a **pre-v1 milestone**, not a post-v1 idea.
 

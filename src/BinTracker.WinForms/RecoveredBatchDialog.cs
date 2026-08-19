@@ -84,14 +84,19 @@ internal sealed class RecoveredBatchDialog : BinTrackerForm
             Margin = Padding.Empty
         }, 0, 2);
 
-        var buttons = new FlowLayoutPanel
+        var buttons = new TableLayoutPanel
         {
             AutoSize = true,
-            FlowDirection = FlowDirection.RightToLeft,
-            WrapContents = false,
-            Dock = DockStyle.Fill,
-            Margin = new Padding(0, 18, 0, 0)
+            ColumnCount = 3,
+            RowCount = 1,
+            Dock = DockStyle.Left,
+            Margin = new Padding(0, 18, 0, 0),
+            Padding = Padding.Empty
         };
+        buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 148F));
+        buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 128F));
+        buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 138F));
+        buttons.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
 
         var continueButton = CreateButton("Continue Batch", 140);
         var saveButton = CreateButton("Save Batch", 120);
@@ -101,9 +106,9 @@ internal sealed class RecoveredBatchDialog : BinTrackerForm
         saveButton.Click += (_, _) => Choose(RecoveredBatchAction.Save);
         discardButton.Click += (_, _) => Choose(RecoveredBatchAction.Discard);
 
-        buttons.Controls.Add(continueButton);
-        buttons.Controls.Add(saveButton);
-        buttons.Controls.Add(discardButton);
+        buttons.Controls.Add(continueButton, 0, 0);
+        buttons.Controls.Add(saveButton, 1, 0);
+        buttons.Controls.Add(discardButton, 2, 0);
         root.Controls.Add(buttons, 0, 3);
 
         Controls.Add(root);
@@ -122,7 +127,15 @@ internal sealed class RecoveredBatchDialog : BinTrackerForm
         Text = text,
         Width = width,
         Height = 40,
-        Margin = new Padding(8, 0, 0, 0),
-        UseVisualStyleBackColor = true
+        Margin = new Padding(0, 0, 8, 0),
+        Padding = Padding.Empty,
+        TextAlign = ContentAlignment.MiddleCenter,
+        AutoSize = false,
+        UseCompatibleTextRendering = false,
+        UseVisualStyleBackColor = true,
+        UseCompatibleTextRendering = false,
+        TextAlign = ContentAlignment.MiddleCenter,
+        Padding = Padding.Empty,
+        Font = new Font("Segoe UI", 10F, FontStyle.Regular)
     };
 }

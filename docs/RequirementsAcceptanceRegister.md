@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.4.0-alpha.24.2.19**
+Current baseline: **v0.4.0-alpha.24.2.24**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -123,15 +123,15 @@ Provenance tags:
 |---|---|---|---|---|
 | BT-BATCH-001 | v1 | IMPLEMENTED-ACCEPTED | `Ctrl+Enter` saves batch. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-BATCH-002 | v1 | IMPLEMENTED-ACCEPTED | Tab/Shift+Tab keyboard flow works. | CURRENT-DOC,HIST-BUILD |
-| BT-BATCH-003 | v1 | IMPLEMENTED-ACCEPTED | Enter from Quantity / Reference / Notes adds or updates pending line. | CURRENT-DOC,HIST-BUILD,CODE |
+| BT-BATCH-003 | v1 | IMPLEMENTED-STATIC | Enter from Quantity / Reference / Notes adds in Add mode and updates the selected row in Edit mode; Enter while editing must never append a duplicate or leave Update Line active afterward. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-BATCH-004 | v1 | IMPLEMENTED-STATIC | Pending lines affect Current vs With Draft preview. | CURRENT-DOC,CODE |
-| BT-BATCH-005 | v1 | IMPLEMENTED-STATIC | Clicking draft line loads edit fields; update/remove/container change recalculates draft preview. | HIST-BUILD,CODE |
-| BT-BATCH-006 | v1 | IMPLEMENTED-STATIC | Esc exits draft-line edit mode when editing. | HIST-BUILD,CODE |
+| BT-BATCH-005 | v1 | IMPLEMENTED-STATIC | Clicking a draft line loads edit fields; Update/Remove/Clear recalculates or clears draft preview as applicable, clears the editor afterward, and returns to Add to Batch mode. Removing or clearing the final line must not leave a ghost edit state; stale asynchronous row/customer loads must never resurrect Update Line after Esc/Clear. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-BATCH-006 | v1 | IMPLEMENTED-STATIC | Esc while editing cancels edit mode, clears the current editor/preview, retains the draft, and reports the retained-draft status beneath the line/container summary. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-BATCH-007 | v1 | IMPLEMENTED-ACCEPTED | Draft survives page navigation and logout/login while process remains running. | CHAT-SURFACED,CURRENT-DOC,CODE |
-| BT-BATCH-008 | v1 | IMPLEMENTED-STATIC | Esc has explicit state semantics: cancel draft-line edit first; otherwise clear only the current unsaved entry fields; otherwise leave Batch Entry for Dashboard while retaining the draft. | CHAT-SURFACED,CURRENT-DOC,CODE |
-| BT-BATCH-009 | v1 | IMPLEMENTED-STATIC | Successful Add to Batch clears customer/quantity/reference/notes/customer preview and returns focus to Customer; pending-grid rebinding must not auto-select/reload the just-added row; movement date, batch direction and container type intentionally carry forward for rapid entry. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-BATCH-008 | v1 | IMPLEMENTED-STATIC | Esc has explicit state semantics: cancel+clear draft-line edit first; otherwise clear only current unsaved entry fields; otherwise leave for Dashboard while retaining the draft. Programmatic Esc navigation must synchronise the left-nav highlight so Batch Entry can immediately be reopened. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-BATCH-009 | v1 | IMPLEMENTED-ACCEPTED | Successful Add to Batch clears customer/quantity/reference/notes/customer preview and returns focus to Customer; pending-grid rebinding must not auto-select/reload the just-added row; movement date, batch direction and container type intentionally carry forward for rapid entry. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-BATCH-010 | v1 | IMPLEMENTED-STATIC | Unsaved Batch Entry draft lines/date/direction are persisted atomically under LocalApplicationData after changes; successful Save Batch/Clear Batch removes the recovery file. | CHAT-SURFACED,CURRENT-DOC,CODE,TEST |
-| BT-BATCH-011 | v1 | IMPLEMENTED-STATIC | A persisted draft loaded after process restart/crash/power loss is not silently resumed: BinTracker presents Continue Batch / Save Batch / Discard Batch with draft date, direction, line count, total quantity and last-saved time. Discard requires confirmation; failed recovery-save retains the draft. Same-process navigation/logout drafts do not trigger the recovery prompt. | CHAT-SURFACED,CURRENT-DOC,CODE,TEST |
+| BT-BATCH-011 | v1 | IMPLEMENTED-STATIC | A persisted draft loaded after process restart/normal close/crash/power loss is not silently resumed: BinTracker presents Continue Batch / Save Batch / Discard Batch, in that visual order, with draft date, direction, line count, total quantity and last-saved time. Discard requires confirmation; failed recovery-save retains the draft. Same-process navigation/logout drafts do not trigger the recovery prompt. | CHAT-SURFACED,CURRENT-DOC,CODE,TEST |
 
 ## Excel import / migration
 
@@ -288,3 +288,12 @@ Provenance tags:
 - `NEEDS-CONFIRMATION` items are **not** automatically v1 requirements; they exist specifically so recovered historical ideas cannot silently vanish or silently become commitments.
 - `IMPLEMENTED-STATIC` means source presence was verified, not that Windows rendering/printing/operator behavior was personally exercised in the reconciliation environment.
 - Human acceptance in `TEST-CHECKLIST.md` remains required where the source alone cannot establish behavior.
+
+## Security hardening governance
+
+| ID | Scope | Status | Requirement | Provenance |
+|---|---|---|---|---|
+| BT-SEC-008 | v1 | PLANNED-V1 | Dedicated Security, Data Integrity & Code Quality Hardening workstream executes immediately after Movement Correction/Reversal and before Branding/Communications. | CHAT-SURFACED,EXTERNAL-AUDIT |
+| BT-SEC-009 | v1 | IMPLEMENTED-STATIC | `docs/SecurityHardeningRegister.md` permanently tracks every external audit finding BT-SH-001..BT-SH-050; findings cannot silently disappear or be renumbered. | CHAT-SURFACED,EXTERNAL-AUDIT |
+| BT-SEC-010 | v1 | IMPLEMENTED-STATIC | Per-build audit hard-gates presence/completeness/dispositions of the security finding register and protects roadmap ordering. | CHAT-SURFACED,CODE |
+| BT-SEC-011 | v1 | PLANNED-V1 | v1.0 release is prohibited while any accepted/review-v1 security finding remains unresolved; fixed findings require source/test evidence. | CHAT-SURFACED,EXTERNAL-AUDIT |
