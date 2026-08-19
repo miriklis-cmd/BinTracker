@@ -1,4 +1,41 @@
+## 0.4.0-alpha.24.2.19
+
+- Fixed Batch Entry grid-rebind auto-selection that repopulated Customer/Quantity immediately after Add to Batch.
+- Added explicit recovered-batch Continue / Save / Discard decision flow for crash/power-loss recovery, including last-saved time in the recovery summary.
+- Added startup-only recovery-state tracking so same-process drafts are not presented as crash recovery.
+- Updated the application icon trial to the newly supplied latest hybrid ICO.
+
+## 0.4.0-alpha.24.2.17
+
+- Implemented explicit Batch Entry Esc state handling: cancel edit, clear current entry, then leave to Dashboard while retaining the draft.
+- Finalised post-add carry-forward behaviour and Customer focus/reset.
+- Added atomic LocalApplicationData Batch Entry draft persistence/restart recovery plus unit tests.
+- Replaced the application icon trial with the latest user-supplied hybrid ICO.
+
+## 0.4.0-alpha.24.2.16
+
+- Reserved report sort-indicator width at grid configuration time instead of widening columns when a sort becomes active.
+- Prevented sort clicks from shifting neighbouring report columns horizontally.
+- Strengthened BT-RPT-017 to cover stable column widths during single- and multi-column sorting.
+
+## 0.4.0-alpha.24.2.15
+
+- Prevented active multi-sort captions (`▲1`, `▼1`, `▲2`, etc.) from wrapping onto a second header line; narrow sorted columns are widened as needed instead, so sorting no longer changes the report-grid header layout.
+- Replaced the application icon trial with the newly supplied `New BinTracker-hybrid.zip` icon asset for visual comparison. This remains a user trial, not permanent branding approval.
+- Strengthened BT-RPT-017 and the audit gate to require single-line active sort indicators.
+
+## 0.4.0-alpha.24.2.14
+
+- Changed report multi-sort header indicators from thin arrows to filled triangles (`▲1`, `▼1`, `▲2`, etc.) for better visibility while preserving sort priority numbering and comparator behaviour.
+
 # Changelog
+
+## 0.4.0-alpha.24.2.12
+
+- Made report sort direction and multi-sort priority explicitly visible in header captions (`↑1`, `↓1`, `↑2`, `↓2`, etc.) instead of relying on unreliable WinForms native sort glyph rendering.
+- Added automatic width headroom for active sort indicators.
+- Widened Daily Movements and Weekly Movements Direction columns to prevent indicator clipping.
+- Added BT-RPT-017 and audit coverage for the visual sort-state requirement.
 
 ## 0.4.0-alpha.24.2.11
 

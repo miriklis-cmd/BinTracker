@@ -9,6 +9,8 @@ internal static class ReportGridMultiSort
     private sealed record SortCriterion(string ColumnName, SortOrder Direction);
     private static readonly Dictionary<DataGridView, List<SortCriterion>> States = new();
     private static readonly Dictionary<DataGridView, Dictionary<string, Func<DataGridViewRow, object?>>> TypedValueSelectors = new();
+    private static readonly Dictionary<DataGridViewColumn, string> BaseHeaderTexts = new();
+    private static readonly Dictionary<DataGridViewColumn, DataGridViewTriState> BaseHeaderWrapModes = new();
     private static readonly Regex LeadingNumber = new(
         @"^\s*([+-]?(?:\d{1,3}(?:,\d{3})*|\d+)(?:\.\d+)?)\b",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -45,9 +47,9 @@ internal static class ReportGridMultiSort
         States[grid] = [];
         TypedValueSelectors[grid] = new(StringComparer.Ordinal);
         foreach (DataGridViewColumn column in grid.Columns)
-            ConfigureColumn(column);
+            ConfigureColumn(grid, column);
 
-        grid.ColumnAdded += (_, e) => ConfigureColumn(e.Column);
+        grid.ColumnAdded += (_, e) => ConfigureColumn(grid, e.Column);
         grid.ColumnHeaderMouseClick += OnColumnHeaderMouseClick;
     }
 
@@ -69,10 +71,14 @@ internal static class ReportGridMultiSort
         ApplySort(grid, state);
     }
 
-    private static void ConfigureColumn(DataGridViewColumn column)
+    private static void ConfigureColumn(DataGridView grid, DataGridViewColumn column)
     {
         column.SortMode = DataGridViewColumnSortMode.Programmatic;
+        BaseHeaderTexts[column] = column.HeaderText;
+        BaseHeaderWrapModes[column] = column.HeaderCell.Style.WrapMode;
+        column.HeaderCell.SortGlyphDirection = SortOrder.None;
         column.HeaderCell.ToolTipText = "Click to sort. Shift+click adds another sort level.";
+        ReserveSortIndicatorSpace(grid, column);
     }
 
     private static void OnColumnHeaderMouseClick(object? sender, DataGridViewCellMouseEventArgs e)
@@ -108,6 +114,10 @@ internal static class ReportGridMultiSort
         foreach (DataGridViewColumn c in grid.Columns)
         {
             c.HeaderCell.SortGlyphDirection = SortOrder.None;
+            c.HeaderText = BaseHeaderTexts.TryGetValue(c, out var baseText) ? baseText : c.HeaderText;
+            c.HeaderCell.Style.WrapMode = BaseHeaderWrapModes.TryGetValue(c, out var wrapMode)
+                ? wrapMode
+                : DataGridViewTriState.NotSet;
             c.HeaderCell.ToolTipText = "Click to sort. Shift+click adds another sort level.";
         }
 
@@ -115,7 +125,17 @@ internal static class ReportGridMultiSort
         {
             var item = state[i];
             if (grid.Columns[item.ColumnName] is not DataGridViewColumn c) continue;
-            c.HeaderCell.SortGlyphDirection = item.Direction;
+
+            // WinForms' native sort glyph can disappear on some report grids and can be
+            // clipped by narrow headers (notably Direction). Render an explicit indicator
+            // as part of the header caption so sort direction and priority are always visible.
+            var baseText = BaseHeaderTexts.TryGetValue(c, out var stored) ? stored : c.HeaderText;
+            var indicator = item.Direction == SortOrder.Descending ? "▼" : "▲";
+            c.HeaderText = $"{baseText} {indicator}{i + 1}";
+            // Never let an active sort indicator create a second header line.
+            // WinForms AutoSize header height otherwise makes the grid visibly jump
+            // when a narrow column is sorted (Direction was the clearest example).
+            c.HeaderCell.Style.WrapMode = DataGridViewTriState.False;
             c.HeaderCell.ToolTipText =
                 $"Sort {i + 1}: {item.Direction}. Shift+click another column to add the next level.";
         }
@@ -128,6 +148,22 @@ internal static class ReportGridMultiSort
             ? selectors
             : new Dictionary<string, Func<DataGridViewRow, object?>>(StringComparer.Ordinal);
         grid.Sort(new GridComparer(state.ToArray(), originalOrder, typedSelectors));
+    }
+
+
+    private static void ReserveSortIndicatorSpace(DataGridView grid, DataGridViewColumn column)
+    {
+        // Reserve sort-marker room once when the grid is configured. Never resize an
+        // active column during sorting: changing widths on click made neighbouring
+        // columns visibly jump even though the sort itself was correct.
+        if (column.AutoSizeMode != DataGridViewAutoSizeColumnMode.None)
+            return;
+
+        var font = grid.ColumnHeadersDefaultCellStyle.Font ?? grid.Font;
+        var baseText = BaseHeaderTexts.TryGetValue(column, out var stored) ? stored : column.HeaderText;
+        var required = TextRenderer.MeasureText($"{baseText} ▲99", font).Width + 16;
+        if (column.Width < required)
+            column.Width = required;
     }
 
     private sealed class GridComparer(

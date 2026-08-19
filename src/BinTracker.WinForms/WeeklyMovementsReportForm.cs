@@ -550,7 +550,7 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
         detailGrid.Columns.Add(Column("Customer",220,"Customer",DataGridViewAutoSizeColumnMode.Fill));
         detailGrid.Columns.Add(Column("Type",115,"Type"));
         detailGrid.Columns.Add(Column("Container",135,"Container"));
-        detailGrid.Columns.Add(Column("Direction",95,"Direction"));
+        detailGrid.Columns.Add(Column("Direction",120,"Direction"));
         detailGrid.Columns.Add(Column("Qty",75,"Quantity"));
         detailGrid.Columns.Add(Column("Source",135,"Source"));
         detailGrid.Columns.Add(Column("Reference",140,"Reference"));

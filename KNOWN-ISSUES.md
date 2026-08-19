@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.24.2.11**
+Current release: **v0.4.0-alpha.24.2.19**
 
 This file contains current defects/limitations that affect testing or production readiness. Completed history is in `docs/CHANGELOG.md`; future features are in `docs/Roadmap.md`; engineering cleanup is in `TECH-DEBT.md`.
 
@@ -36,10 +36,10 @@ Saved movements are auditable but there is no controlled workflow to reverse/cor
 
 Developer Database Backup/Load/Fresh tools are for testing only. A production-safe user backup/restore/recovery workflow is still required.
 
-### Batch Entry draft does not survive crash/power loss
+### Batch Entry recovery/polish requires operator smoke acceptance
 **Area:** Batch Entry
 
-Drafts survive in-app navigation and logout/login within the running process, but not process termination or power loss.
+Crash/power-loss recovery with explicit Continue / Save / Discard choice, explicit Esc state behaviour, and the corrected post-add field clearing/focus are implemented in v0.4.0-alpha.24.2.19 but remain pending operator smoke acceptance on Windows.
 
 ### Multi-computer production use is not supported yet
 **Area:** Deployment
@@ -64,3 +64,5 @@ The Zahos/BIG search/list-detail synchronization bug is fixed but should remain 
 ## Requirements reconciliation
 
 - alpha.23.5.2 repaired stale/contradictory documentation and strengthened the mechanical audit gate. Windows build/tests and open manual acceptance items remain authoritative; static reconciliation is not a substitute for runtime acceptance.
+
+- v0.4.0-alpha.24.2.19: Batch Entry Esc/reset/recovery-choice changes require operator smoke-test; the latest supplied application icon is also a visual trial pending approval/revert decision.

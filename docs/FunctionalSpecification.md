@@ -115,9 +115,9 @@
 
 ## Batch Entry Acceptance
 
-- BT-BATCH-001: Successful line entry clears non-carry-forward entry fields and returns focus to the Customer field/code entry.
-- BT-BATCH-002: Esc behaviour is explicit and consistent for current-line edit/clear/exit states.
-- BT-BATCH-003: In-memory draft survival across navigation/logout is supported; crash/power-loss recovery is a separate production decision.
+- BT-BATCH-001: Successful Add to Batch clears Customer/Quantity/Reference/Notes and customer preview, returns focus to Customer, and carries Movement Date / Batch Type / Container Type forward.
+- BT-BATCH-002: Esc behaviour is explicit and ordered: cancel current draft-line edit; otherwise clear current unsaved entry fields; otherwise exit Batch Entry to Dashboard, always retaining pending draft lines.
+- BT-BATCH-003: Draft survival covers navigation/logout and process restart/crash/power loss through a LocalApplicationData recovery file that is removed after successful Save Batch or Clear Batch; a startup-recovered draft requires an explicit Continue / Save / Discard operator choice rather than silent resume.
 
 ## Statement Workflow
 

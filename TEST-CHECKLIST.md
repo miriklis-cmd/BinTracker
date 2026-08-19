@@ -1,17 +1,17 @@
 # BinTracker Active Test Checklist
 
-Current baseline: **v0.4.0-alpha.24.2.11**
+Current baseline: **v0.4.0-alpha.24.2.19**
 
 Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
 
 ## Release / audit / packaging gate
 
 - [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.24.2.11 and the actually resolved installed SDK.
+- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.24.2.19 and the actually resolved installed SDK.
 - [ ] Restore succeeds; full solution builds with zero warnings.
 - [ ] All unit tests pass; all integration tests pass.
 - [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
-- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.4.0-alpha.24.2.11`.
+- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.4.0-alpha.24.2.19`.
 - [ ] No unexpected `global.json` is packaged.
 
 ## Authentication / users / shell
@@ -22,7 +22,7 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 - [ ] Change/reset password and role/active controls work.
 - [ ] Password fields start masked; all supported eye controls reveal/re-hide correctly.
 - [ ] Audit Trail / Settings admin actions respect roles.
-- [ ] Login, Main, breakout reports and dialogs use BinTracker icon; taskbar is branded before login.
+- [ ] Login, Main, breakout reports and dialogs use BinTracker icon; taskbar is branded before login. For v0.4.0-alpha.24.2.19, visually compare the newly supplied hybrid icon trial and either approve it or request reversion.
 - [ ] Splash shows BinTracker branding/version during startup.
 - [ ] Sidebar logo + full BinTracker wordmark remain aligned/unclipped.
 
@@ -54,9 +54,13 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 - [ ] Clicking draft line loads edit fields; update/remove/container change recalculates preview.
 - [ ] Esc exits draft-line edit mode.
 - [ ] Draft survives navigation and logout/login while application process remains running.
-- [ ] **Before v1:** verify/document Esc behavior in every Batch state.
-- [ ] **Before v1:** decide/finalize post-add clearing/carry-forward and return focus behavior.
-- [ ] **Before v1:** decide/implement crash/power-loss draft recovery.
+- [ ] Esc while editing a pending row cancels edit mode and retains every draft line.
+- [ ] Esc with current unsaved entry data clears Customer/Quantity/Reference/Notes/customer preview only, retains the draft, and focuses Customer.
+- [ ] Esc with no edit/current entry leaves Batch Entry for Dashboard and retains the draft.
+- [ ] Add to Batch clears Customer/Quantity/Reference/Notes/customer preview, focuses Customer, carries Movement Date / Batch Type / Container Type forward, leaves no draft row selected, and does not reload the just-added row into the editor.
+- [ ] Add at least two draft lines, terminate BinTracker without saving, relaunch/login, and confirm date/direction/lines/quantities/reference/notes restore.
+- [ ] After restored draft, Save Batch removes recovery state: restart and confirm no draft returns.
+- [ ] Clear Batch also removes recovery state: restart and confirm no draft returns.
 
 ## Excel import / re-import
 
@@ -218,3 +222,5 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 - [ ] Date columns sort chronologically, including weekday-prefixed dates.
 - [ ] Active multi-column sort order is preserved after changing report filters/reloading results.
 - [ ] Outstanding Containers shows Today, Generate PDF, Generate & Open and Export CSV without clipping at normal Windows scaling.
+
+- [ ] Report sort-state indicator: every active sort column visibly shows direction and priority (for example `▲1`, `▼1`, `▲2`), including Daily Movements Direction and both Weekly Movements tabs at 100%, 125% and 150% scaling; active indicators stay on one line and sorting does not change the grid/header height or any column widths.

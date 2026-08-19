@@ -342,7 +342,7 @@ actions.Controls.Add(ActionButton(
             DataGridViewAutoSizeColumnMode.Fill));
         grid.Columns.Add(Column("Type", 125, "Type"));
         grid.Columns.Add(Column("Container", 135, "Container"));
-        grid.Columns.Add(Column("Direction", 100, "Direction"));
+        grid.Columns.Add(Column("Direction", 125, "Direction"));
         grid.Columns.Add(Column("Qty", 80, "Quantity"));
         grid.Columns.Add(Column("Source", 145, "Source"));
         grid.Columns.Add(Column("Reference", 145, "Reference"));

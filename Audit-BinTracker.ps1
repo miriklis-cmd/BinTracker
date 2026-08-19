@@ -59,7 +59,7 @@ foreach ($row in $reqRows) {
     if ($allowedScopes -notcontains $row.Scope) { Fail "Invalid requirement scope for $($row.Id): $($row.Scope)" }
     if ($allowedStatuses -notcontains $row.Status) { Fail "Invalid requirement status for $($row.Id): $($row.Status)" }
 }
-$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-BATCH-010','BT-IMP-010','BT-CORR-001','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005')
+$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-CORR-001','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005')
 foreach ($id in $mustHaveIds) { if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost mandatory ID: $id" } }
 
 # Reject contradictions that have already caused release/audit drift.
@@ -141,6 +141,9 @@ if (-not ($reqRows.Id -contains "BT-RPT-015")) {
 if (-not ($reqRows.Id -contains "BT-RPT-016")) {
     Fail "Requirements register is missing mandatory requirement BT-RPT-016."
 }
+if (-not ($reqRows.Id -contains "BT-RPT-017")) {
+    Fail "Requirements register is missing mandatory requirement BT-RPT-017."
+}
 
 $outstandingService = Get-Content -Raw (Join-Path $root "src\BinTracker.Services\OutstandingReportService.cs")
 $outstandingForm = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\OutstandingContainersReportForm.cs")
@@ -173,6 +176,58 @@ if ($multiSortText -notmatch 'Shift\+click to add another column' -or
     $outstandingText -notmatch 'ReportGridMultiSort\.Reapply\(grid\)' -or
     $outstandingText -notmatch 'controlRows.Controls.Add\(actions, 0, 2\)') {
     Fail "BT-RPT-016 source gate failed: type-aware shared report multi-sort/hint, refresh persistence, or Outstanding action-row visibility is incomplete."
+}
+
+# Visible report sort direction/priority guard (BT-RPT-017).
+$dailyMovementsText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\DailyMovementsReportForm.cs")
+$weeklyMovementsText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\WeeklyMovementsReportForm.cs")
+if ($multiSortText -notmatch 'var indicator = item.Direction == SortOrder.Descending' -or
+    $multiSortText -notmatch 'HeaderText = \$"\{baseText\} \{indicator\}\{i \+ 1\}"' -or
+    $multiSortText -notmatch 'ReserveSortIndicatorSpace' -or
+    $multiSortText -notmatch 'HeaderCell\.Style\.WrapMode = DataGridViewTriState\.False' -or
+    $dailyMovementsText -notmatch 'Column\("Direction", 125, "Direction"\)' -or
+    $weeklyMovementsText -notmatch 'Column\("Direction",120,"Direction"\)') {
+    Fail "BT-RPT-017 source gate failed: explicit visible sort direction/priority, single-line active headers, stable sort widths, or DPI-safe Direction header width is incomplete."
+}
+
+# Batch Entry acceptance/recovery source guard (BT-BATCH-008/009/010/011).
+$batchViewText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\BatchEntryView.cs")
+$movementServicesText = Get-Content -Raw (Join-Path $root "src\BinTracker.Services\MovementServices.cs")
+$batchStoreText = Get-Content -Raw (Join-Path $root "src\BinTracker.Services\FileBatchDraftStore.cs")
+$mainFormText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\MainForm.cs")
+if ($batchViewText -notmatch 'HasCurrentLineInput' -or
+    $batchViewText -notmatch 'ClearCurrentLineEntry' -or
+    $batchViewText -notmatch 'exitRequested' -or
+    $batchViewText -notmatch 'appState\.PersistDraft\(\)' -or
+    $batchViewText -notmatch 'appState\.ClearDraft\(\)' -or
+    $batchViewText -notmatch 'clearContainer:\s*false' -or
+    $batchViewText -notmatch 'suppressPendingSelectionChanged' -or
+    $batchViewText -notmatch 'pending\.CurrentCell = null' -or
+    $movementServicesText -notmatch 'IBatchDraftStore' -or
+    $movementServicesText -notmatch 'PersistDraft' -or
+    $movementServicesText -notmatch 'RecoveryPromptPending' -or
+    $movementServicesText -notmatch 'RecoveryDraftLastSavedAtUtc' -or
+    $movementServicesText -notmatch 'MarkRecoveryPromptHandled' -or
+    $batchStoreText -notmatch 'LocalApplicationData' -or
+    $batchStoreText -notmatch 'batch-entry-draft\.json' -or
+    $batchStoreText -notmatch 'SavedAtUtc' -or
+    $batchStoreText -notmatch 'File\.Move\(temporaryPath, filePath, overwrite:\s*true\)' -or
+    $mainFormText -notmatch 'new BatchEntryView\(movements, session, appState, ShowDashboard\)' -or
+    $mainFormText -notmatch 'HandleRecoveredBatchAsync' -or
+    $mainFormText -notmatch 'SaveRecoveredBatchAsync' -or
+    $mainFormText -notmatch 'RecoveredBatchAction\.Continue' -or
+    $mainFormText -notmatch 'RecoveredBatchAction\.Save' -or
+    $mainFormText -notmatch 'RecoveredBatchAction\.Discard') {
+    Fail "Batch Entry source gate failed: BT-BATCH-008/009/010/011 Esc/reset/recovery implementation is incomplete."
+}
+$recoveredDialogText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\RecoveredBatchDialog.cs")
+if ($recoveredDialogText -notmatch 'Continue Batch' -or
+    $recoveredDialogText -notmatch 'Save Batch' -or
+    $recoveredDialogText -notmatch 'Discard Batch' -or
+    $recoveredDialogText -notmatch 'Pending lines' -or
+    $recoveredDialogText -notmatch 'Total containers' -or
+    $recoveredDialogText -notmatch 'Last saved') {
+    Fail "BT-BATCH-011 source gate failed: recovered-batch decision dialog is incomplete."
 }
 
 # Reports landing-page viewport/icon guard (BT-RPT-012).

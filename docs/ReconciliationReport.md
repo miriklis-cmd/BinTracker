@@ -84,7 +84,7 @@ Static source inspection confirmed:
 - business text identity exists, but business-logo/output-branding implementation remains planned;
 - movement correction/reversal workflow remains planned; current movement model does not yet provide the required full linked correction workflow;
 - Daily Print Pack service/UI/audit wiring exists and still requires real Windows print acceptance;
-- Batch draft crash/power-loss persistence remains unresolved.
+- Batch draft crash/power-loss persistence is implemented; operator restart/kill smoke acceptance remains pending.
 
 ## Gate changes made by this reconciliation
 

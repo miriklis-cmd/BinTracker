@@ -1,4 +1,44 @@
+## v0.4.0-alpha.24.2.19
+
+- Fixed the Batch Entry post-add reset regression: rebinding the pending grid no longer auto-selects the first draft row and reloads its Customer/Quantity into the editor. Customer, Quantity, Reference, Notes and customer preview now remain cleared after Add to Batch while Date / Batch Type / Container Type carry forward.
+- Crash/power-loss recovery now requires an explicit operator decision instead of silently restoring into the UI: Continue Batch, Save Batch, or Discard Batch. The prompt shows movement date, direction, pending line count, total quantity and the draft's last-saved time. Discard requires confirmation; failed recovered-batch save leaves the draft intact and opens Batch Entry.
+- Added recovery-state tracking so only a draft loaded from disk at process startup triggers the recovery prompt; normal same-process navigation/logout drafts are not mislabeled as crash recovery.
+- Installed the newly supplied latest hybrid application icon as the next visual trial; branding approval remains pending.
+- Batch Entry recovery/reset behaviour remains pending operator smoke acceptance on Windows.
+
+## v0.4.0-alpha.24.2.17
+
+- Implemented the remaining Batch Entry cleanup in code, pending operator smoke acceptance: explicit Esc edit/clear/exit semantics, post-add field reset/focus, and crash/power-loss draft recovery.
+- Add to Batch now clears Customer, Quantity, Reference, Notes and customer preview, returns focus to Customer, and deliberately carries Movement Date / Batch Type / Container Type forward.
+- Batch drafts are atomically persisted to `%LOCALAPPDATA%\BinTracker\batch-entry-draft.json` whenever pending lines change and restored in a new application process; Save Batch and Clear Batch remove the recovery file.
+- Added unit coverage for persisted draft restoration and recovery-file removal.
+- Installed the newly supplied `latest BinTracker-hybrid.zip` icon as the next visual trial; branding approval remains pending user comparison.
+
+## v0.4.0-alpha.24.2.16
+
+- Fixed the remaining report sort-layout shift: sort-indicator space is now reserved when each report grid is configured, so sorting no longer widens the active column or pushes neighbouring columns sideways.
+- Preserved the accepted filled-triangle + priority indicators (`▲1`, `▼1`, `▲2`, etc.) and the existing typed comparator behaviour.
+- Strengthened BT-RPT-017 acceptance/audit wording to require stable column widths as well as stable header height.
+- The newly supplied application icon remains a visual trial; no icon asset change was made in this revision.
+
+## v0.4.0-alpha.24.2.15
+
+- Fixed the remaining report sort-header layout issue: active triangle/priority indicators now stay on one line (`Direction ▲1`, `Type ▲2`, etc.) rather than wrapping and visually changing the grid header height. The accepted comparator/sort semantics are unchanged.
+- Installed the newly supplied hybrid application icon as another visual trial. It is not yet a permanent branding decision and can be reverted after user comparison.
+- Strengthened BT-RPT-017/audit coverage for single-line, DPI-visible sort indicators.
+
+## v0.4.0-alpha.24.2.14
+- Replaced the application/executable/window icon asset with the user-supplied `BinTracker-hybrid.ico`; the existing common `BinTrackerForm` branding path continues to propagate the executable icon to login, report breakout, and other application windows.
+
+- Replaced thin report sort arrows with filled triangle indicators (`▲1`, `▼1`, `▲2`, etc.) so direction is easier to see at normal Windows scaling. Sort priority numbering and sorting behaviour are unchanged.
+
 # BinTracker Current Release Notes
+
+## v0.4.0-alpha.24.2.12
+
+- Fixed report sort-state visibility without changing the accepted comparator logic. Active sort columns now show explicit `↑1` / `↓1`, `↑2` / `↓2`, etc. indicators in the header caption, so direction and multi-sort priority remain visible even where WinForms suppresses its native glyph.
+- Added header-width protection for explicit sort indicators and widened Direction in Daily Movements and Weekly Movements so the indicator is not clipped at supported DPI.
+- Added permanent requirement BT-RPT-017 to gate visible sort direction/priority across applicable report grids.
 
 ## v0.4.0-alpha.24.2.11
 

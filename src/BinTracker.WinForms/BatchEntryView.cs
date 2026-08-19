@@ -18,6 +18,7 @@ public sealed class BatchEntryView : UserControl
     private readonly IMovementService movements;
     private readonly UserSession session;
     private readonly ApplicationState appState;
+    private readonly Action? exitRequested;
     private DraftMovementBatch Draft => appState.DraftBatch;
 
     private readonly DateTimePicker movementDate = new()
@@ -120,15 +121,18 @@ public sealed class BatchEntryView : UserControl
     private bool loadingDraft;
     private DraftMovementLine? editingLine;
     private Button? addOrUpdateButton;
+    private bool suppressPendingSelectionChanged;
 
     public BatchEntryView(
         IMovementService movements,
         UserSession session,
-        ApplicationState appState)
+        ApplicationState appState,
+        Action? exitRequested = null)
     {
         this.movements = movements;
         this.session = session;
         this.appState = appState;
+        this.exitRequested = exitRequested;
 
         Dock = DockStyle.Fill;
         AutoScaleMode = AutoScaleMode.Dpi;
@@ -151,11 +155,27 @@ public sealed class BatchEntryView : UserControl
             return true;
         }
 
-        if (keyData == Keys.Escape && editingLine is not null)
+        if (keyData == Keys.Escape)
         {
-            CancelEdit();
-            status.Text = "Edit cancelled.";
-            return true;
+            if (editingLine is not null)
+            {
+                CancelEdit();
+                status.Text = "Edit cancelled. Draft retained.";
+                return true;
+            }
+
+            if (HasCurrentLineInput())
+            {
+                ClearCurrentLineEntry();
+                status.Text = "Current entry cleared. Draft retained.";
+                return true;
+            }
+
+            if (exitRequested is not null)
+            {
+                exitRequested();
+                return true;
+            }
         }
 
         return base.ProcessCmdKey(ref msg, keyData);
@@ -200,6 +220,9 @@ public sealed class BatchEntryView : UserControl
 
         pending.SelectionChanged += async (_, _) =>
         {
+            if (suppressPendingSelectionChanged)
+                return;
+
             if (pending.CurrentRow?.DataBoundItem is DraftMovementLine line)
                 await LoadLineForEditAsync(line);
         };
@@ -302,7 +325,10 @@ public sealed class BatchEntryView : UserControl
         movementDate.ValueChanged += (_, _) =>
         {
             if (!loadingDraft)
+            {
                 Draft.MovementDate = DateOnly.FromDateTime(movementDate.Value.Date);
+                appState.PersistDraft();
+            }
         };
 
         batchType.SelectionChangeCommitted += (_, _) =>
@@ -318,6 +344,7 @@ public sealed class BatchEntryView : UserControl
             }
 
             Draft.MovementType = selected.Value;
+            appState.PersistDraft();
             RefreshPreview();
         };
 
@@ -708,16 +735,17 @@ public sealed class BatchEntryView : UserControl
             Clean(reference.Text),
             Clean(notes.Text)));
 
+        appState.PersistDraft();
+
+        // Movement date, batch direction and container type intentionally carry
+        // forward for rapid keyboard entry. Customer-specific fields do not.
+        // Clear the editor before rebinding the grid. DataGridView selects the
+        // first row during a rebind; without suppressing SelectionChanged that
+        // row is immediately loaded back into the editor and makes the reset
+        // appear to have failed.
+        ClearCurrentLineEntry(clearContainer: false);
         RefreshPendingGrid();
-        RefreshPreview();
-
-        reference.Clear();
-        notes.Clear();
-        quantity.Value = 0;
-        quantity.Text = string.Empty;
-
-        customerCode.SelectAll();
-        customerCode.Focus();
+        status.Text = "Line added to draft.";
     }
 
 
@@ -783,6 +811,7 @@ public sealed class BatchEntryView : UserControl
             (int)quantity.Value,
             Clean(reference.Text),
             Clean(notes.Text));
+        appState.PersistDraft();
 
         var code = selectedCustomer.Code;
         RefreshPendingGrid();
@@ -820,6 +849,7 @@ public sealed class BatchEntryView : UserControl
             return;
 
         Draft.Lines.Remove(line);
+        appState.PersistDraft();
 
         if (editingLine == line)
             CancelEdit();
@@ -843,7 +873,7 @@ public sealed class BatchEntryView : UserControl
                 MessageBoxIcon.Question) != DialogResult.Yes)
             return;
 
-        Draft.Clear();
+        appState.ClearDraft();
         CancelEdit();
 
         loadingDraft = true;
@@ -902,7 +932,7 @@ public sealed class BatchEntryView : UserControl
                             x.Notes))
                         .ToList()));
 
-            Draft.Clear();
+            appState.ClearDraft();
 
             loadingDraft = true;
             movementDate.Value = Draft.MovementDate.ToDateTime(TimeOnly.MinValue);
@@ -910,20 +940,11 @@ public sealed class BatchEntryView : UserControl
             loadingDraft = false;
 
             RefreshPendingGrid();
-
-            if (selectedCustomer is not null)
-            {
-                selectedCustomer = await movements.GetCustomerSummaryByCodeAsync(
-                    selectedCustomer.Code);
-
-                RefreshPreview();
-            }
+            ClearCurrentLineEntry(clearContainer: false);
 
             status.Text =
                 $"Saved batch #{result.BatchId}: {result.LineCount} line(s), " +
                 $"{result.TotalQuantity} total containers.";
-
-            customerCode.Focus();
         }
         catch (Exception ex)
         {
@@ -935,10 +956,46 @@ public sealed class BatchEntryView : UserControl
         }
     }
 
+    private bool HasCurrentLineInput() =>
+        selectedCustomer is not null ||
+        !string.IsNullOrWhiteSpace(customerCode.Text) ||
+        quantity.Value > 0 ||
+        !string.IsNullOrWhiteSpace(reference.Text) ||
+        !string.IsNullOrWhiteSpace(notes.Text);
+
+    private void ClearCurrentLineEntry(bool clearContainer = false)
+    {
+        selectedCustomer = null;
+        customerCode.Clear();
+        customerInfo.Text = string.Empty;
+        quantity.Value = 0;
+        quantity.Text = string.Empty;
+        reference.Clear();
+        notes.Clear();
+        validation.Text = string.Empty;
+        balances.DataSource = null;
+
+        if (clearContainer && containerType.Items.Count > 0)
+            containerType.SelectedIndex = 0;
+
+        pending.ClearSelection();
+        customerCode.Focus();
+    }
+
     private void RefreshPendingGrid()
     {
-        pending.DataSource = null;
-        pending.DataSource = Draft.Lines.ToList();
+        suppressPendingSelectionChanged = true;
+        try
+        {
+            pending.DataSource = null;
+            pending.DataSource = Draft.Lines.ToList();
+            pending.ClearSelection();
+            pending.CurrentCell = null;
+        }
+        finally
+        {
+            suppressPendingSelectionChanged = false;
+        }
 
         totals.Text = Draft.HasLines
             ? $"{Draft.Lines.Count} line(s)  •  {Draft.TotalQuantity} containers"

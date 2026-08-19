@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.4.0-alpha.24.2.11**
+Current baseline: **v0.4.0-alpha.24.2.19**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -128,9 +128,10 @@ Provenance tags:
 | BT-BATCH-005 | v1 | IMPLEMENTED-STATIC | Clicking draft line loads edit fields; update/remove/container change recalculates draft preview. | HIST-BUILD,CODE |
 | BT-BATCH-006 | v1 | IMPLEMENTED-STATIC | Esc exits draft-line edit mode when editing. | HIST-BUILD,CODE |
 | BT-BATCH-007 | v1 | IMPLEMENTED-ACCEPTED | Draft survives page navigation and logout/login while process remains running. | CHAT-SURFACED,CURRENT-DOC,CODE |
-| BT-BATCH-008 | v1 | PLANNED-V1 | Verify/document Esc behavior for every Batch Entry state, not only draft-line edit. | CHAT-SURFACED,CURRENT-DOC |
-| BT-BATCH-009 | v1 | PLANNED-V1 | Decide final successful-line field clearing/carry-forward behavior and return focus to Customer/code as agreed. | CHAT-SURFACED,CURRENT-DOC |
-| BT-BATCH-010 | v1 | PLANNED-V1 | Decide/implement crash or power-loss draft recovery for production. | CHAT-SURFACED,CURRENT-DOC |
+| BT-BATCH-008 | v1 | IMPLEMENTED-STATIC | Esc has explicit state semantics: cancel draft-line edit first; otherwise clear only the current unsaved entry fields; otherwise leave Batch Entry for Dashboard while retaining the draft. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-BATCH-009 | v1 | IMPLEMENTED-STATIC | Successful Add to Batch clears customer/quantity/reference/notes/customer preview and returns focus to Customer; pending-grid rebinding must not auto-select/reload the just-added row; movement date, batch direction and container type intentionally carry forward for rapid entry. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-BATCH-010 | v1 | IMPLEMENTED-STATIC | Unsaved Batch Entry draft lines/date/direction are persisted atomically under LocalApplicationData after changes; successful Save Batch/Clear Batch removes the recovery file. | CHAT-SURFACED,CURRENT-DOC,CODE,TEST |
+| BT-BATCH-011 | v1 | IMPLEMENTED-STATIC | A persisted draft loaded after process restart/crash/power loss is not silently resumed: BinTracker presents Continue Batch / Save Batch / Discard Batch with draft date, direction, line count, total quantity and last-saved time. Discard requires confirmation; failed recovery-save retains the draft. Same-process navigation/logout drafts do not trigger the recovery prompt. | CHAT-SURFACED,CURRENT-DOC,CODE,TEST |
 
 ## Excel import / migration
 
@@ -178,6 +179,7 @@ Provenance tags:
 | BT-RPT-014 | v1 | IMPLEMENTED-STATIC | Outstanding Containers provides an explicit balance filter with Outstanding only (default), Credits only, and All non-zero modes; the selected mode applies consistently to on-screen results and exported PDF/CSV output. | USER-REQUEST,CODE,TEST |
 | BT-RPT-015 | v1 | IMPLEMENTED-ACCEPTED | Outstanding Containers keeps the Balance selector fully readable at supported DPI and provides trial multi-column grid sorting: click sets the primary sort and Shift+click adds/toggles secondary or later sort columns while preserving the displayed order in PDF/CSV snapshots. | USER-REQUEST,CODE,USER-ACCEPTED |
 | BT-RPT-016 | v1 | IMPLEMENTED-STATIC | All applicable report grids provide consistent type-aware multi-column sorting: click sets a primary sort, Shift+click adds/toggles later sort levels, numeric quantities/positions sort by their true business value rather than display text (including CREDIT as negative and OUT as positive), report dates sort chronologically, active sorts persist across report refreshes, and each grid displays an on-screen usage hint; Outstanding Containers keeps its filter/action controls fully visible at supported DPI. | USER-APPROVED,CODE |
+| BT-RPT-017 | v1 | IMPLEMENTED-STATIC | Every active sort on an applicable report grid visibly identifies both direction and sort priority in the column header (for example ▲1/▼1 and ▲2/▼2). The indication must remain visible at supported DPI, including narrow text columns such as Direction, must stay on a single header line without sort-driven header/grid height or column-width changes, and must not depend solely on the WinForms native sort glyph. | CODE |
 
 ## Market Floor / Outstanding / movements / statements / summaries
 

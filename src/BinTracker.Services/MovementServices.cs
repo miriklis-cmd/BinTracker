@@ -91,11 +91,87 @@ public sealed class DraftMovementBatch
         MovementDate = DateOnly.FromDateTime(DateTime.Today);
         MovementType = MovementType.In;
     }
+
+    internal void Restore(
+        DateOnly movementDate,
+        MovementType movementType,
+        IEnumerable<DraftMovementLine> lines)
+    {
+        Lines.Clear();
+        Lines.AddRange(lines);
+        MovementDate = movementDate;
+        MovementType = movementType;
+    }
 }
+
+public interface IBatchDraftStore
+{
+    DraftMovementBatchSnapshot? Load();
+    void Save(DraftMovementBatch draft);
+    void Clear();
+}
+
+public sealed record DraftMovementBatchSnapshot(
+    DateOnly MovementDate,
+    MovementType MovementType,
+    IReadOnlyList<DraftMovementLine> Lines,
+    DateTimeOffset LastSavedAtUtc);
 
 public sealed class ApplicationState
 {
+    private readonly IBatchDraftStore? draftStore;
+
+    public ApplicationState()
+    {
+    }
+
+    public ApplicationState(IBatchDraftStore draftStore)
+    {
+        this.draftStore = draftStore;
+
+        var restored = draftStore.Load();
+        if (restored is not null)
+        {
+            DraftBatch.Restore(
+                restored.MovementDate,
+                restored.MovementType,
+                restored.Lines);
+            RecoveryDraftLastSavedAtUtc = restored.LastSavedAtUtc;
+            RecoveryPromptPending = true;
+        }
+    }
+
     public DraftMovementBatch DraftBatch { get; } = new();
+
+    public DateTimeOffset? RecoveryDraftLastSavedAtUtc { get; private set; }
+
+    /// <summary>
+    /// True only when this application process started with a persisted draft
+    /// loaded from disk. Drafts created later in the same process (including
+    /// logout/login) are not presented as crash/power-loss recovery.
+    /// </summary>
+    public bool RecoveryPromptPending { get; private set; }
+
+    public void MarkRecoveryPromptHandled() => RecoveryPromptPending = false;
+
+    public void PersistDraft()
+    {
+        if (draftStore is null)
+            return;
+
+        if (DraftBatch.HasLines)
+            draftStore.Save(DraftBatch);
+        else
+            draftStore.Clear();
+    }
+
+    public void ClearDraft()
+    {
+        DraftBatch.Clear();
+        RecoveryPromptPending = false;
+        RecoveryDraftLastSavedAtUtc = null;
+        draftStore?.Clear();
+    }
 }
 
 public static class MovementPositionMath

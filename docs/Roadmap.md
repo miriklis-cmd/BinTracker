@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.24.2.11**
+Current planning baseline: **v0.4.0-alpha.24.2.19**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -147,9 +147,9 @@ Current operator-confirmed behaviour:
 
 Remaining:
 
-- [ ] Verify and document **Esc** behaviour in each Batch Entry state.
-- [ ] After a line is successfully added/committed, clear all entry fields that should not carry forward and return focus to the Customer field/code entry.
-- [ ] Decide/implement crash or power-loss draft recovery if required for production. Current in-memory draft does not survive process termination.
+- [ ] **Acceptance pending:** Esc now cancels draft-line edit first, otherwise clears the current unsaved entry, otherwise returns to Dashboard while retaining the batch draft.
+- [ ] **Acceptance pending:** Add to Batch clears Customer/Quantity/Reference/Notes and customer preview, returns focus to Customer, intentionally carries Movement Date / Batch Type / Container Type forward, and pending-grid rebinding does not reload the just-added row.
+- [ ] **Acceptance pending:** crash/power-loss recovery persists the draft atomically and, after restart, asks the operator to Continue Batch / Save Batch / Discard Batch instead of silently resuming. Verify all three choices plus removal after successful Save Batch / Clear Batch.
 
 This is acceptance/polish work only unless smoke testing exposes another real defect.
 

@@ -552,6 +552,7 @@ public static class ServiceSetup
     public static IServiceCollection AddBinTrackerServices(this IServiceCollection services)
     {
         services.AddSingleton<UserSession>();
+        services.AddSingleton<IBatchDraftStore, FileBatchDraftStore>();
         services.AddSingleton<ApplicationState>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();

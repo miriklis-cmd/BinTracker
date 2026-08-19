@@ -123,6 +123,7 @@ public sealed class MainForm : BinTrackerForm
         Build();
         FormClosing += MainForm_FormClosing;
         ShowDashboard();
+        Shown += async (_, _) => await HandleRecoveredBatchAsync();
     }
 
     private void Build()
@@ -468,11 +469,100 @@ public sealed class MainForm : BinTrackerForm
         content.Controls.Add(page);
     }
 
+    private async Task HandleRecoveredBatchAsync()
+    {
+        if (!appState.RecoveryPromptPending || !appState.DraftBatch.HasLines)
+            return;
+
+        // Only a persisted draft loaded when this application process started
+        // is a recovery event. Mark it handled before showing the dialog so a
+        // later logout/login in the same process does not prompt again.
+        appState.MarkRecoveryPromptHandled();
+
+        using var dialog = new RecoveredBatchDialog(appState.DraftBatch, appState.RecoveryDraftLastSavedAtUtc);
+        dialog.ShowDialog(this);
+
+        switch (dialog.SelectedAction)
+        {
+            case RecoveredBatchAction.Continue:
+                ShowBatchEntry();
+                break;
+
+            case RecoveredBatchAction.Save:
+                await SaveRecoveredBatchAsync();
+                break;
+
+            case RecoveredBatchAction.Discard:
+                var answer = MessageBox.Show(
+                    "Permanently discard this recovered batch?\n\n" +
+                    "The unsaved movements cannot be recovered after this.",
+                    "Discard Recovered Batch",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+
+                if (answer == DialogResult.Yes)
+                {
+                    appState.ClearDraft();
+                    ShowDashboard();
+                }
+                else
+                {
+                    ShowBatchEntry();
+                }
+                break;
+        }
+    }
+
+    private async Task SaveRecoveredBatchAsync()
+    {
+        var draft = appState.DraftBatch;
+
+        try
+        {
+            var result = await movements.SaveBatchAsync(
+                new SaveMovementBatchRequest(
+                    draft.MovementDate,
+                    draft.MovementType,
+                    null,
+                    draft.Lines
+                        .Select(x => new MovementBatchLine(
+                            x.CustomerId,
+                            x.ContainerTypeId,
+                            x.Quantity,
+                            x.Reference,
+                            x.Notes))
+                        .ToList()));
+
+            appState.ClearDraft();
+
+            MessageBox.Show(
+                $"Recovered batch #{result.BatchId} saved successfully.\n\n" +
+                $"Lines: {result.LineCount}\n" +
+                $"Total containers: {result.TotalQuantity}",
+                "Recovered Batch Saved",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+
+            ShowDashboard();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                "The recovered batch could not be saved. It has not been discarded.\n\n" +
+                ex.Message,
+                "Recovered Batch",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+
+            ShowBatchEntry();
+        }
+    }
+
     private void ShowBatchEntry()
     {
         SetPage("Batch Entry");
         content.AutoScroll = false;
-        content.Controls.Add(new BatchEntryView(movements, session, appState));
+        content.Controls.Add(new BatchEntryView(movements, session, appState, ShowDashboard));
     }
 
     private void ShowCustomers()
