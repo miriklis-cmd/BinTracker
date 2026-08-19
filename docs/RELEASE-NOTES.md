@@ -1,4 +1,4 @@
-## v0.4.0-alpha.24.2.24
+## v0.4.0-alpha.24.2.25
 
 - Fixed the final Batch Entry edit-mode persistence defect found in operator smoke testing: asynchronous row/customer resolution is generation-guarded, so Esc or Clear cannot be followed by a stale continuation that puts the UI back into Update Line mode.
 - Clear Batch is now also a complete editor reset when the draft is already empty or the user is mid-edit.
