@@ -1,17 +1,17 @@
 # BinTracker Active Test Checklist
 
-Current baseline: **v0.5.0-alpha.1**
+Current baseline: **v0.5.0-alpha.2**
 
 Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
 
 ## Release / audit / packaging gate
 
 - [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.1 and the actually resolved installed SDK.
+- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.1.1 and the actually resolved installed SDK.
 - [ ] Restore succeeds; full solution builds with zero warnings.
 - [ ] All unit tests pass; all integration tests pass.
 - [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
-- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.5.0-alpha.1`.
+- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.5.0-alpha.1.1`.
 - [ ] No unexpected `global.json` is packaged.
 
 ## Authentication / users / shell
@@ -22,7 +22,7 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 - [ ] Change/reset password and role/active controls work.
 - [ ] Password fields start masked; all supported eye controls reveal/re-hide correctly.
 - [ ] Audit Trail / Settings admin actions respect roles.
-- [ ] Login, Main, breakout reports and dialogs use BinTracker icon; taskbar is branded before login. For v0.5.0-alpha.1, visually compare the newly supplied hybrid icon trial and either approve it or request reversion.
+- [ ] Login, Main, breakout reports and dialogs use BinTracker icon; taskbar is branded before login. For v0.5.0-alpha.1.1, visually compare the newly supplied hybrid icon trial and either approve it or request reversion.
 - [ ] Splash shows BinTracker branding/version during startup.
 - [ ] Sidebar logo + full BinTracker wordmark remain aligned/unclipped.
 
@@ -163,7 +163,11 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 
 ## Remaining pre-v1 milestones
 
-- [ ] Movement Correction/Reversal: linked, reasoned, permissioned, audited; original never destructively edited/deleted.
+- [ ] Movement Correction/Reversal: linked, reasoned and audited; original never destructively edited/deleted.
+- [ ] Administrator and Operator both see Reverse for ordinary Single Entry/Batch Entry movements and can complete a reversal.
+- [ ] Viewer does not receive reversal capability.
+- [ ] Opening Adjustment generic reversal is blocked and directs to Administrator-controlled adjustment handling.
+- [ ] Excel Import / ImportRun-linked generic reversal is blocked and directs to Administrator Replace / Correct.
 - [ ] Business logo + shared generated-output branding.
 - [ ] Google Workspace email + Texto SMS communications, templates, manual/automatic sends, opt-out, delivery history, retries/idempotency and audit.
 - [ ] Dashboard design discussion **before code**, covering KPIs/charts/drill-through/attention/recent activity/ageing/forecasting-ML/large-monitor behavior.

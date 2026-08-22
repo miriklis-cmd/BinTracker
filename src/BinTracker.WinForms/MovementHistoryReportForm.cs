@@ -299,7 +299,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         csv.Click += async (_, _) => await ExportCsvAsync();
         actions.Controls.Add(csv);
 
-        if (session.Role == UserRole.Administrator)
+        if (session.Role is UserRole.Administrator or UserRole.Operator)
         {
             var reverse = new Button
             {
@@ -512,6 +512,24 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         {
             MessageBox.Show(this, "This movement has already been reversed.", "Reverse Movement",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        if (detail.Source == MovementSource.Adjustment)
+        {
+            MessageBox.Show(this,
+                "Opening adjustments cannot be reversed here because they change the brought-forward position. " +
+                "Use the Administrator-controlled adjustment workflow.",
+                "Reverse Movement", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        if (detail.Source == MovementSource.ExcelImport)
+        {
+            MessageBox.Show(this,
+                "Excel Import movements cannot be reversed individually. " +
+                "Use the Administrator Replace / Correct import workflow so the Import Run remains auditable.",
+                "Reverse Movement", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 

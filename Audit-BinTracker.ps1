@@ -229,15 +229,25 @@ if (-not (Test-Path $correctionServicePath) -or -not (Test-Path $correctionDialo
     Fail "BT-CORR source gate failed: correction service/dialog missing."
 }
 $correctionText = Get-Content -Raw $correctionServicePath
+$correctionDialogText = Get-Content -Raw $correctionDialogPath
 $correctionUiText = Get-Content -Raw $movementHistoryPath
 $migrationText = Get-Content -Raw $migrationPath
-if ($correctionText -notmatch 'session\.Role != UserRole\.Administrator' -or
+if ($correctionText -notmatch 'session\.Role is not \(UserRole\.Administrator or UserRole\.Operator\)' -or
+    $correctionText -notmatch 'original\.Source == MovementSource\.Adjustment' -or
+    $correctionText -notmatch 'original\.Source == MovementSource\.ExcelImport \|\| original\.ImportRunId\.HasValue' -or
+    $correctionText -notmatch 'Replace / Correct' -or
     $correctionText -notmatch 'BeginTransactionAsync' -or
     $correctionText -notmatch 'ReversesMovementId = original\.Id' -or
     $correctionText -notmatch 'MOVEMENT_REVERSED' -or
+    $correctionUiText -notmatch 'session\.Role is UserRole\.Administrator or UserRole\.Operator' -or
     $correctionUiText -notmatch 'Reverse Selected' -or
+    $correctionDialogText -notmatch 'ClientSize = new Size\(620, 540\)' -or
+    $correctionDialogText -notmatch 'SizeType\.Absolute, 130F' -or
+    $correctionDialogText -notmatch 'SizeType\.Absolute, 54F' -or
+    $correctionDialogText -notmatch 'AutoSize = false' -or
+    $correctionDialogText -notmatch 'MinimumSize = new Size\(0, 96\)' -or
     $migrationText -notmatch 'new\(13, "Movement correction and reversal linkage"') {
-    Fail "BT-CORR source gate failed: append-only linked/admin/audited reversal implementation is incomplete."
+    Fail "BT-CORR source gate failed: append-only linked/audited role-sensitive reversal implementation is incomplete."
 }
 
 # Batch Entry acceptance/recovery source guard (BT-BATCH-008/009/010/011).

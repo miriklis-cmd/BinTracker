@@ -9,7 +9,8 @@ This is the pre-v1 audit-coverage checklist. Audit history is append-only eviden
 - Customer create/change/activate/deactivate.
 - Container Type create/change/activate/deactivate.
 - Saved Single Entry and Batch Entry movements.
-- Movement correction/reversal when implemented.
+- Movement correction/reversal: actor, timestamp, mandatory reason, original/reversal linkage, source class and success/failure where appropriate.
+- Authorization coverage: Operator/Admin ordinary Manual/Batch reversal; Viewer denial; generic reversal denial for Opening Adjustment and Excel Import/provenance-linked rows.
 - Excel Import completion, failure where appropriate, and Replace/Correct.
 - Import Run provenance/replacement relationship.
 - Report generation, including Customer Statement, Market Floor, Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Monthly Summary and Daily Print Pack PDF output.

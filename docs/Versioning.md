@@ -52,7 +52,7 @@ Version milestones follow **real scope boundaries**, not a fixed count of phases
 Examples:
 
 - `0.4.0-alpha.*` — current operational completion / Reports phase.
-- A substantial new workstream such as Dashboard may start a new minor milestone, e.g. `0.5.0-alpha.1`.
+- A substantial new workstream such as Dashboard may start a new minor milestone, e.g. `0.5.0-alpha.1.1`.
 - Communications, correction/reversal, production operations, PostgreSQL/multi-user or other major workstreams may each receive their own `0.x.0` milestone when their scope justifies it.
 - It is valid to use `0.10.0`, `0.11.0`, etc. if additional pre-1.0 milestones are needed.
 
@@ -62,7 +62,7 @@ Do not force all remaining work into a pre-decided `0.5 → 0.6 → 1.0` sequenc
 
 For **new milestones from the next clean milestone onward**, use:
 
-- Feature/development increment: `0.5.0-alpha.1`
+- Feature/development increment: `0.5.0-alpha.1.1`
 - Next feature/development increment: `0.5.0-alpha.2`
 - Bug/polish fix specifically to alpha 2: `0.5.0-alpha.2.1`
 - Another fix to alpha 2: `0.5.0-alpha.2.2`

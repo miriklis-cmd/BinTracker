@@ -272,3 +272,14 @@ Important security, master-data and movement changes create audit events.
 - CSV audit events identify the report, user/time through the audit system, date/range, row count, filename and filters/context.
 - Do not store full exported report contents in AuditEvent data.
 - A CSV successfully written to disk with a failed audit write must produce an operator warning.
+
+
+## Movement correction / reversal authorization
+
+- Administrator and Operator are trusted operational roles and may reverse ordinary physical movements entered through Single Entry (`Manual`) or Batch Entry (`Batch`), including movements originally entered by another operator.
+- Viewer remains read-only and cannot reverse movements.
+- Reversal remains append-only: the original movement is never edited/deleted; an equal and opposite linked movement is created with mandatory reason, actor/time and audit provenance.
+- Opening Adjustments are sensitive brought-forward-position records and cannot use the generic Movement History reversal action. They require an Administrator-controlled adjustment workflow.
+- Excel Import movements, including movements linked to an ImportRun, cannot be reversed individually through the generic reversal action. They must use the Administrator Replace / Correct import workflow so import provenance and reconciliation remain internally consistent.
+- Reversal movements cannot themselves be reversed, and an original movement cannot be reversed twice.
+- If formal period locking/close is introduced later, historical-period reversal authorization must be explicitly defined before enabling it.

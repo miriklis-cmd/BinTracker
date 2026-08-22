@@ -1,11 +1,31 @@
-## v0.5.0-alpha.1
+## v0.5.0-alpha.1.1
+
+## v0.5.0-alpha.2
+
+- Refined Movement Correction/Reversal authorization after operator smoke review: Administrator and Operator may reverse ordinary Manual/Batch operational movements.
+- Viewer remains read-only.
+- Opening Adjustment and Excel Import/ImportRun-linked records are excluded from the generic reversal path and reserved for Administrator-controlled adjustment/import correction workflows.
+- Added service-layer enforcement, UI visibility/messaging, integration coverage and permanent requirement `BT-CORR-005`.
+
+
+## v0.5.0-alpha.1.3
+
+- Reissued the unaccepted alpha.1.2 layout candidate as alpha.1.3 after the source audit correctly rejected a nonconforming current Release Notes heading.
+- Release Notes now use the exact audited candidate heading format while preserving the reversal-dialog layout fix.
+
+
+## v0.5.0-alpha.1.2
+
+- Fixed reversal dialog action-row clipping at supported runtime/DPI by allocating explicit reason/action row heights and a larger fixed dialog client area.
+- Reconciled historical/current version wording after the alpha.1.1 documentation bump.
+
 
 - Fixed Batch Entry Esc/reset edit-state resurrection at the DataGridView source: reset now suppresses SelectionChanged, clears selection and clears CurrentCell so CurrentRow cannot immediately reload Update Line.
 - Added the dedicated Security, Data Integrity & Code Quality Hardening roadmap workstream immediately after Movement Correction/Reversal and before Branding/Communications.
 - Added `docs/SecurityHardeningRegister.md` with permanent BT-SH-001..BT-SH-050 tracking for all external audit findings supplied on 19 August 2026.
 - Added BT-SEC-008..011 governance requirements and a per-build hard gate protecting finding completeness/dispositions and roadmap ordering; v1.0 is mechanically blocked while CONFIRMED-V1/REVIEW-V1 findings remain.
 
-## 0.5.0-alpha.1
+## 0.5.0-alpha.1.1
 
 - Fixed the remaining Batch Entry async edit-state race: a late customer lookup can no longer restore Update Line after Esc/Clear has cancelled edit mode.
 - Clear Batch now fully resets Customer/Quantity/Reference/Notes/preview and Add to Batch state even when no draft rows remain.

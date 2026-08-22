@@ -29,6 +29,8 @@
 - BT-MOVE-007: Saving a batch is transactional.
 - BT-MOVE-008: Saved batches are audited.
 - BT-MOVE-009: Corrections/reversals must preserve the original movement and audit trail.
+- BT-MOVE-010: Administrator and Operator may reverse ordinary Manual/Batch operational movements; Viewer cannot.
+- BT-MOVE-011: Generic reversal must reject Opening Adjustments and Excel Import/ImportRun-linked movements; those use Administrator-controlled adjustment or Replace / Correct workflows respectively.
 
 ## Dashboard
 

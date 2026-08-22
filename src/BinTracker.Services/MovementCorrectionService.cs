@@ -51,8 +51,9 @@ internal sealed class MovementCorrectionService(
     {
         if (!session.IsAuthenticated)
             throw new InvalidOperationException("You must be signed in to reverse a movement.");
-        if (session.Role != UserRole.Administrator)
-            throw new UnauthorizedAccessException("Administrator access is required to reverse saved movements.");
+        if (session.Role is not (UserRole.Administrator or UserRole.Operator))
+            throw new UnauthorizedAccessException(
+                "Only Administrators and Operators can reverse ordinary operational movements.");
 
         var reason = (request.Reason ?? string.Empty).Trim();
         if (reason.Length < 3)
@@ -66,6 +67,16 @@ internal sealed class MovementCorrectionService(
         var original = await db.BinMovements
             .SingleOrDefaultAsync(x => x.Id == request.MovementId, cancellationToken)
             ?? throw new InvalidOperationException("The selected movement no longer exists.");
+
+        if (original.Source == MovementSource.Adjustment)
+            throw new InvalidOperationException(
+                "Opening adjustments cannot be reversed from Movement History. " +
+                "They affect brought-forward position and require an Administrator-controlled adjustment workflow.");
+
+        if (original.Source == MovementSource.ExcelImport || original.ImportRunId.HasValue)
+            throw new InvalidOperationException(
+                "Excel Import movements cannot be reversed individually from Movement History. " +
+                "Use the Administrator Replace / Correct import workflow so Import Run provenance remains intact.");
 
         if (original.ReversesMovementId.HasValue)
             throw new InvalidOperationException("A reversal movement cannot itself be reversed.");

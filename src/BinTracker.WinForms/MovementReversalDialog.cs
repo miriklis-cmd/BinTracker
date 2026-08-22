@@ -10,7 +10,8 @@ internal sealed class MovementReversalDialog : BinTrackerForm
         Multiline = true,
         MaxLength = 500,
         ScrollBars = ScrollBars.Vertical,
-        Dock = DockStyle.Fill
+        Dock = DockStyle.Fill,
+        MinimumSize = new Size(0, 96)
     };
 
     public string Reason => reason.Text.Trim();
@@ -24,7 +25,8 @@ internal sealed class MovementReversalDialog : BinTrackerForm
         MinimizeBox = false;
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(620, 455);
+        ClientSize = new Size(620, 540);
+        MinimumSize = new Size(636, 579);
         Font = new Font("Segoe UI", 10F);
 
         var root = new TableLayoutPanel
@@ -37,8 +39,8 @@ internal sealed class MovementReversalDialog : BinTrackerForm
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 130F));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 54F));
 
         root.Controls.Add(new Label
         {
@@ -69,9 +71,16 @@ internal sealed class MovementReversalDialog : BinTrackerForm
             Margin = new Padding(0, 0, 0, 14)
         }, 0, 2);
 
-        var reasonPanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+        var reasonPanel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
         reasonPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        reasonPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        reasonPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 92F));
         reasonPanel.Controls.Add(new Label { Text = "Reason (required)", AutoSize = true, Margin = new Padding(0, 0, 0, 5) }, 0, 0);
         reasonPanel.Controls.Add(reason, 0, 1);
         root.Controls.Add(reasonPanel, 0, 3);
@@ -79,9 +88,11 @@ internal sealed class MovementReversalDialog : BinTrackerForm
         var buttons = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
-            AutoSize = true,
+            AutoSize = false,
             FlowDirection = FlowDirection.RightToLeft,
-            Margin = new Padding(0, 14, 0, 0)
+            WrapContents = false,
+            Margin = Padding.Empty,
+            Padding = new Padding(0, 7, 0, 7)
         };
         var reverse = new Button { Text = "Create Reversal", Size = new Size(145, 40) };
         var cancel = new Button { Text = "Cancel", Size = new Size(105, 40) };

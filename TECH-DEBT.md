@@ -250,3 +250,8 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 - alpha.24 embeds the approved report icon artwork directly from the approved Reports mock-up to prevent later icon substitution/drift.
 - If the Reports hub is reimplemented in WinUI 3 post-v1, treat these visual assets and hierarchy as design reference unless a new design is explicitly approved.
+
+## Movement correction/reversal workflow placement
+- Dedicated movement correction/reversal operational surface is deferred until the reversal engine passes acceptance.
+- Movement History may retain a contextual Correct/Reverse action, but Reports should not become the primary transaction-management surface by accident.
+- Revisit navigation when correction-by-replacement is implemented; prefer a coherent Movements operational area over a reversal-only top-level item.

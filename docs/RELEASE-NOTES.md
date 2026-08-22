@@ -1,4 +1,4 @@
-## v0.5.0-alpha.1
+## v0.5.0-alpha.1.1
 
 - Fixed the final Batch Entry edit-mode persistence defect found in operator smoke testing: asynchronous row/customer resolution is generation-guarded, so Esc or Clear cannot be followed by a stale continuation that puts the UI back into Update Line mode.
 - Clear Batch is now also a complete editor reset when the draft is already empty or the user is mid-edit.
@@ -49,6 +49,47 @@
 - Replaced thin report sort arrows with filled triangle indicators (`▲1`, `▼1`, `▲2`, etc.) so direction is easier to see at normal Windows scaling. Sort priority numbering and sorting behaviour are unchanged.
 
 # BinTracker Current Release Notes
+
+## v0.5.0-alpha.2
+
+### Operational reversal authorization
+
+- Administrator and Operator can reverse ordinary Single Entry (`Manual`) and Batch Entry (`Batch`) movements, including movements entered by another operator.
+- Viewer remains unable to reverse movements.
+- Generic reversal rejects Opening Adjustments because they establish brought-forward position and require an Administrator-controlled adjustment workflow.
+- Generic reversal rejects Excel Import and ImportRun-linked movements and directs the user to Administrator Replace / Correct so import provenance/reconciliation remains intact.
+- Existing append-only linkage, mandatory reason, audit event, double-reversal protection and reversal-of-reversal protection are preserved.
+- TEST REQUIRED: Targeted — full automated build/test gate; Operator ordinary Manual/Batch reversal; Viewer visibility/denial; Opening Adjustment and Excel Import generic-reversal denial.
+
+
+
+## v0.5.0-alpha.1.3
+
+### Reversal dialog full-layout correction + release-gate repair
+
+- Carries forward the alpha.1.2 reversal-dialog full-layout correction: guaranteed Reason editor and action-row space at supported runtime/DPI.
+- Corrects the Release Notes candidate heading to the exact standalone format required by `Audit-BinTracker.ps1`.
+- No reversal ledger, permission or audit semantics changed.
+- TEST REQUIRED: Targeted — full build/test gate, then verify Reason editor and Cancel/Create Reversal buttons are simultaneously visible and usable.
+
+
+## v0.5.0-alpha.1.2
+
+- Fixes the second reversal-dialog acceptance blocker: after the Reason field became visible, the action row could still be pushed below the client area at runtime/DPI.
+- Uses an explicit vertical contract: 620x540 client area, 130px Reason row, 54px action row, non-autosizing button panel, and a minimum multiline Reason editor height.
+- Preserves the existing reversal business logic and authorization/audit behavior.
+- Corrects accidental historical-version wording introduced by the previous blanket documentation version replacement.
+- TEST REQUIRED: Targeted — build/test gate, then verify Reason editor and Cancel/Create Reversal buttons are simultaneously visible and usable.
+
+
+## v0.5.0-alpha.1.1 — Reversal acceptance blocker fix
+
+- Fixes the required Reason editor collapsing to effectively zero height in the Reverse Saved Movement dialog.
+- Gives the reason region explicit DPI-safe vertical space and a minimum multiline editor height.
+- Records the dedicated correction/reversal operational-surface decision as deferred until the reversal engine passes acceptance; Movement History remains the current contextual entry point.
+- No reversal ledger/business-rule semantics changed from alpha.1.
+
+
 
 ## v0.5.0-alpha.1 — Movement Correction/Reversal milestone
 

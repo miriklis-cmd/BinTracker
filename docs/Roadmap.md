@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.5.0-alpha.1**
+Current planning baseline: **v0.5.0-alpha.2**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -36,7 +36,7 @@ The remaining importer failure-detail message and deferred Review cosmetics can 
 
 ## Current execution order — audited 16 August 2026
 
-This order is the authoritative pre-v1 sequence. `v0.5.0-alpha.1` begins the clean milestone scheme with Movement Correction/Reversal; later milestone numbers remain scope-driven.
+This order is the authoritative pre-v1 sequence. `v0.5.0-alpha.1` began the clean milestone scheme with Movement Correction/Reversal; later milestone numbers remain scope-driven.
 
 1. **Finish v0.4 Reporting** — Monthly Summary is user-accepted; validate Daily Print Pack, then complete the final report consistency/real-world print acceptance pass.
 2. **Batch Entry acceptance cleanup** — verify Esc, post-entry field clearing/focus, and implement/decide crash/power-loss draft recovery before production.
@@ -174,8 +174,8 @@ Required dashboard pass:
 
 - [x] **Reversal foundation implemented:** Administrator can select a saved movement in Movement History and create an equal/opposite linked reversal; original ledger row is never edited/deleted.
 - [x] Reversal requires a reason and preserves original/reversal linkage, actor/time and `MOVEMENT_REVERSED` audit in one database transaction.
-- [x] Reversal permission is enforced at service layer for authenticated Administrators and hidden from non-admin UI.
-- [ ] **Acceptance pending:** real-app test of OUT reversal, IN reversal, already-reversed protection, balance/report effect and non-admin denial.
+- [x] Reversal permission is enforced at service layer: Administrator and Operator may reverse ordinary Manual/Batch movements; Viewer cannot. Opening Adjustment and Excel Import/provenance-linked movements are excluded from generic reversal and routed to Administrator-controlled workflows.
+- [x] **Reversal engine smoke accepted:** OUT and IN reversal, immutable history, balance neutrality, audit creation, already-reversed protection and reversal-of-reversal protection passed on Windows. Role policy was then refined to allow Operators for ordinary operational movements and requires targeted re-acceptance.
 - [ ] Add correction-by-replacement workflow where the operator needs to replace incorrect customer/container/date/quantity rather than simply reverse it.
 
 

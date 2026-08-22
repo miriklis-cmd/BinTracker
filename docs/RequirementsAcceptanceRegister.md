@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.5.0-alpha.1**
+Current baseline: **v0.5.0-alpha.2**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -214,10 +214,11 @@ Provenance tags:
 
 | ID | Scope | Status | Requirement | Provenance |
 |---|---|---|---|---|
-| BT-CORR-001 | v1 | IMPLEMENTED-STATIC | Administrator-only reversal workflow is available from Movement History for saved movements; correction-by-replacement remains a later slice. | CHAT-SURFACED,CURRENT-DOC |
+| BT-CORR-001 | v1 | IMPLEMENTED-STATIC | Administrator and Operator roles can reverse ordinary operational saved movements from Movement History; correction-by-replacement remains a later slice. | CHAT-SURFACED,CURRENT-DOC |
 | BT-CORR-002 | v1 | IMPLEMENTED-STATIC | Reversal is append-only: original saved movement is preserved and an equal/opposite linked ledger row is created. | CHAT-SURFACED,CURRENT-DOC |
 | BT-CORR-003 | v1 | IMPLEMENTED-STATIC | Reversal stores original/reversal linkage, required reason, actor/time and MOVEMENT_REVERSED audit in the same transaction. | CURRENT-DOC |
-| BT-CORR-004 | v1 | IMPLEMENTED-STATIC | Reversal is enforced at service layer for authenticated Administrators only; UI action is hidden from non-admin roles. | CURRENT-DOC |
+| BT-CORR-004 | v1 | IMPLEMENTED-STATIC | Reversal authorization is enforced at service layer: Administrator and Operator may reverse ordinary Manual/Batch movements; Viewer cannot. | CURRENT-DOC |
+| BT-CORR-005 | v1 | IMPLEMENTED-STATIC | Sensitive movement classes are excluded from generic reversal: Opening Adjustments require an Administrator-controlled adjustment workflow; Excel Import/provenance-linked movements require the Administrator Replace / Correct import workflow. | CHAT-SURFACED,CURRENT-DOC |
 
 ## Email / SMS / customer communications
 

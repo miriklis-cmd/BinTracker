@@ -56,27 +56,161 @@ public sealed class MovementCorrectionSqliteTests
         Assert.True(await verify.AuditEvents.AnyAsync(x=>x.Action=="MOVEMENT_REVERSED" && x.EntityId==movementId.ToString()));
     }
 
-    [Fact]
-    public async Task Operator_cannot_reverse_saved_movement()
+    [Theory]
+    [InlineData(MovementSource.Manual)]
+    [InlineData(MovementSource.Batch)]
+    public async Task Operator_can_reverse_ordinary_operational_movement(MovementSource source)
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
-        var services=new ServiceCollection();
-        services.AddDbContextFactory<BinTrackerDbContext>(o=>o.UseSqlite(connection));
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<BinTrackerDbContext>(o => o.UseSqlite(connection));
         services.AddBinTrackerServices();
-        await using var provider=services.BuildServiceProvider();
-        await using var scope=provider.CreateAsyncScope();
-        var factory=scope.ServiceProvider.GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
-        var session=scope.ServiceProvider.GetRequiredService<UserSession>();
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
+        var session = scope.ServiceProvider.GetRequiredService<UserSession>();
+
         long id;
-        await using(var db=await factory.CreateDbContextAsync()){
-            await db.Database.EnsureCreatedAsync(); await DatabaseSetup.InitializeSqliteAsync(db);
-            var user=new UserAccount{Username="op",DisplayName="Operator",PasswordHash="x",PasswordSalt="x",Role=UserRole.Operator,IsActive=true};
-            var c=new Customer{CustomerCode="OP",Name="Operator Test"}; db.AddRange(user,c); await db.SaveChangesAsync(); session.SignIn(user);
-            var m=new BinMovement{MovementDate=DateOnly.FromDateTime(DateTime.Today),MovementType=MovementType.Out,Source=MovementSource.Manual,CustomerId=c.Id,ContainerTypeId=1,Quantity=1};
-            db.Add(m); await db.SaveChangesAsync(); id=m.Id;
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            await db.Database.EnsureCreatedAsync();
+            await DatabaseSetup.InitializeSqliteAsync(db);
+            var user = new UserAccount
+            {
+                Username = "op", DisplayName = "Operator", PasswordHash = "x", PasswordSalt = "x",
+                Role = UserRole.Operator, IsActive = true
+            };
+            var customer = new Customer { CustomerCode = "OP", Name = "Operator Test" };
+            db.AddRange(user, customer);
+            await db.SaveChangesAsync();
+            session.SignIn(user);
+
+            var movement = new BinMovement
+            {
+                MovementDate = DateOnly.FromDateTime(DateTime.Today),
+                MovementType = MovementType.Out,
+                Source = source,
+                CustomerId = customer.Id,
+                ContainerTypeId = 1,
+                Quantity = 2,
+                CreatedBy = "someone-else"
+            };
+            db.Add(movement);
+            await db.SaveChangesAsync();
+            id = movement.Id;
         }
-        var service=scope.ServiceProvider.GetRequiredService<IMovementCorrectionService>();
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(()=>service.ReverseAsync(new ReverseMovementRequest(id,"Should fail")));
+
+        var service = scope.ServiceProvider.GetRequiredService<IMovementCorrectionService>();
+        var result = await service.ReverseAsync(new ReverseMovementRequest(id, "Operator correction"));
+
+        await using var verify = await factory.CreateDbContextAsync();
+        var original = await verify.BinMovements.AsNoTracking().SingleAsync(x => x.Id == id);
+        var reversal = await verify.BinMovements.AsNoTracking().SingleAsync(x => x.Id == result.ReversalMovementId);
+        Assert.Equal(id, reversal.ReversesMovementId);
+        Assert.Equal(MovementType.In, reversal.MovementType);
+        Assert.Equal(2, reversal.Quantity);
+        Assert.Equal("op", reversal.CreatedBy);
+        Assert.Equal(reversal.Id, original.CorrectedByMovementId);
+    }
+
+    [Theory]
+    [InlineData(MovementSource.ExcelImport)]
+    [InlineData(MovementSource.Adjustment)]
+    public async Task Sensitive_sources_cannot_be_reversed_by_generic_workflow(MovementSource source)
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<BinTrackerDbContext>(o => o.UseSqlite(connection));
+        services.AddBinTrackerServices();
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
+        var session = scope.ServiceProvider.GetRequiredService<UserSession>();
+
+        long id;
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            await db.Database.EnsureCreatedAsync();
+            await DatabaseSetup.InitializeSqliteAsync(db);
+            var user = new UserAccount
+            {
+                Username = "admin", DisplayName = "Admin", PasswordHash = "x", PasswordSalt = "x",
+                Role = UserRole.Administrator, IsActive = true
+            };
+            var customer = new Customer { CustomerCode = "SENSITIVE", Name = "Sensitive Test" };
+            db.AddRange(user, customer);
+            await db.SaveChangesAsync();
+            session.SignIn(user);
+
+            var movement = new BinMovement
+            {
+                MovementDate = DateOnly.FromDateTime(DateTime.Today),
+                MovementType = MovementType.Out,
+                Source = source,
+                CustomerId = customer.Id,
+                ContainerTypeId = 1,
+                Quantity = 1,
+                CreatedBy = "admin"
+            };
+            db.Add(movement);
+            await db.SaveChangesAsync();
+            id = movement.Id;
+        }
+
+        var service = scope.ServiceProvider.GetRequiredService<IMovementCorrectionService>();
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.ReverseAsync(new ReverseMovementRequest(id, "Sensitive correction")));
+
+        Assert.Contains(
+            source == MovementSource.ExcelImport ? "Replace / Correct" : "Administrator-controlled",
+            error.Message);
+    }
+
+    [Fact]
+    public async Task Viewer_cannot_reverse_saved_movement()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<BinTrackerDbContext>(o => o.UseSqlite(connection));
+        services.AddBinTrackerServices();
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
+        var session = scope.ServiceProvider.GetRequiredService<UserSession>();
+
+        long id;
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            await db.Database.EnsureCreatedAsync();
+            await DatabaseSetup.InitializeSqliteAsync(db);
+            var user = new UserAccount
+            {
+                Username = "viewer", DisplayName = "Viewer", PasswordHash = "x", PasswordSalt = "x",
+                Role = UserRole.Viewer, IsActive = true
+            };
+            var customer = new Customer { CustomerCode = "VIEW", Name = "Viewer Test" };
+            db.AddRange(user, customer);
+            await db.SaveChangesAsync();
+            session.SignIn(user);
+            var movement = new BinMovement
+            {
+                MovementDate = DateOnly.FromDateTime(DateTime.Today),
+                MovementType = MovementType.Out,
+                Source = MovementSource.Manual,
+                CustomerId = customer.Id,
+                ContainerTypeId = 1,
+                Quantity = 1
+            };
+            db.Add(movement);
+            await db.SaveChangesAsync();
+            id = movement.Id;
+        }
+
+        var service = scope.ServiceProvider.GetRequiredService<IMovementCorrectionService>();
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => service.ReverseAsync(new ReverseMovementRequest(id, "Should fail")));
     }
 }
