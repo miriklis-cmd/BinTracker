@@ -70,6 +70,8 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     };
 
     private readonly IAuditService audit;
+    private readonly IMovementCorrectionService corrections;
+    private readonly UserSession session;
     private MovementHistoryReportResult? currentResult;
     private bool autoRefreshReady;
 
@@ -77,13 +79,17 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         IMovementHistoryReportService reports,
         IMovementHistoryReportPdfService pdfReports,
         IContainerTypeService containerTypes,
-        IAuditService audit)
+        IAuditService audit,
+        IMovementCorrectionService corrections,
+        UserSession session)
     {
         this.reports = reports;
         this.pdfReports = pdfReports;
         this.containerTypes = containerTypes;
 
         this.audit = audit;
+        this.corrections = corrections;
+        this.session = session;
 
         Text = "Movement History";
         StartPosition = FormStartPosition.Manual;
@@ -293,6 +299,18 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         csv.Click += async (_, _) => await ExportCsvAsync();
         actions.Controls.Add(csv);
 
+        if (session.Role == UserRole.Administrator)
+        {
+            var reverse = new Button
+            {
+                Text = "Reverse Selected",
+                Size = new Size(155, 40),
+                Margin = new Padding(8, 0, 0, 0)
+            };
+            reverse.Click += async (_, _) => await ReverseSelectedAsync();
+            actions.Controls.Add(reverse);
+        }
+
         rows.Controls.Add(filters, 0, 0);
         rows.Controls.Add(options, 0, 1);
         rows.Controls.Add(actions, 0, 2);
@@ -464,6 +482,59 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
                 "Movement History",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
+        }
+        finally
+        {
+            Enabled = true;
+            UseWaitCursor = false;
+        }
+    }
+
+    private async Task ReverseSelectedAsync()
+    {
+        if (grid.CurrentRow?.Tag is not MovementHistoryReportRow selected)
+        {
+            MessageBox.Show(this, "Select a movement row first.", "Reverse Movement",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        var detail = await corrections.GetAsync(selected.MovementId);
+        if (detail is null)
+        {
+            MessageBox.Show(this, "The selected movement no longer exists.", "Reverse Movement",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            await LoadReportAsync();
+            return;
+        }
+
+        if (detail.IsAlreadyReversed)
+        {
+            MessageBox.Show(this, "This movement has already been reversed.", "Reverse Movement",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        using var dialog = new MovementReversalDialog(detail);
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+            return;
+
+        try
+        {
+            Enabled = false;
+            UseWaitCursor = true;
+            var result = await corrections.ReverseAsync(
+                new ReverseMovementRequest(selected.MovementId, dialog.Reason));
+
+            MessageBox.Show(this,
+                $"Movement #{result.OriginalMovementId} was preserved and reversal movement #{result.ReversalMovementId} was created.",
+                "Movement Reversed", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            await LoadReportAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Reverse Movement",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         finally
         {

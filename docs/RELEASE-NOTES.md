@@ -1,4 +1,4 @@
-## v0.4.0-alpha.24.2.28
+## v0.5.0-alpha.1
 
 - Fixed the final Batch Entry edit-mode persistence defect found in operator smoke testing: asynchronous row/customer resolution is generation-guarded, so Esc or Clear cannot be followed by a stale continuation that puts the UI back into Update Line mode.
 - Clear Batch is now also a complete editor reset when the draft is already empty or the user is mid-edit.
@@ -49,6 +49,18 @@
 - Replaced thin report sort arrows with filled triangle indicators (`▲1`, `▼1`, `▲2`, etc.) so direction is easier to see at normal Windows scaling. Sort priority numbering and sorting behaviour are unchanged.
 
 # BinTracker Current Release Notes
+
+## v0.5.0-alpha.1 — Movement Correction/Reversal milestone
+
+- Starts the documented clean milestone/versioning scheme.
+- Adds the first append-only saved-movement reversal workflow from Movement History.
+- Original ledger rows are preserved; reversal rows are equal/opposite and linked to the original.
+- Reversal requires an Administrator, a reason, and records `MOVEMENT_REVERSED` audit data in the same transaction.
+- Adds SQLite schema migration V13 for movement reversal linkage/reason provenance.
+- Fixes V13 to use a dedicated strict allow-listed `BinMovements` schema helper rather than the Customers-only migration helper.
+- Adds integration coverage for reversal authorization/linkage/audit and V13 schema/index migration.
+- TEST REQUIRED: Full automated build/test gate, then targeted real-app reversal acceptance.
+
 
 ## v0.4.0-alpha.24.2.12
 

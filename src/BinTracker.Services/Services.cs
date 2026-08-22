@@ -581,6 +581,7 @@ public static class ServiceSetup
         services.AddScoped<IMonthlySummaryReportService, MonthlySummaryReportService>();
         services.AddScoped<IMonthlySummaryReportPdfService, MonthlySummaryReportPdfService>();
         services.AddScoped<IMovementService, MovementService>();
+        services.AddScoped<IMovementCorrectionService, MovementCorrectionService>();
         return services;
     }
 }

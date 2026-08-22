@@ -1,17 +1,17 @@
 # BinTracker Active Test Checklist
 
-Current baseline: **v0.4.0-alpha.24.2.28**
+Current baseline: **v0.5.0-alpha.1**
 
 Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
 
 ## Release / audit / packaging gate
 
 - [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.4.0-alpha.24.2.28 and the actually resolved installed SDK.
+- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.1 and the actually resolved installed SDK.
 - [ ] Restore succeeds; full solution builds with zero warnings.
 - [ ] All unit tests pass; all integration tests pass.
 - [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
-- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.4.0-alpha.24.2.28`.
+- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.5.0-alpha.1`.
 - [ ] No unexpected `global.json` is packaged.
 
 ## Authentication / users / shell
@@ -22,7 +22,7 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 - [ ] Change/reset password and role/active controls work.
 - [ ] Password fields start masked; all supported eye controls reveal/re-hide correctly.
 - [ ] Audit Trail / Settings admin actions respect roles.
-- [ ] Login, Main, breakout reports and dialogs use BinTracker icon; taskbar is branded before login. For v0.4.0-alpha.24.2.28, visually compare the newly supplied hybrid icon trial and either approve it or request reversion.
+- [ ] Login, Main, breakout reports and dialogs use BinTracker icon; taskbar is branded before login. For v0.5.0-alpha.1, visually compare the newly supplied hybrid icon trial and either approve it or request reversion.
 - [ ] Splash shows BinTracker branding/version during startup.
 - [ ] Sidebar logo + full BinTracker wordmark remain aligned/unclipped.
 

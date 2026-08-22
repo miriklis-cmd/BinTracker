@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.4.0-alpha.24.2.28**
+Current planning baseline: **v0.5.0-alpha.1**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -36,7 +36,7 @@ The remaining importer failure-detail message and deferred Review cosmetics can 
 
 ## Current execution order — audited 16 August 2026
 
-This order is the authoritative pre-v1 sequence. Milestone numbers after v0.4 remain flexible and follow genuine scope.
+This order is the authoritative pre-v1 sequence. `v0.5.0-alpha.1` begins the clean milestone scheme with Movement Correction/Reversal; later milestone numbers remain scope-driven.
 
 1. **Finish v0.4 Reporting** — Monthly Summary is user-accepted; validate Daily Print Pack, then complete the final report consistency/real-world print acceptance pass.
 2. **Batch Entry acceptance cleanup** — verify Esc, post-entry field clearing/focus, and implement/decide crash/power-loss draft recovery before production.
@@ -172,10 +172,11 @@ Required dashboard pass:
 
 ### 5. Movement correction / reversal
 
-- [ ] Add controlled correction/reversal workflow for saved movements.
-- [ ] Never silently edit/delete the original movement.
-- [ ] Preserve original + reversal/correction linkage and audit trail.
-- [ ] Decide roles permitted to reverse/correct.
+- [x] **Reversal foundation implemented:** Administrator can select a saved movement in Movement History and create an equal/opposite linked reversal; original ledger row is never edited/deleted.
+- [x] Reversal requires a reason and preserves original/reversal linkage, actor/time and `MOVEMENT_REVERSED` audit in one database transaction.
+- [x] Reversal permission is enforced at service layer for authenticated Administrators and hidden from non-admin UI.
+- [ ] **Acceptance pending:** real-app test of OUT reversal, IN reversal, already-reversed protection, balance/report effect and non-admin denial.
+- [ ] Add correction-by-replacement workflow where the operator needs to replace incorrect customer/container/date/quantity rather than simply reverse it.
 
 
 ### 5A. Security, Data Integrity & Code Quality Hardening — HARD GATE

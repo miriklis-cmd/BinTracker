@@ -75,6 +75,12 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
 
             e.HasIndex(x => new { x.CustomerId, x.ContainerTypeId, x.MovementDate });
             e.HasIndex(x => x.ImportRunId);
+            e.HasIndex(x => x.ReversesMovementId).IsUnique();
+
+            e.HasOne(x => x.ReversesMovement)
+                .WithOne(x => x.CorrectedByMovement)
+                .HasForeignKey<BinMovement>(x => x.ReversesMovementId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<ApplicationSettings>(e =>

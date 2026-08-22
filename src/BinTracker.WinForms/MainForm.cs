@@ -38,6 +38,7 @@ public sealed class MainForm : BinTrackerForm
     private readonly IWeeklyMovementsReportPdfService weeklyMovementReportPdfs;
     private readonly IMovementHistoryReportService movementHistoryReports;
     private readonly IMovementHistoryReportPdfService movementHistoryReportPdfs;
+    private readonly IMovementCorrectionService movementCorrections;
     private readonly IMonthlySummaryReportService monthlySummaryReports;
     private readonly IMonthlySummaryReportPdfService monthlySummaryReportPdfs;
     private readonly IContainerTypeService containerTypes;
@@ -74,6 +75,7 @@ public sealed class MainForm : BinTrackerForm
         IWeeklyMovementsReportPdfService weeklyMovementReportPdfs,
         IMovementHistoryReportService movementHistoryReports,
         IMovementHistoryReportPdfService movementHistoryReportPdfs,
+        IMovementCorrectionService movementCorrections,
         IMonthlySummaryReportService monthlySummaryReports,
         IMonthlySummaryReportPdfService monthlySummaryReportPdfs,
         IContainerTypeService containerTypes,
@@ -102,6 +104,7 @@ public sealed class MainForm : BinTrackerForm
         this.weeklyMovementReportPdfs = weeklyMovementReportPdfs;
         this.movementHistoryReports = movementHistoryReports;
         this.movementHistoryReportPdfs = movementHistoryReportPdfs;
+        this.movementCorrections = movementCorrections;
         this.monthlySummaryReports = monthlySummaryReports;
         this.monthlySummaryReportPdfs = monthlySummaryReportPdfs;
         this.containerTypes = containerTypes;
@@ -755,7 +758,9 @@ public sealed class MainForm : BinTrackerForm
                 movementHistoryReports,
                 movementHistoryReportPdfs,
                 containerTypes,
-                audit);
+                audit,
+                movementCorrections,
+                session);
 
         movementHistoryReportForm.FormClosed += (_, _) =>
         {

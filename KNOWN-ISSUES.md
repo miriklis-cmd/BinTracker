@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.4.0-alpha.24.2.28**
+Current release: **v0.5.0-alpha.1**
 
 This file contains current defects/limitations that affect testing or production readiness. Completed history is in `docs/CHANGELOG.md`; future features are in `docs/Roadmap.md`; engineering cleanup is in `TECH-DEBT.md`.
 
@@ -39,7 +39,7 @@ Developer Database Backup/Load/Fresh tools are for testing only. A production-sa
 ### Batch Entry recovery/polish requires operator smoke acceptance
 **Area:** Batch Entry
 
-Batch Entry recovery is operator-confirmed for Continue/Save/Discard. v0.4.0-alpha.24.2.28 fixes the remaining stale asynchronous edit-state race (Esc/Clear could be followed by a late row-load that resurrected Update Line), makes Clear Batch fully reset the editor even with zero draft rows, and aligns recovery-dialog actions consistently. Focused Windows smoke acceptance remains pending.
+Batch Entry recovery is operator-confirmed for Continue/Save/Discard. v0.5.0-alpha.1 fixes the remaining stale asynchronous edit-state race (Esc/Clear could be followed by a late row-load that resurrected Update Line), makes Clear Batch fully reset the editor even with zero draft rows, and aligns recovery-dialog actions consistently. Focused Windows smoke acceptance remains pending.
 
 ### Multi-computer production use is not supported yet
 **Area:** Deployment
@@ -65,4 +65,4 @@ The Zahos/BIG search/list-detail synchronization bug is fixed but should remain 
 
 - alpha.23.5.2 repaired stale/contradictory documentation and strengthened the mechanical audit gate. Windows build/tests and open manual acceptance items remain authoritative; static reconciliation is not a substitute for runtime acceptance.
 
-- v0.4.0-alpha.24.2.28: Remaining Batch Entry Esc/Clear edit-state race and recovery-button alignment require focused operator smoke-test; current larger icon trial remains pending final approval.
+- v0.5.0-alpha.1: Remaining Batch Entry Esc/Clear edit-state race and recovery-button alignment require focused operator smoke-test; current larger icon trial remains pending final approval.

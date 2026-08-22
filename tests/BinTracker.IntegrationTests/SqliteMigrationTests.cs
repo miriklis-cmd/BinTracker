@@ -384,4 +384,38 @@ public sealed class SqliteMigrationTests
         Assert.Contains("CorrectionChangesJson", columns);
     }
 
+
+    [Fact]
+    public async Task Movement_correction_migration_adds_linkage_reason_and_unique_reversal_index()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<BinTrackerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var db = new BinTrackerDbContext(options);
+        await db.Database.EnsureCreatedAsync();
+        await DatabaseSetup.InitializeSqliteAsync(db);
+
+        var columns = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('BinMovements')")
+            .ToListAsync();
+
+        Assert.Contains("ReversesMovementId", columns);
+        Assert.Contains("CorrectedByMovementId", columns);
+        Assert.Contains("CorrectionReason", columns);
+
+        var indexes = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_index_list('BinMovements')")
+            .ToListAsync();
+
+        Assert.Contains("IX_BinMovements_ReversesMovementId", indexes);
+        Assert.Equal(13, await DatabaseSetup.GetSchemaVersionAsync(db));
+    }
+
+
 }

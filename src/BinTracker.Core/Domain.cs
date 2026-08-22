@@ -85,6 +85,14 @@ public sealed class BinMovement
     public string? Notes { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+
+    // Corrections are append-only ledger entries. Original movements are never
+    // edited or deleted; these links preserve the correction chain.
+    public long? ReversesMovementId { get; set; }
+    public BinMovement? ReversesMovement { get; set; }
+    public long? CorrectedByMovementId { get; set; }
+    public BinMovement? CorrectedByMovement { get; set; }
+    public string? CorrectionReason { get; set; }
 }
 
 public sealed class ImportRun

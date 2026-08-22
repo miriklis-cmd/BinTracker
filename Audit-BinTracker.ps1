@@ -220,6 +220,26 @@ if ($multiSortText -notmatch 'var indicator = item.Direction == SortOrder.Descen
     Fail "BT-RPT-017 source gate failed: explicit visible sort direction/priority, single-line active headers, stable sort widths, or DPI-safe Direction header width is incomplete."
 }
 
+# Movement correction/reversal hard source gate (BT-CORR-001..004).
+$correctionServicePath = Join-Path $root "src\BinTracker.Services\MovementCorrectionService.cs"
+$correctionDialogPath = Join-Path $root "src\BinTracker.WinForms\MovementReversalDialog.cs"
+$movementHistoryPath = Join-Path $root "src\BinTracker.WinForms\MovementHistoryReportForm.cs"
+$migrationPath = Join-Path $root "src\BinTracker.Data\SqliteSchemaMigrations.cs"
+if (-not (Test-Path $correctionServicePath) -or -not (Test-Path $correctionDialogPath)) {
+    Fail "BT-CORR source gate failed: correction service/dialog missing."
+}
+$correctionText = Get-Content -Raw $correctionServicePath
+$correctionUiText = Get-Content -Raw $movementHistoryPath
+$migrationText = Get-Content -Raw $migrationPath
+if ($correctionText -notmatch 'session\.Role != UserRole\.Administrator' -or
+    $correctionText -notmatch 'BeginTransactionAsync' -or
+    $correctionText -notmatch 'ReversesMovementId = original\.Id' -or
+    $correctionText -notmatch 'MOVEMENT_REVERSED' -or
+    $correctionUiText -notmatch 'Reverse Selected' -or
+    $migrationText -notmatch 'new\(13, "Movement correction and reversal linkage"') {
+    Fail "BT-CORR source gate failed: append-only linked/admin/audited reversal implementation is incomplete."
+}
+
 # Batch Entry acceptance/recovery source guard (BT-BATCH-008/009/010/011).
 $batchViewText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\BatchEntryView.cs")
 $movementServicesText = Get-Content -Raw (Join-Path $root "src\BinTracker.Services\MovementServices.cs")

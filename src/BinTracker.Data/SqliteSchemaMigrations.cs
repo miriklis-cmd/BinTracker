@@ -22,7 +22,8 @@ internal static class SqliteSchemaMigrations
         new(9, "Excel import provenance", ApplyV9Async),
         new(10, "Import movement relational provenance", ApplyV10Async),
         new(11, "Import cutover and replacement chain", ApplyV11Async),
-        new(12, "Import correction difference provenance", ApplyV12Async)
+        new(12, "Import correction difference provenance", ApplyV12Async),
+        new(13, "Movement correction and reversal linkage", ApplyV13Async)
     ];
 
     private static async Task ApplyV1Async(BinTrackerDbContext db)
@@ -385,7 +386,46 @@ internal static class SqliteSchemaMigrations
         await db.Database.ExecuteSqlRawAsync(sql);
     }
 
-    private static async Task AddColumnIfMissingAsync(
+    
+    private static async Task ApplyV13Async(BinTrackerDbContext db)
+    {
+        await AddMovementColumnIfMissingAsync(db, "ReversesMovementId");
+        await AddMovementColumnIfMissingAsync(db, "CorrectedByMovementId");
+        await AddMovementColumnIfMissingAsync(db, "CorrectionReason");
+
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_BinMovements_ReversesMovementId ON BinMovements (ReversesMovementId) WHERE ReversesMovementId IS NOT NULL;");
+    }
+
+    private static async Task AddMovementColumnIfMissingAsync(
+        BinTrackerDbContext db,
+        string column)
+    {
+        // Movement correction schema identifiers are internal constants only.
+        // Keep a strict allow-list rather than interpolating arbitrary DDL input.
+        var sql = column switch
+        {
+            "ReversesMovementId" =>
+                "ALTER TABLE BinMovements ADD COLUMN ReversesMovementId INTEGER NULL;",
+            "CorrectedByMovementId" =>
+                "ALTER TABLE BinMovements ADD COLUMN CorrectedByMovementId INTEGER NULL;",
+            "CorrectionReason" =>
+                "ALTER TABLE BinMovements ADD COLUMN CorrectionReason TEXT NULL;",
+            _ => throw new InvalidOperationException(
+                "Unsupported BinMovements correction schema column.")
+        };
+
+        var existing = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('BinMovements') WHERE name = {0}",
+                column)
+            .ToListAsync();
+
+        if (existing.Count == 0)
+            await db.Database.ExecuteSqlRawAsync(sql);
+    }
+
+private static async Task AddColumnIfMissingAsync(
         BinTrackerDbContext db,
         string table,
         string column,
