@@ -267,7 +267,11 @@ if ($recoveredDialogText -notmatch 'Continue Batch' -or
     $recoveredDialogText -notmatch 'Last saved' -or
     $recoveredDialogText -notmatch 'TableLayoutPanel' -or
     $recoveredDialogText -notmatch 'TextAlign = ContentAlignment\.MiddleCenter' -or
-    $recoveredDialogText -notmatch 'UseCompatibleTextRendering = false') {
+    $recoveredDialogText -notmatch 'FlatStyle = FlatStyle\.System' -or
+    $recoveredDialogText -notmatch 'Padding = Padding\.Empty' -or
+    $recoveredDialogText -notmatch 'UseCompatibleTextRendering = false' -or
+    $recoveredDialogText -notmatch 'UseVisualStyleBackColor = true' -or
+    $recoveredDialogText -notmatch 'Dock = DockStyle\.Fill') {
     Fail "BT-BATCH-011 source gate failed: recovered-batch decision dialog/alignment is incomplete."
 }
 

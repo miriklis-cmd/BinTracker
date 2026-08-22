@@ -131,8 +131,10 @@ internal sealed class RecoveredBatchDialog : BinTrackerForm
         Padding = Padding.Empty,
         TextAlign = ContentAlignment.MiddleCenter,
         AutoSize = false,
+        FlatStyle = FlatStyle.System,
         UseCompatibleTextRendering = false,
         UseVisualStyleBackColor = true,
-        Font = new Font("Segoe UI", 10F, FontStyle.Regular)
+        Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+        Dock = DockStyle.Fill
     };
 }
