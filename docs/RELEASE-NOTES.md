@@ -1,3 +1,24 @@
+# BinTracker Current Release Notes
+
+## v0.5.0-alpha.4
+
+- Compared the actual alternate alpha.3 source against tested Work alpha.3 and selectively merged only stronger concurrency/portability foundations.
+- Added payload-aware idempotency for Single Entry, Batch Entry, reversal and import: identical retries return the existing result; a different payload under the same operation ID is rejected.
+- Added normalized Container Type `NameKey`, unique current-cutover ownership, optimistic revisions, concurrency-safe account mutations and split desktop/business host composition.
+- Replaced server-readable path semantics with content transport plus provenance-only `SourceClientPath`; report services return PDF bytes.
+- Added migration V14 and hardened BT-ARCH-008..015 audit/test coverage. SQLite remains current; PostgreSQL/API execution is not claimed.
+
+## v0.5.0-alpha.3
+
+### Portability and multi-user concurrency hard gate
+
+- Establishes BT-ARCH-008..015 as permanent release gates for authenticated remote clients, central PostgreSQL, request identity, business time, client provenance, concurrent integrity, idempotency, provider isolation and transport-safe file workflows.
+- Business movement/correction services now depend on user, clock and client abstractions. The current SQLite desktop deployment supplies local adapters without changing accepted functionality.
+- The reversal unique constraint remains authoritative and a losing concurrent reversal is converted to the stable “already reversed” business result.
+- Movement History now shows immutable derived reversal status (`Reversed — see REV-…` / `Reversal of #… — reason`) and disables Reverse for already-reversed originals and reversal rows.
+- Removes provider-specific filtered-index and check-constraint SQL fragments from the shared EF model; SQLite schema migrations remain isolated in the Data provider layer.
+- Automated build/test/audit/package verification is required for this candidate; PostgreSQL execution is not claimed until a central host/provider fixture exists.
+
 ## v0.5.0-alpha.1.1
 
 - Fixed the final Batch Entry edit-mode persistence defect found in operator smoke testing: asynchronous row/customer resolution is generation-guarded, so Esc or Clear cannot be followed by a stale continuation that puts the UI back into Update Line mode.
@@ -47,8 +68,6 @@
 - Replaced the application/executable/window icon asset with the user-supplied `BinTracker-hybrid.ico`; the existing common `BinTrackerForm` branding path continues to propagate the executable icon to login, report breakout, and other application windows.
 
 - Replaced thin report sort arrows with filled triangle indicators (`▲1`, `▼1`, `▲2`, etc.) so direction is easier to see at normal Windows scaling. Sort priority numbering and sorting behaviour are unchanged.
-
-# BinTracker Current Release Notes
 
 ## v0.5.0-alpha.2
 

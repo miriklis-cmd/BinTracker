@@ -31,6 +31,7 @@
 - BT-MOVE-009: Corrections/reversals must preserve the original movement and audit trail.
 - BT-MOVE-010: Administrator and Operator may reverse ordinary Manual/Batch operational movements; Viewer cannot.
 - BT-MOVE-011: Generic reversal must reject Opening Adjustments and Excel Import/ImportRun-linked movements; those use Administrator-controlled adjustment or Replace / Correct workflows respectively.
+- BT-MOVE-012: Movement History shows derived reversal Status on original and reversal rows and disables Reverse when the selected row is already reversed or is itself a reversal.
 
 ## Dashboard
 
@@ -95,6 +96,12 @@
 - BT-OPS-001: Production data can be backed up safely.
 - BT-OPS-002: Restore requires explicit confirmation and database validation.
 - BT-OPS-003: Upgrades protect existing data and include recovery guidance.
+
+## Central service and concurrency
+
+- BT-ARCH-008..015: All production business code is designed for multiple authenticated remote users executing concurrently through a central service backed by PostgreSQL.
+- The current local SQLite deployment remains supported until the server/API exists; its desktop session, device and filesystem adapters must not leak into business contracts.
+- Central enablement requires request-scoped authenticated identity, client metadata, configured business time, database-enforced invariants, idempotent retryable commands and content-based file transport.
 
 
 - BT-UI-006: Editable Container Type master data must warn before navigation/close discards unsaved changes and offer Save / Discard / Cancel.

@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.5.0-alpha.2**
+Current planning baseline: **v0.5.0-alpha.4**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -48,7 +48,7 @@ This order is the authoritative pre-v1 sequence. `v0.5.0-alpha.1` began the clea
 8. **Customer operational analytics/polish** — useful sorting by outstanding/credit/last movement, lifetime OUT/IN totals, and statement workflow integration.
 9. **Production Backup / Restore / Recovery** — user backup, validated restore, scheduled automatic backups, retention, pre-upgrade backup and recovery drill.
 10. **Final security, audit & reliability release review** — authorization matrix, audit-coverage matrix, secrets, logging, crash/restart, database integrity, Release build and DPI testing.
-11. **PostgreSQL / multi-computer readiness** — preserve Services + `IDbContextFactory`; audit SQLite assumptions, central-provider migration, concurrency/configuration and central backup strategy.
+11. **PostgreSQL central deployment** — add the authenticated server/API host and PostgreSQL provider/configuration. The permanent remote-user/concurrency contracts are already hard gates; this milestone supplies infrastructure rather than rewriting business rules.
 12. **Installer / upgrade / deployment** — Windows package, safe upgrades, signing decision and production configuration.
 13. **Full v1 acceptance / regression** — fresh install/database, real workbook import, balances, entries, corrections, reports, communications, branding, dashboard, backup/restore, restart/crash and upgrade testing.
 14. **v1.0 production release** — BinTracker is accepted as the replacement for the daily Excel workflow.

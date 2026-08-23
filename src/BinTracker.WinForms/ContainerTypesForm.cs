@@ -29,6 +29,7 @@ public sealed class ContainerTypesForm : BinTrackerForm
     private readonly Label validation = new() { AutoSize = true, ForeColor = Color.Firebrick, MaximumSize = new Size(680, 0) };
     private readonly Button deactivate = ButtonOf("Deactivate", 120);
     private int selectedId;
+    private long selectedRevision;
     private bool suppressSelectionChanged;
     private bool bypassClosePrompt;
     private ContainerEditorSnapshot? savedSnapshot;
@@ -260,6 +261,7 @@ public sealed class ContainerTypesForm : BinTrackerForm
         if(grid.SelectedRows.Count==0 || grid.SelectedRows[0].Cells[0].Value is null) return;
         selectedId=Convert.ToInt32(grid.SelectedRows[0].Cells[0].Value);
         var item=await service.GetAsync(selectedId); if(item is null) return;
+        selectedRevision=item.Revision;
         name.Text=item.Name; shortCode.Text=item.ShortCode; systemCode.Text=item.SystemCode; displayOrder.Value=Math.Clamp(item.DisplayOrder,(int)displayOrder.Minimum,(int)displayOrder.Maximum);
         description.Text=item.Description??""; notes.Text=item.Notes??""; active.Checked=item.IsActive; special.Checked=item.IsSpecialFloorReportContainer; dashboardColour.Text=item.DashboardColour??"";
         deactivate.Text=item.IsActive?"Deactivate":"Reactivate";
@@ -275,7 +277,7 @@ public sealed class ContainerTypesForm : BinTrackerForm
         suppressSelectionChanged=true;
         try
         {
-            selectedId=0; name.Clear(); shortCode.Clear(); systemCode.Text="Created automatically on first save"; description.Clear(); notes.Clear(); dashboardColour.Clear(); displayOrder.Value=0; active.Checked=true; special.Checked=false; usage.Text="No movement history yet."; deactivate.Enabled=false; validation.Text=""; grid.ClearSelection();
+            selectedId=0; selectedRevision=0; name.Clear(); shortCode.Clear(); systemCode.Text="Created automatically on first save"; description.Clear(); notes.Clear(); dashboardColour.Clear(); displayOrder.Value=0; active.Checked=true; special.Checked=false; usage.Text="No movement history yet."; deactivate.Enabled=false; validation.Text=""; grid.ClearSelection();
             savedSnapshot=CaptureSnapshot();
         }
         finally
@@ -294,7 +296,7 @@ public sealed class ContainerTypesForm : BinTrackerForm
         {
             validation.Text="";
             var existing=selectedId==0?null:await service.GetAsync(selectedId);
-            var model=new ContainerTypeEditModel(selectedId,name.Text,shortCode.Text,existing?.SystemCode??"",description.Text,notes.Text,(int)displayOrder.Value,active.Checked,special.Checked,dashboardColour.Text,existing?.Usage??new ContainerTypeUsage(0,0,null,null));
+            var model=new ContainerTypeEditModel(selectedId,name.Text,shortCode.Text,existing?.SystemCode??"",description.Text,notes.Text,(int)displayOrder.Value,active.Checked,special.Checked,dashboardColour.Text,existing?.Usage??new ContainerTypeUsage(0,0,null,null),selectedRevision);
             selectedId=await service.SaveAsync(model);
             deactivate.Enabled=canEdit;
             await ReloadAsync(selectedId);

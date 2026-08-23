@@ -5,6 +5,8 @@ namespace BinTracker.WinForms;
 
 public sealed class MonthlySummaryReportForm : BinTrackerForm
 {
+    private DateTime BusinessToday => clock.Today.ToDateTime(TimeOnly.MinValue);
+
     private readonly IMonthlySummaryReportService reports;
     private readonly IMonthlySummaryReportPdfService pdfReports;
     private readonly IContainerTypeService containerTypes;
@@ -14,8 +16,7 @@ public sealed class MonthlySummaryReportForm : BinTrackerForm
         Format = DateTimePickerFormat.Custom,
         CustomFormat = "MMMM yyyy",
         ShowUpDown = true,
-        Width = 205,
-        Value = DateTime.Today
+        Width = 205
     };
 
     private readonly TextBox customerSearch = new()
@@ -60,17 +61,21 @@ public sealed class MonthlySummaryReportForm : BinTrackerForm
     private MonthlySummaryReportResult? current;
     private bool autoRefreshReady;
 
+    private readonly IBusinessClock clock;
+
     public MonthlySummaryReportForm(
         IMonthlySummaryReportService reports,
         IMonthlySummaryReportPdfService pdfReports,
         IContainerTypeService containerTypes,
-        IAuditService audit)
+        IAuditService audit,
+        IBusinessClock clock)
     {
         this.reports = reports;
         this.pdfReports = pdfReports;
         this.containerTypes = containerTypes;
 
         this.audit = audit;
+        this.clock = clock;
 
         Text = "Monthly Summary";
         StartPosition = FormStartPosition.Manual;
@@ -79,7 +84,8 @@ public sealed class MonthlySummaryReportForm : BinTrackerForm
         Font = new Font("Segoe UI", 10F);
         BackColor = Color.FromArgb(245, 247, 250);
 
-        monthPicker.MaxDate = DateTime.Today;
+        monthPicker.MaxDate = BusinessToday;
+        monthPicker.Value = BusinessToday;
 
         monthPicker.ValueChanged += async (_, _) =>
         {
@@ -214,13 +220,13 @@ public sealed class MonthlySummaryReportForm : BinTrackerForm
         actions.Controls.Add(ActionButton(
             "This Month",
             125,
-            async () => await SetMonthAndRefreshAsync(DateTime.Today)));
+            async () => await SetMonthAndRefreshAsync(BusinessToday)));
 
         actions.Controls.Add(ActionButton(
             "Last Month",
             125,
             async () => await SetMonthAndRefreshAsync(
-                DateTime.Today.AddMonths(-1))));
+                BusinessToday.AddMonths(-1))));
 
         actions.Controls.Add(ActionButton(
             "Generate PDF",
@@ -474,9 +480,8 @@ public sealed class MonthlySummaryReportForm : BinTrackerForm
             Enabled = false;
             UseWaitCursor = true;
 
-            await pdfReports.GeneratePdfAsync(
-                result,
-                dialog.FileName);
+            var pdf = await pdfReports.BuildPdfAsync(result);
+            await File.WriteAllBytesAsync(dialog.FileName, pdf);
 
             if (openAfter)
             {

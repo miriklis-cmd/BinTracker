@@ -72,14 +72,15 @@ public interface IDailyMovementsReportService
 }
 
 internal sealed class DailyMovementsReportService(
-    IDbContextFactory<BinTrackerDbContext> factory)
+    IDbContextFactory<BinTrackerDbContext> factory,
+    IBusinessClock clock)
     : IDailyMovementsReportService
 {
     public async Task<DailyMovementsReportResult> QueryAsync(
         DailyMovementsReportQuery query,
         CancellationToken cancellationToken = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = clock.Today;
         var reportDate = query.ReportDate > today
             ? today
             : query.ReportDate;

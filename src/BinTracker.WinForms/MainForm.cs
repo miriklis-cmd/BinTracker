@@ -21,6 +21,7 @@ public sealed class MainForm : BinTrackerForm
     private MonthlySummaryReportForm? monthlySummaryReportForm;
     private bool bypassCustomerClosePrompt;
     private readonly UserSession session;
+    private readonly IBusinessClock clock;
     private readonly IUserService users;
     private readonly IAuditService audit;
     private readonly ICustomerService customers;
@@ -58,6 +59,7 @@ public sealed class MainForm : BinTrackerForm
 
     public MainForm(
         UserSession session,
+        IBusinessClock clock,
         IUserService users,
         IAuditService audit,
         ICustomerService customers,
@@ -87,6 +89,7 @@ public sealed class MainForm : BinTrackerForm
         IDeveloperDatabaseService developerDatabase)
     {
         this.session = session;
+        this.clock = clock;
         this.users = users;
         this.audit = audit;
         this.customers = customers;
@@ -425,7 +428,7 @@ public sealed class MainForm : BinTrackerForm
         try
         {
             summary = await movements.GetDashboardSummaryAsync(
-                DateOnly.FromDateTime(DateTime.Today));
+                clock.Today);
         }
         catch
         {
@@ -547,6 +550,7 @@ public sealed class MainForm : BinTrackerForm
         {
             var result = await movements.SaveBatchAsync(
                 new SaveMovementBatchRequest(
+                Guid.NewGuid(),
                     draft.MovementDate,
                     draft.MovementType,
                     null,
@@ -595,7 +599,7 @@ public sealed class MainForm : BinTrackerForm
     {
         SetPage("Customers");
         content.AutoScroll = false;
-        activeCustomersView = new CustomersView(customers, session, statementReports);
+        activeCustomersView = new CustomersView(customers, session, statementReports, clock);
         content.Controls.Add(activeCustomersView);
     }
 
@@ -624,7 +628,7 @@ public sealed class MainForm : BinTrackerForm
     {
         SetPage("Single Entry");
         content.AutoScroll = false;
-        content.Controls.Add(new SingleEntryView(movements, session));
+        content.Controls.Add(new SingleEntryView(movements, session, clock));
     }
 
 
@@ -640,6 +644,7 @@ public sealed class MainForm : BinTrackerForm
             new ReportsView(
                 marketFloorReports,
                 dailyPrintPack,
+                clock,
                 OpenOutstandingReport,
                 OpenDailyMovementsReport,
                 OpenWeeklyMovementsReport,
@@ -670,7 +675,8 @@ public sealed class MainForm : BinTrackerForm
                 outstandingReports,
                 outstandingReportPdfs,
                 containerTypes,
-                audit);
+                audit,
+                clock);
 
         outstandingReportForm.FormClosed += (_, _) =>
         {
@@ -702,7 +708,8 @@ public sealed class MainForm : BinTrackerForm
                 dailyMovementReports,
                 dailyMovementReportPdfs,
                 containerTypes,
-                audit);
+                audit,
+                clock);
 
         dailyMovementsReportForm.FormClosed += (_, _) =>
         {
@@ -726,7 +733,7 @@ public sealed class MainForm : BinTrackerForm
         }
 
         weeklyMovementsReportForm =
-            new WeeklyMovementsReportForm(weeklyMovementReports, weeklyMovementReportPdfs, containerTypes, audit);
+            new WeeklyMovementsReportForm(weeklyMovementReports, weeklyMovementReportPdfs, containerTypes, audit, clock);
 
         weeklyMovementsReportForm.FormClosed += (_, _) =>
         {
@@ -760,7 +767,8 @@ public sealed class MainForm : BinTrackerForm
                 containerTypes,
                 audit,
                 movementCorrections,
-                session);
+                session,
+                clock);
 
         movementHistoryReportForm.FormClosed += (_, _) =>
         {
@@ -790,7 +798,8 @@ public sealed class MainForm : BinTrackerForm
         customerStatementReportForm =
             new CustomerStatementReportForm(
                 customers,
-                statementReports);
+                statementReports,
+                clock);
 
         customerStatementReportForm.FormClosed += (_, _) =>
         {
@@ -822,7 +831,8 @@ public sealed class MainForm : BinTrackerForm
                 monthlySummaryReports,
                 monthlySummaryReportPdfs,
                 containerTypes,
-                audit);
+                audit,
+                clock);
 
         monthlySummaryReportForm.FormClosed += (_, _) =>
         {
@@ -985,7 +995,8 @@ public sealed class MainForm : BinTrackerForm
                     customers,
                     containerTypes,
                     balances,
-                    importExecution);
+                    importExecution,
+                    clock);
                 form.ShowDialog(this);
             };
 

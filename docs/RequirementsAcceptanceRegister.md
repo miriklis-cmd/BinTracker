@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.5.0-alpha.2**
+Current baseline: **v0.5.0-alpha.4**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -32,6 +32,14 @@ Provenance tags:
 | BT-ARCH-005 | post-v1 | POST-V1 | PostgreSQL/central-provider migration must preserve service boundaries; do not add a generic Repository merely for migration. | CHAT-SURFACED,CURRENT-DOC |
 | BT-ARCH-006 | post-v1 | POST-V1 | Multi-computer readiness includes provider audit, concurrency, configuration and central backup strategy. | CURRENT-DOC |
 | BT-ARCH-007 | v1 | IMPLEMENTED-STATIC | BinTracker targets `net8.0`/`net8.0-windows`; a compatible newer installed SDK may build it. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-ARCH-008 | v1 | IMPLEMENTED-STATIC | Central deployment is desktop/remote clients through an authenticated BinTracker server/API to PostgreSQL; clients never receive database credentials or connect directly. | CHAT-SURFACED,CURRENT-DOC |
+| BT-ARCH-009 | v1 | IMPLEMENTED-STATIC | Business services consume request-capable `IUserContext`; server hosting must provide an authenticated request-scoped implementation and must not use shared singleton user state. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-ARCH-010 | v1 | IMPLEMENTED-STATIC | Date-dependent business rules and UTC audit timestamps use an injected `IBusinessClock` configured for the business timezone, not server-local time. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-ARCH-011 | v1 | IMPLEMENTED-STATIC | Audit provenance uses injected client identity/metadata; central operations must identify the calling client rather than the API host machine. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-ARCH-012 | v1 | IMPLEMENTED-STATIC | Concurrent business invariants are database-enforced; losing races become stable business outcomes rather than provider exceptions. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-ARCH-013 | v1 | IMPLEMENTED-STATIC | Single Entry, Batch Entry, reversal and import carry persisted client operation identity; the same payload returns the existing result and a different payload under the same identity is rejected. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-ARCH-014 | v1 | IMPLEMENTED-STATIC | Core, Services, UI and shared EF model contain no provider SQL dialect or database credentials; provider schema/migrations remain isolated in infrastructure. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-ARCH-015 | v1 | IMPLEMENTED-STATIC | Remote file workflows transfer content/streams plus safe metadata; `SourceClientPath` is provenance only, generated output returns bytes, and server business logic cannot read client paths. | CHAT-SURFACED,CURRENT-DOC,CODE |
 
 ## Build, audit, versioning and release discipline
 
@@ -219,6 +227,7 @@ Provenance tags:
 | BT-CORR-003 | v1 | IMPLEMENTED-STATIC | Reversal stores original/reversal linkage, required reason, actor/time and MOVEMENT_REVERSED audit in the same transaction. | CURRENT-DOC |
 | BT-CORR-004 | v1 | IMPLEMENTED-STATIC | Reversal authorization is enforced at service layer: Administrator and Operator may reverse ordinary Manual/Batch movements; Viewer cannot. | CURRENT-DOC |
 | BT-CORR-005 | v1 | IMPLEMENTED-STATIC | Sensitive movement classes are excluded from generic reversal: Opening Adjustments require an Administrator-controlled adjustment workflow; Excel Import/provenance-linked movements require the Administrator Replace / Correct import workflow. | CHAT-SURFACED,CURRENT-DOC |
+| BT-CORR-006 | v1 | IMPLEMENTED-STATIC | Movement History derives a dedicated immutable Status: originals show `Reversed — see <reference>`, reversal rows show `Reversal of #<id> — <reason>`, and Reverse is disabled for either row while service checks remain authoritative. | CHAT-SURFACED,CURRENT-DOC,CODE |
 
 ## Email / SMS / customer communications
 

@@ -23,6 +23,7 @@ $currentChecks = @(
     @{ Path='docs/RELEASE-NOTES.md'; Pattern="^## $([regex]::Escape($expected))$"; Description='Release Notes candidate version' },
     @{ Path='docs/Roadmap.md'; Pattern="^Current planning baseline: \*\*$([regex]::Escape($expected))\*\*$"; Description='Roadmap planning baseline' },
     @{ Path='docs/RequirementsAcceptanceRegister.md'; Pattern="^Current baseline: \*\*$([regex]::Escape($expected))\*\*$"; Description='Requirements register baseline' }
+    @{ Path='docs/Architecture.md'; Pattern="^Current baseline: \*\*$([regex]::Escape($expected))\*\*$"; Description='Architecture baseline' }
 )
 foreach ($check in $currentChecks) {
     if (-not (Test-Path -LiteralPath $check.Path)) { Fail "Missing $($check.Path)." }
@@ -34,7 +35,7 @@ if (Test-Path -LiteralPath 'global.json') { Fail 'Unexpected global.json is pres
 
 $requiredDocuments = @(
  'README.md','KNOWN-ISSUES.md','TECH-DEBT.md','TEST-CHECKLIST.md',
- 'docs/AuditCoverage.md','docs/BusinessRules.md','docs/CHANGELOG.md','docs/Database.md',
+ 'docs/Architecture.md','docs/AuditCoverage.md','docs/BusinessRules.md','docs/CHANGELOG.md','docs/Database.md',
  'docs/DevelopmentWorkflow.md','docs/DocumentationAudit.md','docs/FunctionalSpecification.md',
  'docs/ImportWizard.md','docs/LegacyContainerRules.md','docs/MasterData.md','docs/RELEASE-NOTES.md',
  'docs/ReimportSafety.md','docs/Roadmap.md','docs/RoadmapCoverageMatrix.md','docs/Testing.md',
@@ -59,8 +60,33 @@ foreach ($row in $reqRows) {
     if ($allowedScopes -notcontains $row.Scope) { Fail "Invalid requirement scope for $($row.Id): $($row.Scope)" }
     if ($allowedStatuses -notcontains $row.Status) { Fail "Invalid requirement status for $($row.Id): $($row.Status)" }
 }
-$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-CORR-001','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005')
+$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-CORR-001','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015')
 foreach ($id in $mustHaveIds) { if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost mandatory ID: $id" } }
+
+# Permanent central-service / concurrency portability gate (BT-ARCH-008..015).
+$servicesSource = Get-Content -Raw -LiteralPath 'src/BinTracker.Services/Services.cs'
+$movementSource = Get-Content -Raw -LiteralPath 'src/BinTracker.Services/MovementServices.cs'
+$correctionSource = Get-Content -Raw -LiteralPath 'src/BinTracker.Services/MovementCorrectionService.cs'
+$sharedModel = Get-Content -Raw -LiteralPath 'src/BinTracker.Data/BinTrackerDbContext.cs'
+foreach ($term in @('IUserContext','IBusinessClock','IClientContext','ConfiguredBusinessClock','DesktopClientContext')) {
+    if ($servicesSource -notmatch [regex]::Escape($term)) { Fail "BT-ARCH runtime abstraction missing: $term" }
+}
+if ($movementSource -notmatch 'IUserContext session' -or $movementSource -notmatch 'IBusinessClock clock' -or $movementSource -notmatch 'IClientContext client') {
+    Fail 'BT-ARCH movement service is not request/context portable.'
+}
+if ($correctionSource -notmatch 'database uniqueness constraint is the authoritative guard' -or $correctionSource -notmatch 'catch \(DbUpdateException\)' -or $correctionSource -notmatch 'already been reversed') {
+    Fail 'BT-ARCH concurrent reversal conflict handling is incomplete.'
+}
+if ($sharedModel -match '\.HasFilter\(' -or $sharedModel -match 'HasCheckConstraint\(') {
+    Fail 'BT-ARCH shared EF model contains provider SQL fragments.'
+}
+foreach ($path in @('src/BinTracker.Services/MovementServices.cs','src/BinTracker.Services/MovementCorrectionService.cs')) {
+    $text = Get-Content -Raw -LiteralPath $path
+    if ($path -like '*MovementServices.cs') { $text = ($text -split 'internal sealed class MovementService', 2)[1] }
+    if ($text -match 'Environment\.MachineName' -or $text -match 'DateTime\.Today' -or $text -match 'DateTime\.UtcNow') {
+        Fail "$path bypasses injected client/business-time context."
+    }
+}
 
 # Reject contradictions that have already caused release/audit drift.
 $staleChecks = @(
@@ -329,6 +355,80 @@ foreach ($path in $reportFilterForms) {
     $source = Get-Content -Raw -LiteralPath $path
     if ($source -notmatch 'containerTypes\.SearchAsync\(') { Fail "$path no longer uses configured Container Types for its report filter." }
     if ($source -notmatch 'includeInactive:\s*true') { Fail "$path no longer keeps inactive historical Container Types filterable." }
+}
+
+# BT-ARCH-008..015: central-service/PostgreSQL portability and concurrency hard gate.
+$productionLayers = @('src/BinTracker.Core','src/BinTracker.Services','src/BinTracker.WinForms')
+$providerPatterns = @('Microsoft\.Data\.Sqlite','\bUseSqlite\b','\bSqliteConnection\b','\bPRAGMA\b','\bExecuteSqlRaw','\bSqlQueryRaw')
+foreach ($layer in $productionLayers) {
+    Get-ChildItem -LiteralPath (Join-Path $root $layer) -Recurse -Filter '*.cs' | ForEach-Object {
+        $source = Get-Content -Raw -LiteralPath $_.FullName
+        foreach ($pattern in $providerPatterns) {
+            if ($source -match $pattern) { Fail "BT-ARCH-009 provider isolation failed: $($_.FullName) matches '$pattern'." }
+        }
+    }
+}
+
+Get-ChildItem -LiteralPath (Join-Path $root 'src/BinTracker.Services') -Recurse -Filter '*.cs' | ForEach-Object {
+    if ($_.Name -in @('RuntimeContexts.cs','FileBatchDraftStore.cs')) { return }
+    $source = Get-Content -Raw -LiteralPath $_.FullName
+    if ($source -match '\bDateTime\.(Today|Now|UtcNow)\b' -or $source -match '\bEnvironment\.MachineName\b') {
+        Fail "BT-ARCH-010 runtime context failed: $($_.FullName) uses ambient business context."
+    }
+    if ($source -match '\bFile\.(Read|Write|Open|Exists|Delete|Move)' -or $source -match '\bFileStream\b') {
+        Fail "BT-ARCH-011 transport failed: $($_.FullName) performs client filesystem I/O."
+    }
+    if ($source -match '\bSourceFullPath\b') { Fail "BT-ARCH-011 transport metadata failed: $($_.FullName) retains SourceFullPath." }
+}
+
+$runtimeContextText = Get-Content -Raw 'src/BinTracker.Services/RuntimeContexts.cs'
+$registrationText = Get-Content -Raw 'src/BinTracker.Services/Services.cs'
+$importExecutionText = Get-Content -Raw 'src/BinTracker.Services/ImportExecutionService.cs'
+$importAnalysisText = Get-Content -Raw 'src/BinTracker.Services/ExcelImportService.cs'
+$containerServiceText = Get-Content -Raw 'src/BinTracker.Services/ContainerTypeService.cs'
+$customerServiceText = Get-Content -Raw 'src/BinTracker.Services/CustomerServices.cs'
+$businessInfoText = Get-Content -Raw 'src/BinTracker.Services/BusinessInformationService.cs'
+
+foreach ($term in @('interface IUserContext','interface IBusinessClock','interface IClientContext')) {
+    if ($runtimeContextText -notmatch [regex]::Escape($term)) { Fail "BT-ARCH-010 missing $term." }
+}
+if ($registrationText -notmatch 'AddBinTrackerBusinessServices' -or $registrationText -notmatch 'AddBinTrackerServices' -or
+    $registrationText -notmatch 'AddSingleton<IUserContext>') {
+    Fail 'BT-ARCH-010 host composition split is incomplete.'
+}
+if ($registrationText -notmatch 'ExecuteUpdateAsync' -or $registrationText -notmatch 'FailedLoginCount \+ 1' -or
+    $registrationText -notmatch 'PasswordHash == user\.PasswordHash') {
+    Fail 'BT-ARCH-014 authentication mutations are not concurrency-safe.'
+}
+if ($movementSource -notmatch 'Guid ClientOperationId' -or $correctionSource -notmatch 'Guid ClientOperationId' -or
+    $importExecutionText -notmatch 'Guid ClientOperationId' -or $importExecutionText -notmatch 'ClientRequestFingerprint' -or
+    $importExecutionText -notmatch 'BuildRequestFingerprint') {
+    Fail 'BT-ARCH-012 payload-aware command idempotency is incomplete.'
+}
+if ($sharedModel -notmatch 'HasIndex\(x => x\.NameKey\)\.IsUnique\(\)' -or
+    $sharedModel -notmatch 'HasIndex\(x => x\.CurrentCutoverDate\)\.IsUnique\(\)' -or
+    $sharedModel -notmatch 'IsConcurrencyToken\(\)' -or
+    $containerServiceText -notmatch 'ContainerTypeNameKey\.Normalize' -or
+    $customerServiceText -notmatch 'DbUpdateConcurrencyException' -or
+    $businessInfoText -notmatch 'DbUpdateConcurrencyException') {
+    Fail 'BT-ARCH-013/014 database-backed uniqueness or stale-edit protection is incomplete.'
+}
+if ($importAnalysisText -notmatch 'record ImportSourceDocument' -or $importAnalysisText -notmatch 'byte\[\] Content' -or
+    $importExecutionText -notmatch 'SourceClientPath = fingerprint\.ClientPath' -or
+    $importExecutionText -notmatch 'CurrentCutoverDate = request\.CutoverDate') {
+    Fail 'BT-ARCH-011/014 import transport or current-cutover ownership is incomplete.'
+}
+if ($migrationText -notmatch 'new\(14, "Multi-user portability and concurrency foundation"' -or
+    $migrationText -notmatch 'SourceClientPath' -or $migrationText -notmatch 'IX_ContainerTypes_NameKey' -or
+    $migrationText -notmatch 'ClientRequestFingerprint') {
+    Fail 'BT-ARCH-015 schema migration gate is incomplete.'
+}
+
+$movementHistoryServiceText = Get-Content -Raw 'src/BinTracker.Services/MovementHistoryReportService.cs'
+if ($movementHistoryServiceText -notmatch 'Reversed — see' -or $movementHistoryServiceText -notmatch 'Reversal of #' -or
+    $movementHistoryServiceText -notmatch 'SourceText => ReversesMovementId\.HasValue \? "Reversal"' -or
+    $correctionUiText -notmatch 'UpdateReverseAvailability' -or $correctionUiText -notmatch 'CanReverse') {
+    Fail 'Movement History reversal Status/Source and disabled-action UX is incomplete.'
 }
 
 Write-Host "Audit passed: $expected; $($reqRows.Count) permanent requirement IDs; $($mdFiles.Count) Markdown files; current-state contradiction checks passed." -ForegroundColor Green

@@ -1,5 +1,9 @@
 # BinTracker Business Rules
 
+## Concurrent command identity
+
+Single Entry, Batch Entry, reversal and import treat `ClientOperationId` as command identity. The same canonical payload returns the prior result; reusing the ID with a different payload is rejected. Database uniqueness remains authoritative under races. Container Type names use normalized `NameKey`, and only one current ImportRun owns a cutover date.
+
 This document records application behaviour independently of implementation details.
 
 ## Customers
@@ -24,6 +28,7 @@ This document records application behaviour independently of implementation deta
 - IN decreases the customer position.
 - Single Entry saves one manual movement.
 - Batch Entry saves its movements atomically.
+- Movement History derives reversal status from relational linkage without editing the original movement Notes. Already-reversed originals and reversal rows cannot offer the Reverse action; service/database enforcement remains authoritative.
 
 ## Market Floor Sheet
 
@@ -102,8 +107,12 @@ Important security, master-data and movement changes create audit events.
 
 ## Central database
 
-- PostgreSQL is the intended direction for eventual multi-user central deployment.
-- Services + `IDbContextFactory<BinTrackerDbContext>` remain the application boundary; database-provider-specific concerns belong in infrastructure/migration code.
+- The permanent target is multiple desktop/remote clients through an authenticated BinTracker service/API to central PostgreSQL. Remote clients never connect directly to PostgreSQL.
+- Production business operations assume concurrent authenticated users. Request user/client identity is scoped to the operation; it is never shared process-wide on a server.
+- Business dates use the configured business timezone and audit timestamps use an injected UTC clock, never implicit server-local time.
+- Database constraints are authoritative for concurrent invariants. A losing request receives a stable business result, and retryable remote commands require idempotency identity before the API is enabled.
+- Services + `IDbContextFactory<BinTrackerDbContext>` remain the local application boundary; database-provider-specific SQL, configuration and migrations belong in infrastructure.
+- Remote import/export contracts carry content/streams and metadata, not a client path such as `C:\\...`. The current SQLite desktop adapter may continue using local paths until central deployment exists.
 
 ## As-of-date reporting
 

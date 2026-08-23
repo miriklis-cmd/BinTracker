@@ -27,6 +27,7 @@ public sealed record CustomerStatementData(
 public sealed class CustomerEditModel
 {
     public int Id { get; set; }
+    public long Revision { get; set; }
     public string CustomerCode { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public CustomerType CustomerType { get; set; } = CustomerType.Account;
@@ -55,8 +56,9 @@ public interface ICustomerService
 
 internal sealed class CustomerService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    UserSession session,
-    IAuditService audit) : ICustomerService
+    IUserContext session,
+    IAuditService audit,
+    IBusinessClock clock) : ICustomerService
 {
     public async Task<IReadOnlyList<CustomerListRow>> SearchAsync(string? query, bool includeInactive, CancellationToken cancellationToken = default)
     {
@@ -66,7 +68,7 @@ internal sealed class CustomerService(
         query = query?.Trim();
         if (!string.IsNullOrWhiteSpace(query))
         {
-            // SQLite string Contains can behave case-sensitively depending on
+            // String comparison behavior can vary with database collation, so
             // collation. Customer search is deliberately case-insensitive.
             var term = query.ToUpperInvariant();
 
@@ -98,7 +100,7 @@ internal sealed class CustomerService(
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         return await db.Customers.AsNoTracking().Where(x => x.Id == id).Select(x => new CustomerEditModel
         {
-            Id=x.Id, CustomerCode=x.CustomerCode ?? string.Empty, Name=x.Name, CustomerType=x.CustomerType, ContactName=x.ContactName,
+            Id=x.Id, Revision=x.Revision, CustomerCode=x.CustomerCode ?? string.Empty, Name=x.Name, CustomerType=x.CustomerType, ContactName=x.ContactName,
             Phone=x.Phone, MobileNumber=x.MobileNumber, Email=x.Email, Address=x.Address, Notes=x.Notes,
             IsActive=x.IsActive, AllowEmailReminders=x.AllowEmailReminders,
             AllowSmsReminders=x.AllowSmsReminders, ReminderOptOut=x.ReminderOptOut
@@ -142,24 +144,73 @@ internal sealed class CustomerService(
                 Phone=model.Phone, MobileNumber=model.MobileNumber, Email=model.Email, Address=model.Address,
                 Notes=model.Notes, IsActive=true, AllowEmailReminders=model.AllowEmailReminders,
                 AllowSmsReminders=model.AllowSmsReminders, ReminderOptOut=model.ReminderOptOut,
-                CreatedUtc=DateTime.UtcNow, UpdatedUtc=DateTime.UtcNow,
+                CreatedUtc=clock.UtcNow, UpdatedUtc=clock.UtcNow,
                 CreatedByUserId=session.UserId, UpdatedByUserId=session.UserId
             };
             db.Customers.Add(entity);
-            await db.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                await using var verify =
+                    await factory.CreateDbContextAsync(cancellationToken);
+
+                if (await verify.Customers.AsNoTracking().AnyAsync(
+                        x =>
+                            x.CustomerCode != null &&
+                            x.CustomerCode.ToUpper() == normalisedCode,
+                        cancellationToken))
+                {
+                    throw new InvalidOperationException(
+                        $"Customer code '{model.CustomerCode}' already exists. Customer codes are not case-sensitive.");
+                }
+
+                throw;
+            }
+
             await audit.WriteAsync("CUSTOMER_CREATED", "Customer", entity.Id.ToString(),
                 $"Customer '{entity.CustomerCode} - {entity.Name}' created.", after: Snapshot(entity), cancellationToken:cancellationToken);
             return entity.Id;
         }
 
         var customer = await db.Customers.SingleAsync(x => x.Id == model.Id, cancellationToken);
+        db.Entry(customer).Property(x => x.Revision).OriginalValue = model.Revision;
         var before = Snapshot(customer);
         customer.CustomerCode=model.CustomerCode; customer.Name=model.Name; customer.CustomerType=model.CustomerType; customer.ContactName=model.ContactName;
         customer.Phone=model.Phone; customer.MobileNumber=model.MobileNumber; customer.Email=model.Email;
         customer.Address=model.Address; customer.Notes=model.Notes;
         customer.AllowEmailReminders=model.AllowEmailReminders; customer.AllowSmsReminders=model.AllowSmsReminders;
-        customer.ReminderOptOut=model.ReminderOptOut; customer.UpdatedUtc=DateTime.UtcNow; customer.UpdatedByUserId=session.UserId;
-        await db.SaveChangesAsync(cancellationToken);
+        customer.ReminderOptOut=model.ReminderOptOut; customer.UpdatedUtc=clock.UtcNow; customer.UpdatedByUserId=session.UserId; customer.Revision++;
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException(
+                "This customer was changed by another user after you opened it. Reload the customer, review the latest values, and try again.");
+        }
+        catch (DbUpdateException)
+        {
+            await using var verify =
+                await factory.CreateDbContextAsync(cancellationToken);
+
+            if (await verify.Customers.AsNoTracking().AnyAsync(
+                    x =>
+                        x.Id != model.Id &&
+                        x.CustomerCode != null &&
+                        x.CustomerCode.ToUpper() == normalisedCode,
+                    cancellationToken))
+            {
+                throw new InvalidOperationException(
+                    $"Customer code '{model.CustomerCode}' already exists. Customer codes are not case-sensitive.");
+            }
+
+            throw;
+        }
+
         await audit.WriteAsync("CUSTOMER_UPDATED", "Customer", customer.Id.ToString(),
             $"Customer '{customer.CustomerCode} - {customer.Name}' updated.", before:before, after:Snapshot(customer), cancellationToken:cancellationToken);
         return customer.Id;
@@ -173,9 +224,19 @@ internal sealed class CustomerService(
         if (customer.IsActive == active) return;
         var before = customer.IsActive;
         customer.IsActive = active;
-        customer.UpdatedUtc = DateTime.UtcNow;
+        customer.UpdatedUtc = clock.UtcNow;
         customer.UpdatedByUserId = session.UserId;
-        await db.SaveChangesAsync(cancellationToken);
+        customer.Revision++;
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException(
+                "This customer was changed by another user while its active status was being updated. Reload and try again.");
+        }
+
         await audit.WriteAsync(active ? "CUSTOMER_ACTIVATED" : "CUSTOMER_DEACTIVATED", "Customer", id.ToString(),
             $"Customer '{customer.CustomerCode} - {customer.Name}' {(active ? "reactivated" : "deactivated")}.",
             before:new { IsActive=before }, after:new { customer.IsActive }, cancellationToken:cancellationToken);

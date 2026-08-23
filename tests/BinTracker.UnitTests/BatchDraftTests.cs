@@ -9,7 +9,7 @@ public sealed class BatchDraftTests
     [Fact]
     public void Draft_lines_survive_when_the_same_application_state_is_reused()
     {
-        var state = new ApplicationState();
+        var state = new ApplicationState(new TestBusinessClock());
 
         state.DraftBatch.Lines.Add(new DraftMovementLine(
             1,
@@ -30,7 +30,7 @@ public sealed class BatchDraftTests
     [Fact]
     public void Clearing_draft_removes_unsaved_lines()
     {
-        var state = new ApplicationState();
+        var state = new ApplicationState(new TestBusinessClock());
 
         state.DraftBatch.Lines.Add(new DraftMovementLine(
             1,
@@ -83,14 +83,14 @@ public sealed class BatchDraftTests
         try
         {
             var firstStore = new FileBatchDraftStore(path);
-            var firstState = new ApplicationState(firstStore);
+            var firstState = new ApplicationState(firstStore, new TestBusinessClock());
             firstState.DraftBatch.MovementDate = new DateOnly(2026, 8, 18);
             firstState.DraftBatch.MovementType = MovementType.Out;
             firstState.DraftBatch.Lines.Add(new DraftMovementLine(
                 1, "ALBURY", "Albury", 1, "Blue Bin", 20, "REF", "Notes"));
             firstState.PersistDraft();
 
-            var restoredState = new ApplicationState(new FileBatchDraftStore(path));
+            var restoredState = new ApplicationState(new FileBatchDraftStore(path), new TestBusinessClock());
 
             Assert.True(restoredState.DraftBatch.HasLines);
             Assert.Equal(new DateOnly(2026, 8, 18), restoredState.DraftBatch.MovementDate);
@@ -115,7 +115,7 @@ public sealed class BatchDraftTests
 
         try
         {
-            var state = new ApplicationState(new FileBatchDraftStore(path));
+            var state = new ApplicationState(new FileBatchDraftStore(path), new TestBusinessClock());
             state.DraftBatch.Lines.Add(new DraftMovementLine(
                 1, "ALBURY", "Albury", 1, "Blue Bin", 20, null, null));
             state.PersistDraft();
@@ -141,12 +141,12 @@ public sealed class BatchDraftTests
 
         try
         {
-            var first = new ApplicationState(new FileBatchDraftStore(path));
+            var first = new ApplicationState(new FileBatchDraftStore(path), new TestBusinessClock());
             first.DraftBatch.Lines.Add(new DraftMovementLine(
                 1, "ALBURY", "Albury", 1, "Blue Bin", 3, null, null));
             first.PersistDraft();
 
-            var restored = new ApplicationState(new FileBatchDraftStore(path));
+            var restored = new ApplicationState(new FileBatchDraftStore(path), new TestBusinessClock());
 
             Assert.True(restored.RecoveryPromptPending);
             Assert.NotNull(restored.RecoveryDraftLastSavedAtUtc);
@@ -169,7 +169,7 @@ public sealed class BatchDraftTests
 
         try
         {
-            var state = new ApplicationState(new FileBatchDraftStore(path));
+            var state = new ApplicationState(new FileBatchDraftStore(path), new TestBusinessClock());
             state.DraftBatch.Lines.Add(new DraftMovementLine(
                 1, "ALBURY", "Albury", 1, "Blue Bin", 3, null, null));
             state.PersistDraft();

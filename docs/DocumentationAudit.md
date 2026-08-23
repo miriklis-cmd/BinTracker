@@ -1,5 +1,12 @@
 # Documentation Audit Record
 
+## v0.5.0-alpha.4 selective branch comparison
+
+- Inspected the actual attached alternate alpha.3 source rather than relying on its summary.
+- Reconciled the selective concurrency/portability merge against the controlled Markdown set, requirement register and BT-ARCH-008..015 hard gate.
+- Preserved Work's reversal Status/Source UX and packaging protections; documented schema V14, content transport, host composition, payload identity and PostgreSQL verification limits.
+- Promoted the merged candidate to alpha.4 because source, schema and requirements changed.
+
 Audit date: 16 August 2026
 
 Baseline audited: v0.4.0-alpha.21.5.1

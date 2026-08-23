@@ -5,6 +5,8 @@ namespace BinTracker.WinForms;
 
 public sealed class MovementHistoryReportForm : BinTrackerForm
 {
+    private DateTime BusinessToday => clock.Today.ToDateTime(TimeOnly.MinValue);
+
     private readonly IMovementHistoryReportService reports;
     private readonly IMovementHistoryReportPdfService pdfReports;
     private readonly IContainerTypeService containerTypes;
@@ -12,15 +14,13 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     private readonly DateTimePicker startDate = new()
     {
         Format = DateTimePickerFormat.Short,
-        Width = 140,
-        Value = DateTime.Today.AddDays(-29)
+        Width = 140
     };
 
     private readonly DateTimePicker endDate = new()
     {
         Format = DateTimePickerFormat.Short,
-        Width = 140,
-        Value = DateTime.Today
+        Width = 140
     };
 
     private readonly TextBox customerSearch = new()
@@ -72,8 +72,11 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     private readonly IAuditService audit;
     private readonly IMovementCorrectionService corrections;
     private readonly UserSession session;
+    private Button? reverseButton;
     private MovementHistoryReportResult? currentResult;
     private bool autoRefreshReady;
+
+    private readonly IBusinessClock clock;
 
     public MovementHistoryReportForm(
         IMovementHistoryReportService reports,
@@ -81,13 +84,15 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         IContainerTypeService containerTypes,
         IAuditService audit,
         IMovementCorrectionService corrections,
-        UserSession session)
+        UserSession session,
+        IBusinessClock clock)
     {
         this.reports = reports;
         this.pdfReports = pdfReports;
         this.containerTypes = containerTypes;
 
         this.audit = audit;
+        this.clock = clock;
         this.corrections = corrections;
         this.session = session;
 
@@ -98,8 +103,10 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         Font = new Font("Segoe UI", 10F);
         BackColor = Color.FromArgb(245, 247, 250);
 
-        startDate.MaxDate = DateTime.Today;
-        endDate.MaxDate = DateTime.Today;
+        startDate.MaxDate = BusinessToday;
+        endDate.MaxDate = BusinessToday;
+        startDate.Value = BusinessToday.AddDays(-29);
+        endDate.Value = BusinessToday;
 
         startDate.ValueChanged += async (_, _) =>
         {
@@ -263,22 +270,22 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             "Last 7 Days",
             115,
             async () => await SetRangeAndRefreshAsync(
-                DateTime.Today.AddDays(-6),
-                DateTime.Today)));
+                BusinessToday.AddDays(-6),
+                BusinessToday)));
 
         actions.Controls.Add(ActionButton(
             "Last 30 Days",
             125,
             async () => await SetRangeAndRefreshAsync(
-                DateTime.Today.AddDays(-29),
-                DateTime.Today)));
+                BusinessToday.AddDays(-29),
+                BusinessToday)));
 
         actions.Controls.Add(ActionButton(
             "This Month",
             135,
             async () => await SetRangeAndRefreshAsync(
-                new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1),
-                DateTime.Today)));
+                new DateTime(BusinessToday.Year, BusinessToday.Month, 1),
+                BusinessToday)));
 
         actions.Controls.Add(ActionButton(
             "Generate PDF",
@@ -301,14 +308,15 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
         if (session.Role is UserRole.Administrator or UserRole.Operator)
         {
-            var reverse = new Button
+            reverseButton = new Button
             {
                 Text = "Reverse Selected",
                 Size = new Size(155, 40),
                 Margin = new Padding(8, 0, 0, 0)
             };
-            reverse.Click += async (_, _) => await ReverseSelectedAsync();
-            actions.Controls.Add(reverse);
+            reverseButton.Click += async (_, _) => await ReverseSelectedAsync();
+            actions.Controls.Add(reverseButton);
+            grid.SelectionChanged += (_, _) => UpdateReverseAvailability();
         }
 
         rows.Controls.Add(filters, 0, 0);
@@ -448,11 +456,14 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
                     row.Quantity.ToString("N0"),
                     row.SourceText,
                     row.Reference,
+                    row.Status,
                     row.Notes,
                     row.EnteredBy);
 
                 grid.Rows[index].Tag = row;
             }
+
+            UpdateReverseAvailability();
 
             ResizeContentColumns();
             ReportGridMultiSort.Reapply(grid);
@@ -542,7 +553,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             Enabled = false;
             UseWaitCursor = true;
             var result = await corrections.ReverseAsync(
-                new ReverseMovementRequest(selected.MovementId, dialog.Reason));
+                new ReverseMovementRequest(Guid.NewGuid(), selected.MovementId, dialog.Reason));
 
             MessageBox.Show(this,
                 $"Movement #{result.OriginalMovementId} was preserved and reversal movement #{result.ReversalMovementId} was created.",
@@ -561,6 +572,16 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         }
     }
 
+    private void UpdateReverseAvailability()
+    {
+        if (reverseButton is null)
+            return;
+
+        reverseButton.Enabled = grid.CurrentRow?.Tag is MovementHistoryReportRow row &&
+                                row.CanReverse &&
+                                row.Source is MovementSource.Manual or MovementSource.Batch;
+    }
+
     private void ConfigureGrid()
     {
         grid.Columns.Add(Column("Date", 135, "Date"));
@@ -576,6 +597,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         grid.Columns.Add(Column("Qty", 80, "Quantity"));
         grid.Columns.Add(Column("Source", 140, "Source"));
         grid.Columns.Add(Column("Reference", 145, "Reference"));
+        grid.Columns.Add(Column("Status", 230, "Status"));
         grid.Columns.Add(Column("Notes", 180, "Notes"));
         grid.Columns.Add(Column("Entered by", 110, "EnteredBy"));
 
@@ -675,10 +697,10 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             Enabled = false;
             UseWaitCursor = true;
 
-            await pdfReports.GeneratePdfAsync(
+            var pdf = await pdfReports.BuildPdfAsync(
                 result,
-                dialog.FileName,
                 includeNotesInExports.Checked);
+            await File.WriteAllBytesAsync(dialog.FileName, pdf);
 
             if (openAfter)
             {

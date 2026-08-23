@@ -9,6 +9,7 @@ public sealed class ExcelImportForm : BinTrackerForm
     private readonly IContainerTypeService containerTypeService;
     private readonly IBalanceService balanceService;
     private readonly IImportExecutionService importExecutionService;
+    private readonly IBusinessClock clock;
 
     private readonly Panel pageHost = new()
     {
@@ -126,13 +127,15 @@ public sealed class ExcelImportForm : BinTrackerForm
         ICustomerService customerService,
         IContainerTypeService containerTypeService,
         IBalanceService balanceService,
-        IImportExecutionService importExecutionService)
+        IImportExecutionService importExecutionService,
+        IBusinessClock clock)
     {
         this.service = service;
         this.customerService = customerService;
         this.containerTypeService = containerTypeService;
         this.balanceService = balanceService;
         this.importExecutionService = importExecutionService;
+        this.clock = clock;
 
         Text = "Excel Import Wizard";
         StartPosition = FormStartPosition.CenterParent;
@@ -1689,7 +1692,19 @@ public sealed class ExcelImportForm : BinTrackerForm
             UseWaitCursor = true;
             analyseButton.Enabled = false;
 
-            analysis = await service.AnalyzeAsync(filePath.Text);
+                        var selectedPath = filePath.Text.Trim();
+            if (selectedPath.Length == 0)
+                throw new InvalidOperationException("Choose an Excel workbook first.");
+
+            var info = new FileInfo(selectedPath);
+            var content = await File.ReadAllBytesAsync(selectedPath);
+
+            analysis = await service.AnalyzeAsync(
+                new ImportSourceDocument(
+                    info.Name,
+                    content,
+                    info.FullName,
+                    info.LastWriteTimeUtc));
 
             analyseResultTitle.Text = "✓ Workbook analysed successfully";
             analyseResultDetails.Text =
@@ -1751,8 +1766,8 @@ public sealed class ExcelImportForm : BinTrackerForm
             UseWaitCursor = true;
             nextButton.Enabled = false;
             preflight = await importExecutionService.PreflightAsync(
-                analysis.FullPath,
-                DateOnly.FromDateTime(DateTime.Today));
+                analysis.Source,
+                clock.Today);
         }
         catch (IOException)
         {
@@ -1865,7 +1880,7 @@ public sealed class ExcelImportForm : BinTrackerForm
         statusLayout.Controls.Add(new Label
         {
             AutoSize = true,
-            Text = $"Size: {preflight.Source.Length:N0} bytes    Modified: {preflight.Source.LastWriteUtc.ToLocalTime():g}",
+            Text = $"Size: {preflight.Source.Length:N0} bytes    Modified: {preflight.Source.ClientLastWriteUtc.ToLocalTime():g}",
             Margin = new Padding(0, 2, 0, 8)
         }, 0, 3);
 
@@ -1920,7 +1935,7 @@ public sealed class ExcelImportForm : BinTrackerForm
                           "Manual/Batch movements and customer records are preserved."
                         : "Import now will create the confirmed new customers, reconcile each opening position to Excel B/Fwd, " +
                           "then preserve today's OUT and IN movements. All database changes, including the ImportRun, are committed " +
-                          "together in one SQLite transaction. If any line fails, the entire import is rolled back.",
+                          "together in one database transaction. If any line fails, the entire import is rolled back.",
             MaximumSize = new Size(1240, 0),
             ForeColor = Color.FromArgb(45, 55, 70)
         });
@@ -1971,7 +1986,7 @@ public sealed class ExcelImportForm : BinTrackerForm
         }
 
         return new ImportExecutionRequest(
-            analysis.FullPath,
+            analysis.Source,
             step4ExpectedSha256,
             analysis,
             CurrentMappings(),
@@ -1984,9 +1999,10 @@ public sealed class ExcelImportForm : BinTrackerForm
             new Dictionary<string, ImportExistingCustomerDecision>(
                 existingCustomerDecisions,
                 StringComparer.OrdinalIgnoreCase),
-            DateOnly.FromDateTime(DateTime.Today),
+            clock.Today,
             mode,
-            previousImportRunId);
+            previousImportRunId,
+            Guid.NewGuid());
     }
 
     private async Task ExecuteImportAsync()
@@ -2086,7 +2102,7 @@ public sealed class ExcelImportForm : BinTrackerForm
             (step4RequiresReplacement
                 ? "BinTracker is ready to REPLACE/CORRECT the previous import for this cutover date.\n\n"
                 : "BinTracker is ready to write this legacy workbook to the database.\n\n") +
-            $"Cutover date: {DateOnly.FromDateTime(DateTime.Today):dd/MM/yyyy}\n" +
+            $"Cutover date: {clock.Today:dd/MM/yyyy}\n" +
             $"New customers to create: {createCount:N0}\n\n" +
             "Excel B/Fwd will become the authoritative opening position. " +
             "The workbook's OUT and IN quantities will then be written as real movements.\n\n" +

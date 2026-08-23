@@ -451,8 +451,7 @@ public sealed class ImportBalanceReconciliationPlannerTests
     private static ExcelImportAnalysis Analysis(
         params ImportSnapshotCandidate[] snapshots) =>
         new(
-            "test.xlsx",
-            "test.xlsx",
+            new ImportSourceDocument("test.xlsx", [], "test.xlsx"),
             [],
             snapshots.Select(x =>
                 new ImportCustomerCandidate(

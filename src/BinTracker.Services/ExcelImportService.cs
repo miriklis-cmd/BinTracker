@@ -11,6 +11,16 @@ public sealed record ImportWorksheetAnalysis(
     int BuyerCandidates,
     string Status);
 
+
+public sealed record ImportSourceDocument(
+    string FileName,
+    byte[] Content,
+    string? ClientPath = null,
+    DateTime ClientLastWriteUtc = default)
+{
+    public long Length => Content.LongLength;
+}
+
 public enum ImportWorksheetRole
 {
     Source = 0,
@@ -283,13 +293,13 @@ public sealed record ImportSnapshotCandidate(
 }
 
 public sealed record ExcelImportAnalysis(
-    string FileName,
-    string FullPath,
+    ImportSourceDocument Source,
     IReadOnlyList<ImportWorksheetAnalysis> Worksheets,
     IReadOnlyList<ImportCustomerCandidate> CustomerCandidates,
     IReadOnlyList<ImportSnapshotCandidate> SnapshotCandidates,
     IReadOnlyList<string> Warnings)
 {
+    public string FileName => Source.FileName;
     public int WorksheetCount => Worksheets.Count;
     public int CustomerCandidateCount => CustomerCandidates.Count;
     public int UniqueCustomerCount => CustomerCandidates
@@ -303,12 +313,12 @@ public sealed record ExcelImportAnalysis(
 public interface IExcelImportService
 {
     Task<ExcelImportAnalysis> AnalyzeAsync(
-        string filePath,
+        ImportSourceDocument source,
         CancellationToken cancellationToken = default);
 }
 
 internal sealed class ExcelImportService(
-    UserSession session,
+    IUserContext session,
     IAuditService audit) : IExcelImportService
 {
     private static readonly string[] ExpectedOperationalSheets =
@@ -322,18 +332,15 @@ internal sealed class ExcelImportService(
     ];
 
     public async Task<ExcelImportAnalysis> AnalyzeAsync(
-        string filePath,
+        ImportSourceDocument source,
         CancellationToken cancellationToken = default)
     {
         RequireAdmin();
 
-        if (string.IsNullOrWhiteSpace(filePath))
+        if (source is null || source.Content.Length == 0)
             throw new ArgumentException("Choose an Excel workbook first.");
 
-        if (!File.Exists(filePath))
-            throw new FileNotFoundException("The selected workbook no longer exists.", filePath);
-
-        var extension = Path.GetExtension(filePath);
+        var extension = Path.GetExtension(source.FileName);
         if (!extension.Equals(".xlsx", StringComparison.OrdinalIgnoreCase) &&
             !extension.Equals(".xlsm", StringComparison.OrdinalIgnoreCase))
         {
@@ -346,7 +353,8 @@ internal sealed class ExcelImportService(
         var snapshots = new List<ImportSnapshotCandidate>();
         var warnings = new List<string>();
 
-        using var workbook = new XLWorkbook(filePath);
+        using var stream = new MemoryStream(source.Content, writable: false);
+        using var workbook = new XLWorkbook(stream);
 
         foreach (var sheet in workbook.Worksheets)
         {
@@ -427,8 +435,7 @@ internal sealed class ExcelImportService(
         }
 
         var analysis = new ExcelImportAnalysis(
-            Path.GetFileName(filePath),
-            Path.GetFullPath(filePath),
+            source,
             worksheets,
             candidates,
             snapshots,

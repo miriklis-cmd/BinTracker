@@ -30,7 +30,8 @@ public sealed record ContainerTypeEditModel(
     bool IsActive,
     bool IsSpecialFloorReportContainer,
     string? DashboardColour,
-    ContainerTypeUsage Usage);
+    ContainerTypeUsage Usage,
+    long Revision);
 
 public interface IContainerTypeService
 {
@@ -42,8 +43,9 @@ public interface IContainerTypeService
 
 internal sealed class ContainerTypeService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    UserSession session,
-    IAuditService audit) : IContainerTypeService
+    IUserContext session,
+    IAuditService audit,
+    IBusinessClock clock) : IContainerTypeService
 {
     public async Task<IReadOnlyList<ContainerTypeListRow>> SearchAsync(
         string? search,
@@ -94,13 +96,15 @@ internal sealed class ContainerTypeService(
             item.Id, item.Name, item.ShortCode, item.SystemCode,
             item.Description, item.Notes, item.DisplayOrder, item.IsActive,
             item.IsSpecialFloorReportContainer, item.DashboardColour,
-            new ContainerTypeUsage(movementCount, customerBalances.Count(x => x != 0), first, last));
+            new ContainerTypeUsage(movementCount, customerBalances.Count(x => x != 0), first, last),
+            item.Revision);
     }
 
     public async Task<int> SaveAsync(ContainerTypeEditModel model, CancellationToken cancellationToken = default)
     {
         RequireAdmin();
         var name = model.Name.Trim();
+        var nameKey = ContainerTypeNameKey.Normalize(name);
         var shortCode = model.ShortCode.Trim().ToUpperInvariant();
 
         if (name.Length < 2) throw new ArgumentException("Container name is required.");
@@ -109,7 +113,9 @@ internal sealed class ContainerTypeService(
             throw new ArgumentException("Short code can contain letters, numbers, hyphen and underscore only.");
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        if (await db.ContainerTypes.AnyAsync(x => x.Id != model.Id && x.Name.ToUpper() == name.ToUpper(), cancellationToken))
+        if (await db.ContainerTypes.AnyAsync(
+                x => x.Id != model.Id && x.NameKey == nameKey,
+                cancellationToken))
             throw new InvalidOperationException("A container type with that name already exists.");
         if (await db.ContainerTypes.AnyAsync(x => x.Id != model.Id && x.ShortCode.ToUpper() == shortCode, cancellationToken))
             throw new InvalidOperationException("A container type with that short code already exists.");
@@ -121,18 +127,20 @@ internal sealed class ContainerTypeService(
             entity = new ContainerType
             {
                 SystemCode = await CreateSystemCodeAsync(db, shortCode, cancellationToken),
-                CreatedUtc = DateTime.UtcNow
+                CreatedUtc = clock.UtcNow
             };
             db.ContainerTypes.Add(entity);
         }
         else
         {
             entity = await db.ContainerTypes.SingleAsync(x => x.Id == model.Id, cancellationToken);
+            db.Entry(entity).Property(x => x.Revision).OriginalValue = model.Revision;
             before = Snapshot(entity);
             // SystemCode is intentionally immutable after creation.
         }
 
         entity.Name = name;
+        entity.NameKey = nameKey;
         entity.ShortCode = shortCode;
         entity.Description = Clean(model.Description);
         entity.Notes = Clean(model.Notes);
@@ -140,9 +148,41 @@ internal sealed class ContainerTypeService(
         entity.IsActive = model.IsActive;
         entity.IsSpecialFloorReportContainer = model.IsSpecialFloorReportContainer;
         entity.DashboardColour = Clean(model.DashboardColour);
-        entity.UpdatedUtc = DateTime.UtcNow;
+        entity.UpdatedUtc = clock.UtcNow;
+        if (model.Id != 0) entity.Revision++;
 
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException(
+                "This container type was changed by another user after you opened it. Reload it, review the latest values, and try again.");
+        }
+        catch (DbUpdateException)
+        {
+            await using var verify =
+                await factory.CreateDbContextAsync(cancellationToken);
+
+            if (await verify.ContainerTypes.AsNoTracking().AnyAsync(
+                    x => x.Id != model.Id && x.NameKey == nameKey,
+                    cancellationToken))
+            {
+                throw new InvalidOperationException(
+                    "A container type with that name already exists.");
+            }
+
+            if (await verify.ContainerTypes.AsNoTracking().AnyAsync(
+                    x => x.Id != model.Id && x.ShortCode == shortCode,
+                    cancellationToken))
+            {
+                throw new InvalidOperationException(
+                    "A container type with that short code already exists.");
+            }
+
+            throw;
+        }
 
         await audit.WriteAsync(
             model.Id == 0 ? "CONTAINER_TYPE_CREATED" : "CONTAINER_TYPE_UPDATED",
@@ -165,8 +205,17 @@ internal sealed class ContainerTypeService(
 
         var before = entity.IsActive;
         entity.IsActive = active;
-        entity.UpdatedUtc = DateTime.UtcNow;
-        await db.SaveChangesAsync(cancellationToken);
+        entity.UpdatedUtc = clock.UtcNow;
+        entity.Revision++;
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException(
+                "This container type was changed by another user while its active status was being updated. Reload and try again.");
+        }
 
         await audit.WriteAsync(
             active ? "CONTAINER_TYPE_ACTIVATED" : "CONTAINER_TYPE_DEACTIVATED",
@@ -197,7 +246,7 @@ internal sealed class ContainerTypeService(
 
     private static object Snapshot(ContainerType x) => new
     {
-        x.Name, x.ShortCode, x.SystemCode, x.Description, x.Notes,
+        x.Name, x.NameKey, x.ShortCode, x.SystemCode, x.Description, x.Notes,
         x.DisplayOrder, x.IsActive, x.IsSpecialFloorReportContainer, x.DashboardColour
     };
 

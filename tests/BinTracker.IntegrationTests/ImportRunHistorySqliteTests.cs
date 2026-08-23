@@ -60,7 +60,7 @@ public sealed class ImportRunHistorySqliteTests
             var first = new ImportRun
             {
                 SourceFileName = "original.xlsm",
-                SourceFullPath = @"C:\original.xlsm",
+                SourceClientPath = @"C:\original.xlsm",
                 SourceSha256 = new string('A', 64),
                 SourceLength = 100,
                 SourceLastWriteUtc = DateTime.UtcNow.AddMinutes(-20),
@@ -80,11 +80,12 @@ public sealed class ImportRunHistorySqliteTests
             var second = new ImportRun
             {
                 SourceFileName = "corrected.xlsm",
-                SourceFullPath = @"C:\corrected.xlsm",
+                SourceClientPath = @"C:\corrected.xlsm",
                 SourceSha256 = new string('B', 64),
                 SourceLength = 101,
                 SourceLastWriteUtc = DateTime.UtcNow.AddMinutes(-5),
                 CutoverDate = new DateOnly(2026, 8, 14),
+                CurrentCutoverDate = new DateOnly(2026, 8, 14),
                 ReplacesImportRunId = first.Id,
                 CorrectionChangesJson =
                     """

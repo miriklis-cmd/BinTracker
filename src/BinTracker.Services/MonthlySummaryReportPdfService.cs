@@ -6,9 +6,8 @@ namespace BinTracker.Services;
 
 public interface IMonthlySummaryReportPdfService
 {
-    Task GeneratePdfAsync(
+    Task<byte[]> BuildPdfAsync(
         MonthlySummaryReportResult result,
-        string outputPath,
         CancellationToken cancellationToken = default);
 }
 
@@ -17,15 +16,15 @@ internal sealed class MonthlySummaryReportPdfService(
     IBusinessInformationService businessInformation)
     : IMonthlySummaryReportPdfService
 {
-    public async Task GeneratePdfAsync(
+    public async Task<byte[]> BuildPdfAsync(
         MonthlySummaryReportResult result,
-        string outputPath,
         CancellationToken cancellationToken = default)
     {
         var business =
             await businessInformation.GetAsync(cancellationToken);
 
         QuestPDF.Settings.License = LicenseType.Community;
+        using var output = new MemoryStream();
 
         Document.Create(document =>
         {
@@ -134,7 +133,7 @@ internal sealed class MonthlySummaryReportPdfService(
                         text.TotalPages();
                     });
             });
-        }).GeneratePdf(outputPath);
+        }).GeneratePdf(output);
 
         await audit.WriteAsync(
             "MONTHLY_SUMMARY_REPORT_GENERATED",
@@ -154,9 +153,10 @@ internal sealed class MonthlySummaryReportPdfService(
                 result.OutQuantity,
                 result.InQuantity,
                 result.NetQuantity,
-                FileName = Path.GetFileName(outputPath)
             },
             cancellationToken: cancellationToken);
+
+        return output.ToArray();
     }
 
     private static void Header(

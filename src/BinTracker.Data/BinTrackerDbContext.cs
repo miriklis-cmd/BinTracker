@@ -19,6 +19,7 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
     {
         b.Entity<Customer>(e =>
         {
+            e.Property(x => x.Revision).IsConcurrencyToken();
             e.ToTable("Customers");
             e.Property(x => x.Name).HasMaxLength(200).IsRequired();
             e.Property(x => x.CustomerCode).HasMaxLength(50);
@@ -35,34 +36,37 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
 
         b.Entity<ContainerType>(e =>
         {
+            e.Property(x => x.Revision).IsConcurrencyToken();
             e.ToTable("ContainerTypes");
             e.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            e.Property(x => x.NameKey).HasMaxLength(100).IsRequired();
             e.Property(x => x.ShortCode).HasMaxLength(30).IsRequired();
             e.Property(x => x.SystemCode).HasMaxLength(50).IsRequired();
             e.Property(x => x.Description).HasMaxLength(500);
             e.Property(x => x.Notes).HasMaxLength(2000);
             e.Property(x => x.DashboardColour).HasMaxLength(50);
-            e.HasIndex(x => x.Name).IsUnique();
+            e.HasIndex(x => x.NameKey).IsUnique();
             e.HasIndex(x => x.ShortCode).IsUnique();
             e.HasIndex(x => x.SystemCode).IsUnique();
             e.HasData(
-                new ContainerType { Id=1, Name="Blue Bin", ShortCode="BLUE", SystemCode="BLUE_BIN", Description="Standard blue reusable bin", IsActive=true, IsSpecialFloorReportContainer=false, DisplayOrder=1, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
-                new ContainerType { Id=2, Name="Small Bin", ShortCode="SMALL", SystemCode="SMALL_BIN", Description="Small reusable bin", IsActive=true, IsSpecialFloorReportContainer=false, DisplayOrder=2, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
-                new ContainerType { Id=3, Name="Yellow Bin", ShortCode="YELLOW", SystemCode="YELLOW_BIN", Description="Yellow reusable bin", IsActive=true, IsSpecialFloorReportContainer=false, DisplayOrder=3, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
-                new ContainerType { Id=4, Name="Bulk Bin", ShortCode="BULK", SystemCode="BULK_BIN", Description="Large bulk bin", IsActive=true, IsSpecialFloorReportContainer=false, DisplayOrder=4, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
-                new ContainerType { Id=5, Name="CHEP Pallet", ShortCode="CHEP", SystemCode="CHEP_PALLET", Description="CHEP pallet", IsActive=true, IsSpecialFloorReportContainer=true, DisplayOrder=5, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch });
+                new ContainerType { Id=1, Name="Blue Bin", NameKey="BLUE BIN", ShortCode="BLUE", SystemCode="BLUE_BIN", Description="Standard blue reusable bin", IsActive=true, IsSpecialFloorReportContainer=false, DisplayOrder=1, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
+                new ContainerType { Id=2, Name="Small Bin", NameKey="SMALL BIN", ShortCode="SMALL", SystemCode="SMALL_BIN", Description="Small reusable bin", IsActive=true, IsSpecialFloorReportContainer=false, DisplayOrder=2, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
+                new ContainerType { Id=3, Name="Yellow Bin", NameKey="YELLOW BIN", ShortCode="YELLOW", SystemCode="YELLOW_BIN", Description="Yellow reusable bin", IsActive=true, IsSpecialFloorReportContainer=false, DisplayOrder=3, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
+                new ContainerType { Id=4, Name="Bulk Bin", NameKey="BULK BIN", ShortCode="BULK", SystemCode="BULK_BIN", Description="Large bulk bin", IsActive=true, IsSpecialFloorReportContainer=false, DisplayOrder=4, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch },
+                new ContainerType { Id=5, Name="CHEP Pallet", NameKey="CHEP PALLET", ShortCode="CHEP", SystemCode="CHEP_PALLET", Description="CHEP pallet", IsActive=true, IsSpecialFloorReportContainer=true, DisplayOrder=5, CreatedUtc=DateTime.UnixEpoch, UpdatedUtc=DateTime.UnixEpoch });
         });
 
         b.Entity<MovementBatch>(e =>
         {
             e.ToTable("MovementBatches");
+            e.HasIndex(x => x.ClientOperationId).IsUnique();
             e.HasMany(x => x.Movements).WithOne(x => x.MovementBatch)
                 .HasForeignKey(x => x.MovementBatchId).OnDelete(DeleteBehavior.SetNull);
         });
 
         b.Entity<BinMovement>(e =>
         {
-            e.ToTable("BinMovements", t => t.HasCheckConstraint("CK_BinMovements_Quantity_Positive", "Quantity > 0"));
+            e.ToTable("BinMovements");
             e.HasOne(x => x.Customer).WithMany(x => x.Movements)
                 .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.ContainerType).WithMany(x => x.Movements)
@@ -74,6 +78,7 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
                 .OnDelete(DeleteBehavior.Restrict);
 
             e.HasIndex(x => new { x.CustomerId, x.ContainerTypeId, x.MovementDate });
+            e.HasIndex(x => x.ClientOperationId).IsUnique();
             e.HasIndex(x => x.ImportRunId);
             e.HasIndex(x => x.ReversesMovementId).IsUnique();
 
@@ -85,6 +90,7 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
 
         b.Entity<ApplicationSettings>(e =>
         {
+            e.Property(x => x.Revision).IsConcurrencyToken();
             e.Property(x => x.BusinessName).HasMaxLength(200);
             e.Property(x => x.TradingName).HasMaxLength(200);
             e.Property(x => x.Abn).HasMaxLength(50);
@@ -129,18 +135,23 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
         {
             e.ToTable("ImportRuns");
             e.Property(x => x.SourceFileName).HasMaxLength(260).IsRequired();
-            e.Property(x => x.SourceFullPath).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.SourceClientPath).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.ClientRequestFingerprint).HasMaxLength(64);
             e.Property(x => x.SourceSha256).HasMaxLength(64).IsRequired();
             e.Property(x => x.Status).HasMaxLength(40).IsRequired();
             e.Property(x => x.Username).HasMaxLength(100).IsRequired();
             e.Property(x => x.SessionId).HasMaxLength(100).IsRequired();
             e.Property(x => x.Notes).HasMaxLength(2000);
-            e.HasIndex(x => x.SourceSha256);
+            e.HasIndex(x => x.SourceSha256).IsUnique();
+            e.HasIndex(x => x.ClientOperationId).IsUnique();
             e.HasIndex(x => x.CompletedUtc);
             e.HasIndex(x => x.CutoverDate);
+            e.HasIndex(x => x.CurrentCutoverDate).IsUnique();
+            // Both SQLite and PostgreSQL allow multiple NULLs in a unique
+            // index, so a provider-specific filtered-index SQL fragment is
+            // unnecessary here.
             e.HasIndex(x => x.ReplacesImportRunId)
-                .IsUnique()
-                .HasFilter("ReplacesImportRunId IS NOT NULL");
+                .IsUnique();
         });
 
         b.Entity<AuditEvent>(e =>

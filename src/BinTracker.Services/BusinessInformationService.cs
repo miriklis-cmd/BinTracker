@@ -11,7 +11,8 @@ public sealed record BusinessInformation(
     string Address,
     string Phone,
     string Email,
-    string DefaultReportHeader)
+    string DefaultReportHeader,
+    long Revision = 1)
 {
     public string DisplayName =>
         !string.IsNullOrWhiteSpace(TradingName) ? TradingName :
@@ -36,7 +37,7 @@ public interface IBusinessInformationService
 
 internal sealed class BusinessInformationService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    UserSession session,
+    IUserContext session,
     IAuditService audit) : IBusinessInformationService
 {
     public async Task<BusinessInformation> GetAsync(
@@ -57,7 +58,8 @@ internal sealed class BusinessInformationService(
                 settings.Address ?? string.Empty,
                 settings.Phone ?? string.Empty,
                 settings.Email ?? string.Empty,
-                settings.DefaultReportHeader ?? string.Empty);
+                settings.DefaultReportHeader ?? string.Empty,
+                settings.Revision);
     }
 
     public async Task SaveAsync(
@@ -80,6 +82,11 @@ internal sealed class BusinessInformationService(
             settings = new ApplicationSettings { Id = 1 };
             db.ApplicationSettings.Add(settings);
         }
+        else
+        {
+            db.Entry(settings).Property(x => x.Revision).OriginalValue =
+                information.Revision;
+        }
 
         var before = new
         {
@@ -99,8 +106,17 @@ internal sealed class BusinessInformationService(
         settings.Phone = Clean(information.Phone);
         settings.Email = Clean(information.Email);
         settings.DefaultReportHeader = Clean(information.DefaultReportHeader);
+        settings.Revision++;
 
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException(
+                "Business Information was changed by another user after you opened it. Reload the latest values and try again.");
+        }
 
         await audit.WriteAsync(
             "BUSINESS_INFORMATION_UPDATED",

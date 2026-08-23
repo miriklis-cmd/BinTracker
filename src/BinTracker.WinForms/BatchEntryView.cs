@@ -949,6 +949,7 @@ public sealed class BatchEntryView : UserControl
 
             var result = await movements.SaveBatchAsync(
                 new SaveMovementBatchRequest(
+                Guid.NewGuid(),
                     Draft.MovementDate,
                     Draft.MovementType,
                     null,

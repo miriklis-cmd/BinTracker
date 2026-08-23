@@ -5,6 +5,8 @@ namespace BinTracker.WinForms;
 
 public sealed class WeeklyMovementsReportForm : BinTrackerForm
 {
+    private DateTime BusinessToday => clock.Today.ToDateTime(TimeOnly.MinValue);
+
     private readonly IWeeklyMovementsReportService reports;
     private readonly IWeeklyMovementsReportPdfService pdfReports;
     private readonly IContainerTypeService containerTypes;
@@ -12,8 +14,7 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
     private readonly DateTimePicker weekPicker = new()
     {
         Format = DateTimePickerFormat.Short,
-        Width = 140,
-        Value = DateTime.Today
+        Width = 140
     };
     private readonly TextBox customerSearch = new()
     {
@@ -52,17 +53,21 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
     private WeeklyMovementsReportResult? current;
     private bool autoRefreshReady;
 
+    private readonly IBusinessClock clock;
+
     public WeeklyMovementsReportForm(
         IWeeklyMovementsReportService reports,
         IWeeklyMovementsReportPdfService pdfReports,
         IContainerTypeService containerTypes,
-        IAuditService audit)
+        IAuditService audit,
+        IBusinessClock clock)
     {
         this.reports = reports;
         this.pdfReports = pdfReports;
         this.containerTypes = containerTypes;
 
         this.audit = audit;
+        this.clock = clock;
 
         Text = "Weekly Movements";
         StartPosition = FormStartPosition.Manual;
@@ -71,7 +76,8 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
         Font = new Font("Segoe UI", 10F);
         BackColor = Color.FromArgb(245, 247, 250);
 
-        weekPicker.MaxDate = DateTime.Today;
+        weekPicker.MaxDate = BusinessToday;
+        weekPicker.Value = BusinessToday;
 
         weekPicker.ValueChanged += async (_, _) =>
         {
@@ -208,12 +214,12 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
         actions.Controls.Add(ActionButton(
             "This Week",
             110,
-            async () => await SetDateAndRefreshAsync(DateTime.Today)));
+            async () => await SetDateAndRefreshAsync(BusinessToday)));
         actions.Controls.Add(ActionButton(
             "Last Week",
             110,
             async () => await SetDateAndRefreshAsync(
-                DateTime.Today.AddDays(-7))));
+                BusinessToday.AddDays(-7))));
         actions.Controls.Add(ActionButton("Generate PDF", 140, async () => await GeneratePdfAsync(false)));
         actions.Controls.Add(ActionButton("Generate && Open", 175, async () => await GeneratePdfAsync(true)));
         var csv = new Button { Text = "Export CSV", Size = new Size(135, 40), Margin = new Padding(8,0,0,0) };
@@ -376,7 +382,7 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
         var summary = summaryGrid.Rows.Cast<DataGridViewRow>()
             .Where(x => !x.IsNewRow).Select(x => x.Tag as WeeklyMovementSummaryRow)
             .Where(x => x is not null).Cast<WeeklyMovementSummaryRow>().ToList();
-        return new WeeklyMovementsReportResult(source.WeekStart, source.WeekEnd, rows, summary);
+        return new WeeklyMovementsReportResult(source.WeekStart, source.WeekEnd, source.DataThroughDate, rows, summary);
     }
 
     private async Task GeneratePdfAsync(bool openAfter)
@@ -394,7 +400,9 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
         try
         {
             Enabled = false; UseWaitCursor = true;
-            await pdfReports.GeneratePdfAsync(result, dialog.FileName, summaryView, includeNotesInExports.Checked);
+            var pdf = await pdfReports.BuildPdfAsync(
+                result, summaryView, includeNotesInExports.Checked);
+            await File.WriteAllBytesAsync(dialog.FileName, pdf);
             if (openAfter) System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             { FileName = dialog.FileName, UseShellExecute = true });
         }

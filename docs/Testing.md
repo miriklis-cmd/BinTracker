@@ -1,5 +1,9 @@
 # BinTracker Automated Testing
 
+## Multi-user readiness regression
+
+SQLite integration tests exercise retry identity, different-payload rejection, stale-edit rejection, current-cutover ownership and schema migration. They protect provider-neutral semantics but are not evidence of PostgreSQL/API execution; that requires a real fixture.
+
 BinTracker uses separate unit and SQLite integration test projects.
 
 ## Unit tests

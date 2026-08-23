@@ -8,6 +8,7 @@ public sealed class CustomersView : UserControl
     private readonly ICustomerService service;
     private readonly UserSession session;
     private readonly ICustomerStatementReportService statementReports;
+    private readonly IBusinessClock clock;
     private readonly TextBox search = new();
     private readonly CheckBox includeInactive = new();
     private readonly DataGridView customerGrid = Grid();
@@ -36,15 +37,16 @@ public sealed class CustomersView : UserControl
     private readonly DataGridView balances = Grid();
     private readonly DataGridView movements = Grid();
     private int selectedId;
+    private long selectedRevision;
     private bool suppressSelectionChanged;
     private bool suppressFilterChanged;
     private string lastAppliedSearchText = string.Empty;
     private bool lastAppliedIncludeInactive;
     private CustomerEditorSnapshot? savedSnapshot;
 
-    public CustomersView(ICustomerService service, UserSession session, ICustomerStatementReportService statementReports)
+    public CustomersView(ICustomerService service, UserSession session, ICustomerStatementReportService statementReports, IBusinessClock clock)
     {
-        this.service=service; this.session=session; this.statementReports=statementReports;
+        this.service=service; this.session=session; this.statementReports=statementReports; this.clock=clock;
         Dock=DockStyle.Fill; AutoScaleMode=AutoScaleMode.Dpi; BackColor=Color.FromArgb(245,247,250);
         customerType.Items.Add(new CustomerTypeOption(CustomerType.Account, "Account"));
         customerType.Items.Add(new CustomerTypeOption(CustomerType.CashCod, "Cash / COD"));
@@ -390,6 +392,7 @@ public sealed class CustomersView : UserControl
             return;
         }
 
+        selectedRevision = c.Revision;
         code.Text = c.CustomerCode ?? "";
         name.Text = c.Name;
         SelectCustomerType(c.CustomerType);
@@ -413,6 +416,7 @@ public sealed class CustomersView : UserControl
     private void ClearCustomerDetails()
     {
         selectedId = 0;
+        selectedRevision = 0;
         code.Clear();
         name.Clear();
         customerType.SelectedIndex = 0;
@@ -446,7 +450,7 @@ public sealed class CustomersView : UserControl
         try
         {
             customerGrid.ClearSelection();
-            selectedId=0; code.Clear(); name.Clear(); customerType.SelectedIndex=0; contact.Clear(); phone.Clear(); mobile.Clear(); email.Clear(); address.Clear(); notes.Clear(); emailReminders.Checked=true; smsReminders.Checked=true; optOut.Checked=false; deactivate.Enabled=false; status.Text="New customer"; balances.Rows.Clear(); movements.Rows.Clear(); statement.Enabled=false;
+            selectedId=0; selectedRevision=0; code.Clear(); name.Clear(); customerType.SelectedIndex=0; contact.Clear(); phone.Clear(); mobile.Clear(); email.Clear(); address.Clear(); notes.Clear(); emailReminders.Checked=true; smsReminders.Checked=true; optOut.Checked=false; deactivate.Enabled=false; status.Text="New customer"; balances.Rows.Clear(); movements.Rows.Clear(); statement.Enabled=false;
             savedSnapshot=CaptureSnapshot();
         }
         finally
@@ -460,7 +464,7 @@ public sealed class CustomersView : UserControl
     {
         try
         {
-            var id=await service.SaveAsync(new CustomerEditModel { Id=selectedId, CustomerCode=code.Text, Name=name.Text, CustomerType=SelectedCustomerType(), ContactName=contact.Text, Phone=phone.Text, MobileNumber=mobile.Text, Email=email.Text, Address=address.Text, Notes=notes.Text, AllowEmailReminders=emailReminders.Checked, AllowSmsReminders=smsReminders.Checked, ReminderOptOut=optOut.Checked });
+            var id=await service.SaveAsync(new CustomerEditModel { Id=selectedId, Revision=selectedRevision, CustomerCode=code.Text, Name=name.Text, CustomerType=SelectedCustomerType(), ContactName=contact.Text, Phone=phone.Text, MobileNumber=mobile.Text, Email=email.Text, Address=address.Text, Notes=notes.Text, AllowEmailReminders=emailReminders.Checked, AllowSmsReminders=smsReminders.Checked, ReminderOptOut=optOut.Checked });
             selectedId=id;
             deactivate.Enabled=true;
             statement.Enabled=true;
@@ -567,7 +571,8 @@ public sealed class CustomersView : UserControl
             owner,
             selectedId,
             service,
-            statementReports);
+            statementReports,
+            clock);
     }
 
     private async Task ToggleActiveAsync()

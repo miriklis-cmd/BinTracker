@@ -11,6 +11,7 @@ public sealed class SingleEntryView : UserControl
 {
     private readonly IMovementService movements;
     private readonly UserSession session;
+    private readonly IBusinessClock clock;
 
     private readonly DateTimePicker movementDate = new()
     {
@@ -86,10 +87,11 @@ public sealed class SingleEntryView : UserControl
     private IReadOnlyList<MovementCustomerOption> customers = [];
     private MovementCustomerSummary? selectedCustomer;
 
-    public SingleEntryView(IMovementService movements, UserSession session)
+    public SingleEntryView(IMovementService movements, UserSession session, IBusinessClock clock)
     {
         this.movements = movements;
         this.session = session;
+        this.clock = clock;
 
         Dock = DockStyle.Fill;
         BackColor = Color.FromArgb(245, 247, 250);
@@ -564,6 +566,7 @@ public sealed class SingleEntryView : UserControl
 
             var result = await movements.SaveSingleAsync(
                 new SaveSingleMovementRequest(
+                Guid.NewGuid(),
                     date,
                     selectedDirection.Value,
                     selectedCustomer.CustomerId,
@@ -596,7 +599,7 @@ public sealed class SingleEntryView : UserControl
     {
         selectedCustomer = null;
 
-        movementDate.Value = DateTime.Today;
+        movementDate.Value = clock.Today.ToDateTime(TimeOnly.MinValue);
         movementType.SelectedIndex = 0;
 
         customerCode.Clear();

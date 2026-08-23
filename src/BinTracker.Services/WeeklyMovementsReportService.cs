@@ -55,18 +55,10 @@ public sealed record WeeklyMovementSummaryRow(
 public sealed record WeeklyMovementsReportResult(
     DateOnly WeekStart,
     DateOnly WeekEnd,
+    DateOnly DataThroughDate,
     IReadOnlyList<WeeklyMovementReportRow> Rows,
     IReadOnlyList<WeeklyMovementSummaryRow> Summary)
 {
-    public DateOnly DataThroughDate
-    {
-        get
-        {
-            var today = DateOnly.FromDateTime(DateTime.Today);
-            return WeekEnd > today ? today : WeekEnd;
-        }
-    }
-
     public int OutQuantity => Rows.Where(x => x.Direction == MovementType.Out).Sum(x => x.Quantity);
     public int InQuantity => Rows.Where(x => x.Direction == MovementType.In).Sum(x => x.Quantity);
     public int NetQuantity => OutQuantity - InQuantity;
@@ -80,14 +72,15 @@ public interface IWeeklyMovementsReportService
 }
 
 internal sealed class WeeklyMovementsReportService(
-    IDbContextFactory<BinTrackerDbContext> factory)
+    IDbContextFactory<BinTrackerDbContext> factory,
+    IBusinessClock clock)
     : IWeeklyMovementsReportService
 {
     public async Task<WeeklyMovementsReportResult> QueryAsync(
         WeeklyMovementsReportQuery query,
         CancellationToken cancellationToken = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = clock.Today;
         var selectedDate = query.WeekStart > today
             ? today
             : query.WeekStart;
@@ -160,7 +153,7 @@ internal sealed class WeeklyMovementsReportService(
             .ThenBy(x => x.ContainerDisplayOrder)
             .ToList();
 
-        return new WeeklyMovementsReportResult(start, end, rows, summary);
+        return new WeeklyMovementsReportResult(start, end, end > clock.Today ? clock.Today : end, rows, summary);
     }
 
     public static DateOnly StartOfWeek(DateOnly date)

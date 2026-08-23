@@ -41,7 +41,16 @@ public sealed class MovementCorrectionSqliteTests
         }
 
         var service=scope.ServiceProvider.GetRequiredService<IMovementCorrectionService>();
-        var result=await service.ReverseAsync(new ReverseMovementRequest(movementId,"Incorrect dispatch"));
+        var operationId = Guid.NewGuid();
+        var request = new ReverseMovementRequest(operationId, movementId, "Incorrect dispatch");
+        var result=await service.ReverseAsync(request);
+        var retry = await service.ReverseAsync(request);
+        Assert.Equal(result, retry);
+
+        var payloadConflict = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.ReverseAsync(
+                new ReverseMovementRequest(operationId, movementId, "Different reason")));
+        Assert.Contains("different reversal request", payloadConflict.Message);
 
         await using var verify=await factory.CreateDbContextAsync();
         var original=await verify.BinMovements.AsNoTracking().SingleAsync(x=>x.Id==movementId);
@@ -54,6 +63,17 @@ public sealed class MovementCorrectionSqliteTests
         Assert.Equal(7, reversal.Quantity);
         Assert.Contains("Incorrect dispatch", reversal.CorrectionReason);
         Assert.True(await verify.AuditEvents.AnyAsync(x=>x.Action=="MOVEMENT_REVERSED" && x.EntityId==movementId.ToString()));
+
+        var history = scope.ServiceProvider.GetRequiredService<IMovementHistoryReportService>();
+        var displayed = await history.QueryAsync(new MovementHistoryReportQuery(
+            new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31)));
+        var originalRow = Assert.Single(displayed.Rows, x => x.MovementId == movementId);
+        var reversalRow = Assert.Single(displayed.Rows, x => x.MovementId == reversal.Id);
+        Assert.Equal($"Reversed — see REV-{movementId}", originalRow.Status);
+        Assert.False(originalRow.CanReverse);
+        Assert.Equal($"Reversal of #{movementId} — Incorrect dispatch", reversalRow.Status);
+        Assert.Equal("Reversal", reversalRow.SourceText);
+        Assert.False(reversalRow.CanReverse);
     }
 
     [Theory]
@@ -102,7 +122,7 @@ public sealed class MovementCorrectionSqliteTests
         }
 
         var service = scope.ServiceProvider.GetRequiredService<IMovementCorrectionService>();
-        var result = await service.ReverseAsync(new ReverseMovementRequest(id, "Operator correction"));
+        var result = await service.ReverseAsync(new ReverseMovementRequest(Guid.NewGuid(), id, "Operator correction"));
 
         await using var verify = await factory.CreateDbContextAsync();
         var original = await verify.BinMovements.AsNoTracking().SingleAsync(x => x.Id == id);
@@ -161,7 +181,7 @@ public sealed class MovementCorrectionSqliteTests
 
         var service = scope.ServiceProvider.GetRequiredService<IMovementCorrectionService>();
         var error = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.ReverseAsync(new ReverseMovementRequest(id, "Sensitive correction")));
+            () => service.ReverseAsync(new ReverseMovementRequest(Guid.NewGuid(), id, "Sensitive correction")));
 
         Assert.Contains(
             source == MovementSource.ExcelImport ? "Replace / Correct" : "Administrator-controlled",
@@ -211,6 +231,6 @@ public sealed class MovementCorrectionSqliteTests
 
         var service = scope.ServiceProvider.GetRequiredService<IMovementCorrectionService>();
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => service.ReverseAsync(new ReverseMovementRequest(id, "Should fail")));
+            () => service.ReverseAsync(new ReverseMovementRequest(Guid.NewGuid(), id, "Should fail")));
     }
 }

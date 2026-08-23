@@ -6,9 +6,8 @@ namespace BinTracker.Services;
 
 public interface IWeeklyMovementsReportPdfService
 {
-    Task GeneratePdfAsync(
+    Task<byte[]> BuildPdfAsync(
         WeeklyMovementsReportResult result,
-        string outputPath,
         bool summaryView,
         bool includeNotes = false,
         CancellationToken cancellationToken = default);
@@ -19,15 +18,15 @@ internal sealed class WeeklyMovementsReportPdfService(
     IBusinessInformationService businessInformation)
     : IWeeklyMovementsReportPdfService
 {
-    public async Task GeneratePdfAsync(
+    public async Task<byte[]> BuildPdfAsync(
         WeeklyMovementsReportResult result,
-        string outputPath,
         bool summaryView,
         bool includeNotes = false,
         CancellationToken cancellationToken = default)
     {
         var business = await businessInformation.GetAsync(cancellationToken);
         QuestPDF.Settings.License = LicenseType.Community;
+        using var output = new MemoryStream();
 
         Document.Create(document =>
         {
@@ -64,7 +63,7 @@ internal sealed class WeeklyMovementsReportPdfService(
                     text.TotalPages();
                 });
             });
-        }).GeneratePdf(outputPath);
+        }).GeneratePdf(output);
 
         await audit.WriteAsync(
             "WEEKLY_MOVEMENTS_REPORT_GENERATED",
@@ -84,9 +83,10 @@ internal sealed class WeeklyMovementsReportPdfService(
                 View = summaryView ? "Weekly Overview" : "Daily Detail",
                 IncludeNotes = includeNotes,
                 DataThroughDate = result.DataThroughDate,
-                FileName = Path.GetFileName(outputPath)
             },
             cancellationToken: cancellationToken);
+
+        return output.ToArray();
     }
 
     private static void BuildDetail(TableDescriptor table, WeeklyMovementsReportResult result, bool includeNotes)

@@ -4,6 +4,7 @@ using BinTracker.Core;
 using BinTracker.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace BinTracker.Services;
 
@@ -13,7 +14,7 @@ public sealed record BalanceRow(int CustomerId, string CustomerName, int Contain
     public bool IsCredit => Balance < 0;
 }
 
-public sealed class UserSession
+public sealed class UserSession(IBusinessClock clock) : IUserContext
 {
     public string SessionId { get; } = Guid.NewGuid().ToString("N");
     public int? UserId { get; private set; }
@@ -31,7 +32,7 @@ public sealed class UserSession
         DisplayName = user.DisplayName;
         Role = user.Role;
         MustChangePassword = user.MustChangePassword;
-        LoginUtc = DateTime.UtcNow;
+        LoginUtc = clock.UtcNow;
     }
 
     public void PasswordChanged() => MustChangePassword = false;
@@ -46,7 +47,11 @@ public interface IAuditService
     Task<IReadOnlyList<AuditEvent>> GetRecentAsync(int limit = 500, CancellationToken cancellationToken = default);
 }
 
-internal sealed class AuditService(IDbContextFactory<BinTrackerDbContext> factory, UserSession session) : IAuditService
+internal sealed class AuditService(
+    IDbContextFactory<BinTrackerDbContext> factory,
+    IUserContext session,
+    IBusinessClock clock,
+    IClientContext client) : IAuditService
 {
     public async Task WriteAsync(string action, string entityType, string? entityId, string description,
         bool succeeded = true, object? before = null, object? after = null,
@@ -56,7 +61,7 @@ internal sealed class AuditService(IDbContextFactory<BinTrackerDbContext> factor
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         db.AuditEvents.Add(new AuditEvent
         {
-            TimestampUtc = DateTime.UtcNow,
+            TimestampUtc = clock.UtcNow,
             UserId = userIdOverride ?? session.UserId,
             Username = usernameOverride ?? session.Username,
             Action = action,
@@ -65,7 +70,7 @@ internal sealed class AuditService(IDbContextFactory<BinTrackerDbContext> factor
             Description = description,
             BeforeValues = before is null ? null : JsonSerializer.Serialize(before),
             AfterValues = after is null ? null : JsonSerializer.Serialize(after),
-            ComputerName = Environment.MachineName,
+            ComputerName = client.DeviceName,
             SessionId = session.SessionId,
             Succeeded = succeeded
         });
@@ -94,7 +99,8 @@ public interface IAuthenticationService
 internal sealed class AuthenticationService(
     IDbContextFactory<BinTrackerDbContext> factory,
     UserSession session,
-    IAuditService audit) : IAuthenticationService
+    IAuditService audit,
+    IBusinessClock clock) : IAuthenticationService
 {
     public async Task<bool> HasUsersAsync(CancellationToken cancellationToken = default)
     {
@@ -121,7 +127,7 @@ internal sealed class AuthenticationService(
             PasswordSalt = salt,
             Role = UserRole.Administrator,
             IsActive = true,
-            CreatedUtc = DateTime.UtcNow
+            CreatedUtc = clock.UtcNow
         };
         db.UserAccounts.Add(user);
         await db.SaveChangesAsync(cancellationToken);
@@ -164,14 +170,30 @@ internal sealed class AuthenticationService(
                     .SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
                 var maximum = Math.Max(1, settings?.MaxFailedLoginAttempts ?? 5);
 
-                user.FailedLoginCount++;
-                if (user.FailedLoginCount >= maximum)
-                {
-                    user.IsLocked = true;
-                    user.LockedUtc = DateTime.UtcNow;
-                }
+                // Atomic set-based update prevents simultaneous remote login
+                // attempts from losing failed-attempt increments.
+                await db.UserAccounts
+                    .Where(x => x.Id == user.Id && x.IsActive && !x.IsLocked)
+                    .ExecuteUpdateAsync(
+                        setters => setters.SetProperty(
+                            x => x.FailedLoginCount,
+                            x => x.FailedLoginCount + 1),
+                        cancellationToken);
 
-                await db.SaveChangesAsync(cancellationToken);
+                await db.UserAccounts
+                    .Where(x =>
+                        x.Id == user.Id &&
+                        !x.IsLocked &&
+                        x.FailedLoginCount >= maximum)
+                    .ExecuteUpdateAsync(
+                        setters => setters
+                            .SetProperty(x => x.IsLocked, true)
+                            .SetProperty(x => x.LockedUtc, clock.UtcNow),
+                        cancellationToken);
+
+                user = await db.UserAccounts
+                    .AsNoTracking()
+                    .SingleAsync(x => x.Id == user.Id, cancellationToken);
             }
 
             await audit.WriteAsync(
@@ -200,11 +222,23 @@ internal sealed class AuthenticationService(
             return false;
         }
 
-        user!.LastLoginUtc = DateTime.UtcNow;
-        user.FailedLoginCount = 0;
-        user.IsLocked = false;
-        user.LockedUtc = null;
-        await db.SaveChangesAsync(cancellationToken);
+        var loginUtc = clock.UtcNow;
+        var loginUpdated = await db.UserAccounts
+            .Where(x => x.Id == user!.Id && x.IsActive && !x.IsLocked)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(x => x.LastLoginUtc, loginUtc)
+                    .SetProperty(x => x.FailedLoginCount, 0)
+                    .SetProperty(x => x.LockedUtc, (DateTime?)null),
+                cancellationToken);
+
+        if (loginUpdated != 1)
+            throw new InvalidOperationException(
+                "This account changed while you were signing in. Please try again.");
+
+        user = await db.UserAccounts
+            .AsNoTracking()
+            .SingleAsync(x => x.Id == user!.Id, cancellationToken);
 
         session.SignIn(user);
 
@@ -238,15 +272,26 @@ internal sealed class AuthenticationService(
             throw new InvalidOperationException("The new password must be different from the current password.");
 
         var (hash, salt) = PasswordSecurity.Hash(newPassword);
-        user.PasswordHash = hash;
-        user.PasswordSalt = salt;
-        user.MustChangePassword = false;
-        user.PasswordChangedUtc = DateTime.UtcNow;
-        user.FailedLoginCount = 0;
-        user.IsLocked = false;
-        user.LockedUtc = null;
+        var changed = await db.UserAccounts
+            .Where(x =>
+                x.Id == user.Id &&
+                x.PasswordHash == user.PasswordHash &&
+                x.PasswordSalt == user.PasswordSalt)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(x => x.PasswordHash, hash)
+                    .SetProperty(x => x.PasswordSalt, salt)
+                    .SetProperty(x => x.MustChangePassword, false)
+                    .SetProperty(x => x.PasswordChangedUtc, clock.UtcNow)
+                    .SetProperty(x => x.FailedLoginCount, 0)
+                    .SetProperty(x => x.IsLocked, false)
+                    .SetProperty(x => x.LockedUtc, (DateTime?)null),
+                cancellationToken);
 
-        await db.SaveChangesAsync(cancellationToken);
+        if (changed != 1)
+            throw new InvalidOperationException(
+                "Your account credentials changed while this request was in progress. Sign in again and retry the password change.");
+
         session.PasswordChanged();
 
         await audit.WriteAsync(
@@ -282,7 +327,11 @@ public interface IUserService
     Task SetRoleAsync(int userId, UserRole role, CancellationToken cancellationToken = default);
 }
 
-internal sealed class UserService(IDbContextFactory<BinTrackerDbContext> factory, UserSession session, IAuditService audit) : IUserService
+internal sealed class UserService(
+    IDbContextFactory<BinTrackerDbContext> factory,
+    IUserContext session,
+    IAuditService audit,
+    IBusinessClock clock) : IUserService
 {
     public async Task<IReadOnlyList<UserAccount>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
@@ -306,9 +355,25 @@ internal sealed class UserService(IDbContextFactory<BinTrackerDbContext> factory
         var user = new UserAccount
         {
             Username=username, DisplayName=displayName, PasswordHash=hash, PasswordSalt=salt,
-            Role=role, IsActive=true, MustChangePassword=true, CreatedUtc=DateTime.UtcNow, CreatedByUserId=session.UserId
+            Role=role, IsActive=true, MustChangePassword=true, CreatedUtc=clock.UtcNow, CreatedByUserId=session.UserId
         };
-        db.UserAccounts.Add(user); await db.SaveChangesAsync(cancellationToken);
+        db.UserAccounts.Add(user);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            await using var verify = await factory.CreateDbContextAsync(cancellationToken);
+            if (await verify.UserAccounts.AsNoTracking()
+                    .AnyAsync(x => x.Username == username, cancellationToken))
+            {
+                throw new InvalidOperationException("That username already exists.");
+            }
+
+            throw;
+        }
+
         await audit.WriteAsync("USER_CREATED", "UserAccount", user.Id.ToString(),
             $"User '{username}' created with role {role}.", after: new { user.Username, user.DisplayName, user.Role }, cancellationToken:cancellationToken);
     }
@@ -318,10 +383,18 @@ internal sealed class UserService(IDbContextFactory<BinTrackerDbContext> factory
         RequireAdmin();
         if (session.UserId == userId && !active) throw new InvalidOperationException("You cannot deactivate your own account.");
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var user = await db.UserAccounts.SingleAsync(x => x.Id == userId, cancellationToken);
-        var before = user.IsActive; user.IsActive = active; await db.SaveChangesAsync(cancellationToken);
+        var user = await db.UserAccounts.AsNoTracking()
+            .SingleAsync(x => x.Id == userId, cancellationToken);
+        var before = user.IsActive;
+
+        await db.UserAccounts
+            .Where(x => x.Id == userId)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(x => x.IsActive, active),
+                cancellationToken);
+
         await audit.WriteAsync(active ? "USER_ACTIVATED" : "USER_DEACTIVATED", "UserAccount", user.Id.ToString(),
-            $"User '{user.Username}' {(active ? "activated" : "deactivated")}.", before:new { IsActive=before }, after:new { user.IsActive }, cancellationToken:cancellationToken);
+            $"User '{user.Username}' {(active ? "activated" : "deactivated")}.", before:new { IsActive=before }, after:new { IsActive=active }, cancellationToken:cancellationToken);
     }
 
     public async Task ResetPasswordAsync(
@@ -336,15 +409,18 @@ internal sealed class UserService(IDbContextFactory<BinTrackerDbContext> factory
         var user = await db.UserAccounts.SingleAsync(x => x.Id == userId, cancellationToken);
 
         var (hash, salt) = PasswordSecurity.Hash(temporaryPassword);
-        user.PasswordHash = hash;
-        user.PasswordSalt = salt;
-        user.MustChangePassword = true;
-        user.PasswordChangedUtc = DateTime.UtcNow;
-        user.FailedLoginCount = 0;
-        user.IsLocked = false;
-        user.LockedUtc = null;
-
-        await db.SaveChangesAsync(cancellationToken);
+        await db.UserAccounts
+            .Where(x => x.Id == userId)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(x => x.PasswordHash, hash)
+                    .SetProperty(x => x.PasswordSalt, salt)
+                    .SetProperty(x => x.MustChangePassword, true)
+                    .SetProperty(x => x.PasswordChangedUtc, clock.UtcNow)
+                    .SetProperty(x => x.FailedLoginCount, 0)
+                    .SetProperty(x => x.IsLocked, false)
+                    .SetProperty(x => x.LockedUtc, (DateTime?)null),
+                cancellationToken);
 
         await audit.WriteAsync(
             "PASSWORD_RESET_BY_ADMIN",
@@ -365,15 +441,30 @@ internal sealed class UserService(IDbContextFactory<BinTrackerDbContext> factory
             throw new InvalidOperationException("You cannot lock your own account.");
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var user = await db.UserAccounts.SingleAsync(x => x.Id == userId, cancellationToken);
+        var user = await db.UserAccounts.AsNoTracking()
+            .SingleAsync(x => x.Id == userId, cancellationToken);
 
-        user.IsLocked = locked;
-        user.LockedUtc = locked ? DateTime.UtcNow : null;
-
-        if (!locked)
-            user.FailedLoginCount = 0;
-
-        await db.SaveChangesAsync(cancellationToken);
+        if (locked)
+        {
+            await db.UserAccounts
+                .Where(x => x.Id == userId)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(x => x.IsLocked, true)
+                        .SetProperty(x => x.LockedUtc, clock.UtcNow),
+                    cancellationToken);
+        }
+        else
+        {
+            await db.UserAccounts
+                .Where(x => x.Id == userId)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(x => x.IsLocked, false)
+                        .SetProperty(x => x.LockedUtc, (DateTime?)null)
+                        .SetProperty(x => x.FailedLoginCount, 0),
+                    cancellationToken);
+        }
 
         await audit.WriteAsync(
             locked ? "ACCOUNT_LOCKED_BY_ADMIN" : "ACCOUNT_UNLOCKED",
@@ -395,14 +486,18 @@ internal sealed class UserService(IDbContextFactory<BinTrackerDbContext> factory
                 "You cannot remove your own Administrator role while you are signed in.");
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var user = await db.UserAccounts.SingleAsync(x => x.Id == userId, cancellationToken);
+        var user = await db.UserAccounts.AsNoTracking()
+            .SingleAsync(x => x.Id == userId, cancellationToken);
 
         var before = user.Role;
         if (before == role)
             return;
 
-        user.Role = role;
-        await db.SaveChangesAsync(cancellationToken);
+        await db.UserAccounts
+            .Where(x => x.Id == userId)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(x => x.Role, role),
+                cancellationToken);
 
         await audit.WriteAsync(
             "USER_ROLE_CHANGED",
@@ -489,10 +584,10 @@ internal sealed class BalanceService(IDbContextFactory<BinTrackerDbContext> fact
     {
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
-        // Keep the part SQLite/EF Core handles well entirely in SQL:
+        // Keep the SQL-translatable aggregation entirely in the database:
         // group by scalar foreign keys and calculate the signed balance.
         //
-        // Do not group by navigation-property names here. EF Core 8/SQLite
+        // Do not group by navigation-property names here. Some EF Core providers
         // cannot reliably translate the previous join + navigation GroupBy +
         // BalanceRow constructor projection used by the Import Review path.
         var totals = await db.BinMovements.AsNoTracking()
@@ -517,7 +612,7 @@ internal sealed class BalanceService(IDbContextFactory<BinTrackerDbContext> fact
         // In the .NET 8 / EF Core 8 runtime used by BinTracker that pattern can
         // be reduced to a ReadOnlySpan<int> call while EF extracts parameters,
         // which is not valid inside the LINQ expression interpreter and throws
-        // before SQLite receives any SQL.
+        // before the provider receives any SQL.
         var customerNames = await db.Customers.AsNoTracking()
             .ToDictionaryAsync(
                 x => x.Id,
@@ -549,13 +644,17 @@ internal sealed class BalanceService(IDbContextFactory<BinTrackerDbContext> fact
 
 public static class ServiceSetup
 {
-    public static IServiceCollection AddBinTrackerServices(this IServiceCollection services)
+    /// <summary>
+    /// Registers provider-neutral BinTracker business services. The host must
+    /// supply IUserContext and IClientContext with lifetimes appropriate to its
+    /// execution model. A future API uses request-scoped implementations;
+    /// the local desktop composition is provided by AddBinTrackerServices().
+    /// </summary>
+    public static IServiceCollection AddBinTrackerBusinessServices(
+        this IServiceCollection services)
     {
-        services.AddSingleton<UserSession>();
-        services.AddSingleton<IBatchDraftStore, FileBatchDraftStore>();
-        services.AddSingleton<ApplicationState>();
+        services.TryAddSingleton<IBusinessClock, ConfiguredBusinessClock>();
         services.AddScoped<IAuditService, AuditService>();
-        services.AddScoped<IAuthenticationService, AuthenticationService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IBalanceService, BalanceService>();
         services.AddScoped<ICustomerService, CustomerService>();
@@ -583,5 +682,23 @@ public static class ServiceSetup
         services.AddScoped<IMovementService, MovementService>();
         services.AddScoped<IMovementCorrectionService, MovementCorrectionService>();
         return services;
+    }
+
+    /// <summary>
+    /// Current local WinForms composition. Desktop-only mutable session state,
+    /// device identity, authentication adapter and crash-draft storage live
+    /// here so a future central API cannot inherit them accidentally.
+    /// </summary>
+    public static IServiceCollection AddBinTrackerServices(
+        this IServiceCollection services)
+    {
+        services.AddSingleton<IClientContext, DesktopClientContext>();
+        services.AddSingleton<UserSession>();
+        services.AddSingleton<IUserContext>(sp => sp.GetRequiredService<UserSession>());
+        services.AddSingleton<IBatchDraftStore, FileBatchDraftStore>();
+        services.AddSingleton<ApplicationState>();
+        services.AddScoped<IAuthenticationService, AuthenticationService>();
+
+        return services.AddBinTrackerBusinessServices();
     }
 }

@@ -10,8 +10,10 @@ public sealed class ExcelImportAnalysisSummaryTests
     public void Unique_customer_count_is_case_insensitive()
     {
         var analysis = new ExcelImportAnalysis(
-            "test.xlsx",
-            "test.xlsx",
+            new ImportSourceDocument(
+                "test.xlsx",
+                new byte[] { 1 },
+                "test.xlsx"),
             [],
             [
                 new ImportCustomerCandidate("A", "ALBURY", CustomerType.Account, "A2"),

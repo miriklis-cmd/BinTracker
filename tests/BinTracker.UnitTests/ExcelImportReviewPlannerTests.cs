@@ -153,8 +153,7 @@ public sealed class ExcelImportReviewPlannerTests
     private static ExcelImportAnalysis Analysis(
         params ImportCustomerCandidate[] customers) =>
         new(
-            "test.xlsx",
-            "test.xlsx",
+            new ImportSourceDocument("test.xlsx", [], "test.xlsx"),
             [],
             customers,
             [],

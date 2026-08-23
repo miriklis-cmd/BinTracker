@@ -7,6 +7,7 @@ public sealed class CustomerStatementReportForm : BinTrackerForm
 {
     private readonly ICustomerService customers;
     private readonly ICustomerStatementReportService statementReports;
+    private readonly IBusinessClock clock;
 
     private readonly TextBox search = new()
     {
@@ -44,10 +45,12 @@ public sealed class CustomerStatementReportForm : BinTrackerForm
 
     public CustomerStatementReportForm(
         ICustomerService customers,
-        ICustomerStatementReportService statementReports)
+        ICustomerStatementReportService statementReports,
+        IBusinessClock clock)
     {
         this.customers = customers;
         this.statementReports = statementReports;
+        this.clock = clock;
 
         Text = "Customer Statement";
         StartPosition = FormStartPosition.Manual;
@@ -340,7 +343,8 @@ public sealed class CustomerStatementReportForm : BinTrackerForm
             this,
             id,
             customers,
-            statementReports);
+            statementReports,
+            clock);
     }
 
     private void ApplyResponsiveBounds()

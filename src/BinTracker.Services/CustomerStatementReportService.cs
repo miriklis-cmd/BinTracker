@@ -6,19 +6,21 @@ namespace BinTracker.Services;
 
 public interface ICustomerStatementReportService
 {
-    Task GeneratePdfAsync(int customerId, DateOnly fromDate, DateOnly toDate, string outputPath, CancellationToken cancellationToken = default);
+    Task<byte[]> BuildPdfAsync(int customerId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default);
 }
 
 internal sealed class CustomerStatementReportService(
     ICustomerService customers,
     IAuditService audit,
-    IBusinessInformationService businessInformation) : ICustomerStatementReportService
+    IBusinessInformationService businessInformation,
+    IBusinessClock clock) : ICustomerStatementReportService
 {
-    public async Task GeneratePdfAsync(int customerId, DateOnly fromDate, DateOnly toDate, string outputPath, CancellationToken cancellationToken = default)
+    public async Task<byte[]> BuildPdfAsync(int customerId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default)
     {
         var data = await customers.GetStatementAsync(customerId, fromDate, toDate, cancellationToken);
         var business = await businessInformation.GetAsync(cancellationToken);
         QuestPDF.Settings.License = LicenseType.Community;
+        using var output = new MemoryStream();
 
         Document.Create(document =>
         {
@@ -33,7 +35,7 @@ internal sealed class CustomerStatementReportService(
                     header.Item().Text($"{business.ReportHeader} - Customer Statement").FontSize(18).SemiBold();
                     header.Item().PaddingTop(4).Text($"{data.CustomerCode} - {data.CustomerName}").FontSize(13).SemiBold();
                     header.Item().Text($"Statement period: {data.FromDate:dd/MM/yyyy} to {data.ToDate:dd/MM/yyyy}");
-                    header.Item().Text($"Generated: {DateTime.Now:dd/MM/yyyy HH:mm}").FontColor(Colors.Grey.Darken1);
+                    header.Item().Text($"Generated: {clock.LocalNow:dd/MM/yyyy HH:mm}").FontColor(Colors.Grey.Darken1);
                 });
 
                 page.Content().PaddingVertical(12).Column(content =>
@@ -112,15 +114,17 @@ internal sealed class CustomerStatementReportService(
                     text.TotalPages();
                 });
             });
-        }).GeneratePdf(outputPath);
+        }).GeneratePdf(output);
 
         await audit.WriteAsync(
             "CUSTOMER_STATEMENT_GENERATED",
             "Customer",
             data.CustomerId.ToString(),
             $"Customer statement generated for '{data.CustomerCode} - {data.CustomerName}' ({fromDate:dd/MM/yyyy} to {toDate:dd/MM/yyyy}).",
-            after: new { data.CustomerCode, FromDate = fromDate, ToDate = toDate, FileName = Path.GetFileName(outputPath) },
+            after: new { data.CustomerCode, FromDate = fromDate, ToDate = toDate },
             cancellationToken: cancellationToken);
+
+        return output.ToArray();
     }
 
     private static string Position(int balance) => balance switch

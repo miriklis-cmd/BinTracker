@@ -8,7 +8,8 @@ internal static class CustomerStatementWorkflow
         IWin32Window owner,
         int customerId,
         ICustomerService customers,
-        ICustomerStatementReportService statementReports)
+        ICustomerStatementReportService statementReports,
+        IBusinessClock clock)
     {
         if (customerId <= 0)
             return;
@@ -17,7 +18,7 @@ internal static class CustomerStatementWorkflow
         if (customer is null)
             return;
 
-        using var options = new StatementOptionsForm();
+        using var options = new StatementOptionsForm(clock);
         if (options.ShowDialog(owner) != DialogResult.OK)
             return;
 
@@ -62,11 +63,11 @@ internal static class CustomerStatementWorkflow
                 outputPath = dialog.FileName;
             }
 
-            await statementReports.GeneratePdfAsync(
+            var pdf = await statementReports.BuildPdfAsync(
                 customerId,
                 options.FromDate,
-                options.ToDate,
-                outputPath);
+                options.ToDate);
+            await File.WriteAllBytesAsync(outputPath, pdf);
 
             if (options.OpenAfterGenerate)
             {

@@ -46,7 +46,7 @@ public sealed record ImportRunDetail(
     DateOnly? CutoverDate,
     string Status,
     string SourceFileName,
-    string SourceFullPath,
+    string SourceClientPath,
     string SourceSha256,
     long SourceLength,
     DateTime SourceLastWriteUtc,
@@ -75,7 +75,7 @@ public interface IImportRunHistoryService
 
 internal sealed class ImportRunHistoryService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    UserSession session)
+    IUserContext session)
     : IImportRunHistoryService
 {
     public async Task<IReadOnlyList<ImportRunHistoryRow>> GetRunsAsync(
@@ -178,7 +178,7 @@ internal sealed class ImportRunHistoryService(
             run.CutoverDate,
             run.Status,
             run.SourceFileName,
-            run.SourceFullPath,
+            run.SourceClientPath,
             run.SourceSha256,
             run.SourceLength,
             run.SourceLastWriteUtc,

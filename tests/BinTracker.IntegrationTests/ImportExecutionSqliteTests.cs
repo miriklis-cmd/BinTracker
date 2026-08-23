@@ -67,7 +67,7 @@ public sealed class ImportExecutionSqliteTests
             var service = scope.ServiceProvider
                 .GetRequiredService<IImportExecutionService>();
 
-            var preflight = await service.PreflightAsync(temp);
+            var preflight = await service.PreflightAsync(await SourceAsync(temp));
 
             var analysis = Analysis(
                 new ImportSnapshotCandidate(
@@ -83,7 +83,7 @@ public sealed class ImportExecutionSqliteTests
 
             var result = await service.ExecuteAsync(
                 new ImportExecutionRequest(
-                    temp,
+                    await SourceAsync(temp),
                     preflight.Source.Sha256,
                     analysis,
                     [
@@ -104,7 +104,8 @@ public sealed class ImportExecutionSqliteTests
                     },
                     new Dictionary<string, ImportExistingCustomerDecision>(
                         StringComparer.OrdinalIgnoreCase),
-                    new DateOnly(2026, 8, 13)));
+                    new DateOnly(2026, 8, 13),
+                    ClientOperationId: Guid.NewGuid()));
 
             Assert.Equal(1, result.CreatedCustomers);
             Assert.Equal(1, result.OpeningAdjustmentMovements);
@@ -249,10 +250,10 @@ public sealed class ImportExecutionSqliteTests
                 .GetRequiredService<IImportExecutionService>();
 
             var preflight =
-                await service.PreflightAsync(temp);
+                await service.PreflightAsync(await SourceAsync(temp));
 
             var request = new ImportExecutionRequest(
-                temp,
+                await SourceAsync(temp),
                 preflight.Source.Sha256,
                 Analysis(
                     new ImportSnapshotCandidate(
@@ -285,7 +286,8 @@ public sealed class ImportExecutionSqliteTests
                     string,
                     ImportExistingCustomerDecision>(
                     StringComparer.OrdinalIgnoreCase),
-                new DateOnly(2026, 8, 13));
+                new DateOnly(2026, 8, 13),
+                ClientOperationId: Guid.NewGuid());
 
             var ex =
                 await Assert.ThrowsAsync<
@@ -322,7 +324,7 @@ public sealed class ImportExecutionSqliteTests
             // Because the failed run left no completed fingerprint behind,
             // preflight must still permit a retry of the exact same source.
             var retryPreflight =
-                await service.PreflightAsync(temp);
+                await service.PreflightAsync(await SourceAsync(temp));
 
             Assert.True(retryPreflight.CanProceed);
             Assert.False(
@@ -447,10 +449,10 @@ public sealed class ImportExecutionSqliteTests
             var service = scope.ServiceProvider.GetRequiredService<IImportExecutionService>();
             var cutover = new DateOnly(2026, 8, 14);
 
-            var firstPreflight = await service.PreflightAsync(firstFile, cutover);
+            var firstPreflight = await service.PreflightAsync(await SourceAsync(firstFile), cutover);
             var firstResult = await service.ExecuteAsync(
                 new ImportExecutionRequest(
-                    firstFile,
+                    await SourceAsync(firstFile),
                     firstPreflight.Source.Sha256,
                     Analysis(new ImportSnapshotCandidate(
                         "Update Account", "ReplaceCo", CustomerType.Account, null,
@@ -464,7 +466,8 @@ public sealed class ImportExecutionSqliteTests
                             ImportCustomerDecisionAction.Create)
                     },
                     new Dictionary<string, ImportExistingCustomerDecision>(StringComparer.OrdinalIgnoreCase),
-                    cutover));
+                    cutover,
+                    ClientOperationId: Guid.NewGuid()));
 
             int customerId;
             await using (var db = await factory.CreateDbContextAsync())
@@ -501,7 +504,7 @@ public sealed class ImportExecutionSqliteTests
             // but the UI could not surface Replace/Correct beforehand.
             var correctedPreflight =
                 await service.PreflightAsync(
-                    correctedFile,
+                    await SourceAsync(correctedFile),
                     cutover);
 
             Assert.True(correctedPreflight.CanProceed);
@@ -513,7 +516,7 @@ public sealed class ImportExecutionSqliteTests
                 correctedPreflight.PreviousCutoverRun!.ImportRunId);
 
             var correctedRequest = new ImportExecutionRequest(
-                correctedFile,
+                await SourceAsync(correctedFile),
                 correctedPreflight.Source.Sha256,
                 Analysis(new ImportSnapshotCandidate(
                     "Update Account", "ReplaceCo", CustomerType.Account, null,
@@ -532,7 +535,8 @@ public sealed class ImportExecutionSqliteTests
                 },
                 cutover,
                 ImportExecutionMode.ReplacePreviousCutover,
-                firstResult.ImportRunId);
+                firstResult.ImportRunId,
+                Guid.NewGuid());
 
             var comparison = await service.CompareReplacementAsync(correctedRequest);
 
@@ -552,6 +556,8 @@ public sealed class ImportExecutionSqliteTests
             var newRun = await verify.ImportRuns.SingleAsync(x => x.Id == correctedResult.ImportRunId);
 
             Assert.Equal("Replaced", oldRun.Status);
+            Assert.Null(oldRun.CurrentCutoverDate);
+            Assert.Equal(cutover, newRun.CurrentCutoverDate);
             Assert.Equal(firstResult.ImportRunId, newRun.ReplacesImportRunId);
             Assert.False(string.IsNullOrWhiteSpace(newRun.CorrectionChangesJson));
             Assert.Contains(
@@ -655,10 +661,10 @@ public sealed class ImportExecutionSqliteTests
             var service = scope.ServiceProvider
                 .GetRequiredService<IImportExecutionService>();
 
-            var preflight = await service.PreflightAsync(temp);
+            var preflight = await service.PreflightAsync(await SourceAsync(temp));
 
             var request = new ImportExecutionRequest(
-                temp,
+                await SourceAsync(temp),
                 preflight.Source.Sha256,
                 Analysis(
                     new ImportSnapshotCandidate(
@@ -689,12 +695,39 @@ public sealed class ImportExecutionSqliteTests
                 },
                 new Dictionary<string, ImportExistingCustomerDecision>(
                     StringComparer.OrdinalIgnoreCase),
-                new DateOnly(2026, 8, 13));
+                new DateOnly(2026, 8, 13),
+                ClientOperationId: Guid.NewGuid());
 
-            await service.ExecuteAsync(request);
+            var first = await service.ExecuteAsync(request);
+
+            // A network/client retry of the same command must be idempotent.
+            var retry = await service.ExecuteAsync(request);
+            Assert.Equal(first.ImportRunId, retry.ImportRunId);
+
+            var changedPayload = request with
+            {
+                Mappings =
+                [
+                    new ImportWorksheetMapping(
+                        "Update Account",
+                        ImportWorksheetRole.Source,
+                        "Different exclusion reason")
+                ]
+            };
+
+            var payloadConflict = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.ExecuteAsync(changedPayload));
+            Assert.Contains("different import request", payloadConflict.Message);
+
+            // A genuinely new command using the same exact source is not a retry
+            // and must remain blocked by the database-backed source-hash invariant.
+            var newOperation = request with
+            {
+                ClientOperationId = Guid.NewGuid()
+            };
 
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => service.ExecuteAsync(request));
+                () => service.ExecuteAsync(newOperation));
 
             Assert.Contains(
                 "already been imported",
@@ -747,8 +780,10 @@ public sealed class ImportExecutionSqliteTests
             .ToArray();
 
         return new ExcelImportAnalysis(
-            "test.xlsx",
-            "test.xlsx",
+            new ImportSourceDocument(
+                "test.xlsx",
+                new byte[] { 1 },
+                "test.xlsx"),
             [
                 new ImportWorksheetAnalysis(
                     "Update Account",
@@ -762,4 +797,15 @@ public sealed class ImportExecutionSqliteTests
             snapshots,
             []);
     }
+
+    private static async Task<ImportSourceDocument> SourceAsync(string path)
+    {
+        var info = new FileInfo(path);
+        return new ImportSourceDocument(
+            info.Name,
+            await File.ReadAllBytesAsync(path),
+            info.FullName,
+            info.LastWriteTimeUtc);
+    }
+
 }

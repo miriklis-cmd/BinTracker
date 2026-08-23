@@ -4,6 +4,8 @@ namespace BinTracker.WinForms;
 
 public sealed class BusinessInformationForm : BinTrackerForm
 {
+    private long revision;
+
     private readonly IBusinessInformationService service;
 
     private readonly TextBox businessName = Field();
@@ -162,6 +164,7 @@ public sealed class BusinessInformationForm : BinTrackerForm
             phone.Text = value.Phone;
             email.Text = value.Email;
             reportHeader.Text = value.DefaultReportHeader;
+            revision = value.Revision;
         }
         catch (Exception ex)
         {
@@ -182,8 +185,11 @@ public sealed class BusinessInformationForm : BinTrackerForm
                 address.Text,
                 phone.Text,
                 email.Text,
-                reportHeader.Text));
+                reportHeader.Text,
+                revision));
 
+            var refreshed = await service.GetAsync();
+            revision = refreshed.Revision;
             validation.ForeColor = Color.ForestGreen;
             validation.Text = "Business Information saved.";
         }

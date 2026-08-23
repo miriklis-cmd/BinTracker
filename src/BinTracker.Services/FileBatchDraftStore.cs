@@ -4,7 +4,7 @@ using BinTracker.Core;
 namespace BinTracker.Services;
 
 /// <summary>
-/// Persists the unsaved Batch Entry draft outside the SQLite database so a
+/// Persists the unsaved Batch Entry draft in client-local storage so a
 /// process crash or power loss does not discard operator-entered pending lines.
 /// The saved file contains draft movement metadata only; no authentication
 /// credentials or database connection information are written here.

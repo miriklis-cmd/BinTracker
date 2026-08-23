@@ -1,3 +1,4 @@
+using BinTracker.Core;
 using Microsoft.EntityFrameworkCore;
 
 namespace BinTracker.Data;
@@ -23,7 +24,8 @@ internal static class SqliteSchemaMigrations
         new(10, "Import movement relational provenance", ApplyV10Async),
         new(11, "Import cutover and replacement chain", ApplyV11Async),
         new(12, "Import correction difference provenance", ApplyV12Async),
-        new(13, "Movement correction and reversal linkage", ApplyV13Async)
+        new(13, "Movement correction and reversal linkage", ApplyV13Async),
+        new(14, "Multi-user portability and concurrency foundation", ApplyV14Async)
     ];
 
     private static async Task ApplyV1Async(BinTrackerDbContext db)
@@ -395,6 +397,218 @@ internal static class SqliteSchemaMigrations
 
         await db.Database.ExecuteSqlRawAsync(
             "CREATE UNIQUE INDEX IF NOT EXISTS IX_BinMovements_ReversesMovementId ON BinMovements (ReversesMovementId) WHERE ReversesMovementId IS NOT NULL;");
+    }
+
+
+    private static async Task ApplyV14Async(BinTrackerDbContext db)
+    {
+        await RenameImportSourcePathColumnAsync(db);
+
+        await AddRevisionColumnIfMissingAsync(
+            db,
+            "Customers",
+            "ALTER TABLE Customers ADD COLUMN Revision INTEGER NOT NULL DEFAULT 1;");
+        await AddRevisionColumnIfMissingAsync(
+            db,
+            "ContainerTypes",
+            "ALTER TABLE ContainerTypes ADD COLUMN Revision INTEGER NOT NULL DEFAULT 1;");
+        await AddRevisionColumnIfMissingAsync(
+            db,
+            "ApplicationSettings",
+            "ALTER TABLE ApplicationSettings ADD COLUMN Revision INTEGER NOT NULL DEFAULT 1;");
+
+        await AddOperationIdColumnIfMissingAsync(
+            db,
+            "MovementBatches",
+            "ALTER TABLE MovementBatches ADD COLUMN ClientOperationId TEXT NULL;");
+        await AddOperationIdColumnIfMissingAsync(
+            db,
+            "BinMovements",
+            "ALTER TABLE BinMovements ADD COLUMN ClientOperationId TEXT NULL;");
+        await AddOperationIdColumnIfMissingAsync(
+            db,
+            "ImportRuns",
+            "ALTER TABLE ImportRuns ADD COLUMN ClientOperationId TEXT NULL;");
+        var requestFingerprintColumn = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ImportRuns') WHERE name = 'ClientRequestFingerprint'")
+            .ToListAsync();
+        if (requestFingerprintColumn.Count == 0)
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE ImportRuns ADD COLUMN ClientRequestFingerprint TEXT NULL;");
+        }
+
+        var containerNameKey = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ContainerTypes') WHERE name = 'NameKey'")
+            .ToListAsync();
+        if (containerNameKey.Count == 0)
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE ContainerTypes ADD COLUMN NameKey TEXT NOT NULL DEFAULT '';");
+        }
+
+        var containerTypes = await db.ContainerTypes.ToListAsync();
+        foreach (var containerType in containerTypes)
+            containerType.NameKey = ContainerTypeNameKey.Normalize(containerType.Name);
+
+        var duplicateContainerNames = containerTypes
+            .GroupBy(x => x.NameKey, StringComparer.Ordinal)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        if (duplicateContainerNames.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "Container Types contain case-insensitive duplicate names. Resolve them before applying the multi-user migration.");
+        }
+
+        await db.SaveChangesAsync();
+
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_ContainerTypes_NameKey ON ContainerTypes (NameKey);");
+
+        var currentCutoverColumn = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ImportRuns') WHERE name = 'CurrentCutoverDate'")
+            .ToListAsync();
+        if (currentCutoverColumn.Count == 0)
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE ImportRuns ADD COLUMN CurrentCutoverDate TEXT NULL;");
+        }
+
+        await db.Database.ExecuteSqlRawAsync("""
+            UPDATE ImportRuns
+            SET CurrentCutoverDate = CutoverDate
+            WHERE Status = 'Completed'
+              AND CutoverDate IS NOT NULL;
+            """);
+
+        var duplicateCurrentCutovers = await db.Database
+            .SqlQueryRaw<int>("""
+                SELECT COUNT(*) AS Value
+                FROM (
+                    SELECT CurrentCutoverDate
+                    FROM ImportRuns
+                    WHERE CurrentCutoverDate IS NOT NULL
+                    GROUP BY CurrentCutoverDate
+                    HAVING COUNT(*) > 1
+                )
+                """)
+            .SingleAsync();
+
+        if (duplicateCurrentCutovers > 0)
+        {
+            throw new InvalidOperationException(
+                "More than one completed Import Run owns the same cutover date. Resolve the import history before applying the multi-user migration.");
+        }
+
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_ImportRuns_CurrentCutoverDate ON ImportRuns (CurrentCutoverDate);");
+
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_MovementBatches_ClientOperationId ON MovementBatches (ClientOperationId);");
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_BinMovements_ClientOperationId ON BinMovements (ClientOperationId);");
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_ImportRuns_ClientOperationId ON ImportRuns (ClientOperationId);");
+
+        // Exact workbook re-import is a business invariant. Make the database
+        // authoritative under concurrent remote imports, not just the preflight check.
+        var duplicateSourceHashes = await db.Database
+            .SqlQueryRaw<int>("""
+                SELECT COUNT(*) AS Value
+                FROM (
+                    SELECT SourceSha256
+                    FROM ImportRuns
+                    WHERE SourceSha256 <> ''
+                    GROUP BY SourceSha256
+                    HAVING COUNT(*) > 1
+                )
+                """)
+            .SingleAsync();
+
+        if (duplicateSourceHashes > 0)
+        {
+            throw new InvalidOperationException(
+                "Import history contains duplicate source hashes. Resolve the duplicates before applying the multi-user migration.");
+        }
+
+        await db.Database.ExecuteSqlRawAsync(
+            "DROP INDEX IF EXISTS IX_ImportRuns_SourceSha256;");
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_ImportRuns_SourceSha256 ON ImportRuns (SourceSha256);");
+    }
+
+    private static async Task RenameImportSourcePathColumnAsync(
+        BinTrackerDbContext db)
+    {
+        var oldColumn = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ImportRuns') WHERE name = 'SourceFullPath'")
+            .ToListAsync();
+
+        var newColumn = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ImportRuns') WHERE name = 'SourceClientPath'")
+            .ToListAsync();
+
+        if (oldColumn.Count > 0 && newColumn.Count == 0)
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE ImportRuns RENAME COLUMN SourceFullPath TO SourceClientPath;");
+        }
+    }
+
+    private static async Task AddOperationIdColumnIfMissingAsync(
+        BinTrackerDbContext db,
+        string table,
+        string sql)
+    {
+        if (table is not ("MovementBatches" or "BinMovements" or "ImportRuns"))
+            throw new InvalidOperationException("Unsupported operation-id table identifier.");
+
+        var pragma = table switch
+        {
+            "MovementBatches" => "SELECT name AS Value FROM pragma_table_info('MovementBatches') WHERE name = 'ClientOperationId'",
+            "BinMovements" => "SELECT name AS Value FROM pragma_table_info('BinMovements') WHERE name = 'ClientOperationId'",
+            "ImportRuns" => "SELECT name AS Value FROM pragma_table_info('ImportRuns') WHERE name = 'ClientOperationId'",
+            _ => throw new InvalidOperationException("Unsupported operation-id table identifier.")
+        };
+
+        var existing = await db.Database
+            .SqlQueryRaw<string>(pragma)
+            .ToListAsync();
+
+        if (existing.Count == 0)
+            await db.Database.ExecuteSqlRawAsync(sql);
+    }
+
+    private static async Task AddRevisionColumnIfMissingAsync(
+        BinTrackerDbContext db,
+        string table,
+        string sql)
+    {
+        if (table is not ("Customers" or "ContainerTypes" or "ApplicationSettings"))
+            throw new InvalidOperationException("Unsupported revision-table identifier.");
+
+        var pragma = table switch
+        {
+            "Customers" => "SELECT name AS Value FROM pragma_table_info('Customers') WHERE name = 'Revision'",
+            "ContainerTypes" => "SELECT name AS Value FROM pragma_table_info('ContainerTypes') WHERE name = 'Revision'",
+            "ApplicationSettings" => "SELECT name AS Value FROM pragma_table_info('ApplicationSettings') WHERE name = 'Revision'",
+            _ => throw new InvalidOperationException("Unsupported revision-table identifier.")
+        };
+
+        var existing = await db.Database
+            .SqlQueryRaw<string>(pragma)
+            .ToListAsync();
+
+        if (existing.Count == 0)
+            await db.Database.ExecuteSqlRawAsync(sql);
     }
 
     private static async Task AddMovementColumnIfMissingAsync(

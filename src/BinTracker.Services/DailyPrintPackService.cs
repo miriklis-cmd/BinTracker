@@ -6,9 +6,8 @@ namespace BinTracker.Services;
 
 public interface IDailyPrintPackService
 {
-    Task GeneratePdfAsync(
+    Task<byte[]> BuildPdfAsync(
         DateOnly date,
-        string outputPath,
         CancellationToken cancellationToken = default);
 }
 
@@ -16,14 +15,14 @@ internal sealed class DailyPrintPackService(
     IOutstandingReportService outstandingReports,
     IDailyMovementsReportService dailyMovementsReports,
     IAuditService audit,
-    IBusinessInformationService businessInformation) : IDailyPrintPackService
+    IBusinessInformationService businessInformation,
+    IBusinessClock clock) : IDailyPrintPackService
 {
-    public async Task GeneratePdfAsync(
+    public async Task<byte[]> BuildPdfAsync(
         DateOnly date,
-        string outputPath,
         CancellationToken cancellationToken = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = clock.Today;
         var reportDate = date > today ? today : date;
 
         var outstandingTask = outstandingReports.QueryAsync(
@@ -46,6 +45,7 @@ internal sealed class DailyPrintPackService(
         var business = await businessInformation.GetAsync(cancellationToken);
 
         QuestPDF.Settings.License = LicenseType.Community;
+        using var output = new MemoryStream();
 
         Document.Create(document =>
         {
@@ -194,7 +194,7 @@ internal sealed class DailyPrintPackService(
 
                 Footer(page, "Movement Detail");
             });
-        }).GeneratePdf(outputPath);
+        }).GeneratePdf(output);
 
         await audit.WriteAsync(
             "DAILY_PRINT_PACK_GENERATED",
@@ -211,9 +211,10 @@ internal sealed class DailyPrintPackService(
                 MovementRows = movements.Rows.Count,
                 movements.OutQuantity,
                 movements.InQuantity,
-                FileName = Path.GetFileName(outputPath)
             },
             cancellationToken: cancellationToken);
+
+        return output.ToArray();
     }
 
     private static void Header(TableDescriptor table, string text) =>

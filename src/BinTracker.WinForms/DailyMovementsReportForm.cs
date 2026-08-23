@@ -5,6 +5,8 @@ namespace BinTracker.WinForms;
 
 public sealed class DailyMovementsReportForm : BinTrackerForm
 {
+    private DateTime BusinessToday => clock.Today.ToDateTime(TimeOnly.MinValue);
+
     private readonly IDailyMovementsReportService reports;
     private readonly IDailyMovementsReportPdfService pdfReports;
     private readonly IContainerTypeService containerTypes;
@@ -12,8 +14,7 @@ public sealed class DailyMovementsReportForm : BinTrackerForm
     private readonly DateTimePicker reportDate = new()
     {
         Format = DateTimePickerFormat.Short,
-        Width = 140,
-        Value = DateTime.Today
+        Width = 140
     };
 
     private readonly TextBox customerSearch = new()
@@ -67,17 +68,21 @@ public sealed class DailyMovementsReportForm : BinTrackerForm
     private DailyMovementsReportResult? currentResult;
     private bool autoRefreshReady;
 
+    private readonly IBusinessClock clock;
+
     public DailyMovementsReportForm(
         IDailyMovementsReportService reports,
         IDailyMovementsReportPdfService pdfReports,
         IContainerTypeService containerTypes,
-        IAuditService audit)
+        IAuditService audit,
+        IBusinessClock clock)
     {
         this.reports = reports;
         this.pdfReports = pdfReports;
         this.containerTypes = containerTypes;
 
         this.audit = audit;
+        this.clock = clock;
 
         Text = "Daily Movements";
         StartPosition = FormStartPosition.Manual;
@@ -86,7 +91,8 @@ public sealed class DailyMovementsReportForm : BinTrackerForm
         Font = new Font("Segoe UI", 10F);
         BackColor = Color.FromArgb(245, 247, 250);
 
-        reportDate.MaxDate = DateTime.Today;
+        reportDate.MaxDate = BusinessToday;
+        reportDate.Value = BusinessToday;
 
         reportDate.ValueChanged += async (_, _) =>
         {
@@ -260,12 +266,12 @@ public sealed class DailyMovementsReportForm : BinTrackerForm
 actions.Controls.Add(ActionButton(
             "Today", 90,
             async () => await SetDateAndRefreshAsync(
-                DateTime.Today)));
+                BusinessToday)));
 
         actions.Controls.Add(ActionButton(
             "Yesterday", 105,
             async () => await SetDateAndRefreshAsync(
-                DateTime.Today.AddDays(-1))));
+                BusinessToday.AddDays(-1))));
 
         actions.Controls.Add(ActionButton(
             "Generate PDF", 145,
@@ -535,10 +541,10 @@ actions.Controls.Add(ActionButton(
             Enabled = false;
             UseWaitCursor = true;
 
-            await pdfReports.GeneratePdfAsync(
+            var pdf = await pdfReports.BuildPdfAsync(
                 result,
-                dialog.FileName,
                 includeNotesInPdf.Checked);
+            await File.WriteAllBytesAsync(dialog.FileName, pdf);
 
             if (openAfter)
             {

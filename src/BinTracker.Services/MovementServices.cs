@@ -37,6 +37,7 @@ public sealed record MovementBatchLine(
     string? Notes);
 
 public sealed record SaveMovementBatchRequest(
+    Guid ClientOperationId,
     DateOnly MovementDate,
     MovementType MovementType,
     string? Notes,
@@ -48,6 +49,7 @@ public sealed record SaveMovementBatchResult(
     int TotalQuantity);
 
 public sealed record SaveSingleMovementRequest(
+    Guid ClientOperationId,
     DateOnly MovementDate,
     MovementType MovementType,
     int CustomerId,
@@ -76,9 +78,9 @@ public sealed record DraftMovementLine(
     string? Reference,
     string? Notes);
 
-public sealed class DraftMovementBatch
+public sealed class DraftMovementBatch(IBusinessClock clock)
 {
-    public DateOnly MovementDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    public DateOnly MovementDate { get; set; } = clock.Today;
     public MovementType MovementType { get; set; } = MovementType.In;
     public List<DraftMovementLine> Lines { get; } = [];
 
@@ -88,7 +90,7 @@ public sealed class DraftMovementBatch
     public void Clear()
     {
         Lines.Clear();
-        MovementDate = DateOnly.FromDateTime(DateTime.Today);
+        MovementDate = clock.Today;
         MovementType = MovementType.In;
     }
 
@@ -121,13 +123,17 @@ public sealed class ApplicationState
 {
     private readonly IBatchDraftStore? draftStore;
 
-    public ApplicationState()
+    public ApplicationState(IBusinessClock clock)
     {
+        DraftBatch = new DraftMovementBatch(clock);
     }
 
-    public ApplicationState(IBatchDraftStore draftStore)
+    public ApplicationState(
+        IBatchDraftStore draftStore,
+        IBusinessClock clock)
     {
         this.draftStore = draftStore;
+        DraftBatch = new DraftMovementBatch(clock);
 
         var restored = draftStore.Load();
         if (restored is not null)
@@ -141,7 +147,7 @@ public sealed class ApplicationState
         }
     }
 
-    public DraftMovementBatch DraftBatch { get; } = new();
+    public DraftMovementBatch DraftBatch { get; }
 
     public DateTimeOffset? RecoveryDraftLastSavedAtUtc { get; private set; }
 
@@ -214,7 +220,9 @@ public interface IMovementService
 
 internal sealed class MovementService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    UserSession session) : IMovementService
+    IUserContext session,
+    IBusinessClock clock,
+    IClientContext client) : IMovementService
 {
     public async Task<IReadOnlyList<MovementCustomerOption>> GetActiveCustomersAsync(
         CancellationToken cancellationToken = default)
@@ -327,13 +335,24 @@ internal sealed class MovementService(
         if (request.Lines is null || request.Lines.Count == 0)
             throw new ArgumentException("Add at least one movement before saving the batch.");
 
-        if (request.MovementDate > DateOnly.FromDateTime(DateTime.Today))
+        if (request.MovementDate > clock.Today)
             throw new ArgumentException("Movement date cannot be in the future.");
 
         if (request.Lines.Any(x => x.Quantity <= 0))
             throw new ArgumentException("Movement quantities must be greater than zero.");
 
+        if (request.ClientOperationId == Guid.Empty)
+            throw new ArgumentException("Client operation ID is required.");
+
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
+
+        var existingBatch = await GetMatchingBatchRetryAsync(
+            db,
+            request,
+            cancellationToken);
+
+        if (existingBatch is not null)
+            return existingBatch;
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
         var customerIds = request.Lines.Select(x => x.CustomerId).Distinct().ToList();
@@ -359,16 +378,37 @@ internal sealed class MovementService(
 
         var batch = new MovementBatch
         {
+            ClientOperationId = request.ClientOperationId,
             MovementDate = request.MovementDate,
             MovementType = request.MovementType,
             Source = MovementSource.Batch,
             Notes = Clean(request.Notes),
             CreatedBy = session.Username,
-            CreatedUtc = DateTime.UtcNow
+            CreatedUtc = clock.UtcNow
         };
 
         db.MovementBatches.Add(batch);
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+
+            await using var verify =
+                await factory.CreateDbContextAsync(cancellationToken);
+
+            var duplicate = await GetMatchingBatchRetryAsync(
+                verify,
+                request,
+                cancellationToken);
+
+            if (duplicate is not null)
+                return duplicate;
+
+            throw;
+        }
 
         foreach (var line in request.Lines)
         {
@@ -384,7 +424,7 @@ internal sealed class MovementService(
                 ReferenceNumber = Clean(line.Reference),
                 Notes = Clean(line.Notes),
                 CreatedBy = session.Username,
-                CreatedUtc = DateTime.UtcNow
+                CreatedUtc = clock.UtcNow
             });
         }
 
@@ -397,7 +437,7 @@ internal sealed class MovementService(
 
         db.AuditEvents.Add(new AuditEvent
         {
-            TimestampUtc = DateTime.UtcNow,
+            TimestampUtc = clock.UtcNow,
             UserId = session.UserId,
             Username = session.Username,
             Action = "MOVEMENT_BATCH_RECORDED",
@@ -412,7 +452,7 @@ internal sealed class MovementService(
                 LineCount = request.Lines.Count,
                 TotalQuantity = totalQuantity
             }),
-            ComputerName = Environment.MachineName,
+            ComputerName = client.DeviceName,
             SessionId = session.SessionId,
             Succeeded = true
         });
@@ -436,13 +476,24 @@ internal sealed class MovementService(
         if (session.Role == UserRole.Viewer)
             throw new UnauthorizedAccessException("Viewer accounts cannot record movements.");
 
-        if (request.MovementDate > DateOnly.FromDateTime(DateTime.Today))
+        if (request.MovementDate > clock.Today)
             throw new ArgumentException("Movement date cannot be in the future.");
 
         if (request.Quantity <= 0)
             throw new ArgumentException("Movement quantity must be greater than zero.");
 
+        if (request.ClientOperationId == Guid.Empty)
+            throw new ArgumentException("Client operation ID is required.");
+
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
+
+        var existingMovement = await GetMatchingSingleRetryAsync(
+            db,
+            request,
+            cancellationToken);
+
+        if (existingMovement is not null)
+            return existingMovement;
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
         var customer = await db.Customers
@@ -471,17 +522,38 @@ internal sealed class MovementService(
             MovementDate = request.MovementDate,
             MovementType = request.MovementType,
             Source = MovementSource.Manual,
+            ClientOperationId = request.ClientOperationId,
             CustomerId = request.CustomerId,
             ContainerTypeId = request.ContainerTypeId,
             Quantity = request.Quantity,
             ReferenceNumber = Clean(request.Reference),
             Notes = Clean(request.Notes),
             CreatedBy = session.Username,
-            CreatedUtc = DateTime.UtcNow
+            CreatedUtc = clock.UtcNow
         };
 
         db.BinMovements.Add(movement);
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+
+            await using var verify =
+                await factory.CreateDbContextAsync(cancellationToken);
+
+            var duplicate = await GetMatchingSingleRetryAsync(
+                verify,
+                request,
+                cancellationToken);
+
+            if (duplicate is not null)
+                return duplicate;
+
+            throw;
+        }
 
         var newBalance = MovementPositionMath.Apply(
             openingBalance,
@@ -494,7 +566,7 @@ internal sealed class MovementService(
 
         db.AuditEvents.Add(new AuditEvent
         {
-            TimestampUtc = DateTime.UtcNow,
+            TimestampUtc = clock.UtcNow,
             UserId = session.UserId,
             Username = session.Username,
             Action = "MOVEMENT_RECORDED",
@@ -512,7 +584,7 @@ internal sealed class MovementService(
                 movement.ReferenceNumber,
                 NewPosition = MovementPositionMath.Format(newBalance)
             }),
-            ComputerName = Environment.MachineName,
+            ComputerName = client.DeviceName,
             SessionId = session.SessionId,
             Succeeded = true
         });
@@ -578,6 +650,128 @@ internal sealed class MovementService(
             taken,
             outstanding,
             requiresAttention);
+    }
+
+    private sealed record BatchRetryLine(
+        int CustomerId,
+        int ContainerTypeId,
+        int Quantity,
+        string? Reference,
+        string? Notes);
+
+    private static async Task<SaveMovementBatchResult?> GetMatchingBatchRetryAsync(
+        BinTrackerDbContext db,
+        SaveMovementBatchRequest request,
+        CancellationToken cancellationToken)
+    {
+        var existing = await db.MovementBatches
+            .AsNoTracking()
+            .Where(x => x.ClientOperationId == request.ClientOperationId)
+            .Select(x => new
+            {
+                x.Id,
+                x.MovementDate,
+                x.MovementType,
+                x.Notes
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (existing is null)
+            return null;
+
+        var persistedLines = await db.BinMovements
+            .AsNoTracking()
+            .Where(x => x.MovementBatchId == existing.Id)
+            .Select(x => new BatchRetryLine(
+                x.CustomerId,
+                x.ContainerTypeId,
+                x.Quantity,
+                x.ReferenceNumber,
+                x.Notes))
+            .ToListAsync(cancellationToken);
+
+        var requestedLines = request.Lines
+            .Select(x => new BatchRetryLine(
+                x.CustomerId,
+                x.ContainerTypeId,
+                x.Quantity,
+                Clean(x.Reference),
+                Clean(x.Notes)))
+            .ToList();
+
+        static IEnumerable<BatchRetryLine> Canonical(
+            IEnumerable<BatchRetryLine> lines) =>
+            lines.OrderBy(x => x.CustomerId)
+                .ThenBy(x => x.ContainerTypeId)
+                .ThenBy(x => x.Quantity)
+                .ThenBy(x => x.Reference, StringComparer.Ordinal)
+                .ThenBy(x => x.Notes, StringComparer.Ordinal);
+
+        if (existing.MovementDate != request.MovementDate ||
+            existing.MovementType != request.MovementType ||
+            !string.Equals(existing.Notes, Clean(request.Notes), StringComparison.Ordinal) ||
+            !Canonical(persistedLines).SequenceEqual(Canonical(requestedLines)))
+        {
+            throw new InvalidOperationException(
+                "This client operation ID was already used for a different batch request.");
+        }
+
+        return new SaveMovementBatchResult(
+            existing.Id,
+            persistedLines.Count,
+            persistedLines.Sum(x => x.Quantity));
+    }
+
+    private static async Task<SaveSingleMovementResult?> GetMatchingSingleRetryAsync(
+        BinTrackerDbContext db,
+        SaveSingleMovementRequest request,
+        CancellationToken cancellationToken)
+    {
+        var existing = await db.BinMovements
+            .AsNoTracking()
+            .Where(x => x.ClientOperationId == request.ClientOperationId)
+            .Select(x => new
+            {
+                x.Id,
+                x.MovementDate,
+                x.MovementType,
+                x.Source,
+                x.CustomerId,
+                x.ContainerTypeId,
+                x.Quantity,
+                x.ReferenceNumber,
+                x.Notes
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (existing is null)
+            return null;
+
+        if (existing.Source != MovementSource.Manual ||
+            existing.MovementDate != request.MovementDate ||
+            existing.MovementType != request.MovementType ||
+            existing.CustomerId != request.CustomerId ||
+            existing.ContainerTypeId != request.ContainerTypeId ||
+            existing.Quantity != request.Quantity ||
+            !string.Equals(existing.ReferenceNumber, Clean(request.Reference), StringComparison.Ordinal) ||
+            !string.Equals(existing.Notes, Clean(request.Notes), StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "This client operation ID was already used for a different movement request.");
+        }
+
+        var balance = await db.BinMovements
+            .AsNoTracking()
+            .Where(x =>
+                x.CustomerId == existing.CustomerId &&
+                x.ContainerTypeId == existing.ContainerTypeId)
+            .SumAsync(
+                x => x.MovementType == MovementType.Out
+                    ? x.Quantity
+                    : -x.Quantity,
+                cancellationToken);
+
+        return new SaveSingleMovementResult(existing.Id, balance);
     }
 
     private static string? Clean(string? value) =>

@@ -250,7 +250,7 @@ public sealed class SqliteMigrationTests
         var run = new ImportRun
         {
             SourceFileName = "legacy.xlsx",
-            SourceFullPath = "legacy.xlsx",
+            SourceClientPath = "legacy.xlsx",
             SourceSha256 = new string('A', 64),
             SourceLength = 10,
             SourceLastWriteUtc = DateTime.UtcNow,
@@ -414,7 +414,115 @@ public sealed class SqliteMigrationTests
             .ToListAsync();
 
         Assert.Contains("IX_BinMovements_ReversesMovementId", indexes);
-        Assert.Equal(13, await DatabaseSetup.GetSchemaVersionAsync(db));
+        Assert.Equal(14, await DatabaseSetup.GetSchemaVersionAsync(db));
+    }
+
+
+
+    [Fact]
+    public async Task Multi_user_portability_migration_adds_revisions_operation_ids_and_unique_indexes()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<BinTrackerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var db = new BinTrackerDbContext(options);
+        await db.Database.EnsureCreatedAsync();
+        await DatabaseSetup.InitializeSqliteAsync(db);
+
+        foreach (var sql in new[]
+                 {
+                     "SELECT name AS Value FROM pragma_table_info('Customers')",
+                     "SELECT name AS Value FROM pragma_table_info('ContainerTypes')",
+                     "SELECT name AS Value FROM pragma_table_info('ApplicationSettings')"
+                 })
+        {
+            var columns = await db.Database
+                .SqlQueryRaw<string>(sql)
+                .ToListAsync();
+            Assert.Contains("Revision", columns);
+        }
+
+        foreach (var sql in new[]
+                 {
+                     "SELECT name AS Value FROM pragma_table_info('MovementBatches')",
+                     "SELECT name AS Value FROM pragma_table_info('BinMovements')",
+                     "SELECT name AS Value FROM pragma_table_info('ImportRuns')"
+                 })
+        {
+            var columns = await db.Database
+                .SqlQueryRaw<string>(sql)
+                .ToListAsync();
+            Assert.Contains("ClientOperationId", columns);
+        }
+
+        var containerColumns = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ContainerTypes')")
+            .ToListAsync();
+        Assert.Contains("NameKey", containerColumns);
+
+        var importColumns = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ImportRuns')")
+            .ToListAsync();
+        Assert.Contains("SourceClientPath", importColumns);
+        Assert.Contains("CurrentCutoverDate", importColumns);
+        Assert.DoesNotContain("SourceFullPath", importColumns);
+
+        var containerIndexes = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_index_list('ContainerTypes')")
+            .ToListAsync();
+        Assert.Contains("IX_ContainerTypes_NameKey", containerIndexes);
+
+        var importIndexes = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_index_list('ImportRuns')")
+            .ToListAsync();
+        Assert.Contains("IX_ImportRuns_CurrentCutoverDate", importIndexes);
+        Assert.Contains("IX_ImportRuns_ClientOperationId", importIndexes);
+        Assert.Contains("IX_ImportRuns_SourceSha256", importIndexes);
+
+        Assert.Equal(14, await DatabaseSetup.GetSchemaVersionAsync(db));
+    }
+
+
+
+    [Fact]
+    public async Task V14_renames_legacy_import_source_path_to_provider_neutral_name()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<BinTrackerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var db = new BinTrackerDbContext(options);
+        await db.Database.EnsureCreatedAsync();
+        await DatabaseSetup.InitializeSqliteAsync(db);
+
+        // Simulate the v13 storage shape while keeping the rest of the current
+        // test database intact. V14 must perform the rename without data loss.
+        await db.Database.ExecuteSqlRawAsync(
+            "ALTER TABLE ImportRuns RENAME COLUMN SourceClientPath TO SourceFullPath;");
+        await db.Database.ExecuteSqlRawAsync(
+            "UPDATE SchemaVersion SET Version = 13 WHERE Id = 1;");
+
+        await DatabaseSetup.InitializeSqliteAsync(db);
+
+        var columns = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ImportRuns')")
+            .ToListAsync();
+
+        Assert.Contains("SourceClientPath", columns);
+        Assert.DoesNotContain("SourceFullPath", columns);
+        Assert.Equal(14, await DatabaseSetup.GetSchemaVersionAsync(db));
     }
 
 

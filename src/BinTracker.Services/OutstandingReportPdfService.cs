@@ -6,9 +6,8 @@ namespace BinTracker.Services;
 
 public interface IOutstandingReportPdfService
 {
-    Task GeneratePdfAsync(
+    Task<byte[]> BuildPdfAsync(
         OutstandingReportResult result,
-        string outputPath,
         CancellationToken cancellationToken = default);
 }
 
@@ -17,13 +16,13 @@ internal sealed class OutstandingReportPdfService(
     IBusinessInformationService businessInformation)
     : IOutstandingReportPdfService
 {
-    public async Task GeneratePdfAsync(
+    public async Task<byte[]> BuildPdfAsync(
         OutstandingReportResult result,
-        string outputPath,
         CancellationToken cancellationToken = default)
     {
         var business = await businessInformation.GetAsync(cancellationToken);
         QuestPDF.Settings.License = LicenseType.Community;
+        using var output = new MemoryStream();
 
         Document.Create(document =>
         {
@@ -118,7 +117,7 @@ internal sealed class OutstandingReportPdfService(
                     text.TotalPages();
                 });
             });
-        }).GeneratePdf(outputPath);
+        }).GeneratePdf(output);
 
         await audit.WriteAsync(
             "OUTSTANDING_REPORT_GENERATED",
@@ -131,9 +130,10 @@ internal sealed class OutstandingReportPdfService(
                 AsOfDate = result.AsOfDate,
                 RowCount = result.Rows.Count,
                 BalanceFilter = result.BalanceFilter.ToString(),
-                FileName = Path.GetFileName(outputPath)
             },
             cancellationToken: cancellationToken);
+
+        return output.ToArray();
     }
 
     private static void Header(TableDescriptor table, string text) =>

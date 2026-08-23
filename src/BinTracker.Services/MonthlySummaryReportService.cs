@@ -54,14 +54,15 @@ public interface IMonthlySummaryReportService
 }
 
 internal sealed class MonthlySummaryReportService(
-    IDbContextFactory<BinTrackerDbContext> factory)
+    IDbContextFactory<BinTrackerDbContext> factory,
+    IBusinessClock clock)
     : IMonthlySummaryReportService
 {
     public async Task<MonthlySummaryReportResult> QueryAsync(
         MonthlySummaryReportQuery query,
         CancellationToken cancellationToken = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = clock.Today;
         var requested = query.Month > today ? today : query.Month;
 
         var start = new DateOnly(requested.Year, requested.Month, 1);

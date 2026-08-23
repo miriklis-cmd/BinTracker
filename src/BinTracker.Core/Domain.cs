@@ -9,6 +9,7 @@ public enum ReminderDeliveryStatus { Pending = 0, Sent = 1, Failed = 2, Skipped 
 
 public sealed class Customer
 {
+    public long Revision { get; set; } = 1;
     public int Id { get; set; }
     public string? CustomerCode { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -32,8 +33,10 @@ public sealed class Customer
 
 public sealed class ContainerType
 {
+    public long Revision { get; set; } = 1;
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string NameKey { get; set; } = string.Empty;
     public string ShortCode { get; set; } = string.Empty;
     public string SystemCode { get; set; } = string.Empty;
     public string? Description { get; set; }
@@ -50,7 +53,8 @@ public sealed class ContainerType
 public sealed class MovementBatch
 {
     public int Id { get; set; }
-    public DateOnly MovementDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    public Guid? ClientOperationId { get; set; }
+    public DateOnly MovementDate { get; set; }
     public MovementType MovementType { get; set; }
     public MovementSource Source { get; set; } = MovementSource.Batch;
     public string? Notes { get; set; }
@@ -63,7 +67,8 @@ public sealed class MovementBatch
 public sealed class BinMovement
 {
     public long Id { get; set; }
-    public DateOnly MovementDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    public Guid? ClientOperationId { get; set; }
+    public DateOnly MovementDate { get; set; }
     public MovementType MovementType { get; set; }
     public MovementSource Source { get; set; }
     public int CustomerId { get; set; }
@@ -97,9 +102,12 @@ public sealed class BinMovement
 
 public sealed class ImportRun
 {
+    public Guid? ClientOperationId { get; set; }
+    public string? ClientRequestFingerprint { get; set; }
+    public DateOnly? CurrentCutoverDate { get; set; }
     public long Id { get; set; }
     public string SourceFileName { get; set; } = string.Empty;
-    public string SourceFullPath { get; set; } = string.Empty;
+    public string SourceClientPath { get; set; } = string.Empty;
     public string SourceSha256 { get; set; } = string.Empty;
     public long SourceLength { get; set; }
     public DateTime SourceLastWriteUtc { get; set; }
@@ -127,6 +135,7 @@ public sealed class ImportRun
 
 public sealed class ApplicationSettings
 {
+    public long Revision { get; set; } = 1;
     public int Id { get; set; } = 1;
     public int AttentionQuantityThreshold { get; set; } = 20;
     public int AttentionAgeDays { get; set; } = 7;

@@ -8,10 +8,10 @@ namespace BinTracker.Services;
 
 public sealed record ImportSourceFingerprint(
     string FileName,
-    string FullPath,
+    string? ClientPath,
     string Sha256,
     long Length,
-    DateTime LastWriteUtc);
+    DateTime ClientLastWriteUtc);
 
 public sealed record ImportCutoverRunSummary(
     long ImportRunId,
@@ -45,7 +45,7 @@ public enum ImportExecutionMode
 }
 
 public sealed record ImportExecutionRequest(
-    string FilePath,
+    ImportSourceDocument Source,
     string ExpectedSourceSha256,
     ExcelImportAnalysis Analysis,
     IReadOnlyList<ImportWorksheetMapping> Mappings,
@@ -54,7 +54,8 @@ public sealed record ImportExecutionRequest(
     IReadOnlyDictionary<string, ImportExistingCustomerDecision> ExistingCustomerDecisions,
     DateOnly CutoverDate,
     ImportExecutionMode Mode = ImportExecutionMode.NewImport,
-    long? PreviousImportRunId = null);
+    long? PreviousImportRunId = null,
+    Guid ClientOperationId = default);
 
 public sealed record ImportReplacementDifference(
     string CustomerCode,
@@ -118,7 +119,7 @@ internal sealed class NoOpImportExecutionFailureInjector
 public interface IImportExecutionService
 {
     Task<ImportPreflightResult> PreflightAsync(
-        string filePath,
+        ImportSourceDocument source,
         DateOnly? cutoverDate = null,
         CancellationToken cancellationToken = default);
 
@@ -133,17 +134,19 @@ public interface IImportExecutionService
 
 internal sealed class ImportExecutionService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    UserSession session,
-    IImportExecutionFailureInjector failureInjector)
+    IUserContext session,
+    IImportExecutionFailureInjector failureInjector,
+    IBusinessClock clock,
+    IClientContext client)
     : IImportExecutionService
 {
     public async Task<ImportPreflightResult> PreflightAsync(
-        string filePath,
+        ImportSourceDocument source,
         DateOnly? cutoverDate = null,
         CancellationToken cancellationToken = default)
     {
         var fingerprint = await FingerprintAsync(
-            filePath,
+            source,
             cancellationToken);
 
         await using var db =
@@ -152,8 +155,7 @@ internal sealed class ImportExecutionService(
         var previous = await db.ImportRuns
             .AsNoTracking()
             .Where(x =>
-                x.SourceSha256 == fingerprint.Sha256 &&
-                x.Status == "Completed")
+                x.SourceSha256 == fingerprint.Sha256)
             .OrderByDescending(x => x.CompletedUtc)
             .Select(x => new
             {
@@ -170,7 +172,7 @@ internal sealed class ImportExecutionService(
             previousCutover = await db.ImportRuns
                 .AsNoTracking()
                 .Where(x =>
-                    x.CutoverDate == cutoverDate.Value &&
+                    x.CurrentCutoverDate == cutoverDate.Value &&
                     x.Status == "Completed")
                 .OrderByDescending(x => x.CompletedUtc)
                 .Select(x => new ImportCutoverRunSummary(
@@ -214,7 +216,7 @@ internal sealed class ImportExecutionService(
             .AsNoTracking()
             .Where(x =>
                 x.Id == request.PreviousImportRunId.Value &&
-                x.CutoverDate == request.CutoverDate &&
+                x.CurrentCutoverDate == request.CutoverDate &&
                 x.Status == "Completed")
             .Select(x => new ImportCutoverRunSummary(
                 x.Id,
@@ -335,20 +337,13 @@ internal sealed class ImportExecutionService(
     {
         RequireAdministrator();
 
-        if (request.Analysis is null)
-            throw new ArgumentException(
-                "Import analysis is required.");
-
-        if (request.Mappings.Count == 0 ||
-            request.Mappings.All(x => x.Role != ImportWorksheetRole.Source))
-        {
-            throw new InvalidOperationException(
-                "At least one Source worksheet is required.");
-        }
+        if (request.ClientOperationId == Guid.Empty)
+            throw new ArgumentException("Client operation ID is required.");
 
         var fingerprint = await FingerprintAsync(
-            request.FilePath,
+            request.Source,
             cancellationToken);
+        var requestFingerprint = BuildRequestFingerprint(request, fingerprint.Sha256);
 
         if (!string.Equals(
                 fingerprint.Sha256,
@@ -358,6 +353,70 @@ internal sealed class ImportExecutionService(
             throw new InvalidOperationException(
                 "The workbook changed after Step 4 preflight. " +
                 "Go back to Analyse and review the changed workbook before importing.");
+        }
+
+        await using (var retryDb =
+            await factory.CreateDbContextAsync(cancellationToken))
+        {
+            var existing = await retryDb.ImportRuns
+                .AsNoTracking()
+                .Where(x =>
+                    x.ClientOperationId == request.ClientOperationId &&
+                    x.Status == "Completed")
+                .Select(x => new
+                {
+                    x.Id,
+                    x.SourceSha256,
+                    x.ClientRequestFingerprint,
+                    x.CutoverDate,
+                    x.ReplacesImportRunId,
+                    x.CreatedCustomers,
+                    OpeningAdjustmentMovements =
+                        x.Movements.Count(m => m.Source == MovementSource.Adjustment),
+                    OutMovements =
+                        x.Movements.Count(m =>
+                            m.Source == MovementSource.ExcelImport &&
+                            m.MovementType == MovementType.Out),
+                    InMovements =
+                        x.Movements.Count(m =>
+                            m.Source == MovementSource.ExcelImport &&
+                            m.MovementType == MovementType.In),
+                    x.MovementCount
+                })
+                .SingleOrDefaultAsync(cancellationToken);
+
+            if (existing is not null)
+            {
+                var expectedPreviousRunId =
+                    request.Mode == ImportExecutionMode.ReplacePreviousCutover
+                        ? request.PreviousImportRunId
+                        : null;
+
+                if (!string.Equals(existing.ClientRequestFingerprint, requestFingerprint, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        "This client operation ID was already used for a different import request.");
+                }
+
+                return new ImportExecutionResult(
+                    existing.Id,
+                    existing.CreatedCustomers,
+                    existing.OpeningAdjustmentMovements,
+                    existing.OutMovements,
+                    existing.InMovements,
+                    existing.MovementCount);
+            }
+        }
+
+        if (request.Analysis is null)
+            throw new ArgumentException(
+                "Import analysis is required.");
+
+        if (request.Mappings.Count == 0 ||
+            request.Mappings.All(x => x.Role != ImportWorksheetRole.Source))
+        {
+            throw new InvalidOperationException(
+                "At least one Source worksheet is required.");
         }
 
         await using var db =
@@ -370,8 +429,7 @@ internal sealed class ImportExecutionService(
         var alreadyImported = await db.ImportRuns
             .AnyAsync(
                 x =>
-                    x.SourceSha256 == fingerprint.Sha256 &&
-                    x.Status == "Completed",
+                    x.SourceSha256 == fingerprint.Sha256,
                 cancellationToken);
 
         if (alreadyImported)
@@ -395,7 +453,7 @@ internal sealed class ImportExecutionService(
                 .SingleOrDefaultAsync(
                     x =>
                         x.Id == request.PreviousImportRunId.Value &&
-                        x.CutoverDate == request.CutoverDate &&
+                        x.CurrentCutoverDate == request.CutoverDate &&
                         x.Status == "Completed",
                     cancellationToken)
                 ?? throw new InvalidOperationException(
@@ -403,8 +461,7 @@ internal sealed class ImportExecutionService(
 
             var competingCompletedRun = await db.ImportRuns.AnyAsync(
                 x =>
-                    x.CutoverDate == request.CutoverDate &&
-                    x.Status == "Completed" &&
+                    x.CurrentCutoverDate == request.CutoverDate &&
                     x.Id != previousRun.Id,
                 cancellationToken);
 
@@ -418,8 +475,7 @@ internal sealed class ImportExecutionService(
         {
             var sameCutoverExists = await db.ImportRuns.AnyAsync(
                 x =>
-                    x.CutoverDate == request.CutoverDate &&
-                    x.Status == "Completed",
+                    x.CurrentCutoverDate == request.CutoverDate,
                 cancellationToken);
 
             if (sameCutoverExists)
@@ -520,16 +576,19 @@ internal sealed class ImportExecutionService(
 
         ValidateReadiness(review, reconciliation);
 
-        var now = DateTime.UtcNow;
+        var now = clock.UtcNow;
 
         var run = new ImportRun
         {
+            ClientOperationId = request.ClientOperationId,
+            ClientRequestFingerprint = requestFingerprint,
             SourceFileName = fingerprint.FileName,
-            SourceFullPath = fingerprint.FullPath,
+            SourceClientPath = fingerprint.ClientPath ?? fingerprint.FileName,
             SourceSha256 = fingerprint.Sha256,
             SourceLength = fingerprint.Length,
-            SourceLastWriteUtc = fingerprint.LastWriteUtc,
+            SourceLastWriteUtc = fingerprint.ClientLastWriteUtc,
             CutoverDate = request.CutoverDate,
+            CurrentCutoverDate = request.CutoverDate,
             ReplacesImportRunId = previousRun?.Id,
             StartedUtc = now,
             Status = "Pending",
@@ -541,8 +600,91 @@ internal sealed class ImportExecutionService(
                 "Excel balances treated as authoritative cutover targets."
         };
 
+        if (previousRun is not null)
+        {
+            previousRun.CurrentCutoverDate = null;
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
         db.ImportRuns.Add(run);
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+
+            await using var verify =
+                await factory.CreateDbContextAsync(cancellationToken);
+
+            var duplicateOperation = await verify.ImportRuns
+                .AsNoTracking()
+                .Where(x =>
+                    x.ClientOperationId == request.ClientOperationId &&
+                    x.Status == "Completed")
+                .Select(x => new
+                {
+                    x.Id,
+                    x.SourceSha256,
+                    x.ClientRequestFingerprint,
+                    x.CutoverDate,
+                    x.ReplacesImportRunId,
+                    x.CreatedCustomers,
+                    OpeningAdjustmentMovements =
+                        x.Movements.Count(m => m.Source == MovementSource.Adjustment),
+                    OutMovements =
+                        x.Movements.Count(m =>
+                            m.Source == MovementSource.ExcelImport &&
+                            m.MovementType == MovementType.Out),
+                    InMovements =
+                        x.Movements.Count(m =>
+                            m.Source == MovementSource.ExcelImport &&
+                            m.MovementType == MovementType.In),
+                    x.MovementCount
+                })
+                .SingleOrDefaultAsync(cancellationToken);
+
+            if (duplicateOperation is not null)
+            {
+                var expectedPreviousRunId =
+                    request.Mode == ImportExecutionMode.ReplacePreviousCutover
+                        ? request.PreviousImportRunId
+                        : null;
+
+                if (!string.Equals(duplicateOperation.ClientRequestFingerprint, requestFingerprint, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        "This client operation ID was already used for a different import request.");
+                }
+
+                return new ImportExecutionResult(
+                    duplicateOperation.Id,
+                    duplicateOperation.CreatedCustomers,
+                    duplicateOperation.OpeningAdjustmentMovements,
+                    duplicateOperation.OutMovements,
+                    duplicateOperation.InMovements,
+                    duplicateOperation.MovementCount);
+            }
+
+            if (await verify.ImportRuns.AsNoTracking().AnyAsync(
+                    x => x.SourceSha256 == fingerprint.Sha256,
+                    cancellationToken))
+            {
+                throw new InvalidOperationException(
+                    "This exact workbook has already been imported. Exact re-import is blocked.");
+            }
+
+            if (await verify.ImportRuns.AsNoTracking().AnyAsync(
+                    x => x.CurrentCutoverDate == request.CutoverDate,
+                    cancellationToken))
+            {
+                throw new InvalidOperationException(
+                    "Another Import Run now owns this cutover date. Return to Review and reopen Step 4.");
+            }
+
+            throw;
+        }
 
         var customerIds =
             new Dictionary<string, int>(
@@ -903,11 +1045,11 @@ internal sealed class ImportExecutionService(
         run.CreatedCustomers = createdCustomers;
         run.MovementCount = movementCount;
         run.Status = "Completed";
-        run.CompletedUtc = DateTime.UtcNow;
+        run.CompletedUtc = clock.UtcNow;
 
         db.AuditEvents.Add(new AuditEvent
         {
-            TimestampUtc = DateTime.UtcNow,
+            TimestampUtc = clock.UtcNow,
             UserId = session.UserId,
             Username = session.Username,
             Action = previousRun is null
@@ -923,7 +1065,7 @@ internal sealed class ImportExecutionService(
                 $"{openingCount} opening adjustment(s), " +
                 $"{outCount} OUT movement(s), " +
                 $"{inCount} IN movement(s).",
-            ComputerName = Environment.MachineName,
+            ComputerName = client.DeviceName,
             SessionId = session.SessionId,
             Succeeded = true
         });
@@ -1128,48 +1270,54 @@ internal sealed class ImportExecutionService(
     }
 
     private static async Task<ImportSourceFingerprint> FingerprintAsync(
-        string filePath,
+        ImportSourceDocument source,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(filePath))
-            throw new ArgumentException(
-                "Import workbook path is required.");
-
-        if (!File.Exists(filePath))
-            throw new FileNotFoundException(
-                "The workbook no longer exists.",
-                filePath);
-
-        var info = new FileInfo(filePath);
-        var sha = await ComputeSha256Async(
-            filePath,
-            cancellationToken);
-
-        return new ImportSourceFingerprint(
-            info.Name,
-            info.FullName,
-            sha,
-            info.Length,
-            info.LastWriteTimeUtc);
-    }
-
-    private static async Task<string> ComputeSha256Async(
-        string filePath,
-        CancellationToken cancellationToken)
-    {
-        await using var stream = new FileStream(
-            filePath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.ReadWrite,
-            1024 * 128,
-            FileOptions.Asynchronous |
-            FileOptions.SequentialScan);
+        if (source is null || source.Content.Length == 0)
+            throw new ArgumentException("Import workbook content is required.");
 
         using var sha256 = SHA256.Create();
+        await using var stream =
+            new MemoryStream(source.Content, writable: false);
+
         var hash = await sha256.ComputeHashAsync(
             stream,
             cancellationToken);
-        return Convert.ToHexString(hash);
+
+        return new ImportSourceFingerprint(
+            source.FileName,
+            source.ClientPath,
+            Convert.ToHexString(hash),
+            source.Length,
+            source.ClientLastWriteUtc);
     }
+
+    private static string BuildRequestFingerprint(ImportExecutionRequest request, string sourceSha256)
+    {
+        static object[] Ordered<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> values)
+            where TKey : notnull => values
+                .OrderBy(x => x.Key?.ToString(), StringComparer.Ordinal)
+                .Select(x => (object)new { Key = x.Key, Value = x.Value })
+                .ToArray();
+
+        var canonical = JsonSerializer.Serialize(new
+        {
+            SourceSha256 = sourceSha256.ToUpperInvariant(),
+            request.CutoverDate,
+            request.Mode,
+            request.PreviousImportRunId,
+            Mappings = request.Mappings
+                .OrderBy(x => x.Worksheet, StringComparer.Ordinal)
+                .ThenBy(x => x.Role)
+                .Select(x => new { x.Worksheet, x.Role, x.Reason })
+                .ToArray(),
+            ContainerTokenMappings = Ordered(request.ContainerTokenMappings),
+            CustomerDecisions = Ordered(request.CustomerDecisions),
+            ExistingCustomerDecisions = Ordered(request.ExistingCustomerDecisions)
+        });
+
+        return Convert.ToHexString(
+            SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(canonical)));
+    }
+
 }

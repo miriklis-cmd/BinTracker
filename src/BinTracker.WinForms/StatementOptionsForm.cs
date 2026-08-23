@@ -1,3 +1,5 @@
+using BinTracker.Services;
+
 namespace BinTracker.WinForms;
 
 public sealed class StatementOptionsForm : BinTrackerForm
@@ -18,8 +20,9 @@ public sealed class StatementOptionsForm : BinTrackerForm
     public DateOnly ToDate => DateOnly.FromDateTime(to.Value.Date);
     public bool OpenAfterGenerate { get; private set; }
 
-    public StatementOptionsForm()
+    public StatementOptionsForm(IBusinessClock clock)
     {
+        var businessToday = clock.Today.ToDateTime(TimeOnly.MinValue);
         Text = "Customer Statement Period";
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleMode = AutoScaleMode.Dpi;
@@ -29,10 +32,10 @@ public sealed class StatementOptionsForm : BinTrackerForm
         MaximizeBox = false;
         MinimizeBox = false;
 
-        from.MaxDate = DateTime.Today;
-        to.MaxDate = DateTime.Today;
-        to.Value = DateTime.Today;
-        from.Value = DateTime.Today.AddDays(-90);
+        from.MaxDate = businessToday;
+        to.MaxDate = businessToday;
+        to.Value = businessToday;
+        from.Value = businessToday.AddDays(-90);
 
         var actionBar = new Panel
         {

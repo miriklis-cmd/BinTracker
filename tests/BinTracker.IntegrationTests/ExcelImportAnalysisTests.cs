@@ -47,7 +47,9 @@ public sealed class ExcelImportAnalysisTests
                 .Options;
 
             var services = new ServiceCollection();
-            services.AddSingleton(new UserSession());
+            var clock = new TestBusinessClock();
+            services.AddSingleton<IBusinessClock>(clock);
+            services.AddSingleton(new UserSession(clock));
             services.AddSingleton<IDbContextFactory<BinTrackerDbContext>>(
                 new TestFactory(options));
 
@@ -71,7 +73,12 @@ public sealed class ExcelImportAnalysisTests
             IExcelImportService importer =
                 new ExcelImportServiceForTest(session, audit);
 
-            var result = await importer.AnalyzeAsync(file);
+            var result = await importer.AnalyzeAsync(
+                new ImportSourceDocument(
+                    Path.GetFileName(file),
+                    await File.ReadAllBytesAsync(file),
+                    Path.GetFullPath(file),
+                    File.GetLastWriteTimeUtc(file)));
 
             Assert.Equal(6, result.WorksheetCount);
             Assert.Equal(3, result.CustomerCandidateCount);
@@ -135,8 +142,17 @@ public sealed class ExcelImportAnalysisTests
                 audit)!;
 
         public Task<ExcelImportAnalysis> AnalyzeAsync(
-            string filePath,
+            ImportSourceDocument source,
             CancellationToken cancellationToken = default) =>
-            inner.AnalyzeAsync(filePath, cancellationToken);
+            inner.AnalyzeAsync(source, cancellationToken);
     }
+
+    private sealed class TestBusinessClock : IBusinessClock
+    {
+        public DateTime UtcNow => new(2026, 8, 23, 0, 0, 0, DateTimeKind.Utc);
+        public DateTime LocalNow => new(2026, 8, 23, 10, 0, 0, DateTimeKind.Unspecified);
+        public DateOnly Today => new(2026, 8, 23);
+        public string TimeZoneId => "Australia/Melbourne";
+    }
+
 }

@@ -18,13 +18,19 @@ $zipName = "$rootName.zip"
 $out = Join-Path $OutputDirectory $zipName
 if (Test-Path $out) { Remove-Item -Force $out }
 
-# Stage with the version-authoritative root name. Exclude build outputs and VCS metadata.
+# Stage with the version-authoritative root name. Exclude build outputs and VCS metadata at every depth.
 $stageBase = Join-Path ([System.IO.Path]::GetTempPath()) ("BinTrackerPackage-" + [guid]::NewGuid())
 $stageRoot = Join-Path $stageBase $rootName
 New-Item -ItemType Directory -Path $stageRoot -Force | Out-Null
 $excludeDirs = @('.git','bin','obj','.vs')
-Get-ChildItem -LiteralPath $root -Force | Where-Object { $excludeDirs -notcontains $_.Name } | ForEach-Object {
-    Copy-Item -LiteralPath $_.FullName -Destination $stageRoot -Recurse -Force
+Get-ChildItem -LiteralPath $root -Recurse -File -Force | ForEach-Object {
+    $relative = $_.FullName.Substring($root.Length).TrimStart([char]'\', [char]'/')
+    $segments = $relative -split '[\\/]'
+    if (@($segments | Where-Object { $excludeDirs -contains $_ }).Count -gt 0) { return }
+    $destination = Join-Path $stageRoot $relative
+    $destinationDirectory = Split-Path -Parent $destination
+    New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+    Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
 }
 Compress-Archive -Path $stageRoot -DestinationPath $out -CompressionLevel Optimal
 
@@ -32,9 +38,9 @@ Compress-Archive -Path $stageRoot -DestinationPath $out -CompressionLevel Optima
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $archive = [System.IO.Compression.ZipFile]::OpenRead($out)
 try {
-    $roots = @($archive.Entries | ForEach-Object { ($_.FullName -split '/')[0] } | Where-Object { $_ } | Sort-Object -Unique)
+    $roots = @($archive.Entries | ForEach-Object { (($_.FullName -replace '\\','/') -split '/')[0] } | Where-Object { $_ } | Sort-Object -Unique)
     if ($roots.Count -ne 1 -or $roots[0] -ne $rootName) { Fail "ZIP root mismatch: $($roots -join ', ')" }
-    $propsEntry = $archive.Entries | Where-Object { $_.FullName -eq "$rootName/Directory.Build.props" } | Select-Object -First 1
+    $propsEntry = $archive.Entries | Where-Object { ($_.FullName -replace '\\','/') -eq "$rootName/Directory.Build.props" } | Select-Object -First 1
     if (-not $propsEntry) { Fail 'Directory.Build.props missing from ZIP.' }
     $reader = New-Object System.IO.StreamReader($propsEntry.Open())
     try { [xml]$zipProps = $reader.ReadToEnd() } finally { $reader.Dispose() }

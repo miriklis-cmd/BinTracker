@@ -56,16 +56,16 @@ public interface IMarketFloorReportService
         DateOnly date,
         CancellationToken cancellationToken = default);
 
-    Task GeneratePdfAsync(
+    Task<byte[]> BuildPdfAsync(
         DateOnly date,
-        string outputPath,
         CancellationToken cancellationToken = default);
 }
 
 internal sealed class MarketFloorReportService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IAuditService audit,
-    IBusinessInformationService businessInformation) : IMarketFloorReportService
+    IBusinessInformationService businessInformation,
+    IBusinessClock clock) : IMarketFloorReportService
 {
     public async Task<MarketFloorReportData> GetAsync(
         DateOnly date,
@@ -293,15 +293,15 @@ internal sealed class MarketFloorReportService(
             reverse.Where(x => x.CustomerType == CustomerType.CashCod).ToList());
     }
 
-    public async Task GeneratePdfAsync(
+    public async Task<byte[]> BuildPdfAsync(
         DateOnly date,
-        string outputPath,
         CancellationToken cancellationToken = default)
     {
         var data = await GetAsync(date, cancellationToken);
         var business = await businessInformation.GetAsync(cancellationToken);
 
         QuestPDF.Settings.License = LicenseType.Community;
+        using var output = new MemoryStream();
 
         Document.Create(document =>
         {
@@ -386,7 +386,7 @@ internal sealed class MarketFloorReportService(
                     row.RelativeItem().Text("BinTracker Market Floor Sheet")
                         .FontColor(Colors.Grey.Darken1);
                     row.ConstantItem(220).AlignRight()
-                        .Text($"Generated {DateTime.Now:dd/MM/yyyy HH:mm}")
+                        .Text($"Generated {clock.LocalNow:dd/MM/yyyy HH:mm}")
                         .FontColor(Colors.Grey.Darken1);
                 });
             });
@@ -460,11 +460,11 @@ internal sealed class MarketFloorReportService(
                     row.RelativeItem().Text("B/Fwd = position before today's movements")
                         .FontColor(Colors.Grey.Darken1);
                     row.ConstantItem(220).AlignRight()
-                        .Text($"Generated {DateTime.Now:dd/MM/yyyy HH:mm}")
+                        .Text($"Generated {clock.LocalNow:dd/MM/yyyy HH:mm}")
                         .FontColor(Colors.Grey.Darken1);
                 });
             });
-        }).GeneratePdf(outputPath);
+        }).GeneratePdf(output);
 
         await audit.WriteAsync(
             "MARKET_FLOOR_REPORT_GENERATED",
@@ -478,9 +478,10 @@ internal sealed class MarketFloorReportService(
                 CashOwing = data.CashOwing.Count,
                 Credits = data.Credits.Count,
                 Special = data.SpecialContainers.Count,
-                FileName = Path.GetFileName(outputPath)
             },
             cancellationToken: cancellationToken);
+
+        return output.ToArray();
     }
 
 

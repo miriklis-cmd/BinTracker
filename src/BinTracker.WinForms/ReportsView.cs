@@ -12,6 +12,7 @@ namespace BinTracker.WinForms;
 /// </summary>
 public sealed class ReportsView : UserControl
 {
+    private DateTime BusinessToday => clock.Today.ToDateTime(TimeOnly.MinValue);
     private static readonly Color PageBackground = Color.FromArgb(248, 249, 251);
     private static readonly Color CardBackground = Color.White;
     private static readonly Color CardBorder = Color.FromArgb(225, 229, 235);
@@ -21,6 +22,7 @@ public sealed class ReportsView : UserControl
 
     private readonly IMarketFloorReportService marketFloor;
     private readonly IDailyPrintPackService dailyPrintPack;
+    private readonly IBusinessClock clock;
     private readonly Action openOutstanding;
     private readonly Action openDailyMovements;
     private readonly Action openWeeklyMovements;
@@ -28,8 +30,8 @@ public sealed class ReportsView : UserControl
     private readonly Action openCustomerStatement;
     private readonly Action openMonthlySummary;
 
-    private readonly DateTimePicker reportDate = ReportDatePicker();
-    private readonly DateTimePicker printPackDate = ReportDatePicker();
+    private readonly DateTimePicker reportDate;
+    private readonly DateTimePicker printPackDate;
 
     private readonly Label status = StatusLabel();
     private readonly Label printPackStatus = StatusLabel();
@@ -37,6 +39,7 @@ public sealed class ReportsView : UserControl
     public ReportsView(
         IMarketFloorReportService marketFloor,
         IDailyPrintPackService dailyPrintPack,
+        IBusinessClock clock,
         Action openOutstanding,
         Action openDailyMovements,
         Action openWeeklyMovements,
@@ -46,6 +49,9 @@ public sealed class ReportsView : UserControl
     {
         this.marketFloor = marketFloor;
         this.dailyPrintPack = dailyPrintPack;
+        this.clock = clock;
+        reportDate = ReportDatePicker();
+        printPackDate = ReportDatePicker();
         this.openOutstanding = openOutstanding;
         this.openDailyMovements = openDailyMovements;
         this.openWeeklyMovements = openWeeklyMovements;
@@ -53,8 +59,8 @@ public sealed class ReportsView : UserControl
         this.openCustomerStatement = openCustomerStatement;
         this.openMonthlySummary = openMonthlySummary;
 
-        reportDate.MaxDate = DateTime.Today;
-        printPackDate.MaxDate = DateTime.Today;
+        reportDate.MaxDate = BusinessToday;
+        printPackDate.MaxDate = BusinessToday;
 
         Dock = DockStyle.Fill;
         BackColor = PageBackground;
@@ -531,7 +537,8 @@ public sealed class ReportsView : UserControl
         try
         {
             Enabled = false;
-            await marketFloor.GeneratePdfAsync(date, dialog.FileName);
+            var pdf = await marketFloor.BuildPdfAsync(date);
+            await File.WriteAllBytesAsync(dialog.FileName, pdf);
 
             status.Text =
                 $"Created 2-page Market Floor Sheet for {date:dd/MM/yyyy}: {dialog.FileName}";
@@ -573,7 +580,8 @@ public sealed class ReportsView : UserControl
         try
         {
             Enabled = false;
-            await dailyPrintPack.GeneratePdfAsync(date, dialog.FileName);
+            var pdf = await dailyPrintPack.BuildPdfAsync(date);
+            await File.WriteAllBytesAsync(dialog.FileName, pdf);
 
             printPackStatus.Text =
                 $"Created Daily Print Pack for {date:dd/MM/yyyy}: {dialog.FileName}";
@@ -602,12 +610,12 @@ public sealed class ReportsView : UserControl
             UseShellExecute = true
         });
 
-    private static DateTimePicker ReportDatePicker() => new()
+    private DateTimePicker ReportDatePicker() => new()
     {
         Format = DateTimePickerFormat.Short,
         Width = 178,
         Height = 38,
-        Value = DateTime.Today,
+        Value = BusinessToday,
         Font = new Font("Segoe UI", 10F)
     };
 

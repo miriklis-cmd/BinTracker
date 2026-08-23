@@ -4,6 +4,8 @@ namespace BinTracker.WinForms;
 
 public sealed class OutstandingContainersReportForm : BinTrackerForm
 {
+    private DateTime BusinessToday => clock.Today.ToDateTime(TimeOnly.MinValue);
+
     private readonly IOutstandingReportService outstanding;
     private readonly IOutstandingReportPdfService pdfReports;
     private readonly IContainerTypeService containerTypes;
@@ -11,8 +13,7 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
     private readonly DateTimePicker reportDate = new()
     {
         Format = DateTimePickerFormat.Short,
-        Width = 145,
-        Value = DateTime.Today
+        Width = 145
     };
 
     private readonly TextBox customerSearch = new()
@@ -67,17 +68,21 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
     private OutstandingReportResult? currentResult;
     private bool autoRefreshReady;
 
+    private readonly IBusinessClock clock;
+
     public OutstandingContainersReportForm(
         IOutstandingReportService outstanding,
         IOutstandingReportPdfService pdfReports,
         IContainerTypeService containerTypes,
-        IAuditService audit)
+        IAuditService audit,
+        IBusinessClock clock)
     {
         this.outstanding = outstanding;
         this.pdfReports = pdfReports;
         this.containerTypes = containerTypes;
 
         this.audit = audit;
+        this.clock = clock;
 
         Text = "Outstanding Containers";
         StartPosition = FormStartPosition.Manual;
@@ -86,7 +91,7 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         Font = new Font("Segoe UI", 10F);
         BackColor = Color.FromArgb(245, 247, 250);
 
-        reportDate.MaxDate = DateTime.Today;
+        reportDate.MaxDate = BusinessToday;
 
         reportDate.ValueChanged += async (_, _) =>
         {
@@ -252,7 +257,7 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         today.Click += async (_, _) =>
         {
             autoRefreshReady = false;
-            reportDate.Value = DateTime.Today;
+            reportDate.Value = BusinessToday;
             autoRefreshReady = true;
             await LoadReportAsync();
         };
@@ -672,9 +677,8 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
             var printableResult =
                 BuildDisplayedResultFromCurrentGrid(result);
 
-            await pdfReports.GeneratePdfAsync(
-                printableResult,
-                dialog.FileName);
+            var pdf = await pdfReports.BuildPdfAsync(printableResult);
+            await File.WriteAllBytesAsync(dialog.FileName, pdf);
 
             if (openAfter)
             {

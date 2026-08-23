@@ -1,3 +1,16 @@
+## v0.5.0-alpha.4
+
+- Selectively merged stronger concurrency/portability foundations found by actual source comparison with the alternate alpha.3.
+- Strengthened import and reversal payload identity beyond that alternate implementation and added regression coverage.
+- Added schema V14, architecture documentation and expanded BT-ARCH-008..015 auditing while retaining Work's accepted reversal UX and packaging fixes.
+
+## v0.5.0-alpha.3
+
+- Added permanent BT-ARCH-008..015 central-service, concurrency and portability gates.
+- Added request-capable user, business clock and client context abstractions while retaining local SQLite adapters.
+- Made the reversal database invariant authoritative under races and removed provider SQL from the shared EF model.
+- Added derived Movement History reversal status and selection-aware Reverse disabling without modifying original ledger Notes.
+
 ## v0.5.0-alpha.1.1
 
 ## v0.5.0-alpha.2

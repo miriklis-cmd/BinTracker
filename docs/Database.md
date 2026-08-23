@@ -1,5 +1,9 @@
 # BinTracker Database
 
+## Schema V14 concurrency foundation
+
+V14 adds optimistic `Revision` tokens, normalized unique Container Type `NameKey`, persisted operation IDs, provenance-only `SourceClientPath`, nullable unique `ImportRun.CurrentCutoverDate`, and import `ClientRequestFingerprint`. SQLite migration SQL remains isolated in Data; PostgreSQL requires its own provider migrations and real integration fixture.
+
 ## ApplicationSettings business information
 
 The singleton `ApplicationSettings` row also stores configurable Business Information:

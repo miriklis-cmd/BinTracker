@@ -29,12 +29,16 @@ public sealed record MovementHistoryReportRow(
     MovementSource Source,
     string Reference,
     string Notes,
-    string EnteredBy)
+    string EnteredBy,
+    long? ReversesMovementId,
+    long? CorrectedByMovementId,
+    string LinkedReversalReference,
+    string CorrectionReason)
 {
     public string DirectionText =>
         Direction == MovementType.Out ? "OUT" : "IN";
 
-    public string SourceText => Source switch
+    public string SourceText => ReversesMovementId.HasValue ? "Reversal" : Source switch
     {
         MovementSource.Manual => "Single Entry",
         MovementSource.Batch => "Batch Entry",
@@ -42,6 +46,14 @@ public sealed record MovementHistoryReportRow(
         MovementSource.Adjustment => "Opening Adjustment",
         _ => Source.ToString()
     };
+
+    public string Status => CorrectedByMovementId.HasValue
+        ? $"Reversed — see {(!string.IsNullOrWhiteSpace(LinkedReversalReference) ? LinkedReversalReference : $"movement #{CorrectedByMovementId}") }"
+        : ReversesMovementId.HasValue
+            ? $"Reversal of #{ReversesMovementId}" + (string.IsNullOrWhiteSpace(CorrectionReason) ? "" : $" — {CorrectionReason}")
+            : "";
+
+    public bool CanReverse => !ReversesMovementId.HasValue && !CorrectedByMovementId.HasValue;
 }
 
 public sealed record MovementHistoryContainerTotal(
@@ -79,14 +91,15 @@ public interface IMovementHistoryReportService
 }
 
 internal sealed class MovementHistoryReportService(
-    IDbContextFactory<BinTrackerDbContext> factory)
+    IDbContextFactory<BinTrackerDbContext> factory,
+    IBusinessClock clock)
     : IMovementHistoryReportService
 {
     public async Task<MovementHistoryReportResult> QueryAsync(
         MovementHistoryReportQuery query,
         CancellationToken cancellationToken = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = clock.Today;
 
         var requestedStart = query.StartDate > today
             ? today
@@ -147,7 +160,13 @@ internal sealed class MovementHistoryReportService(
                 x.Source,
                 Reference = x.ReferenceNumber ?? "",
                 Notes = x.Notes ?? "",
-                EnteredBy = x.CreatedBy ?? ""
+                EnteredBy = x.CreatedBy ?? "",
+                x.ReversesMovementId,
+                x.CorrectedByMovementId,
+                LinkedReversalReference = x.CorrectedByMovement != null
+                    ? x.CorrectedByMovement.ReferenceNumber ?? ""
+                    : "",
+                CorrectionReason = x.CorrectionReason ?? ""
             })
             .ToListAsync(cancellationToken);
 
@@ -174,7 +193,11 @@ internal sealed class MovementHistoryReportService(
                 x.Source,
                 x.Reference,
                 x.Notes,
-                x.EnteredBy))
+                x.EnteredBy,
+                x.ReversesMovementId,
+                x.CorrectedByMovementId,
+                x.LinkedReversalReference,
+                x.CorrectionReason))
             .OrderBy(x => x.MovementDate)
             .ThenBy(x => x.CustomerCode, StringComparer.OrdinalIgnoreCase)
             .ThenBy(x => x.ContainerDisplayOrder)

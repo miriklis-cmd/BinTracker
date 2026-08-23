@@ -6,9 +6,8 @@ namespace BinTracker.Services;
 
 public interface IMovementHistoryReportPdfService
 {
-    Task GeneratePdfAsync(
+    Task<byte[]> BuildPdfAsync(
         MovementHistoryReportResult result,
-        string outputPath,
         bool includeNotes = false,
         CancellationToken cancellationToken = default);
 }
@@ -18,9 +17,8 @@ internal sealed class MovementHistoryReportPdfService(
     IBusinessInformationService businessInformation)
     : IMovementHistoryReportPdfService
 {
-    public async Task GeneratePdfAsync(
+    public async Task<byte[]> BuildPdfAsync(
         MovementHistoryReportResult result,
-        string outputPath,
         bool includeNotes = false,
         CancellationToken cancellationToken = default)
     {
@@ -28,6 +26,7 @@ internal sealed class MovementHistoryReportPdfService(
             await businessInformation.GetAsync(cancellationToken);
 
         QuestPDF.Settings.License = LicenseType.Community;
+        using var output = new MemoryStream();
 
         Document.Create(document =>
         {
@@ -147,7 +146,7 @@ internal sealed class MovementHistoryReportPdfService(
                         text.TotalPages();
                     });
             });
-        }).GeneratePdf(outputPath);
+        }).GeneratePdf(output);
 
         await audit.WriteAsync(
             "MOVEMENT_HISTORY_REPORT_GENERATED",
@@ -167,9 +166,10 @@ internal sealed class MovementHistoryReportPdfService(
                 result.InQuantity,
                 result.NetQuantity,
                 IncludeNotes = includeNotes,
-                FileName = Path.GetFileName(outputPath)
             },
             cancellationToken: cancellationToken);
+
+        return output.ToArray();
     }
 
     private static void Header(
