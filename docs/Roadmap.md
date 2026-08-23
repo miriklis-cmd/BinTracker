@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.5.0-alpha.5.1**
+Current planning baseline: **v0.5.0-alpha.5.2**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -127,7 +127,7 @@ Still required:
 - [x] **Weekly Movements report** — Monday-to-Sunday Daily Detail + Weekly Overview, This Week/Last Week shortcuts, authoritative Container Type filter, future-date guard/current-week activity-through-today semantics, PDF/Generate & Open and CSV export preserving selected-view sort.
 - [x] **Customer Statement view/print workflow** — shared workflow supports Generate PDF and Generate & Open from Customers; Reports now has a Customer Statement launcher with customer search/selection. Opened PDFs are printable through the Windows PDF viewer.
 - [x] **Daily Movements report** — dedicated responsive report window with today/yesterday shortcuts, customer/container/direction/source filters, physical-movement default, optional opening adjustments, typed sorting, audited PDF and CSV preserving the current grid order.
-- [x] **Movement History report** — integrated full-size main-application page with inclusive date range, customer/container/direction/source filters, opening-adjustment opt-in, future-date guards, quick range shortcuts, responsive readable columns, derived direction/reversal badges, typed sorting, audited PDF and CSV preserving current grid order, and stable customer-code filenames when a customer filter resolves to one customer.
+- [x] **Movement History report** — integrated full-size main-application page with inclusive date range, customer/container/direction/source filters, opening-adjustment opt-in, future-date guards, quick range shortcuts, responsive readable columns, derived direction/reversal badges, explicit Back to Reports navigation, typed sorting, audited PDF and CSV preserving current grid order, and stable customer-code filenames when a customer filter resolves to one customer. Alpha.5.2 corrects the clipped action row and rebalances structured/flexible widths found during alpha.5.1 manual review; Windows/DPI acceptance is pending.
 - [x] **Monthly Summary** — selected-month OUT, IN and net movement totals with customer/container breakdown, This Month/Last Month shortcuts, customer/container/source filters, optional opening adjustments, typed numeric sorting, audited PDF and CSV preserving current grid order.
 - [x] **Daily Print Pack** — selected-date Outstanding Summary + physical Movement Detail in one audited PDF; acceptance testing remains.
 - [x] **Monthly Summary on-screen interaction** — dedicated responsive window with live dropdown/date/checkbox refresh, Customer-on-Enter search and sortable summary grid.
@@ -178,7 +178,6 @@ Required dashboard pass:
 - [x] **Reversal engine smoke accepted:** OUT and IN reversal, immutable history, balance neutrality, audit creation, already-reversed protection and reversal-of-reversal protection passed on Windows. Role policy was then refined to allow Operators for ordinary operational movements and requires targeted re-acceptance.
 - [ ] Add correction-by-replacement workflow where the operator needs to replace incorrect customer/container/date/quantity rather than simply reverse it.
 
-
 ### 5A. Security, Data Integrity & Code Quality Hardening — HARD GATE
 
 This dedicated pre-v1 workstream begins immediately after Movement Correction/Reversal and before Business Information/Branding or Communications. `docs/SecurityHardeningRegister.md` is the authoritative finding ledger for the external code/security audit.
@@ -223,7 +222,6 @@ Still required:
 - [ ] Audit reminder runs and sends.
 - [ ] Decide whether statements can be attached/linked in email reminders.
 
-
 ## Priority 3 — production hardening before v1.0
 
 ### 7. Production backup / restore / recovery
@@ -264,7 +262,6 @@ Before simultaneous multi-computer production use:
 
 - [ ] **PostgreSQL readiness audit** — inventory SQLite-specific SQL, PRAGMA/schema migration code, local-file assumptions, backup/reset tooling and provider-specific tests before introducing the central provider.
 - [ ] Keep Services + `IDbContextFactory<BinTrackerDbContext>` as the business/data-access boundary; do not add a generic Repository layer merely for PostgreSQL migration.
-
 - [ ] Decide whether PostgreSQL remains the target central provider.
 - [ ] Implement/test central database provider.
 - [ ] Concurrency and locking tests.
@@ -296,7 +293,6 @@ Do after the functional/data-integrity items above unless a defect blocks use.
 - [ ] Security/hardening review completed.
 - [ ] Installer/upgrade tested.
 
-
 ## Post-v1.0 / commercial roadmap
 
 ### BinTracker Windows UI v2 / WinUI 3 evaluation
@@ -305,7 +301,6 @@ Do after the functional/data-integrity items above unless a defect blocks use.
 - [ ] Compare WinForms vs WinUI 3 for responsive/high-DPI layout, modern controls/styling, dashboard/chart interaction, drill-through/navigation, accessibility and long-term maintainability.
 - [ ] Treat this as an evaluation gate, **not** a predetermined rewrite.
 - [ ] If WinForms remains fit for purpose, keep it. If WinUI 3 provides enough concrete benefit to justify migration cost/risk, create a separate Windows UI v2 implementation roadmap.
-
 
 - **Customer-list-only import mode**: support names-only, code + name, CSV/XLSX customer masters and custom workbook sources.
 - **Explicit import intent**: Customers only; Customers + opening balances; Full migration (customers + balances + movements). Customer-only mode reuses matching/normalisation/merge preview but does not require container mapping, B/Fwd, OUT/IN or balance reconciliation.
@@ -324,8 +319,6 @@ Do after the functional/data-integrity items above unless a defect blocks use.
 - [ ] Customer web portal.
 - [ ] Barcode scanning.
 - [ ] Multiple depots.
-
-
 
 ## Historical requirements audit — 16 August 2026
 
@@ -362,11 +355,9 @@ These are not allowed to disappear merely because a later roadmap summary is sho
 
 Milestone numbering follows scope. Substantial workstreams may receive their own `0.x.0` milestone rather than being forced into a fixed number of phases. Dashboard is a likely candidate for its own milestone because it may involve experimentation and multiple iterations.
 
-
 ### Report interaction standard
 
 Detailed report windows treat the on-screen dataset as the operator's printable view: supported column sorting is type-correct, and PDF generation preserves the current displayed order. This standard should be reused by subsequent report windows.
-
 
 ### Interactive report live-filter standard
 
@@ -376,46 +367,37 @@ Outstanding Containers, Daily Movements, Weekly Movements and Movement History u
 
 Detailed report windows treat the current grid order as the operator's chosen report view. PDF and CSV outputs preserve that displayed order. Reuse this rule for future report windows.
 
-
 ### Daily Movements print options
 
 Daily Movements supports optional exported Notes. Notes stay out of PDF and CSV by default to preserve compact operational output, but can be included explicitly when investigation/detail is required.
-
 
 ### Daily Movements adjustment UX
 
 Daily Movements uses a single explicit opening-adjustment control. Opening Adjustment is not duplicated in the Source selector.
 
-
 ### Daily Movements control layout standard
 
 Daily Movements uses separate auto-sized Filter, Options and Actions rows. Reuse this structure when later report windows have enough controls that DPI wrapping could obscure actions.
-
 
 ### Weekly Movements views
 
 Weekly Movements keeps detailed and aggregated use cases together: **Daily Detail** for individual transactions and **Weekly Overview** for Customer/Container OUT, IN and Net totals. PDF/CSV follow the selected view.
 
-
 ### Weekly actual-history semantics
 
 Weekly Movements is explicitly historical/actual reporting: future dates are unavailable, current-week data stops at today, and configured Container Types drive filtering. Predictive future weeks remain reserved for later forecasting/analytics work.
-
 
 ### Mandatory per-build audit discipline
 
 The full audit is part of **every** build, not a periodic cleanup task. No candidate is considered complete until code/state, all Markdown files, roadmap coverage, version references, specifications, known issues, tech debt, test requirements, changelog and current release notes have been reconciled.
 
-
 ### BinTracker product branding
 
 The supplied fish/ice/yellow-bin artwork is the BinTracker **product** identity. v1 uses it for the Windows application icon and restrained in-app branding. This remains separate from the pre-v1 Business Information logo/custom-header system, which brands the operator's own business reports/emails. WinUI 3 v2 can revisit richer product-brand presentation.
 
-
 ### Application branding consistency
 
 BinTracker product icon/logo is now treated as application-shell infrastructure: all Forms inherit the executable icon, while the sidebar displays the product logo. Future Business Information branding remains a separate customer/business-output system.
-
 
 ### Requirements register governance
 
