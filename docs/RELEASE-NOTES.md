@@ -1,5 +1,29 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.5.6.2
+
+- Removes duplicate standalone report title/header blocks from embedded Option-B report pages, eliminating the wasted white band visible in Outstanding Containers.
+- Preserves each report's explanatory sentence by rendering it as the MainForm shell subtitle directly beneath the single page title.
+- Embedded header detection now accepts legacy headings that extend the page name, including `Outstanding Containers — As of Date`, rather than requiring an exact title match.
+- Applies consistently to Outstanding Containers, Daily Movements, Weekly Movements, Customer Statement and Monthly Summary; Movement History keeps its already-native integrated layout.
+- Permanent BT-RPT-001/018 source gate now requires compact legacy-header suppression and rejects regression to breakout windows.
+
+## v0.5.0-alpha.5.6.1
+
+- Corrects the BT-HIST-002..006 permanent source audit after alpha.5.6 moved Movement History onto the shared Option-B `OpenEmbeddedReport(...)` host.
+- The Movement History gate now verifies the shared embedded-host invariants (`TopLevel = false`, borderless Fill docking, host insertion/show and Reports breadcrumb) instead of requiring the removed pre-alpha.5.6 `activeMovementHistoryPage.Show()` / direct `SetPage(...)` implementation.
+- All Movement History-specific responsive-column, badge, tooltip, customer-aware filename and Status export checks remain enforced.
+- No report runtime/business behavior is changed from alpha.5.6.
+
+## v0.5.0-alpha.5.6
+
+- Implements the accepted v1 Option-B Reports architecture across all detailed reports.
+- Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Customer Statement and Monthly Summary now open inside the main BinTracker workspace.
+- Every integrated report uses the shared clickable `Reports › <Report Name>` shell breadcrumb; breakout report windows are removed from the Reports launch path.
+- Existing report services, filters, sorting, PDF/CSV generation, auditing and business logic are preserved. Legacy internal report headings are hidden when embedded to avoid duplicate titles, and standalone Close buttons are hidden because the breadcrumb is the return navigation.
+- BT-RPT-001 and BT-RPT-018 are reconciled to the integrated architecture; the permanent audit now rejects regression to breakout report windows.
+- Windows visual/interaction smoke acceptance remains required for each migrated report.
+
 ## v0.5.0-alpha.5.5.3
 
 - Replaces Movement History's standalone `← Reports` content-row button with a shell-level `Reports › Movement History` breadcrumb in the main page header; Reports is clickable and returns to the Reports landing hub.

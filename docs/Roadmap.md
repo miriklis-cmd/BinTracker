@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.5.0-alpha.5.5.3**
+Current planning baseline: **v0.5.0-alpha.5.6.2**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -109,7 +109,7 @@ Already implemented:
 ### 3. Reports
 
 - [x] **v1 report-hosting decision — Option B / hub-and-page:** Reports landing page remains the discovery hub. Detailed reports are to open inside the main BinTracker workspace and use a shell-level `Reports › <Report Name>` breadcrumb to return to the hub. Movement History is the first implemented reference page; migrate the other detailed reports as a controlled follow-up without changing accepted report business/export behavior. Market Floor remains an inline quick-report action on the hub.
-- [ ] **Migrate remaining detailed reports to the v1 workspace pattern** — Outstanding Containers, Daily Movements, Weekly Movements, Customer Statement and Monthly Summary should move from floating report windows into the main workspace with the shared report breadcrumb, preserving single-report state, filters, sorting, PDF/CSV/audit behavior and accepted layouts.
+- [x] **Migrate remaining detailed reports to the v1 workspace pattern — IMPLEMENTED, acceptance pending:** Outstanding Containers, Daily Movements, Weekly Movements, Customer Statement and Monthly Summary now open in the main workspace with the shared report breadcrumb. Existing report filters, sorting, PDF/CSV/audit behavior and accepted business logic are preserved; Windows visual/interaction smoke acceptance is required.
 - [x] **Option C tabled for post-WinForms discussion** — a persistent fully integrated Reports workspace with internal report navigation is not a v1 WinForms requirement. Revisit it when evaluating WinUI 3 or another replacement UI.
 
 Implemented:

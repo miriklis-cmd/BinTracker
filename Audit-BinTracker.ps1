@@ -433,10 +433,14 @@ if ($movementHistoryServiceText -notmatch 'Reversed — see' -or $movementHistor
 
 # Integrated Movement History presentation/export gate (BT-HIST-002..006).
 $movementHistoryFileNameText = Get-Content -Raw 'src/BinTracker.Services/MovementHistoryExportFileName.cs'
-if ($mainFormText -notmatch 'SetPage\(\s*"Movement History"' -or
-    $mainFormText -notmatch 'TopLevel = false' -or
-    $mainFormText -notmatch 'FormBorderStyle = FormBorderStyle\.None' -or
-    $mainFormText -notmatch 'activeMovementHistoryPage\.Show\(\)' -or
+if ($mainFormText -notmatch 'OpenEmbeddedReport\(\s*"Movement History"' -or
+    $mainFormText -notmatch 'new MovementHistoryReportForm\(' -or
+    $mainFormText -notmatch 'private void OpenEmbeddedReport\(' -or
+    $mainFormText -notmatch 'report\.TopLevel = false' -or
+    $mainFormText -notmatch 'report\.FormBorderStyle = FormBorderStyle\.None' -or
+    $mainFormText -notmatch 'report\.Dock = DockStyle\.Fill' -or
+    $mainFormText -notmatch 'content\.Controls\.Add\(report\)' -or
+    $mainFormText -notmatch 'report\.Show\(\)' -or
     $mainFormText -notmatch 'reportsBreadcrumbLink\.Text = "Reports"' -or
     $mainFormText -notmatch 'breadcrumbSeparator\.Text = "›"' -or
     $mainFormText -notmatch 'pageBreadcrumb\.Visible = showReportsBreadcrumb' -or
@@ -467,6 +471,34 @@ if ($mainFormText -notmatch 'SetPage\(\s*"Movement History"' -or
     $correctionUiText -notmatch 'Reference,Status' -or
     (Get-Content -Raw 'src/BinTracker.Services/MovementHistoryReportPdfService.cs') -notmatch 'Header\(table, "Status"\)') {
     Fail 'BT-HIST-002..006 source gate failed: integrated layout, responsive columns, badges/tooltips or stable customer-code export naming is incomplete.'
+}
+
+
+# v1 Reports Option-B integrated workspace gate (BT-RPT-001 / BT-RPT-018).
+$reportsMainText = Get-Content -Raw 'src/BinTracker.WinForms/MainForm.cs'
+$requiredIntegratedReports = @(
+    'Outstanding Containers',
+    'Daily Movements',
+    'Weekly Movements',
+    'Movement History',
+    'Customer Statement',
+    'Monthly Summary'
+)
+foreach ($reportName in $requiredIntegratedReports) {
+    if ($reportsMainText -notmatch [regex]::Escape('"' + $reportName + '"')) {
+        Fail "BT-RPT-018 source gate failed: missing integrated report page: $reportName"
+    }
+}
+if ($reportsMainText -notmatch 'private void OpenEmbeddedReport\(' -or
+    $reportsMainText -notmatch 'showReportsBreadcrumb: true' -or
+    $reportsMainText -notmatch 'report\.TopLevel = false' -or
+    $reportsMainText -notmatch 'report\.FormBorderStyle = FormBorderStyle\.None' -or
+    $reportsMainText -notmatch 'report\.Dock = DockStyle\.Fill' -or
+    $reportsMainText -notmatch 'HideEmbeddedReportChrome' -or
+    $reportsMainText -notmatch 'label\.Text\.StartsWith\(' -or
+    $reportsMainText -notmatch 'label\.Parent\.Visible = false' -or
+    $reportsMainText -match '\.Show\(this\);') {
+    Fail 'BT-RPT-001/018 source gate failed: detailed reports must use the integrated main-workspace host and shared breadcrumb rather than breakout windows.'
 }
 
 Write-Host "Audit passed: $expected; $($reqRows.Count) permanent requirement IDs; $($mdFiles.Count) Markdown files; current-state contradiction checks passed." -ForegroundColor Green

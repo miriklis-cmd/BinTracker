@@ -1,5 +1,30 @@
 # Documentation Audit Record
 
+## v0.5.0-alpha.5.6.2 embedded report header cleanup
+
+- [x] Operator screenshot identified duplicate `Outstanding Containers` / `Outstanding Containers — As of Date` headings and wasted vertical space.
+- [x] Explanatory sentence retained in the shell subtitle.
+- [x] Legacy standalone title/header block suppressed for all newly embedded detailed reports.
+- [x] Permanent Option-B source gate strengthened for this presentation contract.
+- [ ] Windows build/test/audit and visual smoke acceptance remain required.
+
+## v0.5.0-alpha.5.6.1 BT-HIST audit reconciliation
+
+- [x] Alpha.5.6 Windows source audit correctly exposed a stale Movement History host-pattern assertion.
+- [x] Root cause identified: Movement History now uses the shared Option-B `OpenEmbeddedReport(...)` host, while the older gate still required the removed typed-page launch implementation.
+- [x] Gate updated to verify shared host invariants without weakening Movement History-specific layout/export protections.
+- [ ] Windows source audit/build/test and integrated-report visual smoke acceptance remain required.
+
+## v0.5.0-alpha.5.6 integrated Reports implementation
+
+- [x] Hard-gate review of Roadmap and RequirementsAcceptanceRegister completed before implementation.
+- [x] v1 Option B applied to Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Customer Statement and Monthly Summary.
+- [x] Reports landing page remains the hub; Market Floor remains inline.
+- [x] Shared shell breadcrumb is the report return navigation.
+- [x] Existing report business/export/audit behavior preserved; integration changes are hosting/chrome changes.
+- [x] BT-RPT-001/018 and ReportsArchitectureTests reconciled.
+- [ ] Windows source audit/build/test and per-report visual/interaction smoke acceptance remain required.
+
 ## v0.5.0-alpha.5.5.3 report-breadcrumb decision
 
 - [x] Operator accepted the alpha.5.5.2 Movement History compact maximised layout and chose not to pursue Date truncation or narrow-window WinForms redesign now.

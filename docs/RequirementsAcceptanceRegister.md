@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.5.0-alpha.5.5.3**
+Current baseline: **v0.5.0-alpha.5.6.2**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -172,7 +172,7 @@ Provenance tags:
 
 | ID | Scope | Status | Requirement | Provenance |
 |---|---|---|---|---|
-| BT-RPT-001 | v1 | IMPLEMENTED-ACCEPTED | Reports launcher keeps Market Floor first/inline; detailed reports use dedicated breakout windows. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-RPT-001 | v1 | IMPLEMENTED-STATIC | Reports launcher keeps Market Floor first/inline; detailed report launchers open integrated main-workspace report pages rather than breakout windows. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-RPT-002 | v1 | IMPLEMENTED-STATIC | Detailed breakout reports are single-instance and responsive to laptop/large monitor working area. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-RPT-003 | v1 | IMPLEMENTED-STATIC | Interactive reports remove separate Run Report button: date/dropdown/checkbox changes refresh live; Customer text applies on Enter with visible cue. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-RPT-004 | v1 | IMPLEMENTED-STATIC | Numeric report columns sort numerically rather than lexicographically. | CHAT-SURFACED,CURRENT-DOC,CODE |
@@ -189,7 +189,7 @@ Provenance tags:
 | BT-RPT-015 | v1 | IMPLEMENTED-ACCEPTED | Outstanding Containers keeps the Balance selector fully readable at supported DPI and provides trial multi-column grid sorting: click sets the primary sort and Shift+click adds/toggles secondary or later sort columns while preserving the displayed order in PDF/CSV snapshots. | USER-REQUEST,CODE,USER-ACCEPTED |
 | BT-RPT-016 | v1 | IMPLEMENTED-STATIC | All applicable report grids provide consistent type-aware multi-column sorting: click sets a primary sort, Shift+click adds/toggles later sort levels, numeric quantities/positions sort by their true business value rather than display text (including CREDIT as negative and OUT as positive), report dates sort chronologically, active sorts persist across report refreshes, and each grid displays an on-screen usage hint; Outstanding Containers keeps its filter/action controls fully visible at supported DPI. | USER-APPROVED,CODE |
 | BT-RPT-017 | v1 | IMPLEMENTED-STATIC | Every active sort on an applicable report grid visibly identifies both direction and sort priority in the column header (for example ▲1/▼1 and ▲2/▼2). The indication must remain visible at supported DPI, including narrow text columns such as Direction, must stay on a single header line without sort-driven header/grid height or column-width changes, and must not depend solely on the WinForms native sort glyph. | CODE |
-| BT-RPT-018 | v1 | PLANNED-V1 | Reports landing page remains the v1 hub. Detailed reports migrated into the main workspace use a shell-level `Reports › <Report Name>` breadcrumb with clickable Reports parent navigation; the report content must not duplicate a standalone Back/Close row. Movement History is the first implemented reference. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-RPT-018 | v1 | IMPLEMENTED-STATIC | Reports landing page remains the v1 hub. Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Customer Statement and Monthly Summary open inside the main workspace using a shell-level `Reports › <Report Name>` breadcrumb with clickable Reports parent navigation; embedded report chrome does not duplicate standalone Back/Close navigation. | CHAT-SURFACED,CURRENT-DOC,CODE |
 
 ## Market Floor / Outstanding / movements / statements / summaries
 

@@ -17,12 +17,7 @@ public sealed class MainForm : BinTrackerForm
     private readonly Dictionary<string, Panel> navByPage = new(StringComparer.OrdinalIgnoreCase);
     private CustomersView? activeCustomersView;
     private ContainerTypesForm? activeContainerTypesForm;
-    private MovementHistoryReportForm? activeMovementHistoryPage;
-    private OutstandingContainersReportForm? outstandingReportForm;
-    private DailyMovementsReportForm? dailyMovementsReportForm;
-    private WeeklyMovementsReportForm? weeklyMovementsReportForm;
-    private CustomerStatementReportForm? customerStatementReportForm;
-    private MonthlySummaryReportForm? monthlySummaryReportForm;
+    private Form? activeReportPage;
     private bool bypassCustomerClosePrompt;
     private readonly UserSession session;
     private readonly IBusinessClock clock;
@@ -695,103 +690,48 @@ public sealed class MainForm : BinTrackerForm
 
     private void OpenOutstandingReport()
     {
-        if (outstandingReportForm is not null &&
-            !outstandingReportForm.IsDisposed)
-        {
-            if (outstandingReportForm.WindowState ==
-                FormWindowState.Minimized)
-            {
-                outstandingReportForm.WindowState =
-                    FormWindowState.Normal;
-            }
-
-            outstandingReportForm.BringToFront();
-            outstandingReportForm.Activate();
-            return;
-        }
-
-        outstandingReportForm =
+        OpenEmbeddedReport(
+            "Outstanding Containers",
+            "Shows customer/container position at the end of the selected date. Container types for the same customer stay together. Future movements do not affect a historical result.",
             new OutstandingContainersReportForm(
                 outstandingReports,
                 outstandingReportPdfs,
                 containerTypes,
                 audit,
-                clock);
-
-        outstandingReportForm.FormClosed += (_, _) =>
-        {
-            outstandingReportForm = null;
-        };
-
-        outstandingReportForm.Show(this);
+                clock));
     }
 
     private void OpenDailyMovementsReport()
     {
-        if (dailyMovementsReportForm is not null &&
-            !dailyMovementsReportForm.IsDisposed)
-        {
-            if (dailyMovementsReportForm.WindowState ==
-                FormWindowState.Minimized)
-            {
-                dailyMovementsReportForm.WindowState =
-                    FormWindowState.Normal;
-            }
-
-            dailyMovementsReportForm.BringToFront();
-            dailyMovementsReportForm.Activate();
-            return;
-        }
-
-        dailyMovementsReportForm =
+        OpenEmbeddedReport(
+            "Daily Movements",
+            "Physical IN/OUT activity for one day. Opening adjustments are excluded by default and can be included explicitly.",
             new DailyMovementsReportForm(
                 dailyMovementReports,
                 dailyMovementReportPdfs,
                 containerTypes,
                 audit,
-                clock);
-
-        dailyMovementsReportForm.FormClosed += (_, _) =>
-        {
-            dailyMovementsReportForm = null;
-        };
-
-        dailyMovementsReportForm.Show(this);
+                clock));
     }
 
     private void OpenWeeklyMovementsReport()
     {
-        if (weeklyMovementsReportForm is not null &&
-            !weeklyMovementsReportForm.IsDisposed)
-        {
-            if (weeklyMovementsReportForm.WindowState == FormWindowState.Minimized)
-                weeklyMovementsReportForm.WindowState = FormWindowState.Normal;
-
-            weeklyMovementsReportForm.BringToFront();
-            weeklyMovementsReportForm.Activate();
-            return;
-        }
-
-        weeklyMovementsReportForm =
-            new WeeklyMovementsReportForm(weeklyMovementReports, weeklyMovementReportPdfs, containerTypes, audit, clock);
-
-        weeklyMovementsReportForm.FormClosed += (_, _) =>
-        {
-            weeklyMovementsReportForm = null;
-        };
-
-        weeklyMovementsReportForm.Show(this);
+        OpenEmbeddedReport(
+            "Weekly Movements",
+            "Monday-to-Sunday reporting. Daily Detail shows every movement; Weekly Overview totals OUT and IN by customer/container.",
+            new WeeklyMovementsReportForm(
+                weeklyMovementReports,
+                weeklyMovementReportPdfs,
+                containerTypes,
+                audit,
+                clock));
     }
 
     private void OpenMovementHistoryReport()
     {
-        SetPage(
+        OpenEmbeddedReport(
             "Movement History",
             "Search, export and reverse saved movements without leaving the main BinTracker workspace.",
-            showReportsBreadcrumb: true);
-        content.AutoScroll = false;
-
-        activeMovementHistoryPage =
             new MovementHistoryReportForm(
                 movementHistoryReports,
                 movementHistoryReportPdfs,
@@ -799,79 +739,91 @@ public sealed class MainForm : BinTrackerForm
                 audit,
                 movementCorrections,
                 session,
-                clock)
-            {
-                TopLevel = false,
-                FormBorderStyle = FormBorderStyle.None,
-                Dock = DockStyle.Fill
-            };
-
-        content.Controls.Add(activeMovementHistoryPage);
-        activeMovementHistoryPage.Show();
+                clock),
+            hideInternalHeader: false);
     }
 
     private void OpenCustomerStatementReport()
     {
-        if (customerStatementReportForm is not null &&
-            !customerStatementReportForm.IsDisposed)
-        {
-            if (customerStatementReportForm.WindowState ==
-                FormWindowState.Minimized)
-            {
-                customerStatementReportForm.WindowState =
-                    FormWindowState.Normal;
-            }
-
-            customerStatementReportForm.BringToFront();
-            customerStatementReportForm.Activate();
-            return;
-        }
-
-        customerStatementReportForm =
+        OpenEmbeddedReport(
+            "Customer Statement",
+            "Select a customer, then generate or open a statement for the required period.",
             new CustomerStatementReportForm(
                 customers,
                 statementReports,
-                clock);
-
-        customerStatementReportForm.FormClosed += (_, _) =>
-        {
-            customerStatementReportForm = null;
-        };
-
-        customerStatementReportForm.Show(this);
+                clock));
     }
 
     private void OpenMonthlySummaryReport()
     {
-        if (monthlySummaryReportForm is not null &&
-            !monthlySummaryReportForm.IsDisposed)
-        {
-            if (monthlySummaryReportForm.WindowState ==
-                FormWindowState.Minimized)
-            {
-                monthlySummaryReportForm.WindowState =
-                    FormWindowState.Normal;
-            }
-
-            monthlySummaryReportForm.BringToFront();
-            monthlySummaryReportForm.Activate();
-            return;
-        }
-
-        monthlySummaryReportForm =
+        OpenEmbeddedReport(
+            "Monthly Summary",
+            "Monthly OUT, IN and net movement totals by customer and container. Opening adjustments are excluded by default.",
             new MonthlySummaryReportForm(
                 monthlySummaryReports,
                 monthlySummaryReportPdfs,
                 containerTypes,
                 audit,
-                clock);
+                clock));
+    }
 
-        monthlySummaryReportForm.FormClosed += (_, _) =>
+    private void OpenEmbeddedReport(
+        string pageName,
+        string subtitle,
+        Form report,
+        bool hideInternalHeader = true)
+    {
+        SetPage(pageName, subtitle, showReportsBreadcrumb: true);
+        content.AutoScroll = false;
+
+        activeReportPage = report;
+        report.TopLevel = false;
+        report.FormBorderStyle = FormBorderStyle.None;
+        report.Dock = DockStyle.Fill;
+        report.MinimumSize = Size.Empty;
+        report.MaximumSize = Size.Empty;
+
+        if (hideInternalHeader)
+            HideEmbeddedReportChrome(report, pageName);
+
+        content.Controls.Add(report);
+        report.Show();
+    }
+
+    private static void HideEmbeddedReportChrome(
+        Control root,
+        string pageName)
+    {
+        foreach (Control child in root.Controls.Cast<Control>().ToArray())
         {
-            monthlySummaryReportForm = null;
-        };
+            if (child is Button button &&
+                string.Equals(
+                    button.Text,
+                    "Close",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                button.Visible = false;
+                continue;
+            }
 
-        monthlySummaryReportForm.Show(this);
+            if (child is Label label &&
+                label.Font.Size >= 18F &&
+                label.Text.StartsWith(
+                    pageName,
+                    StringComparison.OrdinalIgnoreCase) &&
+                label.Parent is not null)
+            {
+                // The embedded report form still contains the standalone-window
+                // title/description header. The MainForm shell already renders
+                // the single report title and carries the accepted explanation,
+                // so remove this entire legacy header to avoid duplicate titles
+                // and wasted vertical space.
+                label.Parent.Visible = false;
+                continue;
+            }
+
+            HideEmbeddedReportChrome(child, pageName);
+        }
     }
 
     private void ShowSettings()
@@ -1267,10 +1219,10 @@ private async Task<bool> ConfirmCanLeaveActiveCustomerAsync() =>
         string? subtitle = null,
         bool showReportsBreadcrumb = false)
     {
-        if (activeMovementHistoryPage is not null)
+        if (activeReportPage is not null)
         {
-            activeMovementHistoryPage.Dispose();
-            activeMovementHistoryPage = null;
+            activeReportPage.Dispose();
+            activeReportPage = null;
         }
 
         if (activeContainerTypesForm is not null)

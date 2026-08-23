@@ -1,6 +1,6 @@
 # BinTracker Architecture
 
-Current baseline: **v0.5.0-alpha.5.5.3**
+Current baseline: **v0.5.0-alpha.5.6.2**
 
 ## Permanent target and hard gate
 

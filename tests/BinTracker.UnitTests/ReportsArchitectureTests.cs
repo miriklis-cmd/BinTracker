@@ -5,19 +5,20 @@ namespace BinTracker.UnitTests;
 public sealed class ReportsArchitectureTests
 {
     [Fact]
-    public void Reports_architecture_contract_is_launcher_based()
+    public void Reports_architecture_contract_is_hub_and_integrated_pages()
     {
-        // Architecture guard/documentation test. Functional report maths is
-        // covered by OutstandingReportSqliteTests. The WinForms smoke test
-        // verifies single-instance window/page behaviour.
+        // v1 Option B: Reports remains the discovery hub; detailed reports
+        // render inside the main workspace with shared breadcrumb navigation.
         const bool marketFloorRemainsInline = true;
-        const bool detailedReportsUseDedicatedSurfaces = true;
-        const bool movementHistoryUsesMainWorkspace = true;
-        const bool duplicateReportSurfacesArePrevented = true;
+        const bool reportsLandingRemainsHub = true;
+        const bool detailedReportsUseMainWorkspace = true;
+        const bool sharedReportsBreadcrumbIsRequired = true;
+        const bool optionCPersistentWorkspaceIsPostWinForms = true;
 
         Assert.True(marketFloorRemainsInline);
-        Assert.True(detailedReportsUseDedicatedSurfaces);
-        Assert.True(movementHistoryUsesMainWorkspace);
-        Assert.True(duplicateReportSurfacesArePrevented);
+        Assert.True(reportsLandingRemainsHub);
+        Assert.True(detailedReportsUseMainWorkspace);
+        Assert.True(sharedReportsBreadcrumbIsRequired);
+        Assert.True(optionCPersistentWorkspaceIsPostWinForms);
     }
 }

@@ -1,3 +1,24 @@
+## v0.5.0-alpha.5.6.2
+
+- Removed duplicate embedded report titles and the associated vertical whitespace.
+- Preserved standalone report explanatory text in the MainForm shell subtitle.
+- Changed embedded header matching from exact report-name equality to `StartsWith(pageName)` so report-specific extended titles are correctly suppressed.
+- Strengthened the Option-B source audit for the compact embedded-header contract.
+
+## v0.5.0-alpha.5.6.1
+
+- Reconciled the permanent Movement History source audit with alpha.5.6's shared integrated-report host.
+- Removed stale audit dependence on `activeMovementHistoryPage.Show()` / direct Movement History `SetPage(...)`.
+- Preserved the full BT-HIST responsive layout, badges/tooltips, customer filename and export-status gate coverage.
+- No runtime report behavior changed from alpha.5.6.
+
+## v0.5.0-alpha.5.6
+
+- Integrated Outstanding Containers, Daily Movements, Weekly Movements, Customer Statement and Monthly Summary into MainForm, matching the already-integrated Movement History pattern.
+- Added one shared embedded-report host and retained the accepted `Reports › <Report Name>` breadcrumb convention.
+- Removed breakout-window launch behavior from the Reports hub while preserving report functionality.
+- Updated ReportsArchitectureTests, BT-RPT-001/018 state and the permanent source audit gate.
+
 ## v0.5.0-alpha.5.5.3
 
 - Moved Movement History return navigation into MainForm's page header as `Reports › Movement History`; removed the standalone `← Reports` report-content row.
