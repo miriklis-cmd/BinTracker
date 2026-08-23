@@ -1,19 +1,19 @@
 # BinTracker Active Test Checklist
 
-Current baseline: **v0.5.0-alpha.5.1**
+Current baseline: **v0.5.0-alpha.5.2**
 
 Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
 
-Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete — 8/8 smoke tests passed**. Later candidates must preserve that accepted behaviour; this record does not imply acceptance of later UI/DPI changes.
+Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete — 8/8 smoke tests passed**. Alpha.5.1 also passed the Windows source/build/test gate with **0 warnings / 0 errors and 242/242 automated tests**, but failed Movement History manual UI acceptance because the action row clipped and several columns were too narrow. Alpha.5.2 is the corrective UI candidate.
 
 ## Release / audit / packaging gate
 
 - [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.5.1 and the actually resolved installed SDK.
+- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.5.2 and the actually resolved installed SDK.
 - [ ] Restore succeeds; full solution builds with zero warnings.
 - [ ] All unit tests pass; all integration tests pass.
 - [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
-- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.5.0-alpha.5.1`.
+- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.5.0-alpha.5.2`.
 - [ ] No unexpected `global.json` is packaged.
 
 ## Authentication / users / shell
@@ -97,7 +97,7 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 
 ## Report launcher / common behavior
 
-- [ ] Detailed reports open in dedicated single-instance responsive windows and reuse existing window on repeated Open Report.
+- [ ] Detailed reports normally open in dedicated single-instance responsive windows and reuse existing window on repeated Open Report; Movement History is the current integrated-workspace exception.
 - [ ] Laptop and large-monitor sizing gives available space to data grid; no controls/buttons clipped.
 - [ ] Interactive reports have **no separate Run Report button**.
 - [ ] Date/dropdown/checkbox filters refresh live; Customer filter runs on Enter with visible cue.
@@ -117,7 +117,9 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 - [ ] Weekly Daily Detail + Weekly Overview totals are correct; wrapping never clips actions.
 - [ ] Weekly PDF/CSV match selected view/order and are audited.
 - [ ] Movement History opens as a full-size integrated main-app page; inclusive range/filters/quick ranges/adjustment opt-in work; PDF/CSV are ordered/audited.
-- [ ] At normal maximized desktop width Movement History has no unnecessary horizontal scrollbar; Customer/Status/Notes receive remaining width. Narrow the app and confirm minimum readable columns are preserved before horizontal scrolling appears. Rows remain single-height.
+- [ ] **Alpha.5.2:** `← Back to Reports` is fully visible and returns directly to the Reports launcher.
+- [ ] **Alpha.5.2:** the options/actions region reserves its full DPI-scaled height; Last 7 Days / Last 30 Days / This Month / Generate PDF / Generate & Open / Export CSV / Reverse Selected are fully visible and not clipped.
+- [ ] At normal maximized desktop width Movement History has no unnecessary horizontal scrollbar. Full structured Date values and normal Source labels (including `Excel Import`, `Single Entry`, `Batch Entry`, `Reversal`) remain readable; Direction/Qty stay compact; Status receives first priority for surplus width, followed by Notes and Customer. Narrow the app and confirm useful minimum widths are preserved before horizontal scrolling appears. Rows remain single-height.
 - [ ] IN/OUT cells show restrained green/red badges; reversed originals and reversal rows show amber/orange Status badges. Select each kind of row and confirm text remains readable. Hover truncated Status/Notes and confirm full-text tooltips.
 - [ ] A customer filter resolving to one customer suggests PDF and CSV names containing the sanitized stable customer code; unfiltered and multi-customer results keep generic filenames.
 
@@ -181,7 +183,6 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 - [ ] Installer/upgrade/deployment acceptance.
 - [ ] Full v1 regression/production acceptance.
 
-
 ## alpha.24 Reports landing page
 
 - [ ] Reports header/subtitle matches approved mock-up.
@@ -204,7 +205,6 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 - [ ] Generate PDF shows the small document icon; Generate & Open stays on one line; every Explore Open button shows the full word `Open` without clipping.
 - [ ] Containers is a dedicated left-navigation destination immediately below Customers; no duplicate Container Types administration entry remains in Settings.
 
-
 ## alpha.24.1 Containers navigation
 - [ ] Containers appears immediately below Customers in the left navigation.
 - [ ] Administrator can add, rename, reorder, deactivate/reactivate and save Container Types.
@@ -213,14 +213,12 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 - [ ] Unsaved Administrator edits prompt before navigating away from Containers.
 - [ ] Settings no longer contains a duplicate Container Types button.
 
-
 ## alpha.24.2 Reports layout
 - [ ] Reports page subtitle is fully visible beneath the Reports heading.
 - [ ] Both Quick Reports cards show title, description, date and both buttons without clipping.
 - [ ] All six Explore Reports cards show the complete two-line description.
 - [ ] All six Explore Reports cards show the complete Open footer.
 - [ ] No report card overlaps or clips at the Windows display scaling used for the acceptance workstation.
-
 
 ## alpha.24.2.1 audit gate
 - [ ] Build-BinTracker.bat passes the source/package-state audit.
