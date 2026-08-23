@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.5.0-alpha.5.1**
+Current baseline: **v0.5.0-alpha.5.2**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -70,7 +70,7 @@ Provenance tags:
 | BT-AUD-001 | v1 | IMPLEMENTED-STATIC | Maintain explicit audit-coverage matrix across security, admin, customer, movement, import, report, communications and production actions. | CHAT-SURFACED,CURRENT-DOC |
 | BT-AUD-002 | v1 | IMPLEMENTED-STATIC | PDF report generation is audited for all implemented report types. | CURRENT-DOC,CODE |
 | BT-AUD-003 | v1 | IMPLEMENTED-ACCEPTED | CSV export is audited for Outstanding, Daily, Weekly, Movement History and Monthly Summary. | CHAT-SURFACED,CURRENT-DOC,CODE |
-| BT-AUD-004 | v1 | IMPLEMENTED-STATIC | CSV audit records filename, row count and relevant report/filter context without storing report contents. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-AUD-004 | v1 | IMPLEMENTED-STATIC | CSV audit records filename, row count and relevant report/filter context without storing report contents. | CHAT-SURFACED,CODE |
 | BT-AUD-005 | v1 | IMPLEMENTED-STATIC | If CSV file creation succeeds but audit persistence fails, operator is warned rather than audit loss being silent. | CHAT-SURFACED,CODE |
 | BT-AUD-006 | candidate | NEEDS-CONFIRMATION | Audit Trail screen may need additional filtering/export polish before production. Recovered from early project README; not silently promoted to v1. | HIST-BUILD |
 
@@ -171,7 +171,7 @@ Provenance tags:
 
 | ID | Scope | Status | Requirement | Provenance |
 |---|---|---|---|---|
-| BT-RPT-001 | v1 | IMPLEMENTED-ACCEPTED | Reports launcher keeps Market Floor first/inline; detailed reports use dedicated breakout windows. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-RPT-001 | v1 | IMPLEMENTED-ACCEPTED | Reports launcher keeps Market Floor first/inline; detailed reports normally use dedicated breakout windows; Movement History is the current integrated operational exception. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-RPT-002 | v1 | IMPLEMENTED-STATIC | Detailed breakout reports are single-instance and responsive to laptop/large monitor working area. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-RPT-003 | v1 | IMPLEMENTED-STATIC | Interactive reports remove separate Run Report button: date/dropdown/checkbox changes refresh live; Customer text applies on Enter with visible cue. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-RPT-004 | v1 | IMPLEMENTED-STATIC | Numeric report columns sort numerically rather than lexicographically. | CHAT-SURFACED,CURRENT-DOC,CODE |
@@ -208,8 +208,8 @@ Provenance tags:
 | BT-WEEK-002 | v1 | IMPLEMENTED-STATIC | Weekly contains Daily Detail and Weekly Overview (customer/container OUT, IN, Net) in one report. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-WEEK-003 | v1 | IMPLEMENTED-STATIC | This Week/Last Week shortcuts, configured Container Type filter and audited PDF/CSV follow selected view/order. | CURRENT-DOC,CODE |
 | BT-HIST-001 | v1 | IMPLEMENTED-STATIC | Movement History supports inclusive date range, customer/container/direction/source filters, adjustment opt-in and quick ranges. | CURRENT-DOC,CODE |
-| BT-HIST-002 | v1 | IMPLEMENTED-STATIC | Movement History is an integrated full-size page in the main BinTracker workspace while preserving filters, sorting, export, audit, reversal permissions and sensitive-source restrictions. | CHAT-SURFACED,CURRENT-DOC,CODE |
-| BT-HIST-003 | v1 | IMPLEMENTED-STATIC | Movement History allocates compact structured columns plus flexible Customer/Status/Notes widths; sufficient width fits without horizontal scrolling, while narrow layouts retain readable minimums and scroll. Rows remain single-height and full Status/Notes text is available by tooltip. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-HIST-002 | v1 | IMPLEMENTED-STATIC | Movement History is an integrated full-size page in the main BinTracker workspace, provides an explicit `← Back to Reports` action, and preserves filters, sorting, export, audit, reversal permissions and sensitive-source restrictions. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-HIST-003 | v1 | IMPLEMENTED-STATIC | Movement History reserves complete auto-sized filter/options/action rows so controls cannot clip, keeps structured Date/Code/Type/Container/Direction/Qty/Source/Reference/Entered-by columns at useful compact widths, and allocates surplus width primarily to Status then Notes then Customer; narrow layouts retain readable minimums and scroll. Rows remain single-height and full Status/Notes text is available by tooltip. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-HIST-004 | v1 | IMPLEMENTED-STATIC | Movement History renders restrained green IN, red OUT and amber/orange reversal status badges without changing persisted Notes/status or weakening authoritative service/database checks. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-HIST-005 | v1 | IMPLEMENTED-STATIC | When a non-empty customer filter resolves displayed results to exactly one stable customer identity, PDF and CSV suggested filenames include its Windows-sanitized customer code; unfiltered or multi-customer results retain generic names. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-STMT-001 | v1 | IMPLEMENTED-ACCEPTED | Customer Statement workflow available from both Customers and Reports using one shared implementation. | CHAT-SURFACED,CURRENT-DOC,CODE |
@@ -218,7 +218,7 @@ Provenance tags:
 | BT-MON-001 | v1 | IMPLEMENTED-ACCEPTED | Monthly Summary has selected month, This Month/Last Month, OUT/IN/Net and customer/container breakdown; user acceptance completed on v0.4.0-alpha.24.2.7. | CHAT-SURFACED,CURRENT-DOC,CODE,USER-ACCEPTED |
 | BT-MON-002 | v1 | IMPLEMENTED-ACCEPTED | Monthly filters customer/container/source, optional adjustments, numeric sorting, audited PDF/CSV and activity-through-today semantics; user acceptance completed on v0.4.0-alpha.24.2.7. | CURRENT-DOC,CODE,USER-ACCEPTED |
 | BT-PACK-001 | v1 | IMPLEMENTED-STATIC | Daily Print Pack generates one selected-date PDF: Outstanding Summary first, physical Movement Detail second. | CURRENT-DOC,CODE |
-| BT-PACK-002 | v1 | IMPLEMENTED-STATIC | Daily Print Pack excludes Opening Adjustments from physical movement detail and blocks future dates. | CURRENT-DOC,CODE |
+| BT-PACK-002 | v1 | IMPLEMENTED-STATIC | Daily Print Pack excludes Opening Adjustments from physical Movement Detail and blocks future dates. | CURRENT-DOC,CODE |
 | BT-PACK-003 | v1 | IMPLEMENTED-STATIC | Daily Print Pack supports Generate PDF / Generate & Open and writes one `DAILY_PRINT_PACK_GENERATED` audit event. | CURRENT-DOC,CODE |
 | BT-PACK-004 | v1 | PLANNED-V1 | Daily Print Pack requires real preview/print acceptance before reporting milestone closure. | CURRENT-DOC |
 
