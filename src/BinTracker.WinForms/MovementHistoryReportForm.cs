@@ -204,6 +204,9 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
+        rows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        rows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        rows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         var filters = Flow();
         filters.Controls.Add(ControlLabel("From"));
@@ -233,6 +236,17 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
         var actions = Flow();
         actions.Padding = new Padding(0, 8, 0, 0);
+        actions.MinimumSize = new Size(0, 48);
+
+        var backToReports = new Button
+        {
+            Text = "← Back to Reports",
+            Size = new Size(150, 40),
+            Margin = new Padding(0, 0, 8, 0)
+        };
+        backToReports.Click += (_, _) => ReturnToReports();
+        actions.Controls.Add(backToReports);
+
         actions.Controls.Add(ActionButton(
             "Last 7 Days",
             115,
@@ -313,6 +327,30 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         root.Controls.Add(gridCard, 0, 2);
 
         Controls.Add(root);
+    }
+
+    private void ReturnToReports()
+    {
+        var host = Parent?.FindForm();
+        if (host is null)
+            return;
+
+        var reportsButton = Descendants(host)
+            .OfType<Button>()
+            .FirstOrDefault(button =>
+                string.Equals(button.Text, "Reports", StringComparison.Ordinal));
+
+        reportsButton?.PerformClick();
+    }
+
+    private static IEnumerable<Control> Descendants(Control root)
+    {
+        foreach (Control child in root.Controls)
+        {
+            yield return child;
+            foreach (var descendant in Descendants(child))
+                yield return descendant;
+        }
     }
 
     private async Task InitialiseAsync()
@@ -537,18 +575,18 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     private void ConfigureGrid()
     {
         grid.RowTemplate.Height = 30;
-        grid.Columns.Add(Column("Date", 130, 120, "Date"));
-        grid.Columns.Add(Column("Code", 110, 90, "Code"));
-        grid.Columns.Add(Column("Customer", 220, 180, "Customer"));
-        grid.Columns.Add(Column("Type", 90, 82, "Type"));
-        grid.Columns.Add(Column("Container", 115, 100, "Container"));
-        grid.Columns.Add(Column("Direction", 125, 120, "Direction"));
-        grid.Columns.Add(Column("Qty", 68, 58, "Quantity"));
-        grid.Columns.Add(Column("Source", 120, 108, "Source"));
-        grid.Columns.Add(Column("Reference", 120, 100, "Reference"));
-        grid.Columns.Add(Column("Status", 225, 225, "Status"));
-        grid.Columns.Add(Column("Notes", 150, 150, "Notes"));
-        grid.Columns.Add(Column("Entered by", 110, 90, "EnteredBy"));
+        grid.Columns.Add(Column("Date", 120, 120, "Date"));
+        grid.Columns.Add(Column("Code", 100, 100, "Code"));
+        grid.Columns.Add(Column("Customer", 170, 160, "Customer"));
+        grid.Columns.Add(Column("Type", 80, 80, "Type"));
+        grid.Columns.Add(Column("Container", 100, 100, "Container"));
+        grid.Columns.Add(Column("Direction", 70, 70, "Direction"));
+        grid.Columns.Add(Column("Qty", 55, 55, "Quantity"));
+        grid.Columns.Add(Column("Source", 100, 100, "Source"));
+        grid.Columns.Add(Column("Reference", 100, 100, "Reference"));
+        grid.Columns.Add(Column("Status", 240, 230, "Status"));
+        grid.Columns.Add(Column("Notes", 160, 140, "Notes"));
+        grid.Columns.Add(Column("Entered by", 95, 95, "EnteredBy"));
 
         grid.SortCompare += Grid_SortCompare;
         grid.CellPainting += Grid_CellPainting;
@@ -574,10 +612,6 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         if (string.IsNullOrWhiteSpace(text))
             return;
 
-        // WinForms annotates both values as nullable because custom painting
-        // can be raised without a resolved style or graphics surface. A badge
-        // cannot be rendered safely in that state, so retain the grid's normal
-        // painting instead of dereferencing either value.
         var cellStyle = e.CellStyle;
         var graphics = e.Graphics;
         if (cellStyle is null || graphics is null)
@@ -854,15 +888,15 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         {
             var fixedWidths = new Dictionary<string, int>(StringComparer.Ordinal)
             {
-                ["Date"] = 130,
-                ["Code"] = 110,
-                ["Type"] = 90,
-                ["Container"] = 115,
-                ["Direction"] = 125,
-                ["Quantity"] = 68,
-                ["Source"] = 120,
-                ["Reference"] = 120,
-                ["EnteredBy"] = 110
+                ["Date"] = 120,
+                ["Code"] = 100,
+                ["Type"] = 80,
+                ["Container"] = 100,
+                ["Direction"] = 70,
+                ["Quantity"] = 55,
+                ["Source"] = 100,
+                ["Reference"] = 100,
+                ["EnteredBy"] = 95
             };
 
             foreach (var pair in fixedWidths)
@@ -878,9 +912,9 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             var fixedTotal = fixedWidths.Values.Sum();
             var flexible = new[]
             {
-                (Name: "Customer", Minimum: 180, Weight: 0.38),
-                (Name: "Status", Minimum: 225, Weight: 0.37),
-                (Name: "Notes", Minimum: 150, Weight: 0.25)
+                (Name: "Customer", Minimum: 160, Weight: 0.20),
+                (Name: "Status", Minimum: 230, Weight: 0.45),
+                (Name: "Notes", Minimum: 140, Weight: 0.35)
             };
             var minimumFlexibleTotal = flexible.Sum(item => item.Minimum);
             var minimumTotal = fixedTotal + minimumFlexibleTotal;
