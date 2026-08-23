@@ -1,6 +1,6 @@
 # BinTracker Architecture
 
-Current baseline: **v0.5.0-alpha.5.1**
+Current baseline: **v0.5.0-alpha.5.2**
 
 ## Permanent target and hard gate
 
@@ -30,5 +30,9 @@ Imports cross the service boundary as `ImportSourceDocument` content plus safe m
 - Single Entry, Batch Entry, reversal and import persist client operation IDs. A retry returns the existing result only when the canonical payload identity matches; reuse with a different payload is rejected.
 - Reversal and import uniqueness constraints are authoritative under races.
 - Authentication counters and account/credential mutations use conditional or atomic database updates.
+
+## Movement History host/navigation
+
+Movement History remains the deliberate integrated-report exception in the main BinTracker workspace because it also provides the operational reversal surface. The integrated page provides an explicit **← Back to Reports** action, keeps filter/options/action rows fully auto-sized so DPI wrapping cannot clip actions, and gives the result grid the remaining vertical space. Structured columns remain compact/readable; Status receives first priority for surplus width, followed by Notes and Customer. Horizontal scrolling is allowed when the host is genuinely too narrow rather than crushing columns below useful minimums.
 
 Moving to PostgreSQL still requires an API host, provider/schema migrations, authentication/authorization deployment, central backup/monitoring and real PostgreSQL integration tests. It must not require rewriting accepted business, reversal, import, report or audit semantics.
