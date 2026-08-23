@@ -60,7 +60,7 @@ foreach ($row in $reqRows) {
     if ($allowedScopes -notcontains $row.Scope) { Fail "Invalid requirement scope for $($row.Id): $($row.Scope)" }
     if ($allowedStatuses -notcontains $row.Status) { Fail "Invalid requirement status for $($row.Id): $($row.Status)" }
 }
-$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-CORR-001','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015')
+$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-RPT-018','BT-UI-014','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-CORR-001','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-HIST-006','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015')
 foreach ($id in $mustHaveIds) { if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost mandatory ID: $id" } }
 
 # Permanent central-service / concurrency portability gate (BT-ARCH-008..015).
@@ -431,12 +431,27 @@ if ($movementHistoryServiceText -notmatch 'Reversed — see' -or $movementHistor
     Fail 'Movement History reversal Status/Source and disabled-action UX is incomplete.'
 }
 
-# Integrated Movement History presentation/export gate (BT-HIST-002..005).
+# Integrated Movement History presentation/export gate (BT-HIST-002..006).
 $movementHistoryFileNameText = Get-Content -Raw 'src/BinTracker.Services/MovementHistoryExportFileName.cs'
 if ($mainFormText -notmatch 'SetPage\(\s*"Movement History"' -or
     $mainFormText -notmatch 'TopLevel = false' -or
     $mainFormText -notmatch 'FormBorderStyle = FormBorderStyle\.None' -or
     $mainFormText -notmatch 'activeMovementHistoryPage\.Show\(\)' -or
+    $mainFormText -notmatch 'reportsBreadcrumbLink\.Text = "Reports"' -or
+    $mainFormText -notmatch 'breadcrumbSeparator\.Text = "›"' -or
+    $mainFormText -notmatch 'pageBreadcrumb\.Visible = showReportsBreadcrumb' -or
+    $mainFormText -notmatch 'showReportsBreadcrumb: true' -or
+    $correctionUiText -notmatch 'RowCount = 5' -or
+    $correctionUiText -notmatch 'root\.Controls\.Add\(filters, 0, 0\)' -or
+    $correctionUiText -notmatch 'root\.Controls\.Add\(options, 0, 1\)' -or
+    $correctionUiText -notmatch 'root\.Controls\.Add\(actions, 0, 2\)' -or
+    $correctionUiText -notmatch 'root\.Controls\.Add\(summaryCard, 0, 3\)' -or
+    $correctionUiText -notmatch 'root\.Controls\.Add\(gridCard, 0, 4\)' -or
+    $correctionUiText -match '← Reports' -or
+    $correctionUiText -match 'controlsCard' -or
+    $correctionUiText -notmatch 'actions\.MinimumSize = new Size\(0, 52\)' -or
+    $correctionUiText -notmatch 'actions\.WrapContents = true' -or
+    $correctionUiText -notmatch 'FilterGroup' -or
     $correctionUiText -notmatch 'AllocateResponsiveColumns' -or
     $correctionUiText -notmatch 'available < minimumTotal' -or
     $correctionUiText -notmatch 'grid\.Resize' -or
@@ -448,8 +463,10 @@ if ($mainFormText -notmatch 'SetPage\(\s*"Movement History"' -or
     $correctionUiText -notmatch 'Cells\["Notes"\]\.ToolTipText' -or
     $correctionUiText -notmatch 'MovementHistoryExportFileName\.Build' -or
     $movementHistoryFileNameText -notmatch 'ResolveSingleCustomerCode' -or
-    $movementHistoryFileNameText -notmatch 'SanitizeWindowsSegment') {
-    Fail 'BT-HIST-002..005 source gate failed: integrated layout, responsive columns, badges/tooltips or stable customer-code export naming is incomplete.'
+    $movementHistoryFileNameText -notmatch 'SanitizeWindowsSegment' -or
+    $correctionUiText -notmatch 'Reference,Status' -or
+    (Get-Content -Raw 'src/BinTracker.Services/MovementHistoryReportPdfService.cs') -notmatch 'Header\(table, "Status"\)') {
+    Fail 'BT-HIST-002..006 source gate failed: integrated layout, responsive columns, badges/tooltips or stable customer-code export naming is incomplete.'
 }
 
 Write-Host "Audit passed: $expected; $($reqRows.Count) permanent requirement IDs; $($mdFiles.Count) Markdown files; current-state contradiction checks passed." -ForegroundColor Green

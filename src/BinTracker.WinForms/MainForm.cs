@@ -8,6 +8,10 @@ public sealed class MainForm : BinTrackerForm
 {
     private readonly Label title = new();
     private readonly Label pageSubtitle = new();
+    private readonly FlowLayoutPanel pageBreadcrumb = new();
+    private readonly LinkLabel reportsBreadcrumbLink = new();
+    private readonly Label breadcrumbSeparator = new();
+    private readonly Label breadcrumbCurrentPage = new();
     private readonly Panel content = new();
     private Control? selectedNav;
     private readonly Dictionary<string, Panel> navByPage = new(StringComparer.OrdinalIgnoreCase);
@@ -219,19 +223,55 @@ public sealed class MainForm : BinTrackerForm
         pageSubtitle.Margin = Padding.Empty;
         pageSubtitle.Visible = false;
 
+        pageBreadcrumb.AutoSize = true;
+        pageBreadcrumb.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        pageBreadcrumb.FlowDirection = FlowDirection.LeftToRight;
+        pageBreadcrumb.WrapContents = false;
+        pageBreadcrumb.Margin = Padding.Empty;
+        pageBreadcrumb.Padding = Padding.Empty;
+        pageBreadcrumb.Visible = false;
+
+        reportsBreadcrumbLink.Text = "Reports";
+        reportsBreadcrumbLink.AutoSize = true;
+        reportsBreadcrumbLink.LinkColor = Color.FromArgb(26, 91, 171);
+        reportsBreadcrumbLink.ActiveLinkColor = Color.FromArgb(18, 70, 135);
+        reportsBreadcrumbLink.VisitedLinkColor = reportsBreadcrumbLink.LinkColor;
+        reportsBreadcrumbLink.LinkBehavior = LinkBehavior.HoverUnderline;
+        reportsBreadcrumbLink.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+        reportsBreadcrumbLink.Margin = new Padding(0, 0, 8, 0);
+        reportsBreadcrumbLink.TabStop = true;
+        reportsBreadcrumbLink.LinkClicked += (_, _) => ShowReports();
+
+        breadcrumbSeparator.Text = "›";
+        breadcrumbSeparator.AutoSize = true;
+        breadcrumbSeparator.ForeColor = Color.FromArgb(75, 82, 96);
+        breadcrumbSeparator.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+        breadcrumbSeparator.Margin = new Padding(0, 0, 8, 0);
+
+        breadcrumbCurrentPage.AutoSize = true;
+        breadcrumbCurrentPage.ForeColor = Color.FromArgb(29, 39, 54);
+        breadcrumbCurrentPage.Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Bold);
+        breadcrumbCurrentPage.Margin = Padding.Empty;
+
+        pageBreadcrumb.Controls.Add(reportsBreadcrumbLink);
+        pageBreadcrumb.Controls.Add(breadcrumbSeparator);
+        pageBreadcrumb.Controls.Add(breadcrumbCurrentPage);
+
         var titleStack = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             AutoSize = false,
             ColumnCount = 1,
-            RowCount = 2,
+            RowCount = 3,
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
         titleStack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         titleStack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        titleStack.Controls.Add(title, 0, 0);
-        titleStack.Controls.Add(pageSubtitle, 0, 1);
+        titleStack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        titleStack.Controls.Add(pageBreadcrumb, 0, 0);
+        titleStack.Controls.Add(title, 0, 1);
+        titleStack.Controls.Add(pageSubtitle, 0, 2);
 
         var sessionArea = new FlowLayoutPanel
         {
@@ -747,7 +787,8 @@ public sealed class MainForm : BinTrackerForm
     {
         SetPage(
             "Movement History",
-            "Search, export and reverse saved movements without leaving the main BinTracker workspace.");
+            "Search, export and reverse saved movements without leaving the main BinTracker workspace.",
+            showReportsBreadcrumb: true);
         content.AutoScroll = false;
 
         activeMovementHistoryPage =
@@ -1221,7 +1262,10 @@ private async Task<bool> ConfirmCanLeaveActiveCustomerAsync() =>
         content.Controls.Add(PanelBox(page, text));
     }
 
-    private void SetPage(string page, string? subtitle = null)
+    private void SetPage(
+        string page,
+        string? subtitle = null,
+        bool showReportsBreadcrumb = false)
     {
         if (activeMovementHistoryPage is not null)
         {
@@ -1240,6 +1284,8 @@ private async Task<bool> ConfirmCanLeaveActiveCustomerAsync() =>
         title.Text = page;
         pageSubtitle.Text = subtitle ?? string.Empty;
         pageSubtitle.Visible = !string.IsNullOrWhiteSpace(subtitle);
+        breadcrumbCurrentPage.Text = page;
+        pageBreadcrumb.Visible = showReportsBreadcrumb;
         content.Controls.Clear();
         activeCustomersView = null;
         content.AutoScroll = true;

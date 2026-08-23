@@ -177,50 +177,28 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 3,
+            RowCount = 5,
             Padding = Padding.Empty
         };
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-
-        var controlsCard = new Panel
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            BackColor = Color.White,
-            Padding = new Padding(16, 12, 16, 12),
-            Margin = new Padding(0, 0, 0, 10)
-        };
-
-        var rows = new TableLayoutPanel
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            ColumnCount = 1,
-            RowCount = 3,
-            Margin = Padding.Empty,
-            Padding = Padding.Empty
-        };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // filters
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // options
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // actions
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // summary
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // grid
 
         var filters = Flow();
-        filters.Controls.Add(ControlLabel("From"));
-        filters.Controls.Add(startDate);
-        filters.Controls.Add(ControlLabel("To", 14));
-        filters.Controls.Add(endDate);
-        filters.Controls.Add(ControlLabel("Customer", 14));
-        filters.Controls.Add(customerSearch);
-        filters.Controls.Add(ControlLabel("Container", 14));
-        filters.Controls.Add(containerFilter);
-        filters.Controls.Add(ControlLabel("Direction", 14));
-        filters.Controls.Add(directionFilter);
-        filters.Controls.Add(ControlLabel("Source", 14));
-        filters.Controls.Add(sourceFilter);
+        filters.BackColor = Color.White;
+        filters.Padding = new Padding(16, 12, 16, 0);
+        filters.Controls.Add(FilterGroup("From", startDate));
+        filters.Controls.Add(FilterGroup("To", endDate, 14));
+        filters.Controls.Add(FilterGroup("Customer", customerSearch, 14));
+        filters.Controls.Add(FilterGroup("Container", containerFilter, 14));
+        filters.Controls.Add(FilterGroup("Direction", directionFilter, 14));
+        filters.Controls.Add(FilterGroup("Source", sourceFilter, 14));
 
         var options = Flow();
-        options.Padding = new Padding(0, 6, 0, 4);
+        options.BackColor = Color.White;
+        options.Padding = new Padding(16, 6, 16, 4);
         options.Controls.Add(includeAdjustments);
         options.Controls.Add(includeNotesInExports);
         options.Controls.Add(new Label
@@ -232,7 +210,10 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         });
 
         var actions = Flow();
-        actions.Padding = new Padding(0, 8, 0, 0);
+        actions.BackColor = Color.White;
+        actions.Padding = new Padding(16, 8, 16, 12);
+        actions.MinimumSize = new Size(0, 52);
+        actions.WrapContents = true;
         actions.Controls.Add(ActionButton(
             "Last 7 Days",
             115,
@@ -286,11 +267,13 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             grid.SelectionChanged += (_, _) => UpdateReverseAvailability();
         }
 
-        rows.Controls.Add(filters, 0, 0);
-        rows.Controls.Add(options, 0, 1);
-        rows.Controls.Add(actions, 0, 2);
-        controlsCard.Controls.Add(rows);
-        root.Controls.Add(controlsCard, 0, 0);
+        // Filters, options and actions are direct AutoSize rows in the root layout.
+        // There is deliberately no intermediate controls card: this removes the
+        // WinForms preferred-height feedback loop that previously either clipped
+        // the action buttons or created a large blank band beneath them.
+        root.Controls.Add(filters, 0, 0);
+        root.Controls.Add(options, 0, 1);
+        root.Controls.Add(actions, 0, 2);
 
         var summaryCard = new Panel
         {
@@ -301,7 +284,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             Margin = new Padding(0, 0, 0, 10)
         };
         summaryCard.Controls.Add(summary);
-        root.Controls.Add(summaryCard, 0, 1);
+        root.Controls.Add(summaryCard, 0, 3);
 
         var gridCard = new Panel
         {
@@ -310,7 +293,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             Padding = new Padding(10)
         };
         gridCard.Controls.Add(ReportGridMultiSort.Wrap(grid));
-        root.Controls.Add(gridCard, 0, 2);
+        root.Controls.Add(gridCard, 0, 4);
 
         Controls.Add(root);
     }
@@ -537,18 +520,18 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     private void ConfigureGrid()
     {
         grid.RowTemplate.Height = 30;
-        grid.Columns.Add(Column("Date", 130, 120, "Date"));
-        grid.Columns.Add(Column("Code", 110, 90, "Code"));
-        grid.Columns.Add(Column("Customer", 220, 180, "Customer"));
-        grid.Columns.Add(Column("Type", 90, 82, "Type"));
-        grid.Columns.Add(Column("Container", 115, 100, "Container"));
-        grid.Columns.Add(Column("Direction", 125, 120, "Direction"));
-        grid.Columns.Add(Column("Qty", 68, 58, "Quantity"));
-        grid.Columns.Add(Column("Source", 120, 108, "Source"));
-        grid.Columns.Add(Column("Reference", 120, 100, "Reference"));
-        grid.Columns.Add(Column("Status", 225, 225, "Status"));
-        grid.Columns.Add(Column("Notes", 150, 150, "Notes"));
-        grid.Columns.Add(Column("Entered by", 110, 90, "EnteredBy"));
+        grid.Columns.Add(Column("Date", 150, 146, "Date"));
+        grid.Columns.Add(Column("Code", 130, 120, "Code"));
+        grid.Columns.Add(Column("Customer", 210, 175, "Customer"));
+        grid.Columns.Add(Column("Type", 86, 80, "Type"));
+        grid.Columns.Add(Column("Container", 105, 96, "Container"));
+        grid.Columns.Add(Column("Direction", 112, 106, "Direction"));
+        grid.Columns.Add(Column("Qty", 62, 56, "Quantity"));
+        grid.Columns.Add(Column("Source", 125, 116, "Source"));
+        grid.Columns.Add(Column("Reference", 108, 96, "Reference"));
+        grid.Columns.Add(Column("Status", 220, 210, "Status"));
+        grid.Columns.Add(Column("Notes", 175, 155, "Notes"));
+        grid.Columns.Add(Column("Entered by", 105, 90, "EnteredBy"));
 
         grid.SortCompare += Grid_SortCompare;
         grid.CellPainting += Grid_CellPainting;
@@ -570,7 +553,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         if (!isDirection && !isReversalStatus)
             return;
 
-        var text = isDirection ? row.DirectionText : row.Status;
+        var text = isDirection ? row.DirectionText : DisplayStatus(row);
         if (string.IsNullOrWhiteSpace(text))
             return;
 
@@ -625,6 +608,22 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             TextFormatFlags.NoPrefix);
 
         e.Handled = true;
+    }
+
+    private static string DisplayStatus(MovementHistoryReportRow row)
+    {
+        if (row.ReversesMovementId.HasValue)
+            return $"Reversal — #{row.ReversesMovementId.Value}";
+
+        if (row.CorrectedByMovementId.HasValue)
+        {
+            var reference = row.LinkedReversalReference;
+            return string.IsNullOrWhiteSpace(reference)
+                ? "Reversed"
+                : $"Reversed — {reference}";
+        }
+
+        return row.Status;
     }
 
     private static GraphicsPath RoundedRectangle(Rectangle bounds, int radius)
@@ -796,8 +795,8 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             new System.Text.UTF8Encoding(true));
 
         writer.WriteLine(includeNotesInExports.Checked
-            ? "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Notes,Entered By"
-            : "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Entered By");
+            ? "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Status,Notes,Entered By"
+            : "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Status,Entered By");
 
         foreach (var row in result.Rows)
         {
@@ -812,7 +811,8 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
                 row.Quantity.ToString(
                     System.Globalization.CultureInfo.InvariantCulture),
                 Csv(row.SourceText),
-                Csv(row.Reference)
+                Csv(row.Reference),
+                Csv(DisplayStatus(row))
             };
 
             if (includeNotesInExports.Checked)
@@ -854,15 +854,15 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         {
             var fixedWidths = new Dictionary<string, int>(StringComparer.Ordinal)
             {
-                ["Date"] = 130,
-                ["Code"] = 110,
-                ["Type"] = 90,
-                ["Container"] = 115,
-                ["Direction"] = 125,
-                ["Quantity"] = 68,
-                ["Source"] = 120,
-                ["Reference"] = 120,
-                ["EnteredBy"] = 110
+                ["Date"] = 150,
+                ["Code"] = 130,
+                ["Type"] = 86,
+                ["Container"] = 105,
+                ["Direction"] = 112,
+                ["Quantity"] = 62,
+                ["Source"] = 125,
+                ["Reference"] = 108,
+                ["EnteredBy"] = 105
             };
 
             foreach (var pair in fixedWidths)
@@ -878,9 +878,9 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             var fixedTotal = fixedWidths.Values.Sum();
             var flexible = new[]
             {
-                (Name: "Customer", Minimum: 180, Weight: 0.38),
-                (Name: "Status", Minimum: 225, Weight: 0.37),
-                (Name: "Notes", Minimum: 150, Weight: 0.25)
+                (Name: "Customer", Minimum: 175, Weight: 0.40),
+                (Name: "Status", Minimum: 210, Weight: 0.28),
+                (Name: "Notes", Minimum: 155, Weight: 0.32)
             };
             var minimumFlexibleTotal = flexible.Sum(item => item.Minimum);
             var minimumTotal = fixedTotal + minimumFlexibleTotal;
@@ -935,6 +935,22 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
         button.Click += async (_, _) => await action();
         return button;
+    }
+
+    private static FlowLayoutPanel FilterGroup(string label, Control control, int left = 0)
+    {
+        var group = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Margin = new Padding(left, 0, 0, 0),
+            Padding = Padding.Empty
+        };
+        group.Controls.Add(ControlLabel(label));
+        group.Controls.Add(control);
+        return group;
     }
 
     private static Label ControlLabel(

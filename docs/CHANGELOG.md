@@ -1,3 +1,51 @@
+## v0.5.0-alpha.5.5.3
+
+- Moved Movement History return navigation into MainForm's page header as `Reports › Movement History`; removed the standalone `← Reports` report-content row.
+- Added reusable shell breadcrumb plumbing for later v1 Option-B report integrations.
+- Recorded Option B as the v1 Reports hosting direction and Option C as a post-WinForms/WinUI-3 discussion.
+- Added BT-RPT-018 and BT-UI-014 and reconciled the permanent BT-HIST source gate.
+
+## v0.5.0-alpha.5.5.2
+
+- Removed the intermediate Movement History controls card that continued to claim excessive vertical height under WinForms layout.
+- Promoted Filters, Options and Actions to direct AutoSize rows in the root layout; Summary follows immediately and Grid alone receives remaining height.
+- Updated the permanent BT-HIST source gate to protect the direct six-row structure.
+
+## v0.5.0-alpha.5.5.1
+
+- Reconciled the permanent BT-HIST source gate with alpha.5.5's direct AutoSize controls-card implementation.
+- Removed audit dependence on the obsolete calculated-height code path; the gate now requires the compact structural layout instead.
+- No runtime behavior changed from alpha.5.5.
+
+## v0.5.0-alpha.5.5
+
+- Removed the oversized blank region between Movement History actions and the summary/grid.
+- Replaced alpha.5.4's separately calculated controls-row height with direct content-height AutoSize layout.
+- Preserved action-row visibility, compact filter wrapping, responsive grid allocation, reversal badges/status, and Status/Notes export semantics.
+
+## v0.5.0-alpha.5.4
+
+- Corrected the remaining integrated Movement History action-row clipping by making the white controls card itself the auto-sized TableLayoutPanel host.
+- Removed the fixed-height/non-wrapping action-row workaround; actions now contribute their real preferred height and can wrap at narrow widths without being covered by the summary card.
+- Updated the BT-HIST presentation audit to enforce the structural layout rather than a magic action-row height.
+- Preserved all alpha.5.3 reporting/export/status behaviour.
+
+## v0.5.0-alpha.5.3
+
+- Movement History: moved the integrated-page return action out of the filter card and simplified it to `← Reports`.
+- Fixed the alpha.5.2 action-row clipping structurally with a protected non-wrapping action row; filter label/control pairs now wrap as units.
+- Rebalanced Date/Code/Direction minimum widths so full structured values and sort-priority indicators have usable space without trying to make arbitrary Status/Notes text fully fit.
+- Movement History now displays concise reversal status (`Reversed — REV-…` / `Reversal — #…`) while retaining the full derived reversal reason in the Status tooltip.
+- Added Status to Movement History PDF and CSV exports. Status is intentionally not added to Daily/Weekly/Monthly/Outstanding because those reports summarize operational activity rather than correction-ledger state.
+- Added permanent BT-HIST-006 export-consistency requirement and source audit checks.
+
+## v0.5.0-alpha.5.2
+
+- Movement History: added explicit Back to Reports navigation for the integrated page.
+- Fixed clipped action buttons found during alpha.5.1 Windows smoke testing.
+- Rebalanced Movement History structured/flexible columns to reduce avoidable Date/Code/Source/Status/Notes truncation and reclaim excess Direction width.
+- Preserved badges, tooltips, reversal semantics and export filename behaviour.
+
 ## v0.5.0-alpha.5.1
 
 - Corrected the two nullable-flow warnings in Movement History badge painting found by the Windows alpha.5 release-gate build.

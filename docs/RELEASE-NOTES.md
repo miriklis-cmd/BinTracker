@@ -1,5 +1,56 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.5.5.3
+
+- Replaces Movement History's standalone `← Reports` content-row button with a shell-level `Reports › Movement History` breadcrumb in the main page header; Reports is clickable and returns to the Reports landing hub.
+- Movement History content now starts directly with Filters / Options / Actions / Summary / Grid, preserving the compact alpha.5.5.2 layout.
+- Records the v1 Option-B report-hosting decision: Reports remains the hub and detailed reports migrate into the main workspace using the same breadcrumb convention.
+- Tables the persistent fully integrated Reports workspace (Option C) for discussion if/when BinTracker moves away from WinForms, including the planned WinUI 3 evaluation.
+- Adds permanent BT-RPT-018 and BT-UI-014 requirements and updates the BT-HIST source gate to protect the shell breadcrumb instead of the removed content-level Back button.
+
+## v0.5.0-alpha.5.5.2
+
+- Removes the Movement History controls-card container entirely after alpha.5.5.1 still showed a large blank vertical band at runtime.
+- Filters, Options and Actions are now direct AutoSize rows in the root page layout, followed immediately by Summary and the expanding Grid row.
+- The BT-HIST source gate now requires this six-row direct layout and rejects reintroduction of the `controlsCard` structure.
+- Preserves all accepted Movement History filters, buttons, grid sizing, badges/tooltips, reversal behavior, Status/Notes export semantics and customer-aware filenames.
+
+## v0.5.0-alpha.5.5.1
+
+- Corrects the BT-HIST-002..006 source audit after alpha.5.5 replaced the old calculated controls-row height with direct AutoSize content-height layout.
+- The audit now protects the new structural AutoSize/GrowAndShrink layout rather than requiring the removed `controlsRowStyle` / `ResizeControlsCard` implementation that caused the alpha.5.4 blank band.
+- No Movement History business/export behavior is changed from alpha.5.5.
+
+## v0.5.0-alpha.5.5
+
+- Removes the large empty vertical band introduced by alpha.5.4 beneath the Movement History action row.
+- The integrated controls card now uses direct content-height AutoSize layout inside an AutoSize parent row; no separately calculated controls height is reserved.
+- Preserves fully visible action buttons, `← Reports`, current grid widths/badges/tooltips, reversal semantics, customer-aware filenames, and Status/optional Notes in Movement History exports.
+- Alpha.5.4 manual smoke confirmed the action buttons were visible and the notes-enabled PDF correctly contained both Status and Notes; only the excessive blank band remained a UI acceptance blocker.
+
+## v0.5.0-alpha.5.4
+
+- Fixes the remaining Movement History action-button clipping found during alpha.5.3 Windows smoke testing.
+- Replaces the nested auto-sized Panel/docked-table measurement path with a direct auto-sized TableLayoutPanel card so Filter, Options and Actions rows contribute structurally to the card height.
+- The Actions row now derives its required height from its 40-pixel buttons plus padding and may wrap as a whole row at genuinely narrow widths; the summary/grid cannot overlap it.
+- Preserves the integrated page, `← Reports`, column allocation, badges/tooltips, reversal semantics, customer-aware export names and Status in Movement History PDF/CSV.
+- Alpha.5.3 passed the Windows source audit, built with zero warnings/errors and passed 242/242 automated tests; manual UI acceptance remained blocked only by the clipped action row.
+
+## v0.5.0-alpha.5.3
+
+- Corrects the remaining alpha.5.2 Movement History manual-layout defects: protected action row, grouped filter wrapping, usable Date/Code/Direction widths and cleaner `← Reports` integrated-page navigation.
+- Uses concise reversal Status text in the grid while retaining the complete derived reversal reason in the tooltip.
+- Adds semantic Status to Movement History PDF and CSV so saved/exported history preserves reversal linkage. Other operational summary reports are unchanged because Status is specific to Movement History correction-ledger semantics.
+- Requires fresh Windows build and Movement History smoke acceptance.
+
+## v0.5.0-alpha.5.3
+
+- Keeps Movement History integrated in the main workspace and adds an explicit `← Back to Reports` navigation action.
+- Corrects the alpha.5.1 manual layout failure by structurally reserving the action row so report buttons are not clipped.
+- Rebalances the grid from Windows smoke evidence: Date/Code/Source receive readable structured widths, Direction/Qty are compact, and Status/Notes receive greater responsive priority while narrow layouts still scroll at minimum widths.
+- Preserves direction/reversal badges, tooltips, reversal policy and customer-code PDF/CSV filenames.
+- Alpha.5.1 passed Windows source audit, zero-warning/zero-error build and 242/242 automated tests before this UI correction; alpha.5.2 requires fresh Windows build and UI/DPI acceptance.
+
 ## v0.5.0-alpha.5.1
 
 - Fixes the two `CS8602` compiler warnings reported by the Windows alpha.5 release-gate build in Movement History custom badge painting.

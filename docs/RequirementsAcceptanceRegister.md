@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.5.0-alpha.5.1**
+Current baseline: **v0.5.0-alpha.5.5.3**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -88,6 +88,7 @@ Provenance tags:
 | BT-UI-008 | v1 | IMPLEMENTED-STATIC | Navigation icon/text controls remain fully visible and clickable at laptop production DPI. | HIST-BUILD,CODE |
 | BT-UI-009 | post-v1 | POST-V1 | WinUI 3 / Windows UI v2 discussion is tabled until after v1 publication. | CHAT-SURFACED,CURRENT-DOC |
 | BT-UI-010 | post-v1 | POST-V1 | WinUI 3 evaluation explicitly compares Dashboard, Reports launcher, individual reports and import workflow; rewrite is not predetermined. | CHAT-SURFACED,CURRENT-DOC |
+| BT-UI-014 | post-v1 | POST-V1 | Revisit report navigation after WinForms: compare the v1 hub-and-breadcrumb pattern with a persistent fully integrated Reports workspace when evaluating WinUI 3 or another replacement UI. | CHAT-SURFACED,CURRENT-DOC |
 | BT-UI-011 | v1 | IMPLEMENTED-STATIC | Reports landing page uses the approved Quick Reports + Explore Reports card hierarchy, exact approved report-icon artwork, compact 3x2 explorer grid and no unnecessary vertical scrolling at normal 1080p desktop size. | CHAT-SURFACED,CODE |
 | BT-UI-012 | v1 | IMPLEMENTED-STATIC | Containers is a dedicated left-navigation destination immediately below Customers; Container Types are no longer buried in Settings. | CHAT-SURFACED,CODE |
 | BT-UI-013 | v1 | IMPLEMENTED-STATIC | Reports landing-page cards, descriptions, action rows and page subtitle must remain fully visible at supported Windows DPI scaling; fixed layout rows must not collapse around AutoSize content. | CHAT-SURFACED,CODE |
@@ -188,6 +189,7 @@ Provenance tags:
 | BT-RPT-015 | v1 | IMPLEMENTED-ACCEPTED | Outstanding Containers keeps the Balance selector fully readable at supported DPI and provides trial multi-column grid sorting: click sets the primary sort and Shift+click adds/toggles secondary or later sort columns while preserving the displayed order in PDF/CSV snapshots. | USER-REQUEST,CODE,USER-ACCEPTED |
 | BT-RPT-016 | v1 | IMPLEMENTED-STATIC | All applicable report grids provide consistent type-aware multi-column sorting: click sets a primary sort, Shift+click adds/toggles later sort levels, numeric quantities/positions sort by their true business value rather than display text (including CREDIT as negative and OUT as positive), report dates sort chronologically, active sorts persist across report refreshes, and each grid displays an on-screen usage hint; Outstanding Containers keeps its filter/action controls fully visible at supported DPI. | USER-APPROVED,CODE |
 | BT-RPT-017 | v1 | IMPLEMENTED-STATIC | Every active sort on an applicable report grid visibly identifies both direction and sort priority in the column header (for example ▲1/▼1 and ▲2/▼2). The indication must remain visible at supported DPI, including narrow text columns such as Direction, must stay on a single header line without sort-driven header/grid height or column-width changes, and must not depend solely on the WinForms native sort glyph. | CODE |
+| BT-RPT-018 | v1 | PLANNED-V1 | Reports landing page remains the v1 hub. Detailed reports migrated into the main workspace use a shell-level `Reports › <Report Name>` breadcrumb with clickable Reports parent navigation; the report content must not duplicate a standalone Back/Close row. Movement History is the first implemented reference. | CHAT-SURFACED,CURRENT-DOC,CODE |
 
 ## Market Floor / Outstanding / movements / statements / summaries
 
@@ -208,10 +210,11 @@ Provenance tags:
 | BT-WEEK-002 | v1 | IMPLEMENTED-STATIC | Weekly contains Daily Detail and Weekly Overview (customer/container OUT, IN, Net) in one report. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-WEEK-003 | v1 | IMPLEMENTED-STATIC | This Week/Last Week shortcuts, configured Container Type filter and audited PDF/CSV follow selected view/order. | CURRENT-DOC,CODE |
 | BT-HIST-001 | v1 | IMPLEMENTED-STATIC | Movement History supports inclusive date range, customer/container/direction/source filters, adjustment opt-in and quick ranges. | CURRENT-DOC,CODE |
-| BT-HIST-002 | v1 | IMPLEMENTED-STATIC | Movement History is an integrated full-size page in the main BinTracker workspace while preserving filters, sorting, export, audit, reversal permissions and sensitive-source restrictions. | CHAT-SURFACED,CURRENT-DOC,CODE |
-| BT-HIST-003 | v1 | IMPLEMENTED-STATIC | Movement History allocates compact structured columns plus flexible Customer/Status/Notes widths; sufficient width fits without horizontal scrolling, while narrow layouts retain readable minimums and scroll. Rows remain single-height and full Status/Notes text is available by tooltip. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-HIST-002 | v1 | IMPLEMENTED-STATIC | Movement History is an integrated full-size page in the main BinTracker workspace with an explicit Back to Reports action, while preserving filters, sorting, export, audit, reversal permissions and sensitive-source restrictions. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-HIST-003 | v1 | IMPLEMENTED-STATIC | Movement History keeps predictable structured values readable (including full normal Date and known Source labels), keeps Direction/Qty compact, and prioritises remaining width across Status, Notes and Customer; sufficient width fits without horizontal scrolling, while narrow layouts retain readable minimums and scroll. Rows remain single-height and full Status/Notes text is available by tooltip. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-HIST-004 | v1 | IMPLEMENTED-STATIC | Movement History renders restrained green IN, red OUT and amber/orange reversal status badges without changing persisted Notes/status or weakening authoritative service/database checks. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-HIST-005 | v1 | IMPLEMENTED-STATIC | When a non-empty customer filter resolves displayed results to exactly one stable customer identity, PDF and CSV suggested filenames include its Windows-sanitized customer code; unfiltered or multi-customer results retain generic names. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-HIST-006 | v1 | IMPLEMENTED-STATIC | Movement History correction Status is semantic report data: concise reversal linkage is present on-screen and in PDF/CSV exports, while full derived reversal detail remains available by tooltip; operational summary reports do not gain a Status column unless their own semantics require it. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-STMT-001 | v1 | IMPLEMENTED-ACCEPTED | Customer Statement workflow available from both Customers and Reports using one shared implementation. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-STMT-002 | v1 | IMPLEMENTED-ACCEPTED | Statement supports Generate PDF and Generate & Open; opened PDF is printable via Windows viewer; dates cannot exceed today. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-STMT-003 | v1 | IMPLEMENTED-STATIC | Statement running balances reconcile opening, movement and closing positions by container. | CURRENT-DOC,HIST-BUILD,CODE |

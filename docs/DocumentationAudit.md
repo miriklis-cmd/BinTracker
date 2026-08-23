@@ -1,11 +1,59 @@
 # Documentation Audit Record
 
+## v0.5.0-alpha.5.5.3 report-breadcrumb decision
+
+- [x] Operator accepted the alpha.5.5.2 Movement History compact maximised layout and chose not to pursue Date truncation or narrow-window WinForms redesign now.
+- [x] Replaced standalone `← Reports` row with shell-level `Reports › Movement History` breadcrumb.
+- [x] Recorded v1 Option B: Reports landing remains the hub; detailed reports integrate into the main workspace with the shared breadcrumb.
+- [x] Recorded Option C persistent Reports workspace as post-WinForms / WinUI 3 discussion scope.
+- [x] Added BT-RPT-018 and BT-UI-014; BT-HIST gate updated for the new header/navigation structure.
+- [ ] Alpha.5.5.3 Windows source audit/build/test and breadcrumb smoke acceptance remain required.
+
+## v0.5.0-alpha.5.5.2 direct-row layout correction
+
+- [x] Alpha.5.5.1 runtime screenshot proved the controls card still consumed excessive vertical space.
+- [x] Removed the controls card entirely; Filters / Options / Actions / Summary are direct AutoSize root rows and Grid is the only Percent row.
+- [x] BT-HIST audit updated to reject reintroduction of the failed controls-card structure.
+- [ ] Alpha.5.5.2 Windows audit/build/test and compact-layout smoke acceptance remain required.
+
+## v0.5.0-alpha.5.5.1 audit-gate correction
+
+- [x] Alpha.5.5 Windows build stopped correctly because the BT-HIST source audit still required the removed alpha.5.4 calculated-height implementation.
+- [x] Audit gate updated to enforce alpha.5.5 direct AutoSize/GrowAndShrink content-height layout instead of `controlsRowStyle` / `ResizeControlsCard`.
+- [ ] Alpha.5.5.1 Windows source audit/build/test and compact-layout smoke acceptance remain required.
+
+## v0.5.0-alpha.5.5 Movement History compact-height correction
+
+- [x] Alpha.5.4 manual Windows smoke confirmed the action buttons are fully visible.
+- [x] Alpha.5.4 notes-enabled Movement History PDF confirmed Status and optional Notes export together.
+- [x] Alpha.5.4 manual UI smoke exposed an excessive blank band between the actions and summary/grid.
+- [x] Alpha.5.5 removes the separately reserved controls-row height and uses direct AutoSize content height.
+- [ ] Alpha.5.5 Windows source audit/build/test and compact-layout smoke acceptance remain required.
+
+## v0.5.0-alpha.5.4 Movement History action-row correction
+
+- [x] Alpha.5.3 Windows source audit passed with 204 permanent requirement IDs / 25 Markdown files.
+- [x] Alpha.5.3 Windows build passed with zero warnings/errors and 242/242 automated tests.
+- [x] Alpha.5.3 PDF smoke confirmed the new Status column; Notes was intentionally absent because Include notes in exports was unticked.
+- [x] Alpha.5.3 manual UI smoke still showed the entire action row vertically clipped.
+- [x] Alpha.5.4 replaces the nested auto-size measurement path with a direct structural TableLayoutPanel controls card; no broader report redesign is included.
+- [ ] Alpha.5.4 Windows audit/build/test and manual action-row/DPI acceptance remain required.
+- [ ] Re-test Movement History PDF with Include notes in exports ticked.
+
+## v0.5.0-alpha.5.3 Movement History Windows-smoke correction
+
+- [x] Preserved the integrated Movement History design after operator review.
+- [x] Added explicit Back to Reports navigation instead of relying only on left navigation.
+- [x] Corrected clipped action-row layout and rebalanced structured/flexible columns from the alpha.5.1 Windows screenshot.
+- [x] Preserved BT-HIST-002..005, BT-ARCH-008..015 and security-register identities.
+- [ ] Alpha.5.2 Windows source audit, zero-warning build, full tests, package audit and DPI/UI acceptance remain required.
+
 ## v0.5.0-alpha.5.1 warning-gate correction
 
 - [x] Recorded alpha.5 as built with 242/242 automated tests passing but blocked from release by two `CS8602` warnings.
 - [x] Issued a corrective alpha.5.1 candidate rather than overwriting the delivered alpha.5 artifact.
 - [x] Preserved BT-HIST-002..005, BT-ARCH-008..015 and all security/requirements register identities.
-- [ ] Alpha.5.1 Windows zero-warning build/test and package audit results must be recorded from an environment with .NET and PowerShell.
+- [x] Alpha.5.1 Windows source audit/build/test gate passed with zero warnings, zero errors and 242/242 automated tests; manual UI smoke then found the action-row/column-allocation defects corrected in alpha.5.2.
 
 ## v0.5.0-alpha.5 Movement History integration
 

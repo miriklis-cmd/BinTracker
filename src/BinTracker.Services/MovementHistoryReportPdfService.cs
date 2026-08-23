@@ -84,7 +84,8 @@ internal sealed class MovementHistoryReportPdfService(
                             columns.RelativeColumn(0.78f); // dir
                             columns.RelativeColumn(0.65f); // qty
                             columns.RelativeColumn(1.15f); // source
-                            columns.RelativeColumn(includeNotes ? 1.00f : 1.30f); // ref
+                            columns.RelativeColumn(includeNotes ? 0.95f : 1.10f); // ref
+                            columns.RelativeColumn(1.35f); // status
                             if (includeNotes)
                                 columns.RelativeColumn(1.75f);
                             columns.RelativeColumn(1.00f); // entered by
@@ -99,6 +100,7 @@ internal sealed class MovementHistoryReportPdfService(
                         Header(table, "Qty");
                         Header(table, "Source");
                         Header(table, "Reference");
+                        Header(table, "Status");
                         if (includeNotes)
                             Header(table, "Notes");
                         Header(table, "Entered by");
@@ -106,7 +108,7 @@ internal sealed class MovementHistoryReportPdfService(
                         if (result.Rows.Count == 0)
                         {
                             table.Cell()
-                                .ColumnSpan((uint)(includeNotes ? 11 : 10))
+                                .ColumnSpan((uint)(includeNotes ? 12 : 11))
                                 .Padding(6)
                                 .Text("No matching movements.")
                                 .Italic();
@@ -129,6 +131,7 @@ internal sealed class MovementHistoryReportPdfService(
                                 Body(table, row.Quantity.ToString("N0"));
                                 Body(table, row.SourceText);
                                 Body(table, row.Reference);
+                                Body(table, ExportStatus(row));
                                 if (includeNotes)
                                     Body(table, row.Notes);
                                 Body(table, row.EnteredBy);
@@ -170,6 +173,22 @@ internal sealed class MovementHistoryReportPdfService(
             cancellationToken: cancellationToken);
 
         return output.ToArray();
+    }
+
+    private static string ExportStatus(MovementHistoryReportRow row)
+    {
+        if (row.ReversesMovementId.HasValue)
+            return $"Reversal - #{row.ReversesMovementId.Value}";
+
+        if (row.CorrectedByMovementId.HasValue)
+        {
+            var reference = row.LinkedReversalReference;
+            return string.IsNullOrWhiteSpace(reference)
+                ? "Reversed"
+                : $"Reversed - {reference}";
+        }
+
+        return row.Status;
     }
 
     private static void Header(
