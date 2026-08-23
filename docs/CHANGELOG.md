@@ -1,5 +1,21 @@
+## v0.5.0-alpha.5.1
+
+- Corrected the two nullable-flow warnings in Movement History badge painting found by the Windows alpha.5 release-gate build.
+- Structurally guards the WinForms-supplied cell style and graphics surface before custom painting; no nullable suppression, null-forgiving operator or warning disable was introduced.
+- Preserves the accepted alpha.5 integrated page, responsive columns, badges, tooltips, exports, reversal behaviour and audit semantics unchanged.
+
+## v0.5.0-alpha.5
+
+- Integrated Movement History into the main BinTracker workspace as a full-size page; all existing filter, sort, PDF/CSV, audit and reversal workflows are retained.
+- Replaced content autosizing with responsive column allocation: structured fields remain compact, Customer/Status/Notes share surplus width, and readable minimums trigger horizontal scrolling only when the page is genuinely narrow.
+- Added single-line green IN, red OUT and amber/orange reversal status badges with full Status/Notes tooltips and selection-aware rendering.
+- Added consistent PDF/CSV suggested filenames containing a Windows-safe stable customer code only when an applied customer filter resolves to exactly one customer.
+- Added automated filename/sanitization coverage and permanent BT-HIST-002..005 requirements/audit gates.
+- Manual Windows/maximized-width/DPI acceptance for alpha.5 remains pending; no such acceptance is claimed by the automated build.
+
 ## v0.5.0-alpha.4
 
+- Manual Windows acceptance completed: Jack reported all 8/8 alpha.4 smoke tests passed.
 - Selectively merged stronger concurrency/portability foundations found by actual source comparison with the alternate alpha.3.
 - Strengthened import and reversal payload identity beyond that alternate implementation and added regression coverage.
 - Added schema V14, architecture documentation and expanded BT-ARCH-008..015 auditing while retaining Work's accepted reversal UX and packaging fixes.

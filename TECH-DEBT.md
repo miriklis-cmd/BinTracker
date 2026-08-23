@@ -43,7 +43,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 - Dedicated report windows must be responsive to monitor working area rather than fixed desktop dimensions. Filters/actions keep their required height; result grids consume the remaining client area.
 
-- Reports page is a launcher, not a scrolling host for every report. Keep Market Floor inline; detailed/filter-heavy reports belong in dedicated windows. MainForm owns one live instance per report window to prevent duplicates.
+- Reports page is a launcher, not a scrolling host for every report. Keep Market Floor inline. Most detailed/filter-heavy reports use dedicated windows, while Movement History is deliberately integrated into the main workspace because it is also the operational reversal surface. MainForm owns each active report surface and prevents duplicate windows/pages.
 
 - Market Floor is an operational ~4am document: maximise readable type while guaranteeing front + reverse pagination.
 - Both Market Floor pages must derive density from actual rendered row load, including extra non-standard container rows and likely wraps.

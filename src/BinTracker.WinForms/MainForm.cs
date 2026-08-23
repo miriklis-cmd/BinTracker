@@ -13,10 +13,10 @@ public sealed class MainForm : BinTrackerForm
     private readonly Dictionary<string, Panel> navByPage = new(StringComparer.OrdinalIgnoreCase);
     private CustomersView? activeCustomersView;
     private ContainerTypesForm? activeContainerTypesForm;
+    private MovementHistoryReportForm? activeMovementHistoryPage;
     private OutstandingContainersReportForm? outstandingReportForm;
     private DailyMovementsReportForm? dailyMovementsReportForm;
     private WeeklyMovementsReportForm? weeklyMovementsReportForm;
-    private MovementHistoryReportForm? movementHistoryReportForm;
     private CustomerStatementReportForm? customerStatementReportForm;
     private MonthlySummaryReportForm? monthlySummaryReportForm;
     private bool bypassCustomerClosePrompt;
@@ -745,22 +745,12 @@ public sealed class MainForm : BinTrackerForm
 
     private void OpenMovementHistoryReport()
     {
-        if (movementHistoryReportForm is not null &&
-            !movementHistoryReportForm.IsDisposed)
-        {
-            if (movementHistoryReportForm.WindowState ==
-                FormWindowState.Minimized)
-            {
-                movementHistoryReportForm.WindowState =
-                    FormWindowState.Normal;
-            }
+        SetPage(
+            "Movement History",
+            "Search, export and reverse saved movements without leaving the main BinTracker workspace.");
+        content.AutoScroll = false;
 
-            movementHistoryReportForm.BringToFront();
-            movementHistoryReportForm.Activate();
-            return;
-        }
-
-        movementHistoryReportForm =
+        activeMovementHistoryPage =
             new MovementHistoryReportForm(
                 movementHistoryReports,
                 movementHistoryReportPdfs,
@@ -768,14 +758,15 @@ public sealed class MainForm : BinTrackerForm
                 audit,
                 movementCorrections,
                 session,
-                clock);
+                clock)
+            {
+                TopLevel = false,
+                FormBorderStyle = FormBorderStyle.None,
+                Dock = DockStyle.Fill
+            };
 
-        movementHistoryReportForm.FormClosed += (_, _) =>
-        {
-            movementHistoryReportForm = null;
-        };
-
-        movementHistoryReportForm.Show(this);
+        content.Controls.Add(activeMovementHistoryPage);
+        activeMovementHistoryPage.Show();
     }
 
     private void OpenCustomerStatementReport()
@@ -1232,6 +1223,12 @@ private async Task<bool> ConfirmCanLeaveActiveCustomerAsync() =>
 
     private void SetPage(string page, string? subtitle = null)
     {
+        if (activeMovementHistoryPage is not null)
+        {
+            activeMovementHistoryPage.Dispose();
+            activeMovementHistoryPage = null;
+        }
+
         if (activeContainerTypesForm is not null)
         {
             activeContainerTypesForm.PrepareForHostClose();

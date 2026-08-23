@@ -60,7 +60,7 @@ foreach ($row in $reqRows) {
     if ($allowedScopes -notcontains $row.Scope) { Fail "Invalid requirement scope for $($row.Id): $($row.Scope)" }
     if ($allowedStatuses -notcontains $row.Status) { Fail "Invalid requirement status for $($row.Id): $($row.Status)" }
 }
-$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-CORR-001','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015')
+$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-CORR-001','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015')
 foreach ($id in $mustHaveIds) { if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost mandatory ID: $id" } }
 
 # Permanent central-service / concurrency portability gate (BT-ARCH-008..015).
@@ -429,6 +429,27 @@ if ($movementHistoryServiceText -notmatch 'Reversed — see' -or $movementHistor
     $movementHistoryServiceText -notmatch 'SourceText => ReversesMovementId\.HasValue \? "Reversal"' -or
     $correctionUiText -notmatch 'UpdateReverseAvailability' -or $correctionUiText -notmatch 'CanReverse') {
     Fail 'Movement History reversal Status/Source and disabled-action UX is incomplete.'
+}
+
+# Integrated Movement History presentation/export gate (BT-HIST-002..005).
+$movementHistoryFileNameText = Get-Content -Raw 'src/BinTracker.Services/MovementHistoryExportFileName.cs'
+if ($mainFormText -notmatch 'SetPage\(\s*"Movement History"' -or
+    $mainFormText -notmatch 'TopLevel = false' -or
+    $mainFormText -notmatch 'FormBorderStyle = FormBorderStyle\.None' -or
+    $mainFormText -notmatch 'activeMovementHistoryPage\.Show\(\)' -or
+    $correctionUiText -notmatch 'AllocateResponsiveColumns' -or
+    $correctionUiText -notmatch 'available < minimumTotal' -or
+    $correctionUiText -notmatch 'grid\.Resize' -or
+    $correctionUiText -notmatch 'CellPainting' -or
+    $correctionUiText -notmatch 'Color\.FromArgb\(218, 242, 226\)' -or
+    $correctionUiText -notmatch 'Color\.FromArgb\(250, 222, 222\)' -or
+    $correctionUiText -notmatch 'Color\.FromArgb\(255, 232, 194\)' -or
+    $correctionUiText -notmatch 'Cells\["Status"\]\.ToolTipText' -or
+    $correctionUiText -notmatch 'Cells\["Notes"\]\.ToolTipText' -or
+    $correctionUiText -notmatch 'MovementHistoryExportFileName\.Build' -or
+    $movementHistoryFileNameText -notmatch 'ResolveSingleCustomerCode' -or
+    $movementHistoryFileNameText -notmatch 'SanitizeWindowsSegment') {
+    Fail 'BT-HIST-002..005 source gate failed: integrated layout, responsive columns, badges/tooltips or stable customer-code export naming is incomplete.'
 }
 
 Write-Host "Audit passed: $expected; $($reqRows.Count) permanent requirement IDs; $($mdFiles.Count) Markdown files; current-state contradiction checks passed." -ForegroundColor Green

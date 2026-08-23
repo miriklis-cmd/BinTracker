@@ -1,5 +1,20 @@
 # Documentation Audit Record
 
+## v0.5.0-alpha.5.1 warning-gate correction
+
+- [x] Recorded alpha.5 as built with 242/242 automated tests passing but blocked from release by two `CS8602` warnings.
+- [x] Issued a corrective alpha.5.1 candidate rather than overwriting the delivered alpha.5 artifact.
+- [x] Preserved BT-HIST-002..005, BT-ARCH-008..015 and all security/requirements register identities.
+- [ ] Alpha.5.1 Windows zero-warning build/test and package audit results must be recorded from an environment with .NET and PowerShell.
+
+## v0.5.0-alpha.5 Movement History integration
+
+- [x] Recorded v0.5.0-alpha.4 manual acceptance as 8/8 smoke tests passed before follow-up source changes.
+- [x] Reconciled Movement History's intentional full-size main-workspace exception across Roadmap, Requirements, Business Rules, Functional Specification, Testing, Technical Debt, Release Notes and active checklist.
+- [x] Added permanent BT-HIST-002..005 requirements plus source-audit protection for integrated hosting, responsive columns/minimums, badges/tooltips and customer-code PDF/CSV filename rules.
+- [x] Preserved BT-ARCH-008..015 architecture requirements and the Security Hardening register without renumbering or dropping IDs.
+- [ ] Windows restore/build/test/package audit and manual maximized-width/DPI acceptance remain outstanding until executed on a suitable Windows/.NET host.
+
 ## v0.5.0-alpha.4 selective branch comparison
 
 - Inspected the actual attached alternate alpha.3 source rather than relying on its summary.

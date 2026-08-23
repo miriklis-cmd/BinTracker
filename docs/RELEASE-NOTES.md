@@ -1,5 +1,19 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.5.1
+
+- Fixes the two `CS8602` compiler warnings reported by the Windows alpha.5 release-gate build in Movement History custom badge painting.
+- Explicitly verifies that WinForms supplied a non-null cell style and graphics surface before badge rendering; when either is unavailable, the grid retains its normal painting path.
+- No Movement History functionality or presentation decision was removed or redesigned.
+
+## v0.5.0-alpha.5
+
+- Movement History now uses the full main-application workspace rather than a floating report window, preserving its filters, date shortcuts, sorting, PDF/CSV actions, Include Notes, reversal linkage/actions, permissions, sensitive-source restrictions and audit behaviour.
+- Its grid now keeps predictable fields compact and dynamically distributes remaining width across Customer, Status and Notes. Readable minimums are retained when the app is narrow, at which point horizontal scrolling is allowed.
+- IN and OUT use restrained green/red cell badges; reversed originals and reversal rows use amber/orange Status badges. Ledger Notes and derived status text remain unchanged, single-line rows are retained, and full Status/Notes text remains available through tooltips.
+- When an applied customer filter resolves the displayed report to exactly one customer, both PDF and CSV suggested filenames include that customer's Windows-sanitized stable code. Generic filenames remain for unfiltered or multi-customer results.
+- v0.5.0-alpha.4 was manually accepted at 8/8 smoke tests before this follow-up work. Alpha.5 still requires fresh Windows maximized-width and DPI smoke acceptance.
+
 ## v0.5.0-alpha.4
 
 - Compared the actual alternate alpha.3 source against tested Work alpha.3 and selectively merged only stronger concurrency/portability foundations.

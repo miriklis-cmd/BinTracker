@@ -162,7 +162,7 @@
 
 - BT-REPORT-UI-001: The Reports page is a compact launcher as the report catalogue grows.
 - BT-REPORT-UI-002: Market Floor Sheet remains directly accessible inline because it is the primary daily operational report.
-- BT-REPORT-UI-003: Filter-heavy/data-grid reports open in dedicated report windows.
+- BT-REPORT-UI-003: Filter-heavy/data-grid reports normally open in dedicated report windows; Movement History is an integrated full-size main-workspace exception because it also provides operational reversal actions.
 - BT-REPORT-UI-004: Only one live instance of a given report window should exist per MainForm session; reopening brings the existing window forward.
 
 
@@ -259,6 +259,11 @@
 
 
 ## Movement History Report
+
+- Uses the full main BinTracker content area rather than a floating window.
+- Reallocates columns on resize: structured fields stay compact while Customer, Status and Notes share surplus width; below useful minimums the grid scrolls horizontally instead of crushing fields.
+- Keeps single-height rows, full Status/Notes tooltips, green IN/red OUT badges and amber/orange reversal badges without persisting presentation state.
+- PDF and CSV suggested filenames include a sanitized stable customer code only when an applied customer filter resolves to one customer.
 
 - BT-REPORT-HISTORY-001: Query actual movement rows for an inclusive selected date range.
 - BT-REPORT-HISTORY-002: Start/end dates cannot go later than today; service logic defensively clamps future requests.

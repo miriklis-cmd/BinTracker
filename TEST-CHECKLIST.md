@@ -1,17 +1,19 @@
 # BinTracker Active Test Checklist
 
-Current baseline: **v0.5.0-alpha.4**
+Current baseline: **v0.5.0-alpha.5.1**
 
 Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
+
+Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete — 8/8 smoke tests passed**. Later candidates must preserve that accepted behaviour; this record does not imply acceptance of later UI/DPI changes.
 
 ## Release / audit / packaging gate
 
 - [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.3 and the actually resolved installed SDK.
+- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.5.1 and the actually resolved installed SDK.
 - [ ] Restore succeeds; full solution builds with zero warnings.
 - [ ] All unit tests pass; all integration tests pass.
 - [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
-- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.5.0-alpha.3`.
+- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.5.0-alpha.5.1`.
 - [ ] No unexpected `global.json` is packaged.
 
 ## Authentication / users / shell
@@ -114,7 +116,10 @@ Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/Docu
 - [ ] Weekly resolves Monday–Sunday and This Week/Last Week correctly.
 - [ ] Weekly Daily Detail + Weekly Overview totals are correct; wrapping never clips actions.
 - [ ] Weekly PDF/CSV match selected view/order and are audited.
-- [ ] Movement History inclusive range/filters/quick ranges/adjustment opt-in work; PDF/CSV are ordered/audited.
+- [ ] Movement History opens as a full-size integrated main-app page; inclusive range/filters/quick ranges/adjustment opt-in work; PDF/CSV are ordered/audited.
+- [ ] At normal maximized desktop width Movement History has no unnecessary horizontal scrollbar; Customer/Status/Notes receive remaining width. Narrow the app and confirm minimum readable columns are preserved before horizontal scrolling appears. Rows remain single-height.
+- [ ] IN/OUT cells show restrained green/red badges; reversed originals and reversal rows show amber/orange Status badges. Select each kind of row and confirm text remains readable. Hover truncated Status/Notes and confirm full-text tooltips.
+- [ ] A customer filter resolving to one customer suggests PDF and CSV names containing the sanitized stable customer code; unfiltered and multi-customer results keep generic filenames.
 
 ## Customer Statement
 

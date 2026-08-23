@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.5.0-alpha.4**
+Current baseline: **v0.5.0-alpha.5.1**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -208,6 +208,10 @@ Provenance tags:
 | BT-WEEK-002 | v1 | IMPLEMENTED-STATIC | Weekly contains Daily Detail and Weekly Overview (customer/container OUT, IN, Net) in one report. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-WEEK-003 | v1 | IMPLEMENTED-STATIC | This Week/Last Week shortcuts, configured Container Type filter and audited PDF/CSV follow selected view/order. | CURRENT-DOC,CODE |
 | BT-HIST-001 | v1 | IMPLEMENTED-STATIC | Movement History supports inclusive date range, customer/container/direction/source filters, adjustment opt-in and quick ranges. | CURRENT-DOC,CODE |
+| BT-HIST-002 | v1 | IMPLEMENTED-STATIC | Movement History is an integrated full-size page in the main BinTracker workspace while preserving filters, sorting, export, audit, reversal permissions and sensitive-source restrictions. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-HIST-003 | v1 | IMPLEMENTED-STATIC | Movement History allocates compact structured columns plus flexible Customer/Status/Notes widths; sufficient width fits without horizontal scrolling, while narrow layouts retain readable minimums and scroll. Rows remain single-height and full Status/Notes text is available by tooltip. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-HIST-004 | v1 | IMPLEMENTED-STATIC | Movement History renders restrained green IN, red OUT and amber/orange reversal status badges without changing persisted Notes/status or weakening authoritative service/database checks. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-HIST-005 | v1 | IMPLEMENTED-STATIC | When a non-empty customer filter resolves displayed results to exactly one stable customer identity, PDF and CSV suggested filenames include its Windows-sanitized customer code; unfiltered or multi-customer results retain generic names. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-STMT-001 | v1 | IMPLEMENTED-ACCEPTED | Customer Statement workflow available from both Customers and Reports using one shared implementation. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-STMT-002 | v1 | IMPLEMENTED-ACCEPTED | Statement supports Generate PDF and Generate & Open; opened PDF is printable via Windows viewer; dates cannot exceed today. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-STMT-003 | v1 | IMPLEMENTED-STATIC | Statement running balances reconcile opening, movement and closing positions by container. | CURRENT-DOC,HIST-BUILD,CODE |

@@ -1,5 +1,6 @@
 using BinTracker.Core;
 using BinTracker.Services;
+using System.Drawing.Drawing2D;
 
 namespace BinTracker.WinForms;
 
@@ -64,6 +65,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         SelectionMode = DataGridViewSelectionMode.FullRowSelect,
         RowHeadersVisible = false,
         AutoGenerateColumns = false,
+        AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
         BackgroundColor = Color.White,
         BorderStyle = BorderStyle.FixedSingle,
         ScrollBars = ScrollBars.Both
@@ -75,6 +77,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     private Button? reverseButton;
     private MovementHistoryReportResult? currentResult;
     private bool autoRefreshReady;
+    private bool allocatingColumns;
 
     private readonly IBusinessClock clock;
 
@@ -96,10 +99,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         this.corrections = corrections;
         this.session = session;
 
-        Text = "Movement History";
-        StartPosition = FormStartPosition.Manual;
         AutoScaleMode = AutoScaleMode.Dpi;
-        MinimumSize = new Size(1120, 720);
         Font = new Font("Segoe UI", 10F);
         BackColor = Color.FromArgb(245, 247, 250);
 
@@ -165,7 +165,6 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
         Load += async (_, _) =>
         {
-            ApplyResponsiveBounds();
             await InitialiseAsync();
         };
     }
@@ -178,44 +177,12 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 5,
-            Padding = new Padding(18)
+            RowCount = 3,
+            Padding = Padding.Empty
         };
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-        var header = new TableLayoutPanel
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            ColumnCount = 1,
-            RowCount = 2,
-            BackColor = Color.White,
-            Padding = new Padding(18, 12, 18, 12),
-            Margin = new Padding(0, 0, 0, 10)
-        };
-
-        header.Controls.Add(new Label
-        {
-            Text = "Movement History",
-            AutoSize = true,
-            Font = new Font("Segoe UI Semibold", 19F, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 5)
-        }, 0, 0);
-
-        header.Controls.Add(new Label
-        {
-            Text =
-                "Search actual IN/OUT movement history across a selected date range. Future dates are not permitted.",
-            AutoSize = true,
-            ForeColor = Color.FromArgb(80, 90, 105),
-            MaximumSize = new Size(1250, 0)
-        }, 0, 1);
-
-        root.Controls.Add(header, 0, 0);
 
         var controlsCard = new Panel
         {
@@ -323,7 +290,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         rows.Controls.Add(options, 0, 1);
         rows.Controls.Add(actions, 0, 2);
         controlsCard.Controls.Add(rows);
-        root.Controls.Add(controlsCard, 0, 1);
+        root.Controls.Add(controlsCard, 0, 0);
 
         var summaryCard = new Panel
         {
@@ -334,7 +301,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             Margin = new Padding(0, 0, 0, 10)
         };
         summaryCard.Controls.Add(summary);
-        root.Controls.Add(summaryCard, 0, 2);
+        root.Controls.Add(summaryCard, 0, 1);
 
         var gridCard = new Panel
         {
@@ -343,24 +310,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             Padding = new Padding(10)
         };
         gridCard.Controls.Add(ReportGridMultiSort.Wrap(grid));
-        root.Controls.Add(gridCard, 0, 3);
-
-        var close = new Button
-        {
-            Text = "Close",
-            Size = new Size(110, 38),
-            Margin = new Padding(0, 10, 0, 0)
-        };
-        close.Click += (_, _) => Close();
-
-        var footer = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            FlowDirection = FlowDirection.RightToLeft
-        };
-        footer.Controls.Add(close);
-        root.Controls.Add(footer, 0, 4);
+        root.Controls.Add(gridCard, 0, 2);
 
         Controls.Add(root);
     }
@@ -461,12 +411,14 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
                     row.EnteredBy);
 
                 grid.Rows[index].Tag = row;
+                grid.Rows[index].Cells["Status"].ToolTipText = row.Status;
+                grid.Rows[index].Cells["Notes"].ToolTipText = row.Notes;
             }
 
             UpdateReverseAvailability();
 
-            ResizeContentColumns();
             ReportGridMultiSort.Reapply(grid);
+            AllocateResponsiveColumns();
 
             var totals = result.ContainerTotals.Select(x =>
                 $"{x.ContainerType}: " +
@@ -584,24 +536,107 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
     private void ConfigureGrid()
     {
-        grid.Columns.Add(Column("Date", 135, "Date"));
-        grid.Columns.Add(Column("Code", 145, "Code"));
-        grid.Columns.Add(Column(
-            "Customer",
-            220,
-            "Customer",
-            DataGridViewAutoSizeColumnMode.Fill));
-        grid.Columns.Add(Column("Type", 115, "Type"));
-        grid.Columns.Add(Column("Container", 135, "Container"));
-        grid.Columns.Add(Column("Direction", 100, "Direction"));
-        grid.Columns.Add(Column("Qty", 80, "Quantity"));
-        grid.Columns.Add(Column("Source", 140, "Source"));
-        grid.Columns.Add(Column("Reference", 145, "Reference"));
-        grid.Columns.Add(Column("Status", 230, "Status"));
-        grid.Columns.Add(Column("Notes", 180, "Notes"));
-        grid.Columns.Add(Column("Entered by", 110, "EnteredBy"));
+        grid.RowTemplate.Height = 30;
+        grid.Columns.Add(Column("Date", 130, 120, "Date"));
+        grid.Columns.Add(Column("Code", 110, 90, "Code"));
+        grid.Columns.Add(Column("Customer", 220, 180, "Customer"));
+        grid.Columns.Add(Column("Type", 90, 82, "Type"));
+        grid.Columns.Add(Column("Container", 115, 100, "Container"));
+        grid.Columns.Add(Column("Direction", 125, 120, "Direction"));
+        grid.Columns.Add(Column("Qty", 68, 58, "Quantity"));
+        grid.Columns.Add(Column("Source", 120, 108, "Source"));
+        grid.Columns.Add(Column("Reference", 120, 100, "Reference"));
+        grid.Columns.Add(Column("Status", 225, 225, "Status"));
+        grid.Columns.Add(Column("Notes", 150, 150, "Notes"));
+        grid.Columns.Add(Column("Entered by", 110, 90, "EnteredBy"));
 
         grid.SortCompare += Grid_SortCompare;
+        grid.CellPainting += Grid_CellPainting;
+        grid.Resize += (_, _) => AllocateResponsiveColumns();
+    }
+
+    private void Grid_CellPainting(
+        object? sender,
+        DataGridViewCellPaintingEventArgs e)
+    {
+        if (e.RowIndex < 0 || e.ColumnIndex < 0 ||
+            grid.Rows[e.RowIndex].Tag is not MovementHistoryReportRow row)
+            return;
+
+        var columnName = grid.Columns[e.ColumnIndex].Name;
+        var isDirection = columnName == "Direction";
+        var isReversalStatus = columnName == "Status" &&
+            (row.ReversesMovementId.HasValue || row.CorrectedByMovementId.HasValue);
+        if (!isDirection && !isReversalStatus)
+            return;
+
+        var text = isDirection ? row.DirectionText : row.Status;
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        // WinForms annotates both values as nullable because custom painting
+        // can be raised without a resolved style or graphics surface. A badge
+        // cannot be rendered safely in that state, so retain the grid's normal
+        // painting instead of dereferencing either value.
+        var cellStyle = e.CellStyle;
+        var graphics = e.Graphics;
+        if (cellStyle is null || graphics is null)
+            return;
+
+        e.PaintBackground(e.ClipBounds, true);
+        e.Paint(e.ClipBounds, DataGridViewPaintParts.Border);
+
+        var fill = isReversalStatus
+            ? Color.FromArgb(255, 232, 194)
+            : row.Direction == MovementType.In
+                ? Color.FromArgb(218, 242, 226)
+                : Color.FromArgb(250, 222, 222);
+        var foreground = isReversalStatus
+            ? Color.FromArgb(132, 74, 0)
+            : row.Direction == MovementType.In
+                ? Color.FromArgb(28, 102, 55)
+                : Color.FromArgb(151, 43, 43);
+
+        var cellFont = cellStyle.Font ?? grid.Font;
+        var textWidth = TextRenderer.MeasureText(text, cellFont).Width;
+        var badgeWidth = isDirection
+            ? Math.Min(e.CellBounds.Width - 10, textWidth + 22)
+            : e.CellBounds.Width - 10;
+        var badgeBounds = new Rectangle(
+            e.CellBounds.Left + 5,
+            e.CellBounds.Top + 4,
+            Math.Max(1, badgeWidth),
+            Math.Max(1, e.CellBounds.Height - 8));
+
+        using (var path = RoundedRectangle(badgeBounds, 7))
+        using (var brush = new SolidBrush(fill))
+            graphics.FillPath(brush, path);
+
+        TextRenderer.DrawText(
+            graphics,
+            text,
+            cellFont,
+            Rectangle.Inflate(badgeBounds, -8, 0),
+            foreground,
+            TextFormatFlags.VerticalCenter |
+            TextFormatFlags.Left |
+            TextFormatFlags.EndEllipsis |
+            TextFormatFlags.SingleLine |
+            TextFormatFlags.NoPrefix);
+
+        e.Handled = true;
+    }
+
+    private static GraphicsPath RoundedRectangle(Rectangle bounds, int radius)
+    {
+        var diameter = radius * 2;
+        var path = new GraphicsPath();
+        path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
+        path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
+        path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+        path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+        path.CloseFigure();
+        return path;
     }
 
     private void Grid_SortCompare(
@@ -683,8 +718,10 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         {
             Title = "Generate Movement History PDF",
             Filter = "PDF file (*.pdf)|*.pdf",
-            FileName =
-                $"BinTracker_Movement_History_{result.StartDate:yyyyMMdd}_{result.EndDate:yyyyMMdd}.pdf",
+            FileName = MovementHistoryExportFileName.Build(
+                result,
+                !string.IsNullOrWhiteSpace(customerSearch.Text),
+                "pdf"),
             AddExtension = true,
             DefaultExt = "pdf"
         };
@@ -742,8 +779,10 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         {
             Title = "Export Movement History",
             Filter = "CSV file (*.csv)|*.csv",
-            FileName =
-                $"BinTracker_Movement_History_{result.StartDate:yyyyMMdd}_{result.EndDate:yyyyMMdd}.csv",
+            FileName = MovementHistoryExportFileName.Build(
+                result,
+                !string.IsNullOrWhiteSpace(customerSearch.Text),
+                "csv"),
             AddExtension = true,
             DefaultExt = "csv"
         };
@@ -805,81 +844,70 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             });
     }
 
-    private void ResizeContentColumns()
+    private void AllocateResponsiveColumns()
     {
-        ResizeColumn(
-            "Date",
-            grid.Rows.Cast<DataGridViewRow>()
-                .Where(x => x.Tag is MovementHistoryReportRow)
-                .Select(x =>
-                    ((MovementHistoryReportRow)x.Tag!).MovementDate
-                        .ToString("ddd dd/MM/yyyy")),
-            135,
-            180);
+        if (allocatingColumns || grid.ClientSize.Width <= 0)
+            return;
 
-        ResizeColumn(
-            "Code",
-            grid.Rows.Cast<DataGridViewRow>()
-                .Where(x => x.Tag is MovementHistoryReportRow)
-                .Select(x =>
-                    ((MovementHistoryReportRow)x.Tag!).CustomerCode),
-            145,
-            300);
+        allocatingColumns = true;
+        try
+        {
+            var fixedWidths = new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["Date"] = 130,
+                ["Code"] = 110,
+                ["Type"] = 90,
+                ["Container"] = 115,
+                ["Direction"] = 125,
+                ["Quantity"] = 68,
+                ["Source"] = 120,
+                ["Reference"] = 120,
+                ["EnteredBy"] = 110
+            };
 
-        ResizeColumn(
-            "Container",
-            grid.Rows.Cast<DataGridViewRow>()
-                .Where(x => x.Tag is MovementHistoryReportRow)
-                .Select(x =>
-                    ((MovementHistoryReportRow)x.Tag!).ContainerType),
-            135,
-            240);
-    }
+            foreach (var pair in fixedWidths)
+                grid.Columns[pair.Key].Width = pair.Value;
 
-    private void ResizeColumn(
-        string columnName,
-        IEnumerable<string> values,
-        int minimum,
-        int maximum)
-    {
-        var column = grid.Columns[columnName];
-        var font = grid.DefaultCellStyle.Font ?? Font;
+            var available = grid.ClientSize.Width - 4;
+            var verticalScrollBar = grid.Controls
+                .OfType<VScrollBar>()
+                .FirstOrDefault(scrollBar => scrollBar.Visible);
+            if (verticalScrollBar is not null)
+                available -= verticalScrollBar.Width;
 
-        var longest = values
-            .Append(column.HeaderText)
-            .Select(x => TextRenderer.MeasureText(x ?? "", font).Width)
-            .DefaultIfEmpty(minimum)
-            .Max();
+            var fixedTotal = fixedWidths.Values.Sum();
+            var flexible = new[]
+            {
+                (Name: "Customer", Minimum: 180, Weight: 0.38),
+                (Name: "Status", Minimum: 225, Weight: 0.37),
+                (Name: "Notes", Minimum: 150, Weight: 0.25)
+            };
+            var minimumFlexibleTotal = flexible.Sum(item => item.Minimum);
+            var minimumTotal = fixedTotal + minimumFlexibleTotal;
 
-        column.AutoSizeMode =
-            DataGridViewAutoSizeColumnMode.None;
-        column.MinimumWidth = minimum;
-        column.Width = Math.Clamp(
-            longest + 34,
-            minimum,
-            maximum);
-    }
+            if (available < minimumTotal)
+            {
+                foreach (var item in flexible)
+                    grid.Columns[item.Name].Width = item.Minimum;
+                return;
+            }
 
-    private void ApplyResponsiveBounds()
-    {
-        var screen = Owner is not null
-            ? Screen.FromControl(Owner)
-            : Screen.FromPoint(Cursor.Position);
-
-        var area = screen.WorkingArea;
-
-        Width = Math.Clamp(
-            (int)Math.Round(area.Width * 0.92),
-            MinimumSize.Width,
-            1900);
-
-        Height = Math.Clamp(
-            (int)Math.Round(area.Height * 0.88),
-            MinimumSize.Height,
-            1100);
-
-        Left = area.Left + Math.Max(0, (area.Width - Width) / 2);
-        Top = area.Top + Math.Max(0, (area.Height - Height) / 2);
+            var distributable = available - fixedTotal - minimumFlexibleTotal;
+            var assignedExtra = 0;
+            for (var index = 0; index < flexible.Length; index++)
+            {
+                var item = flexible[index];
+                var extra = index == flexible.Length - 1
+                    ? distributable - assignedExtra
+                    : (int)Math.Floor(distributable * item.Weight);
+                assignedExtra += extra;
+                grid.Columns[item.Name].Width = item.Minimum + extra;
+            }
+        }
+        finally
+        {
+            allocatingColumns = false;
+        }
     }
 
     private static FlowLayoutPanel Flow() =>
@@ -929,16 +957,15 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     private static DataGridViewTextBoxColumn Column(
         string header,
         int width,
-        string name,
-        DataGridViewAutoSizeColumnMode autoSize =
-            DataGridViewAutoSizeColumnMode.None) =>
+        int minimumWidth,
+        string name) =>
         new()
         {
             Name = name,
             HeaderText = header,
             Width = width,
-            MinimumWidth = Math.Min(width, 90),
-            AutoSizeMode = autoSize,
+            MinimumWidth = minimumWidth,
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
             SortMode = DataGridViewColumnSortMode.Automatic
         };
 

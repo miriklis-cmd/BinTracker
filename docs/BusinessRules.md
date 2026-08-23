@@ -130,7 +130,7 @@ Important security, master-data and movement changes create audit events.
 ## Report catalogue navigation
 
 - Market Floor Sheet remains the first/inline operational report.
-- Detailed reports use dedicated windows so filters, tables and export/print actions have full working space.
+- Detailed reports normally use dedicated windows so filters, tables and export/print actions have full working space. Movement History is the explicit exception: it uses the full main-application workspace because it also hosts the operational reversal action.
 - “Today” is a shortcut inside the relevant report window, not a separate report.
 
 
@@ -226,6 +226,11 @@ Important security, master-data and movement changes create audit events.
 ## Movement History reporting
 
 - Movement History is actual historical movement reporting, not forecasting.
+- Movement History is an integrated full-size main-application page rather than a floating report window.
+- Predictable structured columns remain compact. Customer, Status and Notes share remaining width responsively; readable minimums are preserved and horizontal scrolling is allowed only when the host becomes too narrow.
+- Rows remain single-height. Direction is presented with restrained green IN/red OUT badges; reversal status uses amber/orange. Badge/status presentation never changes ledger Notes or authoritative correction state.
+- Truncated Status and Notes cells expose their complete displayed text through tooltips.
+- PDF and CSV use the same suggested filename rule: an applied customer filter that resolves the displayed report to exactly one CustomerId adds its Windows-sanitized stable customer code; otherwise naming remains generic.
 - Date ranges are inclusive and cannot extend past today.
 - Opening adjustments are excluded by default because they are not physical activity.
 - Historical Container Type filtering includes inactive configured types because old movement rows remain legitimate history.

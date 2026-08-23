@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.5.0-alpha.4**
+Current planning baseline: **v0.5.0-alpha.5.1**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -108,7 +108,7 @@ Already implemented:
 
 ### 3. Reports
 
-- [x] **Report launcher architecture** — Market Floor remains inline as the primary operational report; detailed reports open in dedicated single-instance, responsive report windows sized from the current monitor working area so data grids grow on larger displays.
+- [x] **Report launcher architecture** — Market Floor remains inline as the primary operational report; detailed reports normally open in dedicated single-instance responsive windows. Movement History is the intentional full-size main-workspace exception because it also carries the operational reversal workflow.
 
 Implemented:
 
@@ -127,7 +127,7 @@ Still required:
 - [x] **Weekly Movements report** — Monday-to-Sunday Daily Detail + Weekly Overview, This Week/Last Week shortcuts, authoritative Container Type filter, future-date guard/current-week activity-through-today semantics, PDF/Generate & Open and CSV export preserving selected-view sort.
 - [x] **Customer Statement view/print workflow** — shared workflow supports Generate PDF and Generate & Open from Customers; Reports now has a Customer Statement launcher with customer search/selection. Opened PDFs are printable through the Windows PDF viewer.
 - [x] **Daily Movements report** — dedicated responsive report window with today/yesterday shortcuts, customer/container/direction/source filters, physical-movement default, optional opening adjustments, typed sorting, audited PDF and CSV preserving the current grid order.
-- [x] **Movement History report** — inclusive date range, customer/container/direction/source filters, opening-adjustment opt-in, future-date guards, quick range shortcuts, typed sorting, audited PDF and CSV preserving current grid order.
+- [x] **Movement History report** — integrated full-size main-application page with inclusive date range, customer/container/direction/source filters, opening-adjustment opt-in, future-date guards, quick range shortcuts, responsive readable columns, derived direction/reversal badges, typed sorting, audited PDF and CSV preserving current grid order, and stable customer-code filenames when a customer filter resolves to one customer.
 - [x] **Monthly Summary** — selected-month OUT, IN and net movement totals with customer/container breakdown, This Month/Last Month shortcuts, customer/container/source filters, optional opening adjustments, typed numeric sorting, audited PDF and CSV preserving current grid order.
 - [x] **Daily Print Pack** — selected-date Outstanding Summary + physical Movement Detail in one audited PDF; acceptance testing remains.
 - [x] **Monthly Summary on-screen interaction** — dedicated responsive window with live dropdown/date/checkbox refresh, Customer-on-Enter search and sortable summary grid.

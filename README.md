@@ -1,4 +1,4 @@
-# BinTracker v0.5.0-alpha.4
+# BinTracker v0.5.0-alpha.5.1
 
 BinTracker is a .NET 8 Windows desktop application for tracking reusable container movements, customer/container balances, operational reporting and audited business activity.
 
@@ -17,7 +17,7 @@ BinTracker is a .NET 8 Windows desktop application for tracking reusable contain
 - As-of-Date Outstanding Containers query with PDF/CSV export in a dedicated report window.
 - Daily Movements report with Today/Yesterday shortcuts, future-date guard, filters and PDF/CSV export.
 - Weekly Movements report with Monday-Sunday selection, Daily Detail / Weekly Overview, filters, PDF/CSV export and current-week activity-through-today semantics.
-- Movement History report with inclusive date-range search, filters, future-date guard and PDF/CSV export.
+- Integrated full-size Movement History page with inclusive date-range search, responsive columns, reversal scan badges, future-date guard and audited PDF/CSV export.
 - Monthly Summary report with selected-month OUT/IN/net totals, customer/container breakdown, filters, PDF and CSV.
 - Daily Print Pack combining selected-date Outstanding Summary and physical Movement Detail in one audited PDF.
 - Compact Reports launcher architecture: Market Floor inline, detailed reports in dedicated single-instance windows.
