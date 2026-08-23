@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.5.0-alpha.5.1**
+Current release: **v0.5.0-alpha.5.2**
 
 This file contains current defects/limitations that affect testing or production readiness. Completed history is in `docs/CHANGELOG.md`; future features are in `docs/Roadmap.md`; engineering cleanup is in `TECH-DEBT.md`.
 
@@ -10,6 +10,11 @@ This file contains current defects/limitations that affect testing or production
 **Area:** Reports
 
 Market Floor, Customer Statement, Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Monthly Summary and Daily Print Pack are implemented. Monthly Summary and Daily Print Pack still require final operator acceptance/real-world print validation before the Reporting milestone closes.
+
+### Movement History alpha.5.2 UI acceptance is pending
+**Area:** Reports / Movement History
+
+The alpha.5.1 Windows build gate passed with zero warnings/errors and 242/242 automated tests, but manual inspection found the integrated page's action row clipped and several structured columns too narrow. Alpha.5.2 keeps the integrated workspace and badge/export improvements, adds explicit Back to Reports navigation, reserves the action row structurally, and rebalances Date/Code/Direction/Source/Status/Notes/Customer widths. Maximized/narrow-window and DPI acceptance remain required.
 
 ### Dashboard is still the first-pass operational dashboard
 **Area:** Dashboard
@@ -27,13 +32,10 @@ Business Information supports Business Name, Trading Name and Default Report Hea
 Customer reminder preferences and the `ReminderDelivery` persistence model exist, but no real Email or SMS provider/send workflow has been implemented.
 
 ### Movement correction/reversal workflow is in active v0.5 implementation
-- Operator authorization policy changed after smoke acceptance: Operators should now reverse ordinary Manual/Batch movements; Opening Adjustment and Excel Import generic reversal remain blocked pending targeted Windows acceptance.
-- `v0.5.0-alpha.1` added the first append-only Administrator reversal path.
-- `v0.5.0-alpha.1.1` fixed the reversal dialog reason editor collapsing at runtime/DPI, but the action row was still clipped and remained an acceptance blocker.
-- Final correction-by-replacement workflow and dedicated operational placement remain incomplete; Movement History may remain a contextual entry point rather than the final primary home.
+- Operators can reverse ordinary Manual/Batch movements; Opening Adjustment and Excel Import generic reversal remain restricted to their controlled workflows.
+- Append-only reversal, immutable original rows, reason/linkage/audit, already-reversed protection and reversal-of-reversal protection are implemented.
+- Final correction-by-replacement workflow remains incomplete.
 **Area:** Movements / Audit
-
-Saved movements are auditable but there is no controlled workflow to reverse/correct an entry while preserving the original.
 
 ### Production Backup / Restore is missing
 **Area:** Operations
@@ -43,7 +45,7 @@ Developer Database Backup/Load/Fresh tools are for testing only. A production-sa
 ### Batch Entry recovery/polish requires operator smoke acceptance
 **Area:** Batch Entry
 
-Batch Entry recovery is operator-confirmed for Continue/Save/Discard. v0.5.0-alpha.1.1 fixes the remaining stale asynchronous edit-state race (Esc/Clear could be followed by a late row-load that resurrected Update Line), makes Clear Batch fully reset the editor even with zero draft rows, and aligns recovery-dialog actions consistently. Focused Windows smoke acceptance remains pending.
+Batch Entry recovery is operator-confirmed for Continue/Save/Discard. v0.5.0-alpha.1.1 fixed the remaining stale asynchronous edit-state race, made Clear Batch fully reset the editor even with zero draft rows, and aligned recovery-dialog actions consistently. Focused Windows smoke acceptance remains pending where still listed in the active checklist.
 
 ### Multi-computer production use is not supported yet
 **Area:** Deployment
@@ -64,9 +66,6 @@ The Zahos/BIG search/list-detail synchronization bug is fixed but should remain 
 - Review metric tiles do not yet have the approved rounded corners.
 - Password eye / Logout artwork is functional but not final visual polish.
 
-
 ## Requirements reconciliation
 
 - alpha.23.5.2 repaired stale/contradictory documentation and strengthened the mechanical audit gate. Windows build/tests and open manual acceptance items remain authoritative; static reconciliation is not a substitute for runtime acceptance.
-
-- v0.5.0-alpha.1.1: Remaining Batch Entry Esc/Clear edit-state race and recovery-button alignment require focused operator smoke-test; current larger icon trial remains pending final approval.
