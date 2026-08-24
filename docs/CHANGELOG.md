@@ -1,3 +1,15 @@
+## v0.5.0-alpha.5.6.4.1
+
+- Reconciled BT-RPT-021 audit matching with the actual alpha.5.6.4 Weekly Movements reload sequence.
+- Preserved the alpha.5.6.4 runtime implementation unchanged.
+
+## v0.5.0-alpha.5.6.4
+
+- Fixed Weekly Movements Source wrapping and Notes-option reload/tab state.
+- Widened Customer Statement search input for its full keyboard cue.
+- Allowed re-clicking selected Reports nav to return from integrated report pages to the Reports hub.
+- Added BT-RPT-020..021 and reconciled BT-RPT-002 with the integrated Option-B architecture.
+
 ## v0.5.0-alpha.5.6.3
 
 - Removed double outer padding from embedded legacy report forms.

@@ -1,5 +1,22 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.5.6.4.1
+
+- Corrects the BT-RPT-021 permanent source audit after alpha.5.6.4.
+- The Weekly Movements implementation was structurally correct; the prior audit regex incorrectly required `UpdateViewOptions()` to appear immediately after `finally {` and therefore rejected the valid UI-state restoration sequence.
+- BT-RPT-021 now explicitly requires both refresh paths: tab selection changes call `UpdateViewOptions()`, and `LoadReportAsync` calls it in `finally` after restoring `Enabled` and `UseWaitCursor`.
+- Source grouping, row-aware Notes enablement, Customer Statement polish and Reports-hub navigation behavior remain unchanged from alpha.5.6.4.
+
+## v0.5.0-alpha.5.6.4
+
+- Applies the accepted integrated-Reports smoke-test corrections without changing report business logic.
+- Weekly Movements keeps the Source label/dropdown as one non-breaking filter group.
+- Weekly `Include notes in exports` now recalculates after every report load and tab change: enabled only for Daily Detail with detail rows; disabled for empty Daily Detail and always disabled/cleared for Weekly Overview.
+- Customer Statement widens the customer search field so the full `Type customer code/name, then press Enter` cue is readable at the accepted maximised layout.
+- Clicking the already-highlighted Reports item in the left navigation while an integrated detailed report is open now returns to the Reports overview/hub.
+- Reconciles stale BT-RPT-002 breakout-window wording and adds permanent BT-RPT-020..021 source gates.
+- Windows build/test/audit and focused smoke acceptance remain required.
+
 ## v0.5.0-alpha.5.6.3
 
 - Removes the remaining top and bottom dead bands from legacy reports embedded in the main Reports workspace.

@@ -11,7 +11,8 @@ public sealed class CustomerStatementReportForm : BinTrackerForm
 
     private readonly TextBox search = new()
     {
-        Width = 320,
+        Width = 395,
+        MinimumSize = new Size(395, 0),
         PlaceholderText = "Type customer code/name, then press Enter"
     };
 

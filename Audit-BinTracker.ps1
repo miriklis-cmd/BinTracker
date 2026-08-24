@@ -60,7 +60,7 @@ foreach ($row in $reqRows) {
     if ($allowedScopes -notcontains $row.Scope) { Fail "Invalid requirement scope for $($row.Id): $($row.Scope)" }
     if ($allowedStatuses -notcontains $row.Status) { Fail "Invalid requirement status for $($row.Id): $($row.Status)" }
 }
-$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-RPT-018','BT-RPT-019','BT-UI-014','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-CORR-001','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-HIST-006','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015')
+$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-RPT-018','BT-RPT-019','BT-RPT-020','BT-RPT-021','BT-UI-014','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-CORR-001','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-HIST-006','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015')
 foreach ($id in $mustHaveIds) { if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost mandatory ID: $id" } }
 
 # Permanent central-service / concurrency portability gate (BT-ARCH-008..015).
@@ -503,6 +503,33 @@ if ($reportsMainText -notmatch 'private void OpenEmbeddedReport\(' -or
     $reportsMainText -notmatch 'parent\.Visible = false' -or
     $reportsMainText -match '\.Show\(this\);') {
     Fail 'BT-RPT-001/018 source gate failed: detailed reports must use the integrated main-workspace host and shared breadcrumb rather than breakout windows.'
+}
+
+
+# Integrated Reports smoke-correction gate (BT-RPT-020..021).
+$reportsMainText = Get-Content -Raw 'src/BinTracker.WinForms/MainForm.cs'
+$weeklyText = Get-Content -Raw 'src/BinTracker.WinForms/WeeklyMovementsReportForm.cs'
+$customerStatementText = Get-Content -Raw 'src/BinTracker.WinForms/CustomerStatementReportForm.cs'
+
+if ($reportsMainText -notmatch 'reselectingReportsHub' -or
+    $reportsMainText -notmatch 'activeReportPage is not null' -or
+    $reportsMainText -notmatch 'string\.Equals\(\s*text,\s*"Reports"') {
+    Fail 'BT-RPT-020 source gate failed: clicking selected Reports navigation must return from an integrated report to the Reports hub.'
+}
+
+if ($weeklyText -notmatch 'var sourceGroup = new FlowLayoutPanel' -or
+    $weeklyText -notmatch 'WrapContents = false' -or
+    $weeklyText -notmatch 'sourceGroup\.Controls\.Add\(sourceFilter\)' -or
+    $weeklyText -notmatch 'var hasDetailRows = current is not null && current\.Rows\.Count > 0' -or
+    $weeklyText -notmatch 'includeNotesInExports\.Enabled = detailView && hasDetailRows' -or
+    $weeklyText -notmatch 'tabs\.SelectedIndexChanged \+= \(_, _\) => UpdateViewOptions\(\);' -or
+    $weeklyText -notmatch 'finally\s*\{\s*Enabled = true;\s*UseWaitCursor = false;\s*UpdateViewOptions\(\);\s*\}') {
+    Fail 'BT-RPT-021 source gate failed: Weekly Source grouping or Include-notes reload/tab state contract is incomplete.'
+}
+
+if ($customerStatementText -notmatch 'Width = 395' -or
+    $customerStatementText -notmatch 'PlaceholderText = "Type customer code/name, then press Enter"') {
+    Fail 'Integrated Customer Statement polish gate failed: full keyboard search cue must remain readable.'
 }
 
 Write-Host "Audit passed: $expected; $($reqRows.Count) permanent requirement IDs; $($mdFiles.Count) Markdown files; current-state contradiction checks passed." -ForegroundColor Green

@@ -404,8 +404,19 @@ public sealed class MainForm : BinTrackerForm
 
         async void Activate()
         {
-            if(ReferenceEquals(selectedNav, row))
+            var reselectingReportsHub =
+                ReferenceEquals(selectedNav, row) &&
+                string.Equals(
+                    text,
+                    "Reports",
+                    StringComparison.OrdinalIgnoreCase) &&
+                activeReportPage is not null;
+
+            if (ReferenceEquals(selectedNav, row) &&
+                !reselectingReportsHub)
+            {
                 return;
+            }
 
             if(!await ConfirmCanLeaveCurrentPageAsync())
                 return;

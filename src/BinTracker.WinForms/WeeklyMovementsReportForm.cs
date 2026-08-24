@@ -190,8 +190,19 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
         filters.Controls.Add(customerSearch);
         filters.Controls.Add(ControlLabel("Container", 14));
         filters.Controls.Add(containerFilter);
-        filters.Controls.Add(ControlLabel("Source", 14));
-        filters.Controls.Add(sourceFilter);
+
+        var sourceGroup = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Margin = new Padding(14, 0, 0, 0),
+            Padding = Padding.Empty
+        };
+        sourceGroup.Controls.Add(ControlLabel("Source"));
+        sourceGroup.Controls.Add(sourceFilter);
+        filters.Controls.Add(sourceGroup);
 
         var options = Flow();
         options.Padding = new Padding(0, 6, 0, 4);
@@ -266,10 +277,11 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
     private void UpdateViewOptions()
     {
         var detailView = tabs.SelectedIndex == 0;
+        var hasDetailRows = current is not null && current.Rows.Count > 0;
 
-        includeNotesInExports.Enabled = detailView;
+        includeNotesInExports.Enabled = detailView && hasDetailRows;
 
-        if (!detailView)
+        if (!includeNotesInExports.Enabled)
             includeNotesInExports.Checked = false;
     }
 
@@ -370,7 +382,12 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
         {
             MessageBox.Show(this,ex.Message,"Weekly Movements",MessageBoxButtons.OK,MessageBoxIcon.Error);
         }
-        finally { Enabled=true; UseWaitCursor=false; }
+        finally
+        {
+            Enabled = true;
+            UseWaitCursor = false;
+            UpdateViewOptions();
+        }
     }
 
     private WeeklyMovementsReportResult BuildDisplayedResult()

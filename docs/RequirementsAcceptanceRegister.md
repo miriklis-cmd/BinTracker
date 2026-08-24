@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.5.0-alpha.5.6.3**
+Current baseline: **v0.5.0-alpha.5.6.4.1**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -173,7 +173,7 @@ Provenance tags:
 | ID | Scope | Status | Requirement | Provenance |
 |---|---|---|---|---|
 | BT-RPT-001 | v1 | IMPLEMENTED-STATIC | Reports launcher keeps Market Floor first/inline; detailed report launchers open integrated main-workspace report pages rather than breakout windows. | CHAT-SURFACED,CURRENT-DOC,CODE |
-| BT-RPT-002 | v1 | IMPLEMENTED-STATIC | Detailed breakout reports are single-instance and responsive to laptop/large monitor working area. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-RPT-002 | v1 | IMPLEMENTED-STATIC | Detailed reports use a single active embedded main-workspace surface and remain responsive to available laptop/large-monitor working area; report launches must not create duplicate breakout windows. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-RPT-003 | v1 | IMPLEMENTED-STATIC | Interactive reports remove separate Run Report button: date/dropdown/checkbox changes refresh live; Customer text applies on Enter with visible cue. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-RPT-004 | v1 | IMPLEMENTED-STATIC | Numeric report columns sort numerically rather than lexicographically. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-RPT-005 | v1 | IMPLEMENTED-STATIC | PDF/CSV exports preserve the currently displayed grid sort/order. | CHAT-SURFACED,CURRENT-DOC,CODE |
@@ -191,6 +191,8 @@ Provenance tags:
 | BT-RPT-017 | v1 | IMPLEMENTED-STATIC | Every active sort on an applicable report grid visibly identifies both direction and sort priority in the column header (for example ▲1/▼1 and ▲2/▼2). The indication must remain visible at supported DPI, including narrow text columns such as Direction, must stay on a single header line without sort-driven header/grid height or column-width changes, and must not depend solely on the WinForms native sort glyph. | CODE |
 | BT-RPT-018 | v1 | IMPLEMENTED-STATIC | Reports landing page remains the v1 hub. Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Customer Statement and Monthly Summary open inside the main workspace using a shell-level `Reports › <Report Name>` breadcrumb with clickable Reports parent navigation; embedded report chrome does not duplicate standalone Back/Close navigation. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-RPT-019 | v1 | IMPLEMENTED-STATIC | Legacy detailed reports embedded in the main workspace must not retain standalone-window outer padding, duplicate large report titles, or Close-only footer rows. The accepted explanatory sentence remains visible in compact form and the report grid receives the reclaimed vertical space. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-RPT-020 | v1 | IMPLEMENTED-STATIC | While any integrated detailed report is open, clicking the already-highlighted Reports item in the left navigation returns to the Reports overview/hub; selected-nav suppression must not swallow this intentional parent-navigation action. | USER-REQUEST,CODE |
+| BT-RPT-021 | v1 | IMPLEMENTED-STATIC | Weekly Movements keeps Source label/dropdown together when filters wrap, and `Include notes in exports` is enabled only on Daily Detail when the current result has detail rows; it is disabled for empty detail results and always disabled/cleared on Weekly Overview. The state is recalculated after report reloads and tab changes. | USER-REQUEST,CODE |
 
 ## Market Floor / Outstanding / movements / statements / summaries
 

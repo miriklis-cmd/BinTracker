@@ -1,5 +1,24 @@
 # Documentation Audit Record
 
+## v0.5.0-alpha.5.6.4.1 BT-RPT-021 audit correction
+
+- [x] Alpha.5.6.4 Windows source audit failed before build on BT-RPT-021.
+- [x] Actual Weekly source inspected against the exact audit expression.
+- [x] Runtime code confirmed to contain the required Source grouping, row-aware Notes state, tab refresh and post-load refresh.
+- [x] Brittle audit expression replaced with explicit tab-change and load-finally assertions without weakening BT-RPT-021.
+- [ ] Windows audit/build/test and focused alpha.5.6.4 behavior smoke remain required.
+
+## v0.5.0-alpha.5.6.4 integrated Reports smoke corrections
+
+- [x] Report smoke pass completed across Outstanding Containers, Daily Movements, Weekly Movements, Customer Statement, Monthly Summary and Movement History.
+- [x] Outstanding/Daily/Monthly/Movement History integrated layouts accepted for this pass.
+- [x] Weekly Source wrapping correction implemented.
+- [x] Weekly Notes enablement state unified for reload and tab-change paths.
+- [x] Customer Statement search cue polish implemented.
+- [x] Reports left-nav reselect returns from detailed report to overview.
+- [x] BT-RPT-002 wording reconciled; BT-RPT-020..021 added and hard-gated.
+- [ ] Windows source audit/build/test and focused smoke confirmation remain required.
+
 ## v0.5.0-alpha.5.6.3 embedded report dead-space correction
 
 - [x] Hard-gate Roadmap, Requirements register and source audit reviewed before code change.
