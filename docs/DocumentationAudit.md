@@ -1,5 +1,15 @@
 # Documentation Audit Record
 
+## v0.5.0-alpha.5.6.3 embedded report dead-space correction
+
+- [x] Hard-gate Roadmap, Requirements register and source audit reviewed before code change.
+- [x] Operator-highlighted top and bottom dead bands traced to retained standalone root padding and Close-only footer allocation.
+- [x] Embedded root padding/margin removed.
+- [x] Close-only footer rows collapse; shared action rows retain non-Close actions.
+- [x] Duplicate large title rows collapse to zero while explanatory text remains.
+- [x] BT-RPT-019 added and permanent source audit strengthened.
+- [ ] Windows source audit/build/test and report visual smoke acceptance remain required.
+
 ## v0.5.0-alpha.5.6.2 embedded report header cleanup
 
 - [x] Operator screenshot identified duplicate `Outstanding Containers` / `Outstanding Containers — As of Date` headings and wasted vertical space.

@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.5.0-alpha.5.6.2**
+Current baseline: **v0.5.0-alpha.5.6.3**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -190,6 +190,7 @@ Provenance tags:
 | BT-RPT-016 | v1 | IMPLEMENTED-STATIC | All applicable report grids provide consistent type-aware multi-column sorting: click sets a primary sort, Shift+click adds/toggles later sort levels, numeric quantities/positions sort by their true business value rather than display text (including CREDIT as negative and OUT as positive), report dates sort chronologically, active sorts persist across report refreshes, and each grid displays an on-screen usage hint; Outstanding Containers keeps its filter/action controls fully visible at supported DPI. | USER-APPROVED,CODE |
 | BT-RPT-017 | v1 | IMPLEMENTED-STATIC | Every active sort on an applicable report grid visibly identifies both direction and sort priority in the column header (for example ▲1/▼1 and ▲2/▼2). The indication must remain visible at supported DPI, including narrow text columns such as Direction, must stay on a single header line without sort-driven header/grid height or column-width changes, and must not depend solely on the WinForms native sort glyph. | CODE |
 | BT-RPT-018 | v1 | IMPLEMENTED-STATIC | Reports landing page remains the v1 hub. Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Customer Statement and Monthly Summary open inside the main workspace using a shell-level `Reports › <Report Name>` breadcrumb with clickable Reports parent navigation; embedded report chrome does not duplicate standalone Back/Close navigation. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-RPT-019 | v1 | IMPLEMENTED-STATIC | Legacy detailed reports embedded in the main workspace must not retain standalone-window outer padding, duplicate large report titles, or Close-only footer rows. The accepted explanatory sentence remains visible in compact form and the report grid receives the reclaimed vertical space. | CHAT-SURFACED,CURRENT-DOC,CODE |
 
 ## Market Floor / Outstanding / movements / statements / summaries
 

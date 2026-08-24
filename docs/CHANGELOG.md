@@ -1,3 +1,10 @@
+## v0.5.0-alpha.5.6.3
+
+- Removed double outer padding from embedded legacy report forms.
+- Collapsed Close-only footer rows instead of merely hiding the Close button.
+- Collapsed duplicate-title rows to zero height while retaining explanatory text.
+- Added BT-RPT-019 and permanent source-gate coverage for compact embedded report chrome.
+
 ## v0.5.0-alpha.5.6.2
 
 - Removed duplicate embedded report titles and the associated vertical whitespace.

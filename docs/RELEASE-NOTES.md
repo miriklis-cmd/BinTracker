@@ -1,5 +1,14 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.5.6.3
+
+- Removes the remaining top and bottom dead bands from legacy reports embedded in the main Reports workspace.
+- Root cause: standalone report forms retained their own 18px outer padding on top of MainForm's workspace padding, and Close-only footer rows remained allocated after the Close button was hidden.
+- Embedded legacy report root padding/margin is now removed; Close-only footers collapse completely.
+- Duplicate standalone report titles are hidden and their title row is explicitly collapsed to zero height, while the accepted explanatory sentence remains visible in a compact header.
+- Applies to Outstanding Containers, Daily Movements, Weekly Movements, Customer Statement and Monthly Summary without changing report services, filters, sorting, exports or business logic.
+- Adds permanent BT-RPT-019 and strengthens the Option-B source audit to protect the compact embedded-report contract.
+
 ## v0.5.0-alpha.5.6.2
 
 - Removes duplicate standalone report title/header blocks from embedded Option-B report pages, eliminating the wasted white band visible in Outstanding Containers.

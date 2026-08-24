@@ -60,7 +60,7 @@ foreach ($row in $reqRows) {
     if ($allowedScopes -notcontains $row.Scope) { Fail "Invalid requirement scope for $($row.Id): $($row.Scope)" }
     if ($allowedStatuses -notcontains $row.Status) { Fail "Invalid requirement status for $($row.Id): $($row.Status)" }
 }
-$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-RPT-018','BT-UI-014','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-CORR-001','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-HIST-006','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015')
+$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-RPT-018','BT-RPT-019','BT-UI-014','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-CORR-001','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-HIST-006','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015')
 foreach ($id in $mustHaveIds) { if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost mandatory ID: $id" } }
 
 # Permanent central-service / concurrency portability gate (BT-ARCH-008..015).
@@ -494,9 +494,13 @@ if ($reportsMainText -notmatch 'private void OpenEmbeddedReport\(' -or
     $reportsMainText -notmatch 'report\.TopLevel = false' -or
     $reportsMainText -notmatch 'report\.FormBorderStyle = FormBorderStyle\.None' -or
     $reportsMainText -notmatch 'report\.Dock = DockStyle\.Fill' -or
+    $reportsMainText -notmatch 'CompactEmbeddedReportLayout' -or
+    $reportsMainText -notmatch 'rootLayout\.Padding = Padding\.Empty' -or
+    $reportsMainText -notmatch 'rootLayout\.Margin = Padding\.Empty' -or
     $reportsMainText -notmatch 'HideEmbeddedReportChrome' -or
     $reportsMainText -notmatch 'label\.Text\.StartsWith\(' -or
-    $reportsMainText -notmatch 'label\.Parent\.Visible = false' -or
+    $reportsMainText -notmatch 'legacyHeader\.RowStyles\[titleRow\]\.Height = 0F' -or
+    $reportsMainText -notmatch 'parent\.Visible = false' -or
     $reportsMainText -match '\.Show\(this\);') {
     Fail 'BT-RPT-001/018 source gate failed: detailed reports must use the integrated main-workspace host and shared breadcrumb rather than breakout windows.'
 }

@@ -773,7 +773,13 @@ public sealed class MainForm : BinTrackerForm
         Form report,
         bool hideInternalHeader = true)
     {
-        SetPage(pageName, subtitle, showReportsBreadcrumb: true);
+        // Legacy report forms retain their accepted explanatory sentence
+        // inside the report body. Movement History is already natively
+        // integrated and continues to use the shell subtitle.
+        SetPage(
+            pageName,
+            hideInternalHeader ? null : subtitle,
+            showReportsBreadcrumb: true);
         content.AutoScroll = false;
 
         activeReportPage = report;
@@ -784,10 +790,29 @@ public sealed class MainForm : BinTrackerForm
         report.MaximumSize = Size.Empty;
 
         if (hideInternalHeader)
+        {
+            CompactEmbeddedReportLayout(report);
             HideEmbeddedReportChrome(report, pageName);
+        }
 
         content.Controls.Add(report);
         report.Show();
+    }
+
+    private static void CompactEmbeddedReportLayout(Form report)
+    {
+        // Standalone report windows add 18px around their entire root layout.
+        // MainForm already supplies the workspace padding, so retaining both
+        // creates matching dead bands above the controls and below the grid.
+        var rootLayout = report.Controls
+            .OfType<TableLayoutPanel>()
+            .FirstOrDefault(layout => layout.Dock == DockStyle.Fill);
+
+        if (rootLayout is not null)
+        {
+            rootLayout.Padding = Padding.Empty;
+            rootLayout.Margin = Padding.Empty;
+        }
     }
 
     private static void HideEmbeddedReportChrome(
@@ -802,7 +827,19 @@ public sealed class MainForm : BinTrackerForm
                     "Close",
                     StringComparison.OrdinalIgnoreCase))
             {
-                button.Visible = false;
+                // A footer containing only Close is obsolete in the integrated
+                // workspace and must collapse completely. Where Close shares an
+                // action row (Customer Statement), hide only that button.
+                if (button.Parent is Control parent &&
+                    parent.Controls.Count == 1)
+                {
+                    parent.Visible = false;
+                }
+                else
+                {
+                    button.Visible = false;
+                }
+
                 continue;
             }
 
@@ -811,14 +848,29 @@ public sealed class MainForm : BinTrackerForm
                 label.Text.StartsWith(
                     pageName,
                     StringComparison.OrdinalIgnoreCase) &&
-                label.Parent is not null)
+                label.Parent is TableLayoutPanel legacyHeader)
             {
-                // The embedded report form still contains the standalone-window
-                // title/description header. The MainForm shell already renders
-                // the single report title and carries the accepted explanation,
-                // so remove this entire legacy header to avoid duplicate titles
-                // and wasted vertical space.
-                label.Parent.Visible = false;
+                // Keep the accepted explanatory sentence, but remove the
+                // duplicate standalone title. Explicitly collapse the title
+                // row so it cannot reserve whitespace when embedded.
+                var titleRow = legacyHeader.GetRow(label);
+                label.Visible = false;
+
+                if (titleRow >= 0)
+                {
+                    while (legacyHeader.RowStyles.Count <= titleRow)
+                    {
+                        legacyHeader.RowStyles.Add(
+                            new RowStyle(SizeType.AutoSize));
+                    }
+
+                    legacyHeader.RowStyles[titleRow].SizeType =
+                        SizeType.Absolute;
+                    legacyHeader.RowStyles[titleRow].Height = 0F;
+                }
+
+                legacyHeader.Padding = new Padding(16, 8, 16, 8);
+                legacyHeader.Margin = new Padding(0, 0, 0, 10);
                 continue;
             }
 

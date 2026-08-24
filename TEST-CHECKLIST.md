@@ -1,6 +1,6 @@
 # BinTracker Active Test Checklist
 
-Current baseline: **v0.5.0-alpha.5.6.2**
+Current baseline: **v0.5.0-alpha.5.6.3**
 
 Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
 
@@ -9,7 +9,7 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 ## Release / audit / packaging gate
 
 - [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.5.6.2 and the actually resolved installed SDK.
+- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.5.6.3 and the actually resolved installed SDK.
 - [ ] Restore succeeds; full solution builds with zero warnings.
 - [ ] All unit tests pass; all integration tests pass.
 - [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
