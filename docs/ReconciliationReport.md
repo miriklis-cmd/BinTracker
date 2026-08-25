@@ -99,3 +99,9 @@ Static source inspection confirmed:
 ## Remaining verification boundary
 
 This environment can statically inspect source and package structure, but it is not the user's Windows production/test machine. `Build-BinTracker.bat` remains the compile/automated-test gate, and manual WinForms/PDF/print/DPI acceptance remains explicitly human-tested rather than being falsely marked complete.
+
+## 2026-08-24 Import provenance / Audit Trail decision
+
+- BT-IMP-022 added as a v1 requirement after controlled DB-backed testing showed normal new-cutover imports generated opening adjustments without persisting the before/Excel/adjustment comparison once their movement rows were later replaced.
+- `Replaces` remains reserved for same-cutover Replace/Correct lineage; normal later cutovers do not falsely replace legitimate historical runs.
+- BT-AUD-006 was explicitly resolved from candidate/NEEDS-CONFIRMATION to post-v1/POST-V1: Audit Trail search/filter/export is desired but lower priority and is not a blocker for the current v1 import-provenance correction.

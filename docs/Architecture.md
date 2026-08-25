@@ -1,6 +1,6 @@
 # BinTracker Architecture
 
-Current baseline: **v0.5.0-alpha.5.6.4.1**
+Current baseline: **v0.5.0-alpha.6.5**
 
 ## Permanent target and hard gate
 
@@ -27,6 +27,7 @@ Imports cross the service boundary as `ImportSourceDocument` content plus safe m
 - Customer, Container Type and Application Settings use optimistic `Revision` tokens.
 - Container Type `NameKey` uses provider-neutral Unicode/case normalization and a unique database index.
 - A nullable unique `ImportRun.CurrentCutoverDate` gives one current run ownership of a cutover; replaced runs retain provenance with null ownership.
+- ImportRun provenance has two distinct immutable snapshots: `CorrectionChangesJson` for same-cutover Replace/Correct comparisons, and `OpeningReconciliationChangesJson` for non-zero opening adjustments generated from normal authoritative cutovers. NULL means the historical build did not capture that snapshot; `[]` means capture occurred with no changes.
 - Single Entry, Batch Entry, reversal and import persist client operation IDs. A retry returns the existing result only when the canonical payload identity matches; reuse with a different payload is rejected.
 - Reversal and import uniqueness constraints are authoritative under races.
 - Authentication counters and account/credential mutations use conditional or atomic database updates.

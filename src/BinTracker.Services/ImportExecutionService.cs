@@ -87,6 +87,17 @@ public sealed record ImportCorrectionChangeSnapshot(
     public int Difference => CorrectedNetEffect - PreviousNetEffect;
 }
 
+public sealed record ImportOpeningReconciliationSnapshot(
+    int CustomerId,
+    string CustomerCode,
+    string CustomerName,
+    int ContainerTypeId,
+    string ContainerType,
+    int PreviousBinTrackerBalance,
+    int ExcelBroughtForward,
+    int ExcelTarget,
+    int OpeningAdjustment);
+
 public sealed record ImportExecutionResult(
     long ImportRunId,
     int CreatedCustomers,
@@ -269,26 +280,38 @@ internal sealed class ImportExecutionService(
                 StringComparer.OrdinalIgnoreCase);
 
         var proposedRows = plan.Reconciliation.Rows
-            .Where(x =>
-                x.IsReady &&
-                x.ContainerTypeId.HasValue)
+            .Where(x => x.IsReady)
+            .Select(x =>
+            {
+                if (!x.ContainerTypeId.HasValue)
+                {
+                    throw new InvalidOperationException(
+                        $"Ready reconciliation row '{x.CustomerCode}' / '{x.Container}' has no resolved container.");
+                }
+
+                return new
+                {
+                    Row = x,
+                    ContainerTypeId = x.ContainerTypeId.Value
+                };
+            })
             .ToList();
 
         var proposedEffects = proposedRows
             .GroupBy(x => ReplacementKey(
-                x.CustomerCode,
-                x.ContainerTypeId!.Value))
+                x.Row.CustomerCode,
+                x.ContainerTypeId))
             .ToDictionary(
                 g => g.Key,
                 g => new
                 {
-                    CustomerCode = g.First().CustomerCode,
-                    ContainerTypeId = g.First().ContainerTypeId!.Value,
-                    Container = g.First().Container,
+                    CustomerCode = g.First().Row.CustomerCode,
+                    ContainerTypeId = g.First().ContainerTypeId,
+                    Container = g.First().Row.Container,
                     Net = g.Sum(x =>
-                        (x.OpeningAdjustment ?? 0) +
-                        x.ExcelOut -
-                        x.ExcelIn)
+                        (x.Row.OpeningAdjustment ?? 0) +
+                        x.Row.ExcelOut -
+                        x.Row.ExcelIn)
                 },
                 StringComparer.OrdinalIgnoreCase);
 
@@ -317,9 +340,9 @@ internal sealed class ImportExecutionService(
         }
 
         var proposedMovementCount = proposedRows.Sum(x =>
-            ((x.OpeningAdjustment ?? 0) != 0 ? 1 : 0) +
-            (x.ExcelOut > 0 ? 1 : 0) +
-            (x.ExcelIn > 0 ? 1 : 0));
+            ((x.Row.OpeningAdjustment ?? 0) != 0 ? 1 : 0) +
+            (x.Row.ExcelOut > 0 ? 1 : 0) +
+            (x.Row.ExcelIn > 0 ? 1 : 0));
 
         return new ImportReplacementComparison(
             previous,
@@ -828,12 +851,16 @@ internal sealed class ImportExecutionService(
                             : -x.Quantity));
 
             var proposedEffects = reconciliation.Rows
-                .Where(x =>
-                    x.IsReady &&
-                    x.ContainerTypeId.HasValue &&
-                    x.OpeningAdjustment.HasValue)
+                .Where(x => x.IsReady)
                 .Select(x =>
                 {
+                    if (!x.ContainerTypeId.HasValue ||
+                        !x.OpeningAdjustment.HasValue)
+                    {
+                        throw new InvalidOperationException(
+                            $"Ready reconciliation row '{x.CustomerCode}' / '{x.Container}' is missing correction values.");
+                    }
+
                     var key = CustomerNameNormalizer.ComparisonKey(
                         x.CustomerCode);
 
@@ -846,9 +873,9 @@ internal sealed class ImportExecutionService(
                     return new
                     {
                         CustomerId = customerId,
-                        ContainerTypeId = x.ContainerTypeId!.Value,
+                        ContainerTypeId = x.ContainerTypeId.Value,
                         Net =
-                            x.OpeningAdjustment!.Value +
+                            x.OpeningAdjustment.Value +
                             x.ExcelOut -
                             x.ExcelIn
                     };
@@ -935,6 +962,110 @@ internal sealed class ImportExecutionService(
             previousRun.Notes =
                 (previousRun.Notes ?? string.Empty).TrimEnd() +
                 $" Replaced by corrected import run #{run.Id}.";
+        }
+
+        // Persist the approved opening-reconciliation provenance before the
+        // generated movements are written. This survives later Replace/Correct
+        // operations that deliberately remove an older run's linked movements.
+        var openingRows = reconciliation.Rows
+            .Where(x => x.IsReady)
+            .Select(x =>
+            {
+                if (!x.ContainerTypeId.HasValue ||
+                    !x.ExcelBroughtForward.HasValue ||
+                    !x.ExcelTarget.HasValue ||
+                    !x.OpeningAdjustment.HasValue)
+                {
+                    throw new InvalidOperationException(
+                        $"Ready reconciliation row '{x.CustomerCode}' / '{x.Container}' is missing opening-reconciliation values.");
+                }
+
+                return new
+                {
+                    Row = x,
+                    ContainerTypeId = x.ContainerTypeId.Value,
+                    ExcelBroughtForward = x.ExcelBroughtForward.Value,
+                    ExcelTarget = x.ExcelTarget.Value,
+                    OpeningAdjustment = x.OpeningAdjustment.Value
+                };
+            })
+            .Where(x => x.OpeningAdjustment != 0)
+            .ToList();
+
+        if (openingRows.Count > 0)
+        {
+            var openingCustomerIds = openingRows
+                .Select(x =>
+                {
+                    var key = CustomerNameNormalizer.ComparisonKey(
+                        x.Row.CustomerCode);
+
+                    if (!customerIds.TryGetValue(key, out var customerId))
+                    {
+                        throw new InvalidOperationException(
+                            $"No resolved BinTracker customer exists for reconciliation snapshot '{x.Row.CustomerCode}'.");
+                    }
+
+                    return customerId;
+                })
+                .Distinct()
+                .ToHashSet();
+
+            var openingContainerIds = openingRows
+                .Select(x => x.ContainerTypeId)
+                .Distinct()
+                .ToHashSet();
+
+            var openingCustomerLookup = (await db.Customers
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken))
+                .Where(x => openingCustomerIds.Contains(x.Id))
+                .ToDictionary(x => x.Id);
+
+            var openingContainerLookup = (await db.ContainerTypes
+                    .AsNoTracking()
+                    .ToListAsync(cancellationToken))
+                .Where(x => openingContainerIds.Contains(x.Id))
+                .ToDictionary(x => x.Id);
+
+            var openingSnapshots = openingRows
+                .Select(item =>
+                {
+                    var key = CustomerNameNormalizer.ComparisonKey(
+                        item.Row.CustomerCode);
+                    var customerId = customerIds[key];
+                    var customer = openingCustomerLookup[customerId];
+                    var container =
+                        openingContainerLookup[item.ContainerTypeId];
+
+                    return new ImportOpeningReconciliationSnapshot(
+                        customerId,
+                        customer.CustomerCode ?? string.Empty,
+                        customer.Name,
+                        container.Id,
+                        container.Name,
+                        item.Row.CurrentBinTrackerBalance,
+                        item.ExcelBroughtForward,
+                        item.ExcelTarget,
+                        item.OpeningAdjustment);
+                })
+                .OrderBy(
+                    x => x.CustomerCode,
+                    StringComparer.OrdinalIgnoreCase)
+                .ThenBy(
+                    x => x.ContainerType,
+                    StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            run.OpeningReconciliationChangesJson =
+                JsonSerializer.Serialize(openingSnapshots);
+        }
+        else
+        {
+            // [] means the current build captured the reconciliation and found
+            // no non-zero opening adjustments. NULL is reserved for historical
+            // runs created before this provenance existed.
+            run.OpeningReconciliationChangesJson = "[]";
         }
 
         var openingCount = 0;

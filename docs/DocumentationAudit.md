@@ -1,5 +1,72 @@
 # Documentation Audit Record
 
+## v0.5.0-alpha.6.5 Import History readability correction
+
+- [x] User screenshot confirmed `Customers`, `Movements` and lower-grid `Direction` headings were clipped.
+- [x] Import Run History client width increased from 1400 to 1520.
+- [x] Customers widened to 125, Movements to 130 and Direction to 110.
+- [x] Existing replacement/correction and historical-reconciliation behavior preserved.
+- [x] Permanent source-audit readability gate added.
+- [ ] Windows audit/build/full test rerun and visual smoke required.
+
+## v0.5.0-alpha.6.4 projected-row compile correction
+
+- [x] Alpha.6.3 source audit passed.
+- [x] Windows compilation exposed three CS1061 errors in replacement-comparison movement counting.
+- [x] Root cause: `proposedRows` is now a validated `{ Row, ContainerTypeId }` projection, while the movement-count expression still accessed original-row fields directly.
+- [x] All three accesses corrected to `x.Row...`; BT-IMP-022 strengthened to preserve the projection contract.
+- [ ] Windows source audit/build/full automated suite must be rerun against alpha.6.4 with 0 warnings / 0 errors.
+
+## v0.5.0-alpha.6.3 BT-IMP-022 audit correction
+
+- [x] Alpha.6.2 Windows source audit failed before restore/build on BT-IMP-022.
+- [x] Exact audit predicate reproduced against exact alpha.6.2 source.
+- [x] Failure isolated to stale `item.CurrentBinTrackerBalance` source-shape assertion after the nullable-safe projection change.
+- [x] BT-IMP-022 now asserts the structural validation/projection and snapshot-consumption path without weakening provenance requirements.
+- [x] Runtime alpha.6.2 implementation remains unchanged.
+- [ ] Windows audit/build/full automated suite must be rerun against alpha.6.3.
+
+## v0.5.0-alpha.6.2 zero-warning correction
+
+- [x] Alpha.6.1 Windows source audit passed and all 245 automated tests passed.
+- [x] Alpha.6.1 build exposed seven CS8629 nullable warnings in ImportExecutionService.
+- [x] Each warning traced to nullable flow across LINQ lambdas.
+- [x] Required values now pass through explicit validation/projection before use; no suppression or null-forgiving fix applied.
+- [x] `TreatWarningsAsErrors` enabled and permanently source-audited.
+- [ ] Windows audit/build/full test rerun required; candidate must produce 0 warnings / 0 errors.
+
+## v0.5.0-alpha.6.1 schema-version test correction
+
+- [x] Alpha.6 Windows build compiled with 0 warnings/0 errors.
+- [x] Alpha.6 automated suite exposed three stale migration-test assertions expecting schema version 14 after migration v15.
+- [x] All three assertions replaced with the derived `DatabaseSetup.LatestSchemaVersion`.
+- [x] Permanent source-audit regression guard added.
+- [x] Runtime alpha.6 implementation preserved unchanged.
+- [ ] Windows source audit/build/full automated suite must be rerun against alpha.6.1.
+
+## v0.5.0-alpha.6 import reconciliation provenance
+
+- [x] Hard-gate Roadmap, Requirements register, Audit script, Architecture, Testing, Known Issues and current DB schema reviewed before implementation.
+- [x] Controlled #6 → #7 Replace/Correct test proved current correction lineage/delta persistence works correctly.
+- [x] DB trace proved normal later-cutover runs can generate opening adjustments without an immutable before/Excel/adjustment snapshot.
+- [x] Schema migration v15 adds `OpeningReconciliationChangesJson`; no historical provenance is fabricated.
+- [x] Import execution persists all future non-zero opening reconciliation rows.
+- [x] Import History distinguishes normal opening reconciliation from Replace/Correct correction changes and exposes explicit capture state.
+- [x] BT-IMP-022 added and hard-gated; BT-AUD-006 explicitly parked post-v1 for Audit Trail search/filter/export.
+- [x] Stale breakout-report checklist/testing wording reconciled.
+- [ ] Windows source audit, zero-warning build, full automated tests, migration-on-existing-DB smoke and Import History UI acceptance remain required.
+
+## v0.5.0-alpha.5.6.4.2 controlled-document version audit
+
+- [x] External review finding reproduced: current TEST-CHECKLIST baseline was correct while packaging gate was stale at alpha.5.5.3.
+- [x] All Markdown version references inventoried and classified as current-state versus historical.
+- [x] Current packaging gate made version-relative to Directory.Build.props.
+- [x] Obsolete breakout-report/alpha.1.1 icon-trial instruction removed from the current checklist.
+- [x] Historical release records intentionally retained.
+- [x] Audit strengthened against recurrence.
+- [x] No runtime source change; alpha.5.6.4.1 Windows build and focused Reports smoke evidence remains applicable.
+- [ ] Windows source audit/build confirmation required for this documentation/audit-only corrective candidate.
+
 ## v0.5.0-alpha.5.6.4.1 BT-RPT-021 audit correction
 
 - [x] Alpha.5.6.4 Windows source audit failed before build on BT-RPT-021.

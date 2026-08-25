@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.5.0-alpha.5.6.4.1**
+Current release: **v0.5.0-alpha.6.5**
 
 This file contains current defects/limitations that affect testing or production readiness. Completed history is in `docs/CHANGELOG.md`; future features are in `docs/Roadmap.md`; engineering cleanup is in `TECH-DEBT.md`.
 
@@ -57,6 +57,11 @@ The current real workbook produces the intended two-page front/reverse report an
 
 ### Customer search regression
 The Zahos/BIG search/list-detail synchronization bug is fixed but should remain in normal regression testing.
+
+### Audit Trail search/filter/export is not implemented
+**Area:** Administration / Audit
+
+Audit persistence is available and remains authoritative, but the Administrator Audit Trail screen does not yet provide practical search/filter/export. This is logged as lower-priority post-v1 usability work (BT-AUD-006).
 
 ## Cosmetic / deferred
 

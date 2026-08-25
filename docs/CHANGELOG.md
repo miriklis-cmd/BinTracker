@@ -1,3 +1,46 @@
+## v0.5.0-alpha.6.5
+
+- Widened Import Run History and the Customers, Movements and Direction columns to remove clipped headings.
+- Added a permanent readability source gate.
+
+## v0.5.0-alpha.6.4
+
+- Fixed three compile errors caused by stale direct field access after the nullable-safe reconciliation-row projection.
+- Strengthened the import provenance source gate accordingly.
+
+## v0.5.0-alpha.6.3
+
+- Reconciled BT-IMP-022 audit matching with alpha.6.2's nullable-safe opening-reconciliation projection.
+- Runtime code remains unchanged from alpha.6.2.
+
+## v0.5.0-alpha.6.2
+
+- Eliminated seven nullable-flow warnings in ImportExecutionService using explicit validated projections.
+- Enabled warnings-as-errors globally and hard-gated that policy.
+- Preserved alpha.6 import provenance and migration behavior.
+
+## v0.5.0-alpha.6.1
+
+- Fixed three stale migration tests that expected schema version 14 after alpha.6 introduced migration v15.
+- Migration tests now compare against `DatabaseSetup.LatestSchemaVersion`.
+- Added permanent audit coverage against recurrence.
+- No runtime source changes from alpha.6.
+
+## v0.5.0-alpha.6
+
+- Added ImportRun opening-reconciliation provenance snapshot and schema migration v15.
+- Import History now distinguishes normal-cutover opening reconciliation from same-cutover Replace/Correct correction differences.
+- Historical runs without captured reconciliation detail are labelled honestly rather than `Correction changes: not applicable`.
+- Added BT-IMP-022 and integration tests; moved BT-AUD-006 from candidate/NEEDS-CONFIRMATION to explicit post-v1 Audit Trail search/filter/export scope per user decision.
+- Reconciled stale breakout-report checklist/testing language with the accepted Option-B integrated Reports architecture.
+- Version advances to alpha.6 as a genuine persisted-provenance feature rather than extending the alpha.5.6.4.x corrective suffix chain.
+
+## v0.5.0-alpha.5.6.4.2
+
+- Corrected stale current-state package-version and breakout-report assertions in TEST-CHECKLIST.md.
+- Strengthened source audit against recurrence of hard-coded historical package versions in the current packaging gate.
+- No runtime source changes from alpha.5.6.4.1.
+
 ## v0.5.0-alpha.5.6.4.1
 
 - Reconciled BT-RPT-021 audit matching with the actual alpha.5.6.4 Weekly Movements reload sequence.

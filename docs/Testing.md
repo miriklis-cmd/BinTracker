@@ -56,6 +56,8 @@ Import Run history service integration coverage verifies replacement-chain looku
 
 Replacement integration coverage verifies `CorrectionChangesJson` is persisted by execution. Import History integration coverage verifies the stored snapshot is parsed and exposes previous/corrected/difference values.
 
+Normal-cutover reconciliation coverage verifies `OpeningReconciliationChangesJson` persists every non-zero approved opening adjustment and that Import History exposes previous BinTracker position, Excel B/Fwd/target and adjustment. NULL means the historical build did not capture this provenance; `[]` means capture occurred and there were no non-zero opening adjustments.
+
 
 The current UI smoke pass includes Import History readability at the operator's DPI plus Customer and Container Types unsaved-change **Save / Discard / Cancel** behaviour. These are manual acceptance checks because they depend on WinForms focus/navigation and layout.
 
@@ -127,7 +129,7 @@ When a WinForms form/service constructor gains a required dependency, audit **al
 
 ## Report action layout
 
-Detailed report windows use a two-row control layout when necessary: filters on the first row and report actions on a dedicated second row. At supported DPI/resolutions, button labels must remain fully visible; wrapping may move whole controls but must never hide part of the action row.
+Detailed report pages use a two-row control layout when necessary: filters on the first row and report actions on a dedicated second row. At supported DPI/resolutions, button labels must remain fully visible; wrapping may move whole controls but must never hide part of the action row.
 
 
 ## Interactive report sort/print acceptance
@@ -277,7 +279,7 @@ Weekly Movements controls must remain fully visible when the filter row wraps at
 ## Application icon/branding acceptance
 
 - Launch BinTracker and verify Login shows the BinTracker icon in its title bar and taskbar before authentication.
-- Verify Main, Outstanding, Daily, Weekly, Movement History, Import/Admin and other breakout/dialog Forms use the same icon.
+- Verify Main, integrated report surfaces, Import/Admin and other dialog Forms use the same icon.
 - Verify the left navigation shows the BinTracker product logo beside the BinTracker wordmark.
 - Verify no form fails to open if icon extraction unexpectedly fails.
 
@@ -395,7 +397,7 @@ Verify the approved alpha.24 Reports mock-up implementation:
 - Quick Report cards use the approved report icons, Date selector, Generate PDF and blue Generate & Open action.
 - Explore Reports is 3 columns × 2 rows at normal desktop width and contains the six approved report cards.
 - Every Explore Reports card uses the approved icon artwork and Open → footer action.
-- Report cards open the same existing report windows; no report behavior was duplicated or replaced.
+- Report cards open the accepted integrated main-workspace report pages; no report business/export behavior is duplicated or replaced.
 - Reports header subtitle reads `Generate operational sheets and explore detailed reports.`
 - Normal maximized 1080p desktop must not show a Reports landing-page scrollbar.
 - Generate PDF must show its document icon; Generate & Open must stay on one line; every Explore Open button must render the full word `Open` without clipping.

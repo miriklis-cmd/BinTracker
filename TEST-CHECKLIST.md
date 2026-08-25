@@ -1,6 +1,6 @@
 # BinTracker Active Test Checklist
 
-Current baseline: **v0.5.0-alpha.5.6.4.1**
+Current baseline: **v0.5.0-alpha.6.5**
 
 Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
 
@@ -9,11 +9,11 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 ## Release / audit / packaging gate
 
 - [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.5.6.4.1 and the actually resolved installed SDK.
+- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.6.5 and the actually resolved installed SDK.
 - [ ] Restore succeeds; full solution builds with zero warnings.
 - [ ] All unit tests pass; all integration tests pass.
 - [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
-- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.5.0-alpha.5.5.3`.
+- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly equal to the current `Directory.Build.props` Version.
 - [ ] No unexpected `global.json` is packaged.
 
 ## Authentication / users / shell
@@ -24,7 +24,7 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 - [ ] Change/reset password and role/active controls work.
 - [ ] Password fields start masked; all supported eye controls reveal/re-hide correctly.
 - [ ] Audit Trail / Settings admin actions respect roles.
-- [ ] Login, Main, breakout reports and dialogs use BinTracker icon; taskbar is branded before login. For v0.5.0-alpha.1.1, visually compare the newly supplied hybrid icon trial and either approve it or request reversion.
+- [ ] Login, Main, integrated report surfaces and dialogs use BinTracker icon; taskbar is branded before login. Current taskbar/icon rendering remains part of normal Windows visual smoke acceptance.
 - [ ] Splash shows BinTracker branding/version during startup.
 - [ ] Sidebar logo + full BinTracker wordmark remain aligned/unclipped.
 
@@ -80,7 +80,10 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 - [ ] Exact successful workbook cannot import twice.
 - [ ] Workbook changed after preflight is rejected.
 - [ ] Changed workbook/same cutover presents Replace/Correct before execution and preserves legitimate same-day/later Manual/Batch activity.
-- [ ] Import History shows run/source/SHA/cutover/user/counts/status/replacement chain/linked movements/correction differences.
+- [ ] Import History shows run/source/SHA/cutover/user/counts/status/replacement chain/linked movements and same-cutover correction differences.
+- [ ] A normal new-cutover import that creates opening adjustments shows `Opening reconciliation changes` with previous BinTracker position, Excel B/Fwd and adjustment.
+- [ ] A historical normal-cutover run created before reconciliation snapshots existed says the detail was not captured by that build; it must not say `Correction changes: not applicable`.
+- [ ] Replace/Correct continues to show `Correction changes` and the replacement chain independently of normal-cutover opening reconciliation.
 - [ ] Forced post-SaveChanges failure fully rolls back and exact-source retry remains possible.
 - [ ] Non-Administrator cannot access Import History.
 - [ ] **Before v1:** execution failure report identifies useful row/customer/container context.
@@ -97,7 +100,7 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 
 ## Report launcher / common behavior
 
-- [ ] Detailed reports open in dedicated single-instance responsive windows and reuse existing window on repeated Open Report.
+- [ ] Detailed reports open as one active integrated main-workspace page with `Reports › <Report Name>` navigation; clicking the selected Reports sidebar item returns to the Reports overview.
 - [ ] Laptop and large-monitor sizing gives available space to data grid; no controls/buttons clipped.
 - [ ] Interactive reports have **no separate Run Report button**.
 - [ ] Date/dropdown/checkbox filters refresh live; Customer filter runs on Enter with visible cue.

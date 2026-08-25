@@ -31,6 +31,13 @@ foreach ($check in $currentChecks) {
     if ($content -notmatch "(?m)$($check.Pattern)") { Fail "$($check.Description) does not match $expected." }
 }
 
+# Current packaging checklist must be version-relative, never pinned to an old candidate.
+$testChecklistText = Get-Content -Raw -LiteralPath 'TEST-CHECKLIST.md'
+if ($testChecklistText -notmatch [regex]::Escape('Package-BinTracker.ps1') -or
+    $testChecklistText -notmatch [regex]::Escape('current `Directory.Build.props` Version')) {
+    Fail 'TEST-CHECKLIST.md packaging gate must require the current Directory.Build.props Version rather than a historical hard-coded release.'
+}
+
 if (Test-Path -LiteralPath 'global.json') { Fail 'Unexpected global.json is present. BinTracker currently uses the installed compatible SDK.' }
 
 $requiredDocuments = @(
@@ -60,7 +67,7 @@ foreach ($row in $reqRows) {
     if ($allowedScopes -notcontains $row.Scope) { Fail "Invalid requirement scope for $($row.Id): $($row.Scope)" }
     if ($allowedStatuses -notcontains $row.Status) { Fail "Invalid requirement status for $($row.Id): $($row.Status)" }
 }
-$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-RPT-018','BT-RPT-019','BT-RPT-020','BT-RPT-021','BT-UI-014','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-CORR-001','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-HIST-006','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015')
+$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-RPT-018','BT-RPT-019','BT-RPT-020','BT-RPT-021','BT-UI-014','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-IMP-022','BT-CORR-001','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-HIST-006','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015')
 foreach ($id in $mustHaveIds) { if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost mandatory ID: $id" } }
 
 # Permanent central-service / concurrency portability gate (BT-ARCH-008..015).
@@ -90,6 +97,8 @@ foreach ($path in @('src/BinTracker.Services/MovementServices.cs','src/BinTracke
 
 # Reject contradictions that have already caused release/audit drift.
 $staleChecks = @(
+    @{ Path='TEST-CHECKLIST.md'; Text='produces ZIP filename/root folder/Version/InformationalVersion all exactly `0.5.0-alpha.5.5.3`'; Why='stale hard-coded package version' },
+    @{ Path='TEST-CHECKLIST.md'; Text='breakout reports and dialogs use BinTracker icon'; Why='obsolete breakout-report checklist wording after Option-B integration' },
     @{ Path='docs/Testing.md'; Text='the header reports an 8.0.x SDK'; Why='obsolete SDK-8 build-host assertion' },
     @{ Path='TECH-DEBT.md'; Text='Resolved for the current .NET 8 product line with repository-root `global.json`'; Why='obsolete global.json policy' },
     @{ Path='docs/ImportWizard.md'; Text='still needs the controlled difference/replacement workflow'; Why='Replace/Correct is implemented' },
@@ -505,6 +514,67 @@ if ($reportsMainText -notmatch 'private void OpenEmbeddedReport\(' -or
     Fail 'BT-RPT-001/018 source gate failed: detailed reports must use the integrated main-workspace host and shared breadcrumb rather than breakout windows.'
 }
 
+
+# Zero-warning build-policy gate.
+$directoryBuildPropsText =
+    Get-Content -Raw 'Directory.Build.props'
+
+if ($directoryBuildPropsText -notmatch
+    '<TreatWarningsAsErrors>true</TreatWarningsAsErrors>') {
+    Fail 'Release build policy gate failed: TreatWarningsAsErrors must remain enabled so a warning cannot pass as BUILD SUCCESSFUL.'
+}
+
+# Schema-version regression gate.
+$sqliteMigrationTestsText =
+    Get-Content -Raw 'tests/BinTracker.IntegrationTests/SqliteMigrationTests.cs'
+
+if ($sqliteMigrationTestsText -match
+    'Assert\.Equal\(14,\s*await DatabaseSetup\.GetSchemaVersionAsync\(db\)\)') {
+    Fail 'Schema-version test gate failed: migration tests must use DatabaseSetup.LatestSchemaVersion instead of hard-coding the previous latest schema version.'
+}
+
+# Import History readability gate.
+$importHistoryUiText =
+    Get-Content -Raw 'src/BinTracker.WinForms/ImportRunHistoryForm.cs'
+
+if ($importHistoryUiText -notmatch 'ClientSize = new Size\(1520, 900\)' -or
+    $importHistoryUiText -notmatch 'HeaderText = "Customers",\s*Width = 125' -or
+    $importHistoryUiText -notmatch 'HeaderText = "Movements",\s*Width = 130' -or
+    $importHistoryUiText -notmatch 'HeaderText = "Direction",\s*Width = 110') {
+    Fail 'Import History readability gate failed: Customers, Movements or Direction may be clipped at the accepted layout.'
+}
+
+# Import opening-reconciliation provenance gate (BT-IMP-022).
+$domainText = Get-Content -Raw 'src/BinTracker.Core/Domain.cs'
+$schemaText = Get-Content -Raw 'src/BinTracker.Data/SqliteSchemaMigrations.cs'
+$importExecutionText = Get-Content -Raw 'src/BinTracker.Services/ImportExecutionService.cs'
+$importHistoryText = Get-Content -Raw 'src/BinTracker.Services/ImportRunHistoryService.cs'
+$importHistoryUiText = Get-Content -Raw 'src/BinTracker.WinForms/ImportRunHistoryForm.cs'
+
+if ($domainText -notmatch 'OpeningReconciliationChangesJson' -or
+    $schemaText -notmatch 'new\(15, "Import opening reconciliation provenance", ApplyV15Async\)' -or
+    $schemaText -notmatch 'ALTER TABLE ImportRuns ADD COLUMN OpeningReconciliationChangesJson TEXT NULL' -or
+    $importExecutionText -notmatch 'ImportOpeningReconciliationSnapshot' -or
+    $importExecutionText -notmatch 'is missing opening-reconciliation values' -or
+    $importExecutionText -notmatch 'ContainerTypeId = x\.ContainerTypeId\.Value' -or
+    $importExecutionText -notmatch 'ExcelBroughtForward = x\.ExcelBroughtForward\.Value' -or
+    $importExecutionText -notmatch 'ExcelTarget = x\.ExcelTarget\.Value' -or
+    $importExecutionText -notmatch 'OpeningAdjustment = x\.OpeningAdjustment\.Value' -or
+    $importExecutionText -notmatch 'item\.Row\.CurrentBinTrackerBalance' -or
+    $importExecutionText -notmatch 'item\.ExcelBroughtForward' -or
+    $importExecutionText -notmatch 'item\.ExcelTarget' -or
+    $importExecutionText -notmatch 'item\.OpeningAdjustment' -or
+    $importExecutionText -notmatch 'x\.Row\.OpeningAdjustment' -or
+    $importExecutionText -notmatch 'x\.Row\.ExcelOut' -or
+    $importExecutionText -notmatch 'x\.Row\.ExcelIn' -or
+    $importExecutionText -notmatch 'run\.OpeningReconciliationChangesJson' -or
+    $importHistoryText -notmatch 'OpeningReconciliationCaptured' -or
+    $importHistoryText -notmatch 'OpeningReconciliationChanges' -or
+    $importHistoryUiText -notmatch 'Opening reconciliation changes' -or
+    $importHistoryUiText -notmatch 'Opening reconciliation detail was not captured by the build that created this run' -or
+    $importHistoryUiText -match 'Correction changes: not applicable') {
+    Fail 'BT-IMP-022 source gate failed: normal-cutover opening reconciliation provenance or honest historical wording is incomplete.'
+}
 
 # Integrated Reports smoke-correction gate (BT-RPT-020..021).
 $reportsMainText = Get-Content -Raw 'src/BinTracker.WinForms/MainForm.cs'

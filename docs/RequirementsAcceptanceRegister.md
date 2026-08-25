@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.5.0-alpha.5.6.4.1**
+Current baseline: **v0.5.0-alpha.6.5**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -72,14 +72,14 @@ Provenance tags:
 | BT-AUD-003 | v1 | IMPLEMENTED-ACCEPTED | CSV export is audited for Outstanding, Daily, Weekly, Movement History and Monthly Summary. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-AUD-004 | v1 | IMPLEMENTED-STATIC | CSV audit records filename, row count and relevant report/filter context without storing report contents. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-AUD-005 | v1 | IMPLEMENTED-STATIC | If CSV file creation succeeds but audit persistence fails, operator is warned rather than audit loss being silent. | CHAT-SURFACED,CODE |
-| BT-AUD-006 | candidate | NEEDS-CONFIRMATION | Audit Trail screen may need additional filtering/export polish before production. Recovered from early project README; not silently promoted to v1. | HIST-BUILD |
+| BT-AUD-006 | post-v1 | POST-V1 | Audit Trail usability: add practical search/filter controls and export so administrators can locate and share audit evidence without manually paging the on-screen log. Explicitly logged as lower-priority follow-up; not a blocker for the current v1 import-provenance fix. | HIST-BUILD,USER-REQUEST |
 
 ## Navigation / branding / general WinForms behavior
 
 | ID | Scope | Status | Requirement | Provenance |
 |---|---|---|---|---|
 | BT-UI-001 | v1 | IMPLEMENTED-ACCEPTED | Left navigation product logo and full `BinTracker` wordmark are visible, aligned and unclipped. | CHAT-SURFACED,CODE |
-| BT-UI-002 | v1 | IMPLEMENTED-STATIC | Login, Main, report breakouts and dialogs inherit the BinTracker application icon; pre-login taskbar uses BinTracker icon. | CHAT-SURFACED,CURRENT-DOC,CODE |
+| BT-UI-002 | v1 | IMPLEMENTED-STATIC | Login, Main, integrated report surfaces and standalone dialogs use/inherit the BinTracker application icon; pre-login taskbar uses BinTracker icon. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-UI-003 | v1 | IMPLEMENTED-STATIC | Startup splash displays BinTracker product branding/version and disappears as startup completes without artificial delay. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-UI-004 | v1 | IMPLEMENTED-STATIC | Product branding is separate from the operator/business branding used on generated outputs. | CHAT-SURFACED,CURRENT-DOC |
 | BT-UI-005 | v1 | PLANNED-V1 | General high-DPI pass at 100%, 125% and 150%; buttons, labels and actions must not clip. | CHAT-SURFACED,CURRENT-DOC,HIST-BUILD |
@@ -167,6 +167,7 @@ Provenance tags:
 | BT-IMP-019 | post-v1 | POST-V1 | Import Profiles support legacy/custom workbook profiles, standard BinTracker template and configurable mapping for other businesses. | HIST-BUILD,CURRENT-DOC |
 | BT-IMP-020 | post-v1 | POST-V1 | Legacy token aliases can persist inside future Import Profiles rather than remaining session-only. | HIST-BUILD |
 | BT-IMP-021 | post-v1 | POST-V1 | Optional fuzzy-match suggestions require explicit operator approval and never auto-merge. | HIST-BUILD,CURRENT-DOC |
+| BT-IMP-022 | v1 | IMPLEMENTED-STATIC | Every successful future Excel ImportRun persists immutable opening-reconciliation provenance for each non-zero opening adjustment (customer/container, previous BinTracker position, Excel B/Fwd/target and adjustment). Import History distinguishes this normal-cutover reconciliation from same-cutover Replace/Correct `Correction changes`; historical runs created before capture say detail was not captured rather than `not applicable`. | USER-REQUEST,CODE,DB-TRACE |
 
 ## Reports — common interaction/output rules
 

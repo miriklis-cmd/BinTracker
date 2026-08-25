@@ -162,11 +162,11 @@
 
 - BT-REPORT-UI-001: The Reports page is a compact launcher as the report catalogue grows.
 - BT-REPORT-UI-002: Market Floor Sheet remains directly accessible inline because it is the primary daily operational report.
-- BT-REPORT-UI-003: Filter-heavy/data-grid reports normally open in dedicated report windows; Movement History is an integrated full-size main-workspace exception because it also provides operational reversal actions.
+- BT-REPORT-UI-003: Filter-heavy/data-grid reports open as integrated main-workspace pages under the Reports hub; Movement History uses the same host and also provides operational reversal actions.
 - BT-REPORT-UI-004: Only one live instance of a given report window should exist per MainForm session; reopening brings the existing window forward.
 
 
-- BT-REPORT-UI-005: Dedicated report windows size themselves from the active monitor's working area within sensible minimum/maximum bounds.
+- BT-REPORT-UI-005: Integrated detailed report pages size themselves from the available main-workspace area within sensible minimum/maximum bounds.
 - BT-REPORT-UI-006: Report filter/action controls must remain fully visible; the result dataset consumes remaining window space and resizes with the window/monitor.
 
 - BT-REPORT-UI-007: Report customer-code columns dynamically size to the longest visible customer code, with sensible minimum and maximum widths so codes remain readable without crowding other report data.
@@ -180,7 +180,7 @@
 - BT-DASH-DESIGN-002: Dashboard design must consider both laptop and large-monitor operation.
 - BT-DASH-DESIGN-003: Forecasting/ML hooks are future-facing derived analytics and must never modify authoritative movement/balance records.
 - BT-DASH-DESIGN-004: The Dashboard design discussion must explicitly compare what is appropriate for WinForms v1 versus what a future WinUI 3 v2 could materially improve.
-- BT-DASH-DESIGN-005: The WinUI 3 discussion must use both the current Reports launcher and representative individual report windows as reference screens, including report discovery/navigation, responsive layout, filters, grids, exports and visual hierarchy.
+- BT-DASH-DESIGN-005: The WinUI 3 discussion must use both the current Reports launcher and representative individual report pages as reference screens, including report discovery/navigation, responsive layout, filters, grids, exports and visual hierarchy.
 
 
 - BT-REPORT-UI-009: Numeric report columns sort numerically even when their display text includes labels such as OUT/CREDIT.
@@ -287,7 +287,7 @@
 
 ## BinTracker application branding
 
-- BT-BRAND-APP-001: The BinTracker executable icon is the authoritative window/taskbar icon for Login, main shell, report breakouts, import/admin dialogs and other WinForms windows.
+- BT-BRAND-APP-001: The BinTracker executable icon is the authoritative window/taskbar icon for Login, main shell, integrated report surfaces, import/admin dialogs and other WinForms windows.
 - BT-BRAND-APP-002: Windows Forms inherit application icon behaviour from a common BinTracker form base rather than setting icons ad hoc.
 - BT-BRAND-APP-003: The main left navigation shows the BinTracker product logo separately from future customer/business branding.
 - BT-BRAND-APP-004: BinTracker product branding and configurable Business Information branding are separate concepts.

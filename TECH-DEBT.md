@@ -41,7 +41,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 - Report grids populated with `Rows.Add(...)` must trigger any content-based column sizing explicitly after population; `DataBindingComplete` does not run for manually added rows.
 
-- Dedicated report windows must be responsive to monitor working area rather than fixed desktop dimensions. Filters/actions keep their required height; result grids consume the remaining client area.
+- Integrated detailed report pages must be responsive to the available main-workspace area rather than fixed desktop dimensions. Filters/actions keep their required height; result grids consume the remaining client area.
 
 - Reports page is a launcher, not a scrolling host for every report. Keep Market Floor inline. Most detailed/filter-heavy reports use dedicated windows, while Movement History is deliberately integrated into the main workspace because it is also the operational reversal surface. MainForm owns each active report surface and prevents duplicate windows/pages.
 
@@ -103,7 +103,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Report filter/action layout
 
-- Do not pack all filters and report actions into one FlowLayoutPanel. Use separate filter/action rows in detailed report windows so DPI wrapping cannot hide action buttons.
+- Do not pack all filters and report actions into one FlowLayoutPanel. Use separate filter/action rows in detailed report pages so DPI wrapping cannot hide action buttons.
 
 
 ## Report sorting
@@ -118,7 +118,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Daily report master-data choices
 
-- Daily Movements currently reuses the Outstanding reporting service to discover configured Container Types for its filter list. A shared report-filter/master-data provider may be worthwhile once more report windows need the same choices; do not duplicate direct DbContext UI queries.
+- Daily Movements currently reuses the Outstanding reporting service to discover configured Container Types for its filter list. A shared report-filter/master-data provider may be worthwhile once more report pages need the same choices; do not duplicate direct DbContext UI queries.
 
 
 ## WinForms button labels

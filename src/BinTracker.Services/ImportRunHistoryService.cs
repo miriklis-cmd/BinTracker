@@ -29,6 +29,17 @@ public sealed record ImportRunCorrectionChangeRow(
     public int Difference => CorrectedNetEffect - PreviousNetEffect;
 }
 
+public sealed record ImportRunOpeningReconciliationRow(
+    int CustomerId,
+    string CustomerCode,
+    string CustomerName,
+    int ContainerTypeId,
+    string ContainerType,
+    int PreviousBinTrackerBalance,
+    int ExcelBroughtForward,
+    int ExcelTarget,
+    int OpeningAdjustment);
+
 public sealed record ImportRunMovementRow(
     long Id,
     DateOnly MovementDate,
@@ -60,6 +71,9 @@ public sealed record ImportRunDetail(
     long? ReplacedByImportRunId,
     string Notes,
     IReadOnlyList<ImportRunCorrectionChangeRow> CorrectionChanges,
+    bool CorrectionChangesCaptured,
+    IReadOnlyList<ImportRunOpeningReconciliationRow> OpeningReconciliationChanges,
+    bool OpeningReconciliationCaptured,
     IReadOnlyList<ImportRunMovementRow> Movements);
 
 public interface IImportRunHistoryService
@@ -155,6 +169,8 @@ internal sealed class ImportRunHistoryService(
 
         IReadOnlyList<ImportRunCorrectionChangeRow> correctionChanges =
             [];
+        var correctionChangesCaptured =
+            run.CorrectionChangesJson is not null;
 
         if (!string.IsNullOrWhiteSpace(run.CorrectionChangesJson))
         {
@@ -170,6 +186,31 @@ internal sealed class ImportRunHistoryService(
                 // History must remain viewable even if an old/development
                 // database contains malformed optional provenance JSON.
                 correctionChanges = [];
+                correctionChangesCaptured = false;
+            }
+        }
+
+        IReadOnlyList<ImportRunOpeningReconciliationRow>
+            openingReconciliationChanges = [];
+        var openingReconciliationCaptured =
+            run.OpeningReconciliationChangesJson is not null;
+
+        if (!string.IsNullOrWhiteSpace(
+                run.OpeningReconciliationChangesJson))
+        {
+            try
+            {
+                openingReconciliationChanges =
+                    JsonSerializer.Deserialize<
+                        List<ImportRunOpeningReconciliationRow>>(
+                        run.OpeningReconciliationChangesJson) ?? [];
+            }
+            catch (JsonException)
+            {
+                // Preserve viewability for malformed optional historical
+                // provenance, but do not claim that usable detail was captured.
+                openingReconciliationChanges = [];
+                openingReconciliationCaptured = false;
             }
         }
 
@@ -192,6 +233,9 @@ internal sealed class ImportRunHistoryService(
             replacedById,
             run.Notes ?? string.Empty,
             correctionChanges,
+            correctionChangesCaptured,
+            openingReconciliationChanges,
+            openingReconciliationCaptured,
             movements);
     }
 

@@ -240,11 +240,11 @@ Important security, master-data and movement changes create audit events.
 
 ## Interactive report refresh behaviour
 
-- Interactive report windows do not require a separate Run Report button.
+- Interactive report pages do not require a separate Run Report button.
 - Date pickers, dropdown filters and result-affecting checkboxes refresh the report when changed.
 - Free-text Customer search does **not** query on every keystroke; pressing Enter applies the customer filter.
 - Shortcut buttons such as Today, Yesterday, This Week, Last Week, Last 7 Days, Last 30 Days and This Month apply their date selection and refresh immediately.
-- This interaction standard applies to Outstanding Containers, Daily Movements, Weekly Movements, Movement History and future interactive report windows unless a report has a specific reason to behave differently.
+- This interaction standard applies to Outstanding Containers, Daily Movements, Weekly Movements, Movement History and future interactive report pages unless a report has a specific reason to behave differently.
 
 
 ## Report customer-search cue
@@ -256,7 +256,7 @@ Important security, master-data and movement changes create audit events.
 ## BinTracker product branding
 
 - BinTracker's product icon/logo identifies the application itself.
-- Login and every breakout/dialog window should use the BinTracker executable icon in title bars/taskbar.
+- Login, the main shell and every standalone dialog window should use the BinTracker executable icon in title bars/taskbar; integrated report pages inherit the main shell icon.
 - The main sidebar shows the BinTracker product logo.
 - Future Business Information logo/header configuration belongs to the user's business and must not replace/confuse the BinTracker application identity.
 

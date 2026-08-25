@@ -119,6 +119,11 @@ public sealed class ImportRun
     // movements are deliberately removed from the live ledger.
     public string? CorrectionChangesJson { get; set; }
 
+    // Immutable snapshot of non-zero opening reconciliation adjustments
+    // approved for this run. Unlike CorrectionChangesJson, this applies to
+    // ordinary new cutovers as well as replacement runs.
+    public string? OpeningReconciliationChangesJson { get; set; }
+
     public DateTime StartedUtc { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedUtc { get; set; }
     public string Status { get; set; } = "Pending";

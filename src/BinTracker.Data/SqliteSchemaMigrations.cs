@@ -25,7 +25,8 @@ internal static class SqliteSchemaMigrations
         new(11, "Import cutover and replacement chain", ApplyV11Async),
         new(12, "Import correction difference provenance", ApplyV12Async),
         new(13, "Movement correction and reversal linkage", ApplyV13Async),
-        new(14, "Multi-user portability and concurrency foundation", ApplyV14Async)
+        new(14, "Multi-user portability and concurrency foundation", ApplyV14Async),
+        new(15, "Import opening reconciliation provenance", ApplyV15Async)
     ];
 
     private static async Task ApplyV1Async(BinTrackerDbContext db)
@@ -330,6 +331,22 @@ internal static class SqliteSchemaMigrations
         {
             await db.Database.ExecuteSqlRawAsync(
                 "ALTER TABLE ImportRuns ADD COLUMN CorrectionChangesJson TEXT NULL;");
+        }
+    }
+
+    private static async Task ApplyV15Async(BinTrackerDbContext db)
+    {
+        var columns = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ImportRuns')")
+            .ToListAsync();
+
+        if (!columns.Contains(
+                "OpeningReconciliationChangesJson",
+                StringComparer.OrdinalIgnoreCase))
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE ImportRuns ADD COLUMN OpeningReconciliationChangesJson TEXT NULL;");
         }
     }
 

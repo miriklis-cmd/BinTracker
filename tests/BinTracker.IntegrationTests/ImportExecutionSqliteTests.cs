@@ -165,6 +165,21 @@ public sealed class ImportExecutionSqliteTests
             Assert.Equal(1, run.CreatedCustomers);
             Assert.Equal(3, run.MovementCount);
             Assert.Equal(result.ImportRunId, run.Id);
+            var reconciliationJson = Assert.IsType<string>(
+                run.OpeningReconciliationChangesJson);
+            Assert.False(string.IsNullOrWhiteSpace(reconciliationJson));
+            Assert.Contains(
+                "\"PreviousBinTrackerBalance\":0",
+                reconciliationJson);
+            Assert.Contains(
+                "\"ExcelBroughtForward\":10",
+                reconciliationJson);
+            Assert.Contains(
+                "\"ExcelTarget\":11",
+                reconciliationJson);
+            Assert.Contains(
+                "\"OpeningAdjustment\":10",
+                reconciliationJson);
         }
         finally
         {

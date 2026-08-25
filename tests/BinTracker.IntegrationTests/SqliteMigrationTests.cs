@@ -386,6 +386,30 @@ public sealed class SqliteMigrationTests
 
 
     [Fact]
+    public async Task Import_opening_reconciliation_migration_adds_provenance_snapshot_column()
+    {
+        await using var connection =
+            new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<BinTrackerDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var db = new BinTrackerDbContext(options);
+        await db.Database.EnsureCreatedAsync();
+        await DatabaseSetup.InitializeSqliteAsync(db);
+
+        var columns = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('ImportRuns')")
+            .ToListAsync();
+
+        Assert.Contains("OpeningReconciliationChangesJson", columns);
+    }
+
+
+    [Fact]
     public async Task Movement_correction_migration_adds_linkage_reason_and_unique_reversal_index()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
@@ -414,7 +438,9 @@ public sealed class SqliteMigrationTests
             .ToListAsync();
 
         Assert.Contains("IX_BinMovements_ReversesMovementId", indexes);
-        Assert.Equal(14, await DatabaseSetup.GetSchemaVersionAsync(db));
+        Assert.Equal(
+            DatabaseSetup.LatestSchemaVersion,
+            await DatabaseSetup.GetSchemaVersionAsync(db));
     }
 
 
@@ -487,7 +513,9 @@ public sealed class SqliteMigrationTests
         Assert.Contains("IX_ImportRuns_ClientOperationId", importIndexes);
         Assert.Contains("IX_ImportRuns_SourceSha256", importIndexes);
 
-        Assert.Equal(14, await DatabaseSetup.GetSchemaVersionAsync(db));
+        Assert.Equal(
+            DatabaseSetup.LatestSchemaVersion,
+            await DatabaseSetup.GetSchemaVersionAsync(db));
     }
 
 
@@ -522,7 +550,9 @@ public sealed class SqliteMigrationTests
 
         Assert.Contains("SourceClientPath", columns);
         Assert.DoesNotContain("SourceFullPath", columns);
-        Assert.Equal(14, await DatabaseSetup.GetSchemaVersionAsync(db));
+        Assert.Equal(
+            DatabaseSetup.LatestSchemaVersion,
+            await DatabaseSetup.GetSchemaVersionAsync(db));
     }
 
 

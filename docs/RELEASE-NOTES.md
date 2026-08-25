@@ -1,5 +1,62 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.6.5
+
+- Widens Import Run History to improve readability at the tested Windows DPI.
+- Top run grid now gives `Customers` and `Movements` enough width to display their full headings.
+- Lower movement grid widens `Direction` so its heading is no longer clipped.
+- Preserves the accepted reconciliation/correction behavior and all alpha.6 provenance logic.
+- Adds a permanent source-audit readability gate for these widths.
+
+## v0.5.0-alpha.6.4
+
+- Corrects the alpha.6.3 compile failure in `ImportExecutionService`.
+- The nullable-safe `proposedRows` projection stores the original reconciliation row under `Row`; the replacement-comparison movement-count calculation now consistently reads `x.Row.OpeningAdjustment`, `x.Row.ExcelOut` and `x.Row.ExcelIn`.
+- Strengthens BT-IMP-022 to gate those downstream projection accesses.
+- No import/reconciliation business semantics changed from alpha.6.3.
+
+## v0.5.0-alpha.6.3
+
+- Corrects the BT-IMP-022 source audit after alpha.6.2 structurally fixed nullable-flow warnings.
+- The alpha.6.2 implementation moved opening-reconciliation values through a validated non-null projection before snapshot creation; the prior audit still required the pre-fix `item.CurrentBinTrackerBalance` source shape.
+- BT-IMP-022 now verifies the validation guard, each projected non-null reconciliation value, and snapshot consumption through `item.Row.CurrentBinTrackerBalance` plus the projected Excel/adjustment values.
+- No runtime import, migration, reconciliation, history or report behavior changed from alpha.6.2.
+
+## v0.5.0-alpha.6.2
+
+- Corrects seven `CS8629` nullable-flow warnings in `ImportExecutionService` reported by the alpha.6.1 Windows build.
+- Replaces LINQ-only `HasValue` assumptions with validated projections that structurally prove required reconciliation values before later lambdas consume them; no warning suppression or null-forgiving operator is used for these paths.
+- Permanently enables `TreatWarningsAsErrors` in `Directory.Build.props`, so BinTracker can no longer print a successful build while compiler warnings remain.
+- Adds a source-audit gate protecting the zero-warning build policy.
+- Runtime import/reconciliation semantics from alpha.6 are preserved.
+
+## v0.5.0-alpha.6.1
+
+- Corrects the alpha.6 Windows integration-test gate after schema migration v15.
+- Three older `SqliteMigrationTests` still hard-coded schema version `14`; they now assert `DatabaseSetup.LatestSchemaVersion`, preserving the intent of those migration tests while allowing later migrations.
+- Adds a permanent source-audit regression check so the stale hard-coded latest-schema assertion cannot recur.
+- No application/runtime import, database migration, Import History or reconciliation behavior changed from alpha.6.
+
+## v0.5.0-alpha.6
+
+- Adds immutable opening-reconciliation provenance for future successful Excel ImportRuns. Every non-zero opening adjustment now captures customer/container, previous BinTracker position, Excel B/Fwd/target and the generated adjustment in `OpeningReconciliationChangesJson`.
+- Keeps same-cutover Replace/Correct lineage and `CorrectionChangesJson` separate: `Replaces` continues to mean correction of the same cutover, not ordinary chronological succession.
+- Import History now shows `Opening reconciliation changes` for normal new cutovers, `Correction changes` for Replace/Correct runs, and honest `not captured by the build that created this run` wording for older runs whose detailed reconciliation was never persisted.
+- Adds SQLite schema migration v15 plus integration coverage for migration, normal-cutover persistence/history parsing, and legacy not-captured state.
+- Widens the Import History `Replaces` column and collapses the reconciliation grid when there are no captured rows.
+- Adds permanent BT-IMP-022. BT-AUD-006 is explicitly resolved to lower-priority post-v1 Audit Trail search/filter/export work.
+- Reconciles stale current checklist/testing wording that still described detailed Reports as breakout windows.
+- No historical ImportRun data is fabricated or backfilled: pre-v15 runs retain truthful historical limitations.
+
+## v0.5.0-alpha.5.6.4.2
+
+- Documentation-only release-gate correction after alpha.5.6.4.1 passed Windows build and focused Reports smoke checks.
+- Replaces the stale TEST-CHECKLIST packaging requirement pinned to `0.5.0-alpha.5.5.3` with a version-relative requirement tied to `Directory.Build.props`.
+- Reconciles obsolete `breakout reports`/alpha.1.1 icon-trial wording in the current checklist with the accepted integrated Reports architecture and ongoing Windows icon smoke policy.
+- Strengthens `Audit-BinTracker.ps1` so the packaging checklist must remain version-relative and these stale checklist forms cannot recur.
+- Historical release/version references in changelog, release notes, documentation audit, versioning history and explicitly historical known-issue records remain intentionally preserved.
+- No application/runtime source code changed from alpha.5.6.4.1; its successful Windows runtime smoke evidence remains applicable.
+
 ## v0.5.0-alpha.5.6.4.1
 
 - Corrects the BT-RPT-021 permanent source audit after alpha.5.6.4.

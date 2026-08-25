@@ -192,6 +192,164 @@ public sealed class ImportRunHistorySqliteTests
     }
 
     [Fact]
+    public async Task History_exposes_opening_reconciliation_for_normal_cutover()
+    {
+        await using var connection =
+            new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<BinTrackerDbContext>(
+            options => options.UseSqlite(connection));
+        services.AddBinTrackerServices();
+
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+
+        var factory = scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
+
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            await db.Database.EnsureCreatedAsync();
+            await DatabaseSetup.InitializeSqliteAsync(db);
+
+            var admin = new UserAccount
+            {
+                Username = "admin",
+                DisplayName = "Administrator",
+                PasswordHash = "x",
+                PasswordSalt = "x",
+                Role = UserRole.Administrator,
+                IsActive = true
+            };
+            db.UserAccounts.Add(admin);
+            await db.SaveChangesAsync();
+
+            scope.ServiceProvider
+                .GetRequiredService<UserSession>()
+                .SignIn(admin);
+
+            db.ImportRuns.Add(new ImportRun
+            {
+                SourceFileName = "later-cutover.xlsm",
+                SourceClientPath = @"C:\later-cutover.xlsm",
+                SourceSha256 = new string('C', 64),
+                SourceLength = 120,
+                SourceLastWriteUtc = DateTime.UtcNow,
+                CutoverDate = new DateOnly(2026, 8, 15),
+                CurrentCutoverDate = new DateOnly(2026, 8, 15),
+                StartedUtc = DateTime.UtcNow.AddMinutes(-2),
+                CompletedUtc = DateTime.UtcNow.AddMinutes(-1),
+                Status = "Completed",
+                Username = admin.Username,
+                SessionId = "normal",
+                OpeningReconciliationChangesJson =
+                    """
+                    [
+                      {
+                        "CustomerId": 1,
+                        "CustomerCode": "TEST",
+                        "CustomerName": "test",
+                        "ContainerTypeId": 1,
+                        "ContainerType": "Blue Bin",
+                        "PreviousBinTrackerBalance": 0,
+                        "ExcelBroughtForward": 10,
+                        "ExcelTarget": 10,
+                        "OpeningAdjustment": 10
+                      }
+                    ]
+                    """
+            });
+
+            await db.SaveChangesAsync();
+        }
+
+        var history = scope.ServiceProvider
+            .GetRequiredService<IImportRunHistoryService>();
+
+        var detail = await history.GetRunAsync(1);
+        Assert.NotNull(detail);
+        Assert.Null(detail!.ReplacesImportRunId);
+        Assert.True(detail.OpeningReconciliationCaptured);
+        var change = Assert.Single(detail.OpeningReconciliationChanges);
+        Assert.Equal("TEST", change.CustomerCode);
+        Assert.Equal("Blue Bin", change.ContainerType);
+        Assert.Equal(0, change.PreviousBinTrackerBalance);
+        Assert.Equal(10, change.ExcelBroughtForward);
+        Assert.Equal(10, change.ExcelTarget);
+        Assert.Equal(10, change.OpeningAdjustment);
+        Assert.False(detail.CorrectionChangesCaptured);
+    }
+
+    [Fact]
+    public async Task History_marks_legacy_normal_run_reconciliation_as_not_captured()
+    {
+        await using var connection =
+            new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<BinTrackerDbContext>(
+            options => options.UseSqlite(connection));
+        services.AddBinTrackerServices();
+
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+
+        var factory = scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
+
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            await db.Database.EnsureCreatedAsync();
+            await DatabaseSetup.InitializeSqliteAsync(db);
+
+            var admin = new UserAccount
+            {
+                Username = "admin",
+                DisplayName = "Administrator",
+                PasswordHash = "x",
+                PasswordSalt = "x",
+                Role = UserRole.Administrator,
+                IsActive = true
+            };
+            db.UserAccounts.Add(admin);
+            await db.SaveChangesAsync();
+
+            scope.ServiceProvider
+                .GetRequiredService<UserSession>()
+                .SignIn(admin);
+
+            db.ImportRuns.Add(new ImportRun
+            {
+                SourceFileName = "legacy.xlsm",
+                SourceClientPath = @"C:\legacy.xlsm",
+                SourceSha256 = new string('D', 64),
+                SourceLength = 120,
+                SourceLastWriteUtc = DateTime.UtcNow,
+                CutoverDate = new DateOnly(2026, 8, 16),
+                StartedUtc = DateTime.UtcNow.AddMinutes(-2),
+                CompletedUtc = DateTime.UtcNow.AddMinutes(-1),
+                Status = "Completed",
+                Username = admin.Username,
+                SessionId = "legacy",
+                OpeningReconciliationChangesJson = null
+            });
+
+            await db.SaveChangesAsync();
+        }
+
+        var history = scope.ServiceProvider
+            .GetRequiredService<IImportRunHistoryService>();
+
+        var detail = await history.GetRunAsync(1);
+        Assert.NotNull(detail);
+        Assert.False(detail!.OpeningReconciliationCaptured);
+        Assert.Empty(detail.OpeningReconciliationChanges);
+    }
+
+    [Fact]
     public async Task History_requires_administrator()
     {
         await using var connection =

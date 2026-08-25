@@ -102,6 +102,9 @@ public sealed class ImportRunHistoryForm : BinTrackerForm
         ForeColor = Color.DimGray
     };
 
+    private readonly RowStyle reconciliationGridRow =
+        new(SizeType.Absolute, 128F);
+
     public ImportRunHistoryForm(IImportRunHistoryService service)
     {
         this.service = service;
@@ -109,8 +112,8 @@ public sealed class ImportRunHistoryForm : BinTrackerForm
         Text = "Import Run History";
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(1400, 900);
-        MinimumSize = new Size(1120, 760);
+        ClientSize = new Size(1520, 900);
+        MinimumSize = new Size(1200, 760);
         Font = new Font("Segoe UI", 10F);
         BackColor = Color.FromArgb(245, 247, 250);
 
@@ -159,17 +162,17 @@ public sealed class ImportRunHistoryForm : BinTrackerForm
         runsGrid.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "Customers",
-            Width = 105
+            Width = 125
         });
         runsGrid.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "Movements",
-            Width = 110
+            Width = 130
         });
         runsGrid.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "Replaces",
-            Width = 90
+            Width = 110
         });
 
         correctionGrid.ColumnHeadersHeightSizeMode =
@@ -237,7 +240,7 @@ public sealed class ImportRunHistoryForm : BinTrackerForm
         movementsGrid.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "Direction",
-            Width = 90
+            Width = 110
         });
         movementsGrid.Columns.Add(new DataGridViewTextBoxColumn
         {
@@ -339,7 +342,7 @@ public sealed class ImportRunHistoryForm : BinTrackerForm
         detail.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         detail.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         detail.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        detail.RowStyles.Add(new RowStyle(SizeType.Absolute, 128F));
+        detail.RowStyles.Add(reconciliationGridRow);
         detail.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         detail.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
@@ -464,26 +467,67 @@ public sealed class ImportRunHistoryForm : BinTrackerForm
 
         correctionGrid.Rows.Clear();
 
-        foreach (var change in detail.CorrectionChanges)
+        if (detail.ReplacesImportRunId.HasValue)
         {
-            correctionGrid.Rows.Add(
-                change.CustomerCode,
-                change.CustomerName,
-                change.ContainerType,
-                Signed(change.PreviousNetEffect),
-                Signed(change.CorrectedNetEffect),
-                Signed(change.Difference));
+            SetReconciliationColumnHeaders(
+                "Previous",
+                "Corrected",
+                "Change");
+
+            foreach (var change in detail.CorrectionChanges)
+            {
+                correctionGrid.Rows.Add(
+                    change.CustomerCode,
+                    change.CustomerName,
+                    change.ContainerType,
+                    Signed(change.PreviousNetEffect),
+                    Signed(change.CorrectedNetEffect),
+                    Signed(change.Difference));
+            }
+
+            correctionCount.Text =
+                detail.CorrectionChangesCaptured
+                    ? detail.CorrectionChanges.Count > 0
+                        ? $"Correction changes ({detail.CorrectionChanges.Count:N0})"
+                        : "Correction changes: none."
+                    : "Correction changes: not captured by the build that created this run.";
+
+            correctionGrid.Visible =
+                detail.CorrectionChangesCaptured &&
+                detail.CorrectionChanges.Count > 0;
+        }
+        else
+        {
+            SetReconciliationColumnHeaders(
+                "Previous BinTracker",
+                "Excel B/Fwd",
+                "Adjustment");
+
+            foreach (var change in detail.OpeningReconciliationChanges)
+            {
+                correctionGrid.Rows.Add(
+                    change.CustomerCode,
+                    change.CustomerName,
+                    change.ContainerType,
+                    Signed(change.PreviousBinTrackerBalance),
+                    Signed(change.ExcelBroughtForward),
+                    Signed(change.OpeningAdjustment));
+            }
+
+            correctionCount.Text =
+                detail.OpeningReconciliationCaptured
+                    ? detail.OpeningReconciliationChanges.Count > 0
+                        ? $"Opening reconciliation changes ({detail.OpeningReconciliationChanges.Count:N0})"
+                        : "Opening reconciliation changes: none."
+                    : "Opening reconciliation detail was not captured by the build that created this run.";
+
+            correctionGrid.Visible =
+                detail.OpeningReconciliationCaptured &&
+                detail.OpeningReconciliationChanges.Count > 0;
         }
 
-        correctionCount.Text =
-            detail.ReplacesImportRunId.HasValue
-                ? detail.CorrectionChanges.Count > 0
-                    ? $"Correction changes ({detail.CorrectionChanges.Count:N0})"
-                    : "Correction changes: not captured by the build that created this run."
-                : "Correction changes: not applicable.";
-
-        correctionGrid.Visible =
-            detail.ReplacesImportRunId.HasValue;
+        reconciliationGridRow.Height =
+            correctionGrid.Visible ? 128F : 0F;
 
         movementCount.Text =
             $"Customers created: {detail.CreatedCustomers:N0}   " +
@@ -507,6 +551,16 @@ public sealed class ImportRunHistoryForm : BinTrackerForm
         }
     }
 
+    private void SetReconciliationColumnHeaders(
+        string previous,
+        string target,
+        string change)
+    {
+        correctionGrid.Columns[3].HeaderText = previous;
+        correctionGrid.Columns[4].HeaderText = target;
+        correctionGrid.Columns[5].HeaderText = change;
+    }
+
     private static string Signed(int value) =>
         value > 0
             ? $"+{value}"
@@ -522,6 +576,7 @@ public sealed class ImportRunHistoryForm : BinTrackerForm
         correctionCount.Text = string.Empty;
         correctionGrid.Rows.Clear();
         correctionGrid.Visible = false;
+        reconciliationGridRow.Height = 0F;
         movementCount.Text = string.Empty;
         movementsGrid.Rows.Clear();
     }

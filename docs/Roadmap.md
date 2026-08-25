@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.5.0-alpha.5.6.4.1**
+Current planning baseline: **v0.5.0-alpha.6.5**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -22,7 +22,7 @@ The discussion must cover:
 - alternative dashboard concepts and trade-offs;
 - how a future WinUI 3 v2 could materially improve the Dashboard (responsive cards, charts, drill-through, visual states, navigation and large-monitor presentation), while separating v1 WinForms work from v2-only polish;
 - the current Reports launcher as an explicit v1 reference screen: report discovery, categorisation, cards, density, search/favourites/recent-report possibilities and responsive growth as more reports are added;
-- representative individual report windows as v1 reference screens, comparing WinForms vs WinUI 3 for filters, grids, sorting, summaries, exports and richer visualisation.
+- representative individual report pages as v1 reference screens, comparing WinForms vs WinUI 3 for filters, grids, sorting, summaries, exports and richer visualisation.
 
 Only implement after a preferred direction is agreed. Dashboard is intentionally allowed its own milestone because experimentation may materially change scope.
 
@@ -130,7 +130,7 @@ Still required:
 - [x] **Historical Outstanding / As-of-Date foundation** — ledger-derived end-of-date customer/container positions are implemented and tested; future movements are excluded and containers remain separate.
 - [x] **Weekly Movements report** — Monday-to-Sunday Daily Detail + Weekly Overview, This Week/Last Week shortcuts, authoritative Container Type filter, future-date guard/current-week activity-through-today semantics, PDF/Generate & Open and CSV export preserving selected-view sort.
 - [x] **Customer Statement view/print workflow** — shared workflow supports Generate PDF and Generate & Open from Customers; Reports now has a Customer Statement launcher with customer search/selection. Opened PDFs are printable through the Windows PDF viewer.
-- [x] **Daily Movements report** — dedicated responsive report window with today/yesterday shortcuts, customer/container/direction/source filters, physical-movement default, optional opening adjustments, typed sorting, audited PDF and CSV preserving the current grid order.
+- [x] **Daily Movements report** — integrated responsive report page with today/yesterday shortcuts, customer/container/direction/source filters, physical-movement default, optional opening adjustments, typed sorting, audited PDF and CSV preserving the current grid order.
 - [x] **Movement History report** — integrated full-size main-application page with inclusive date range, customer/container/direction/source filters, opening-adjustment opt-in, future-date guards, quick range shortcuts, responsive readable columns, derived direction/reversal badges, typed sorting, audited PDF and CSV preserving current grid order, and stable customer-code filenames when a customer filter resolves to one customer.
 - [x] **Monthly Summary** — selected-month OUT, IN and net movement totals with customer/container breakdown, This Month/Last Month shortcuts, customer/container/source filters, optional opening adjustments, typed numeric sorting, audited PDF and CSV preserving current grid order.
 - [x] **Daily Print Pack** — selected-date Outstanding Summary + physical Movement Detail in one audited PDF; acceptance testing remains.
@@ -157,6 +157,9 @@ Remaining:
 - [ ] **Acceptance pending:** crash/power-loss recovery persists the draft atomically and, after restart, asks the operator to Continue Batch / Save Batch / Discard Batch instead of silently resuming. Verify all three choices plus removal after successful Save Batch / Clear Batch.
 
 This is acceptance/polish work only unless smoke testing exposes another real defect.
+
+- [x] **Opening reconciliation provenance — IMPLEMENTED, acceptance pending:** future successful normal-cutover imports persist every non-zero opening adjustment as an immutable ImportRun snapshot (previous BinTracker position, Excel B/Fwd/target and adjustment). Import History distinguishes this from same-cutover Replace/Correct correction changes and labels pre-capture historical runs honestly. BT-IMP-022 gates the behavior.
+- [ ] **Audit Trail search/filter/export — POST-V1 / lower priority:** administrator usability improvement recorded under BT-AUD-006; current audit persistence remains authoritative, but the screen lacks practical search/filter/export.
 
 ### 4. Dashboard
 
@@ -347,7 +350,7 @@ The roadmap was reconciled against the project history rather than only the most
 - [ ] **Business Information & Branding:** logo/custom header and reusable output branding.
 - [ ] **Email/SMS communications:** Google Workspace email + Texto SMS direction; customer Email/SMS/Opt-out settings; Friday-or-earlier empty-bin reminder direction; manual/bulk/automatic sends; templates; delivery history; retry/idempotency; audit; statement attachment/link decision.
 - [ ] **Dashboard:** design before code; charts, useful KPIs, attention states, drill-through, recent activity, by-container view, ageing rule discussion, forecasting/ML hooks and large-monitor layout.
-- [ ] **Dashboard future-UI discussion:** explicitly compare what WinUI 3 v2 would improve in Dashboard, Reports launcher, individual report windows and import workflow, and avoid over-engineering WinForms v1 where appropriate.
+- [ ] **Dashboard future-UI discussion:** explicitly compare what WinUI 3 v2 would improve in Dashboard, Reports launcher, individual report pages and import workflow, and avoid over-engineering WinForms v1 where appropriate.
 - [ ] **Backup/recovery:** user backup/restore plus scheduled automatic backups, configurable destination/retention, pre-upgrade backup and recovery drill.
 - [ ] **Audit coverage:** maintain an explicit audit-coverage matrix across security/admin/customer/movement/import/report/communication actions.
 - [ ] **PostgreSQL/multi-user:** Services + `IDbContextFactory` remains the boundary; no generic Repository layer merely for migration.
@@ -369,7 +372,7 @@ Milestone numbering follows scope. Substantial workstreams may receive their own
 
 ### Report interaction standard
 
-Detailed report windows treat the on-screen dataset as the operator's printable view: supported column sorting is type-correct, and PDF generation preserves the current displayed order. This standard should be reused by subsequent report windows.
+Detailed report pages treat the on-screen dataset as the operator's printable view: supported column sorting is type-correct, and PDF generation preserves the current displayed order. This standard should be reused by subsequent report pages.
 
 
 ### Interactive report live-filter standard
@@ -378,7 +381,7 @@ Outstanding Containers, Daily Movements, Weekly Movements and Movement History u
 
 ### Report output consistency
 
-Detailed report windows treat the current grid order as the operator's chosen report view. PDF and CSV outputs preserve that displayed order. Reuse this rule for future report windows.
+Detailed report pages treat the current grid order as the operator's chosen report view. PDF and CSV outputs preserve that displayed order. Reuse this rule for future report pages.
 
 
 ### Daily Movements print options
@@ -393,7 +396,7 @@ Daily Movements uses a single explicit opening-adjustment control. Opening Adjus
 
 ### Daily Movements control layout standard
 
-Daily Movements uses separate auto-sized Filter, Options and Actions rows. Reuse this structure when later report windows have enough controls that DPI wrapping could obscure actions.
+Daily Movements uses separate auto-sized Filter, Options and Actions rows. Reuse this structure when later report pages have enough controls that DPI wrapping could obscure actions.
 
 
 ### Weekly Movements views
