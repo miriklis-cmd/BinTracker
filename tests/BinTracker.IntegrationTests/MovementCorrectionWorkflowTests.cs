@@ -393,6 +393,25 @@ public sealed class MovementCorrectionWorkflowTests
         Assert.Single(await db.MovementBatches.AsNoTracking().ToListAsync());
     }
 
+    [Fact]
+    public async Task Whole_batch_checked_but_unchanged_values_create_no_artifacts_or_audit()
+    {
+        await using var h = await Harness.Create(UserRole.Administrator);
+        var date = new DateOnly(2026, 8, 20);
+        var batch = await h.AddBatch(date, MovementType.Out, [5, 6]);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            h.Corrections.CorrectBatchAsync(new(Guid.NewGuid(), batch, date, MovementType.Out,
+                "Attempted unchanged correction")));
+
+        Assert.Contains("actually differ", error.Message);
+        await using var db = await h.Factory.CreateDbContextAsync();
+        Assert.Empty(await db.MovementCorrectionOperations.AsNoTracking().ToListAsync());
+        Assert.Empty(await db.MovementCorrectionLines.AsNoTracking().ToListAsync());
+        Assert.Empty(await db.BinMovements.Where(x => x.ReversesMovementId != null).ToListAsync());
+        Assert.Empty(await db.AuditEvents.Where(x => x.Action == "MOVEMENT_BATCH_CORRECTED").ToListAsync());
+    }
+
     [Theory]
     [InlineData(UserRole.Viewer, false)]
     [InlineData(UserRole.Operator, true)]
@@ -468,6 +487,27 @@ public sealed class MovementCorrectionWorkflowTests
         await using var verify = await h.Factory.CreateDbContextAsync();
         Assert.True((await verify.AuditEvents.FindAsync(change.Id))!.ReviewedUtc.HasValue);
         Assert.True(await verify.AuditEvents.AnyAsync(x => x.Action == "MOVEMENT_CHANGE_REVIEWED"));
+    }
+
+    [Theory]
+    [InlineData(false, false, false, false)]
+    [InlineData(true, false, false, false)]
+    [InlineData(false, true, false, false)]
+    [InlineData(true, true, false, false)]
+    [InlineData(true, false, true, false)]
+    [InlineData(false, true, false, true)]
+    [InlineData(true, true, true, true)]
+    public void Batch_proposal_only_exposes_checked_fields_that_actually_change(
+        bool checkDate, bool checkDirection, bool expectDate, bool expectDirection)
+    {
+        var proposal = MovementCorrectionSelection.ResolveBatchProposal(
+            new DateOnly(2026, 8, 25), MovementType.Out,
+            checkDate, expectDate ? new DateOnly(2026, 8, 24) : new DateOnly(2026, 8, 25),
+            checkDirection, expectDirection ? MovementType.In : MovementType.Out);
+
+        Assert.Equal(expectDate, proposal.CorrectedDate.HasValue);
+        Assert.Equal(expectDirection, proposal.CorrectedDirection.HasValue);
+        Assert.Equal(expectDate || expectDirection, proposal.HasActualChange);
     }
 
     [Fact]

@@ -1,5 +1,12 @@
 # Documentation Audit Record
 
+## v0.5.0-alpha.8.7 Windows-acceptance interaction corrections
+
+- [x] Inspected Development Workflow, Roadmap, Known Issues, Changelog, requirements register, specification, business rules and active acceptance checklist before implementation.
+- [x] Added BT-CORR-016..017 and BT-MOVE-024..025 for selected-row action synchronization and semantic whole-batch field activation/no-op rejection.
+- [x] Preserved immutable chained-correction behavior and added focused proposal/service regression coverage. User Windows acceptance passed Movement History selection/action synchronization, whole-batch auto-tick/auto-clear, manual no-op rejection and focus-stable `Confirm Every Line` rendering.
+- [x] User-ran canonical `Build-BinTracker.bat` passed source/package-state audit (231 permanent requirement IDs / 26 Markdown files), restore, zero-warning/zero-error build and 310/310 automated tests with 0 failed or skipped.
+
 ## v0.5.0-alpha.8.7 Windows-acceptance corrective/readability build
 
 - [x] Clean committed/pushed alpha.8.6 checkpoint verified at `e2ade92`; governing requirements/checklists and exact touched UI/service paths inspected before edits.

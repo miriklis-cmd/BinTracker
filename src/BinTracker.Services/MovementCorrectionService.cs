@@ -32,8 +32,23 @@ public sealed record MovementCorrectionSelections(
     CustomerListRow Customer,
     ContainerTypeListRow ContainerType);
 
+public sealed record BatchCorrectionProposal(DateOnly? CorrectedDate, MovementType? CorrectedDirection)
+{
+    public bool HasActualChange => CorrectedDate.HasValue || CorrectedDirection.HasValue;
+}
+
 public static class MovementCorrectionSelection
 {
+    public static BatchCorrectionProposal ResolveBatchProposal(
+        DateOnly persistedDate,
+        MovementType persistedDirection,
+        bool changeDate,
+        DateOnly proposedDate,
+        bool changeDirection,
+        MovementType proposedDirection) => new(
+            changeDate && proposedDate != persistedDate ? proposedDate : null,
+            changeDirection && proposedDirection != persistedDirection ? proposedDirection : null);
+
     public static MovementCorrectionSelections Resolve(
         MovementCorrectionDetail movement,
         IReadOnlyList<CustomerListRow> customers,
@@ -177,18 +192,28 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
     {
         Authorize("correct"); OperationId(request.ClientOperationId);
         var reason = Reason(request.Reason, "correction");
-        if (request.CorrectedDate is null && request.CorrectedDirection is null)
-            throw new InvalidOperationException("Change the batch date, direction, or both.");
         if (request.CorrectedDate > clock.Today)
             throw new ArgumentException("Corrected batch date cannot be in the future.");
         await using var db = await factory.CreateDbContextAsync(token);
+        var persisted = await db.MovementBatches.AsNoTracking()
+            .Where(x => x.Id == request.MovementBatchId)
+            .Select(x => new { x.MovementDate, x.MovementType })
+            .SingleOrDefaultAsync(token);
+        if (persisted is null)
+            throw new InvalidOperationException("The persisted batch no longer exists or is empty.");
+        var proposal = MovementCorrectionSelection.ResolveBatchProposal(
+            persisted.MovementDate, persisted.MovementType,
+            request.CorrectedDate.HasValue, request.CorrectedDate ?? persisted.MovementDate,
+            request.CorrectedDirection.HasValue, request.CorrectedDirection ?? persisted.MovementType);
+        if (!proposal.HasActualChange)
+            throw new InvalidOperationException("The corrected batch date and/or direction must actually differ from the saved batch. Nothing was corrected.");
         var ids = await db.BinMovements.AsNoTracking().Where(x => x.MovementBatchId == request.MovementBatchId)
             .OrderBy(x => x.Id).Select(x => x.Id).ToArrayAsync(token);
         if (ids.Length == 0) throw new InvalidOperationException("The persisted batch no longer exists or is empty.");
-        var fp = Hash(new { Type = "batch", request.MovementBatchId, request.CorrectedDate,
-            request.CorrectedDirection, Reason = reason, MovementIds = ids });
+        var fp = Hash(new { Type = "batch", request.MovementBatchId, proposal.CorrectedDate,
+            proposal.CorrectedDirection, Reason = reason, MovementIds = ids });
         return await CorrectCore(request.ClientOperationId, MovementCorrectionKind.WholeBatch,
-            request.MovementBatchId, ids, request.CorrectedDate, request.CorrectedDirection,
+            request.MovementBatchId, ids, proposal.CorrectedDate, proposal.CorrectedDirection,
             null, null, null, null, null, reason, fp, token);
     }
 

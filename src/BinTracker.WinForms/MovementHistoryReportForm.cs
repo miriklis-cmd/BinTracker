@@ -275,7 +275,17 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             correctBatchButton = new Button { Text = "Correct Entire Batch", Size = new Size(225, 40), Margin = new Padding(8, 0, 0, 0) };
             correctBatchButton.Click += async (_, _) => await CorrectBatchAsync();
             actions.Controls.Add(correctBatchButton);
-            grid.SelectionChanged += (_, _) => UpdateReverseAvailability();
+            grid.SelectionChanged += (_, _) => SynchronizeActionsWithCurrentRow();
+            grid.CurrentCellChanged += (_, _) => SynchronizeActionsWithCurrentRow();
+            grid.CellMouseDown += (_, e) =>
+            {
+                if (e.RowIndex < 0 || e.ColumnIndex < 0)
+                    return;
+
+                grid.CurrentCell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
+                SynchronizeActionsWithCurrentRow();
+            };
+            grid.Sorted += (_, _) => SynchronizeSelectionAndActions();
         }
 
         // Filters, options and actions are direct AutoSize rows in the root layout.
@@ -410,9 +420,8 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
                 grid.Rows[index].Cells["Notes"].ToolTipText = row.Notes;
             }
 
-            UpdateReverseAvailability();
-
             ReportGridMultiSort.Reapply(grid);
+            SynchronizeSelectionAndActions();
             AllocateResponsiveColumns();
 
             var totals = result.ContainerTotals.Select(x =>
@@ -519,19 +528,55 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         }
     }
 
+    private void SynchronizeSelectionAndActions()
+    {
+        if (grid.Rows.Count == 0)
+        {
+            grid.ClearSelection();
+            SynchronizeActionsWithCurrentRow();
+            return;
+        }
+
+        var selectedRow = grid.SelectedRows
+            .Cast<DataGridViewRow>()
+            .FirstOrDefault(x => x.Tag is MovementHistoryReportRow);
+        var row = grid.CurrentRow?.Tag is MovementHistoryReportRow
+            ? grid.CurrentRow
+            : selectedRow ?? grid.Rows[0];
+        var cell = row.Cells.Cast<DataGridViewCell>().First(x => x.Visible);
+
+        // RowsAdded/SelectionChanged can run before callers have assigned Row.Tag,
+        // and a programmatic sort can leave a painted selected row without making
+        // it the current row. Establish both pieces of DataGridView state explicitly.
+        grid.ClearSelection();
+        row.Selected = true;
+        grid.CurrentCell = cell;
+        SynchronizeActionsWithCurrentRow();
+
+        // WinForms can finish changing CurrentCell after the synchronous Sorted or
+        // RowsAdded event chain. Reconcile once more after that chain is complete.
+        if (grid.IsHandleCreated)
+            grid.BeginInvoke(SynchronizeActionsWithCurrentRow);
+    }
+
+    private void SynchronizeActionsWithCurrentRow()
+    {
+        UpdateReverseAvailability();
+    }
+
     private void UpdateReverseAvailability()
     {
         if (reverseButton is null)
             return;
 
-        reverseButton.Enabled = grid.CurrentRow?.Tag is MovementHistoryReportRow row &&
-                                row.CanReverse &&
-                                row.Source is MovementSource.Manual or MovementSource.Batch;
+        var selected = grid.CurrentRow?.Tag as MovementHistoryReportRow;
+        var eligible = selected is not null && selected.CanReverse &&
+                       selected.Source is MovementSource.Manual or MovementSource.Batch;
+        reverseButton.Enabled = eligible;
         if (correctButton is not null)
-            correctButton.Enabled = reverseButton.Enabled;
+            correctButton.Enabled = eligible;
         if (correctBatchButton is not null)
-            correctBatchButton.Enabled = reverseButton.Enabled &&
-                grid.CurrentRow?.Tag is MovementHistoryReportRow { Source: MovementSource.Batch };
+            correctBatchButton.Enabled = eligible && selected?.Source == MovementSource.Batch;
     }
 
     private async Task CorrectSelectedAsync()

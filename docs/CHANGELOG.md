@@ -1,5 +1,9 @@
 ## v0.5.0-alpha.8.7
 
+- Fixed Movement History's initially selected-row action state so Reverse and Correct Selected are recalculated consistently from the real selected movement after results are sorted and displayed.
+- Made user-committed whole-batch direction edits and post-initialisation date edits recalculate their correction field against persisted state, including automatic clearing when a value is restored, while preserving manual unticking until the next value edit and rejecting checked-but-unchanged semantic no-ops before any artifacts or audit events can be created.
+- Stabilised the Correct Entire Batch action row with deterministic columns and content-measured grow-only buttons so default/focus changes cannot clip `Confirm Every Line`.
+- Windows acceptance passed for these corrective interactions; the canonical gate passed audit, restore, zero-warning/zero-error build and 310/310 tests with none failed or skipped.
 - Clarified Audit Trail action success/action labels and added exact review-acknowledgement lineage navigation.
 - Added reusable field-accurate movement-change comparison and expanded/readjusted detail/audit layouts.
 - Rebalanced Movement History widths and selectively wrapped Status/Notes.

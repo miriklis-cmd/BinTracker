@@ -85,19 +85,28 @@ internal sealed class MovementCorrectionDialog : BinTrackerForm
 
 internal sealed class BatchCorrectionDialog : BinTrackerForm
 {
+    private readonly DateOnly persistedDate;
+    private readonly MovementType persistedDirection;
     private readonly CheckBox changeDate = new() { Text = "Correct date for every line", AutoSize = true };
     private readonly DateTimePicker date = new() { Format = DateTimePickerFormat.Short, Width = 150 };
     private readonly CheckBox changeDirection = new() { Text = "Correct direction for every line", AutoSize = true };
     private readonly ComboBox direction = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 170 };
     private readonly TextBox reason = new() { Multiline = true, MaxLength = 500, Dock = DockStyle.Fill };
-    public DateOnly? CorrectedDate => changeDate.Checked ? DateOnly.FromDateTime(date.Value) : null;
-    public MovementType? CorrectedDirection => changeDirection.Checked && direction.SelectedItem is DirectionChoice selected
-        ? selected.Value
-        : null;
+    private bool initializationComplete;
+    private BatchCorrectionProposal Proposal => MovementCorrectionSelection.ResolveBatchProposal(
+        persistedDate, persistedDirection, changeDate.Checked, DateOnly.FromDateTime(date.Value),
+        changeDirection.Checked, SelectedDirection);
+    public DateOnly? CorrectedDate => Proposal.CorrectedDate;
+    public MovementType? CorrectedDirection => Proposal.CorrectedDirection;
     public string Reason => reason.Text.Trim();
+    private MovementType SelectedDirection => direction.SelectedItem is DirectionChoice selected
+        ? selected.Value
+        : throw new InvalidOperationException("Select a corrected direction.");
 
     public BatchCorrectionDialog(MovementBatchCorrectionDetail batch, DateOnly businessToday)
     {
+        persistedDate = batch.MovementDate;
+        persistedDirection = batch.Direction;
         Text = "Correct Entire Saved Batch"; StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog; ClientSize = new Size(780, 620);
         AutoScaleMode = AutoScaleMode.Dpi; Font = new Font("Segoe UI", 10F);
@@ -109,6 +118,16 @@ internal sealed class BatchCorrectionDialog : BinTrackerForm
             batch, directionChoices.Select(x => x.Value).ToArray());
         direction.Items.AddRange(directionChoices);
         direction.SelectedIndex = directionIndex;
+        date.ValueChanged += (_, _) =>
+        {
+            if (initializationComplete)
+                changeDate.Checked = DateOnly.FromDateTime(date.Value) != persistedDate;
+        };
+        direction.SelectionChangeCommitted += (_, _) =>
+        {
+            if (initializationComplete)
+                changeDirection.Checked = SelectedDirection != persistedDirection;
+        };
         // Only the potentially long persisted-line list scrolls. Batch identity,
         // correction controls and the alpha.8.5 fixed action band stay visible.
         var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, Padding = new Padding(24, 18, 24, 0) };
@@ -134,24 +153,60 @@ internal sealed class BatchCorrectionDialog : BinTrackerForm
         var fieldHost = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1, RowCount = 2, Margin = Padding.Empty };
         fieldHost.Controls.Add(fields, 0, 0); fieldHost.Controls.Add(reasonHost, 0, 1);
         root.Controls.Add(fieldHost, 0, 3);
-        var buttons = new FlowLayoutPanel
+        var buttons = new TableLayoutPanel
         {
             AutoSize = true,
             Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.RightToLeft,
-            WrapContents = false,
+            ColumnCount = 3,
+            RowCount = 1,
             Padding = new Padding(0, 8, 0, 10)
         };
-        var save = new Button { Text = "Confirm Every Line", Size = new Size(180, 40) };
-        var cancel = new Button { Text = "Cancel", Size = new Size(110, 40) };
-        save.Click += (_, _) => { if ((!changeDate.Checked && !changeDirection.Checked) || Reason.Length < 3) { MessageBox.Show(this, "Select a date and/or direction correction and enter a reason."); return; } DialogResult = DialogResult.OK; };
+        buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        buttons.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        buttons.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        var save = new Button
+        {
+            Text = "Confirm Every Line",
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowOnly,
+            MinimumSize = new Size(180, 40),
+            Padding = new Padding(10, 0, 10, 0),
+            Margin = new Padding(8, 0, 0, 0)
+        };
+        var cancel = new Button
+        {
+            Text = "Cancel",
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowOnly,
+            MinimumSize = new Size(110, 40),
+            Padding = new Padding(10, 0, 10, 0),
+            Margin = Padding.Empty
+        };
+        save.Click += (_, _) =>
+        {
+            if (!Proposal.HasActualChange)
+            {
+                MessageBox.Show(this, "The corrected batch date and/or direction must actually differ from the saved batch.");
+                return;
+            }
+            if (Reason.Length < 3)
+            {
+                MessageBox.Show(this, "Enter a correction reason.");
+                reason.Focus();
+                return;
+            }
+            DialogResult = DialogResult.OK;
+        };
         cancel.Click += (_, _) => DialogResult = DialogResult.Cancel;
-        buttons.Controls.Add(save);
-        buttons.Controls.Add(cancel);
+        buttons.Controls.Add(cancel, 1, 0);
+        buttons.Controls.Add(save, 2, 0);
         root.Controls.Add(buttons, 0, 4);
         Controls.Add(root);
         AcceptButton = save;
         CancelButton = cancel;
+        // Control construction and initial item selection must not opt fields in.
+        // Later ValueChanged/SelectionChangeCommitted events represent user edits.
+        initializationComplete = true;
     }
     private sealed record DirectionChoice(MovementType Value, string Text) { public override string ToString() => Text; }
 }

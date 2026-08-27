@@ -27,6 +27,7 @@ Business Information supports Business Name, Trading Name and Default Report Hea
 Customer reminder preferences and the `ReminderDelivery` persistence model exist, but no real Email or SMS provider/send workflow has been implemented.
 
 ### Movement correction/reversal requires Windows/operator acceptance
+- alpha.8.7 follow-up Movement History initial/changed-row action synchronization, whole-batch auto-tick/auto-clear/no-op handling, and focus-stable `Confirm Every Line` rendering passed focused Windows acceptance. The canonical gate also passed with 0 warnings/errors and 310/310 tests.
 - alpha.8.5 exposes the authoritative persisted Movement ID in Movement History and PDF/CSV exports, and restructures Correct Entire Batch so its scrollable content cannot displace the fixed Cancel/confirmation action band at the required laptop DPI.
 - alpha.8.2 makes the correction dialog labels/values DPI-safe, preserves effective operational reporting, and distinguishes correction lineage from ordinary reversal wording in immutable Movement History.
 - alpha.8.1 corrects the release-blocking alpha.8 dialog-initialisation crash and clipped Movement History correction captions; the corrected UI requires renewed Windows smoke testing.
