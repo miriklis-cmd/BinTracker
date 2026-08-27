@@ -1,3 +1,41 @@
+## v0.5.0-alpha.8.5
+
+- Added the authoritative persisted Movement ID to Movement History immediately after Date and to its PDF/CSV exports.
+- Added typed numeric ID sorting while preserving existing report multi-column sort state and typed-row correction/reversal selection.
+- Reworked Correct Entire Batch into a scrollable content region plus fixed Cancel/confirmation action band so required controls remain reachable at the 1920x1080/150% laptop acceptance configuration.
+- Documented the laptop acceptance configuration separately from the substantially larger primary production display and retained the presentation-independent WinUI 3 migration direction.
+- Added persisted-ID/filter/order integration coverage and permanent source/governance gates; correction/reversal semantics were not changed.
+
+## v0.5.0-alpha.8.4
+
+- Fixed Correct Entire Batch dialog construction so persisted direction selection is resolved deterministically before WinForms control population, with explicit missing/duplicate integrity failures instead of a timing-dependent `ComboBox.Items.First(...)` lookup.
+- Added authoritative exact-batch line preview data and regressions for selected persisted batch identity, unrelated same-date movement exclusion, Operator/Administrator/Viewer role paths, and pre-transaction/conflict atomicity.
+- Stabilised the Single Entry action wording as `Save Movement` at its production-DPI size and added a permanent source gate against click-time relabelling.
+- Recorded planned persistent Administrator review infobar requirement BT-AUD-013, including presentation-independent state/count/navigation and future WinUI 3 presentation replacement constraints. The infobar is not implemented in this build.
+
+## v0.5.0-alpha.8.3
+
+- Fixed fresh Movement History queries for chained corrections by projecting every legitimate lineage role per movement instead of enforcing a false one-line-per-movement dictionary.
+- Added two-level and deeper-chain regression coverage for immutable history, eligibility, effective Daily/Weekly/Monthly reporting, fresh contexts and PDF consumption.
+- Kept correction Source compact, added blue correction Status pills while preserving amber ordinary reversal pills, and made the full Last 7 Days / Last 30 Days captions DPI-safe.
+
+## v0.5.0-alpha.8.2
+
+- Clarified effective operational correction reporting and immutable lineage presentation, fixed correction-dialog DPI layout, expanded reporting regressions, and recorded the deferred duplicate Container Type display-order issue.
+
+## v0.5.0-alpha.8.1
+
+- Fixed the alpha.8 correction-dialog constructor crash caused by enumerating ComboBox Items before WinForms data binding had populated them.
+- Added exact persisted-ID selection validation and direct item population, preserving inactive historical customer/container values.
+- Widened the two Movement History correction buttons so their full captions render.
+
+## v0.5.0-alpha.8
+
+- Added immutable single and whole-persisted-batch correction-by-replacement with schema v16 lineage, transactionality and database-enforced cross-command exclusion.
+- Added wrong-date historical-period semantics, Administrator acknowledgement of Operator movement changes and MovementBatch Audit Trail drill-down.
+- Recorded post-v1 high-risk/historical correction and period closing/locking requirements without inventing thresholds.
+- Skipped alpha.7 because the externally produced candidate failed BT-ARCH concurrent reversal conflict handling.
+
 ## v0.5.0-alpha.6.5
 
 - Widened Import Run History and the Customers, Movements and Direction columns to remove clipped headings.

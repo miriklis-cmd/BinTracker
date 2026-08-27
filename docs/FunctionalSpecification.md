@@ -32,6 +32,16 @@
 - BT-MOVE-010: Administrator and Operator may reverse ordinary Manual/Batch operational movements; Viewer cannot.
 - BT-MOVE-011: Generic reversal must reject Opening Adjustments and Excel Import/ImportRun-linked movements; those use Administrator-controlled adjustment or Replace / Correct workflows respectively.
 - BT-MOVE-012: Movement History shows derived reversal Status on original and reversal rows and disables Reverse when the selected row is already reversed or is itself a reversal.
+- BT-MOVE-013: Eligible ordinary movements can be corrected by an atomic append-only neutraliser plus corrected replacement covering date/customer/container/direction/quantity/reference/notes.
+- BT-MOVE-014: Whole persisted Batch Entry correction changes the common date and/or direction for every line, uses MovementBatch identity and never partially succeeds.
+- BT-MOVE-015: A correction neutraliser uses the original movement date; the replacement uses the corrected date so day/week/month history is moved rather than merely offset today.
+- BT-MOVE-016: Operator corrections/reversals take effect immediately and await persistent Administrator acknowledgement; acknowledgement is review, not approval.
+- BT-MOVE-017: Operational Daily/Weekly/Monthly, customer-recent, statement and Market Floor datasets represent a correction once through its replacement after persisted-lineage suppression of the consumed original and correction neutraliser. Movement History/Audit retain all three roles; ordinary reversal reporting is unchanged.
+- BT-MOVE-018: Correction replacements may themselves be corrected without a maximum chain depth. Movement History retains every lineage relationship, including simultaneous replacement and later-corrected roles, while only the latest replacement remains operationally effective and eligible.
+- BT-MOVE-019: Audit Trail review presentation explicitly distinguishes Needs review, Reviewed and not-applicable/blank and provides All/Needs review/Reviewed filtering.
+- BT-MOVE-020: Mark Selected Reviewed is available only for an unreviewed, review-required Operator correction/reversal selected by an Administrator. Review evidence includes reviewer and UTC timestamp, acknowledgement is audited, and duplicate acknowledgement is rejected; authorization remains enforced by the service boundary.
+- BT-MOVE-021: Audit Trail detail actions are context-sensitive. View Batch Detail is available only for events backed by authoritative persisted MovementBatch detail; future supported entity types route to their authoritative detail surface and events without meaningful detail expose no enabled action.
+- BT-MOVE-023 / BT-AUD-013: Administrator sessions require a persistent, non-blocking review infobar across main navigation whenever Operator correction/reversal reviews are outstanding. It shows the current count, explains that Operator movement changes require review, opens the pending Audit Trail set, refreshes after review-state changes and disappears at zero. It is Administrator-only, does not block operations, and supplements rather than replaces the login popup. State/count/navigation contracts are presentation-independent for WinForms and future WinUI 3.
 
 ## Dashboard
 
@@ -276,6 +286,8 @@
 - BT-REPORT-HISTORY-009: PDF and CSV preserve current visible grid order.
 - BT-REPORT-HISTORY-010: One Include notes in exports option controls Notes in both PDF and CSV.
 - BT-REPORT-HISTORY-011: PDF generation is audited as `MOVEMENT_HISTORY_REPORT_GENERATED`.
+- BT-REPORT-HISTORY-012: The on-screen grid and PDF/CSV exports show the authoritative persisted Movement ID used by correction, reversal and audit references. It sorts numerically and remains associated with its typed movement row through filtering and multi-column sorting.
+- BT-REPORT-HISTORY-013: Correct Entire Batch keeps its Cancel/final action band visible while the batch preview and correction fields scroll within the available working area when necessary, including Windows 11 at 1920x1080 and 150% scaling.
 
 
 ## BinTracker Product Branding

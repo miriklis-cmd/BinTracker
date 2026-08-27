@@ -26,8 +26,91 @@ internal static class SqliteSchemaMigrations
         new(12, "Import correction difference provenance", ApplyV12Async),
         new(13, "Movement correction and reversal linkage", ApplyV13Async),
         new(14, "Multi-user portability and concurrency foundation", ApplyV14Async),
-        new(15, "Import opening reconciliation provenance", ApplyV15Async)
+        new(15, "Import opening reconciliation provenance", ApplyV15Async),
+        new(16, "Movement correction operations and administrator review", ApplyV16Async)
     ];
+
+    private static async Task ApplyV16Async(BinTrackerDbContext db)
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS MovementCorrectionOperations (
+                Id INTEGER NOT NULL CONSTRAINT PK_MovementCorrectionOperations PRIMARY KEY AUTOINCREMENT,
+                ClientOperationId TEXT NOT NULL,
+                RequestFingerprint TEXT NOT NULL,
+                Kind INTEGER NOT NULL,
+                OriginalBatchId INTEGER NULL,
+                ReplacementBatchId INTEGER NULL,
+                Reason TEXT NOT NULL,
+                ActorUserId INTEGER NOT NULL,
+                ActorUsername TEXT NOT NULL,
+                CreatedUtc TEXT NOT NULL,
+                CONSTRAINT FK_MovementCorrectionOperations_MovementBatches_OriginalBatchId
+                    FOREIGN KEY (OriginalBatchId) REFERENCES MovementBatches (Id) ON DELETE RESTRICT,
+                CONSTRAINT FK_MovementCorrectionOperations_MovementBatches_ReplacementBatchId
+                    FOREIGN KEY (ReplacementBatchId) REFERENCES MovementBatches (Id) ON DELETE RESTRICT
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS IX_MovementCorrectionOperations_ClientOperationId
+                ON MovementCorrectionOperations (ClientOperationId);
+
+            CREATE TABLE IF NOT EXISTS MovementCorrectionLines (
+                Id INTEGER NOT NULL CONSTRAINT PK_MovementCorrectionLines PRIMARY KEY AUTOINCREMENT,
+                CorrectionOperationId INTEGER NOT NULL,
+                OriginalMovementId INTEGER NOT NULL,
+                NeutralisingMovementId INTEGER NOT NULL,
+                ReplacementMovementId INTEGER NOT NULL,
+                CONSTRAINT FK_MovementCorrectionLines_MovementCorrectionOperations_CorrectionOperationId
+                    FOREIGN KEY (CorrectionOperationId) REFERENCES MovementCorrectionOperations (Id) ON DELETE RESTRICT,
+                CONSTRAINT FK_MovementCorrectionLines_BinMovements_OriginalMovementId
+                    FOREIGN KEY (OriginalMovementId) REFERENCES BinMovements (Id) ON DELETE RESTRICT,
+                CONSTRAINT FK_MovementCorrectionLines_BinMovements_NeutralisingMovementId
+                    FOREIGN KEY (NeutralisingMovementId) REFERENCES BinMovements (Id) ON DELETE RESTRICT,
+                CONSTRAINT FK_MovementCorrectionLines_BinMovements_ReplacementMovementId
+                    FOREIGN KEY (ReplacementMovementId) REFERENCES BinMovements (Id) ON DELETE RESTRICT
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS IX_MovementCorrectionLines_OriginalMovementId
+                ON MovementCorrectionLines (OriginalMovementId);
+            CREATE UNIQUE INDEX IF NOT EXISTS IX_MovementCorrectionLines_NeutralisingMovementId
+                ON MovementCorrectionLines (NeutralisingMovementId);
+            CREATE UNIQUE INDEX IF NOT EXISTS IX_MovementCorrectionLines_ReplacementMovementId
+                ON MovementCorrectionLines (ReplacementMovementId);
+            """);
+
+        await AddAuditReviewColumnIfMissingAsync(
+            db, "RequiresAdministratorReview",
+            "ALTER TABLE AuditEvents ADD COLUMN RequiresAdministratorReview INTEGER NOT NULL DEFAULT 0;");
+        await AddAuditReviewColumnIfMissingAsync(
+            db, "ReviewedUtc",
+            "ALTER TABLE AuditEvents ADD COLUMN ReviewedUtc TEXT NULL;");
+        await AddAuditReviewColumnIfMissingAsync(
+            db, "ReviewedByUserId",
+            "ALTER TABLE AuditEvents ADD COLUMN ReviewedByUserId INTEGER NULL;");
+        await AddAuditReviewColumnIfMissingAsync(
+            db, "ReviewedByUsername",
+            "ALTER TABLE AuditEvents ADD COLUMN ReviewedByUsername TEXT NULL;");
+
+        // Existing audit history predates the review workflow. DEFAULT 0 is an
+        // intentional backfill: migration must never create a historical flood.
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE INDEX IF NOT EXISTS IX_AuditEvents_RequiresAdministratorReview_ReviewedUtc ON AuditEvents (RequiresAdministratorReview, ReviewedUtc);");
+    }
+
+    private static async Task AddAuditReviewColumnIfMissingAsync(
+        BinTrackerDbContext db, string column, string sql)
+    {
+        var allowed = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "RequiresAdministratorReview", "ReviewedUtc", "ReviewedByUserId", "ReviewedByUsername"
+        };
+        if (!allowed.Contains(column))
+            throw new InvalidOperationException("Unsupported audit-review schema column.");
+
+        var existing = await db.Database
+            .SqlQueryRaw<string>(
+                "SELECT name AS Value FROM pragma_table_info('AuditEvents') WHERE name = {0}", column)
+            .ToListAsync();
+        if (existing.Count == 0)
+            await db.Database.ExecuteSqlRawAsync(sql);
+    }
 
     private static async Task ApplyV1Async(BinTrackerDbContext db)
     {

@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.5.0-alpha.6.5**
+Current planning baseline: **v0.5.0-alpha.8.5**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -40,7 +40,8 @@ This order is the authoritative pre-v1 sequence. `v0.5.0-alpha.1` began the clea
 
 1. **Finish v0.4 Reporting** — Monthly Summary is user-accepted; validate Daily Print Pack, then complete the final report consistency/real-world print acceptance pass.
 2. **Batch Entry acceptance cleanup** — verify Esc, post-entry field clearing/focus, and implement/decide crash/power-loss draft recovery before production.
-3. **Movement Correction / Reversal** — controlled, linked, audited correction of saved movements; never silently edit/delete history.
+3. **Movement Correction / Reversal** — implemented and automated-tested in alpha.8; Windows/operator acceptance remains open.
+4. **Deterministic configurable Container Type ordering** — design duplicate-order handling and reorder UX without hard-coded container priorities.
 4. **Security, Data Integrity & Code Quality Hardening — HARD GATE** — reconcile and remediate the external security/code-quality audit before branding/communications. Every finding in `docs/SecurityHardeningRegister.md` must remain tracked; accepted v1 findings must be fixed or explicitly dispositioned before v1 release. The build audit mechanically protects the register and this roadmap ordering.
 5. **Business Information & Branding** — logo, custom header/branding text, and one reusable branding source for reports/statements/email and generated output.
 6. **Email, SMS & Customer Communications** — Google Workspace email + Texto SMS direction, manual and automatic reminders, templates, delivery history/retries/audit, statement attachment/link decision.
@@ -132,6 +133,7 @@ Still required:
 - [x] **Customer Statement view/print workflow** — shared workflow supports Generate PDF and Generate & Open from Customers; Reports now has a Customer Statement launcher with customer search/selection. Opened PDFs are printable through the Windows PDF viewer.
 - [x] **Daily Movements report** — integrated responsive report page with today/yesterday shortcuts, customer/container/direction/source filters, physical-movement default, optional opening adjustments, typed sorting, audited PDF and CSV preserving the current grid order.
 - [x] **Movement History report** — integrated full-size main-application page with inclusive date range, customer/container/direction/source filters, opening-adjustment opt-in, future-date guards, quick range shortcuts, responsive readable columns, derived direction/reversal badges, typed sorting, audited PDF and CSV preserving current grid order, and stable customer-code filenames when a customer filter resolves to one customer.
+- [x] **Movement History audit identity** — the grid and PDF/CSV exports expose the authoritative persisted Movement ID used by correction/reversal/audit workflows; ID sorting is numeric and participates in the existing multi-column sort.
 - [x] **Monthly Summary** — selected-month OUT, IN and net movement totals with customer/container breakdown, This Month/Last Month shortcuts, customer/container/source filters, optional opening adjustments, typed numeric sorting, audited PDF and CSV preserving current grid order.
 - [x] **Daily Print Pack** — selected-date Outstanding Summary + physical Movement Detail in one audited PDF; acceptance testing remains.
 - [x] **Monthly Summary on-screen interaction** — dedicated responsive window with live dropdown/date/checkbox refresh, Customer-on-Enter search and sortable summary grid.
@@ -159,7 +161,7 @@ Remaining:
 This is acceptance/polish work only unless smoke testing exposes another real defect.
 
 - [x] **Opening reconciliation provenance — IMPLEMENTED, acceptance pending:** future successful normal-cutover imports persist every non-zero opening adjustment as an immutable ImportRun snapshot (previous BinTracker position, Excel B/Fwd/target and adjustment). Import History distinguishes this from same-cutover Replace/Correct correction changes and labels pre-capture historical runs honestly. BT-IMP-022 gates the behavior.
-- [ ] **Audit Trail search/filter/export — POST-V1 / lower priority:** administrator usability improvement recorded under BT-AUD-006; current audit persistence remains authoritative, but the screen lacks practical search/filter/export.
+- [ ] **Audit Trail broader search/filter/export — TRACKED ENHANCEMENT / RELEASE DECISION:** BT-AUD-006 retains broader search, general multi-field filtering and CSV export without claiming implementation. CSV should export the currently filtered view where practical, include authoritative UTC/user/action/entity/ID/description/success/review fields, follow defined security/redaction rules and audit the export itself.
 
 ### 4. Dashboard
 
@@ -183,7 +185,26 @@ Required dashboard pass:
 - [x] Reversal requires a reason and preserves original/reversal linkage, actor/time and `MOVEMENT_REVERSED` audit in one database transaction.
 - [x] Reversal permission is enforced at service layer: Administrator and Operator may reverse ordinary Manual/Batch movements; Viewer cannot. Opening Adjustment and Excel Import/provenance-linked movements are excluded from generic reversal and routed to Administrator-controlled workflows.
 - [x] **Reversal engine smoke accepted:** OUT and IN reversal, immutable history, balance neutrality, audit creation, already-reversed protection and reversal-of-reversal protection passed on Windows. Role policy was then refined to allow Operators for ordinary operational movements and requires targeted re-acceptance.
-- [ ] Add correction-by-replacement workflow where the operator needs to replace incorrect customer/container/date/quantity rather than simply reverse it.
+- [x] **Correction-by-replacement implemented/automated-tested:** date, customer, container, direction, quantity, reference and notes; original-period neutralisation; corrected replacement; immutable operation lineage; persisted whole-batch date/direction correction; database-backed race/idempotency handling; Operator review acknowledgement and MovementBatch audit detail.
+- [ ] Complete Windows/operator UI, DPI and multi-window concurrency smoke acceptance for alpha.8. The required frequently-used laptop gate is Windows 11, 1920x1080 at 150% scaling; the primary production display remains substantially larger.
+
+#### Pre-v1 Audit Trail / Administrator oversight acceptance
+
+The underlying append-only correction/reversal evidence, persistent Operator review requirement, consolidated Administrator notification, audited acknowledgement and authoritative MovementBatch detail are implemented. The following integration/UX requirements are recorded but **not implemented**; Windows/manual acceptance remains pending:
+
+- [ ] **Review-state discoverability (BT-AUD-007):** show `Needs review`, `Reviewed` and not-applicable/blank explicitly, with practical `All`, `Needs review` and `Reviewed` filtering. Administrators must not infer state from Action/User/Description.
+- [ ] **Context-sensitive acknowledgement (BT-AUD-008):** enable **Mark Selected Reviewed** only for the selected unreviewed, review-required Operator correction/reversal. Disable it for no selection, Administrator changes, login/logout, report, customer/container/import, already-reviewed and every other non-reviewable event. Persist status, reviewer and UTC time; audit acknowledgement and prohibit a second acknowledgement.
+- [ ] **End-to-end review acceptance (BT-AUD-011):** Operator correction/reversal -> persisted review-required state -> later Administrator login -> consolidated notification -> discoverable `Needs review` event -> eligible selection/action -> successful acknowledgement -> `Reviewed` with persistent reviewer/time -> acknowledgement visible in Audit Trail -> duplicate prevented.
+- [ ] **Persistent Administrator review reminder (BT-AUD-013):** while reviews remain outstanding, show an Administrator-only, non-blocking infobar across main navigation with the live count, clear review message and direct action to the pending Audit Trail set. Refresh after review changes and remove at zero. Retain the login popup. Implement through presentation-independent review state/count/navigation contracts so WinForms presentation can later be replaced by native WinUI 3 `InfoBar` without rewriting business logic.
+- [ ] **Service security boundary:** Administrator audit-review capability remains service-authorized under BT-SEC-005 and BT-CORR-001/004/011. Viewer and Operator UI visibility must never grant Administrator acknowledgement capability.
+- [ ] **Context-sensitive batch detail (BT-AUD-009):** enable **View Batch Detail** only when the selected event has authoritative persisted `MovementBatch` detail; disable for no selection and non-batch events instead of knowingly opening the invalid-selection message. Preserve existing authoritative batch detail.
+
+Future contextual drill-down is separately tracked by BT-AUD-010: supported events should route to authoritative existing detail surfaces (`MovementBatch`, ImportRun/Excel Import run detail, and correction/reversal lineage where implemented); events without meaningful detail have no enabled action. These additional routes are not implemented in this task.
+
+Post-v1 policy/design requirements (recorded, not implemented):
+
+- Define stronger controls for high-risk or historical corrections (potentially hundreds/thousands of containers, old/closed periods, sensitive changes, Administrator override/reopen and whether selected cases require Administrator authority/approval). Do not invent “large” or “old” thresholds until policy review.
+- Investigate formal period closing/locking: an Administrator-controlled closed-through date, audited reopen/override and a configurable operational grace period. Do not automatically close yesterday because legitimate delayed entries occur.
 
 
 ### 5A. Security, Data Integrity & Code Quality Hardening — HARD GATE
@@ -252,6 +273,7 @@ Developer Database tools are not the production solution.
 - [ ] Database integrity constraints and migration audit.
 - [ ] Error logging suitable for support without leaking passwords/secrets/customer-sensitive data.
 - [ ] Crash/restart behaviour review.
+- [ ] **Audit retention/archive release decision (BT-AUD-012):** document an explicit production policy without inventing a period; do not silently assume indefinite growth. Any cleanup/archive/deletion design must preserve audit integrity, remain auditable and retain required legal/business evidence.
 - [ ] Release build (`Release`, not only `Debug`) acceptance testing.
 - [ ] High-DPI regression pass at 100%, 125% and 150%.
 

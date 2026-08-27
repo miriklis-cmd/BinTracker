@@ -14,6 +14,8 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<ReminderDelivery> ReminderDeliveries => Set<ReminderDelivery>();
     public DbSet<ImportRun> ImportRuns => Set<ImportRun>();
+    public DbSet<MovementCorrectionOperation> MovementCorrectionOperations => Set<MovementCorrectionOperation>();
+    public DbSet<MovementCorrectionLine> MovementCorrectionLines => Set<MovementCorrectionLine>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -166,6 +168,36 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
             e.Property(x => x.SessionId).HasMaxLength(100).IsRequired();
             e.HasIndex(x => x.TimestampUtc);
             e.HasIndex(x => new { x.UserId, x.TimestampUtc });
+            e.HasIndex(x => new { x.RequiresAdministratorReview, x.ReviewedUtc });
+        });
+
+        b.Entity<MovementCorrectionOperation>(e =>
+        {
+            e.ToTable("MovementCorrectionOperations");
+            e.Property(x => x.RequestFingerprint).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Reason).HasMaxLength(500).IsRequired();
+            e.Property(x => x.ActorUsername).HasMaxLength(100).IsRequired();
+            e.HasIndex(x => x.ClientOperationId).IsUnique();
+            e.HasOne(x => x.OriginalBatch).WithMany()
+                .HasForeignKey(x => x.OriginalBatchId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.ReplacementBatch).WithMany()
+                .HasForeignKey(x => x.ReplacementBatchId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<MovementCorrectionLine>(e =>
+        {
+            e.ToTable("MovementCorrectionLines");
+            e.HasOne(x => x.CorrectionOperation).WithMany(x => x.Lines)
+                .HasForeignKey(x => x.CorrectionOperationId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.OriginalMovement).WithMany()
+                .HasForeignKey(x => x.OriginalMovementId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.NeutralisingMovement).WithMany()
+                .HasForeignKey(x => x.NeutralisingMovementId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.ReplacementMovement).WithMany()
+                .HasForeignKey(x => x.ReplacementMovementId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.OriginalMovementId).IsUnique();
+            e.HasIndex(x => x.NeutralisingMovementId).IsUnique();
+            e.HasIndex(x => x.ReplacementMovementId).IsUnique();
         });
     }
 }

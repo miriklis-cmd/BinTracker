@@ -76,9 +76,10 @@ internal sealed class MovementHistoryReportPdfService(
                     {
                         table.ColumnsDefinition(columns =>
                         {
-                            columns.RelativeColumn(1.05f); // date
+                            columns.RelativeColumn(0.95f); // date
+                            columns.RelativeColumn(0.70f); // movement ID
                             columns.RelativeColumn(1.10f); // code
-                            columns.RelativeColumn(includeNotes ? 1.65f : 2.05f); // customer
+                            columns.RelativeColumn(includeNotes ? 1.45f : 1.75f); // customer
                             columns.RelativeColumn(1.00f); // type
                             columns.RelativeColumn(1.20f); // container
                             columns.RelativeColumn(0.78f); // dir
@@ -92,6 +93,7 @@ internal sealed class MovementHistoryReportPdfService(
                         });
 
                         Header(table, "Date");
+                        Header(table, "Movement ID");
                         Header(table, "Code");
                         Header(table, "Customer");
                         Header(table, "Type");
@@ -108,7 +110,7 @@ internal sealed class MovementHistoryReportPdfService(
                         if (result.Rows.Count == 0)
                         {
                             table.Cell()
-                                .ColumnSpan((uint)(includeNotes ? 12 : 11))
+                                .ColumnSpan((uint)(includeNotes ? 13 : 12))
                                 .Padding(6)
                                 .Text("No matching movements.")
                                 .Italic();
@@ -118,6 +120,7 @@ internal sealed class MovementHistoryReportPdfService(
                             foreach (var row in result.Rows)
                             {
                                 Body(table, row.MovementDate.ToString("dd/MM/yyyy"));
+                                Body(table, row.MovementId.ToString(System.Globalization.CultureInfo.InvariantCulture));
                                 Body(table, row.CustomerCode);
                                 Body(table, row.CustomerName);
                                 Body(
@@ -177,6 +180,9 @@ internal sealed class MovementHistoryReportPdfService(
 
     private static string ExportStatus(MovementHistoryReportRow row)
     {
+        if (row.IsCorrectionRelated)
+            return row.Status;
+
         if (row.ReversesMovementId.HasValue)
             return $"Reversal - #{row.ReversesMovementId.Value}";
 

@@ -1,5 +1,62 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.8.5
+
+Corrective usability build for Movement History and whole-batch correction acceptance.
+
+- Adds the real persisted Movement ID after Date in Movement History; it remains attached to the typed movement row, sorts numerically within the existing Shift+click multi-column sorting, and is the same ID used by correction/reversal/audit references.
+- Includes Movement ID in Movement History PDF and CSV exports so exported evidence can be correlated with correction and audit records.
+- Replaces Correct Entire Batch's single overflowing top-down panel with a scrollable content region and a separate fixed Cancel/Confirm Every Line action band. Correction semantics, authorization, atomicity and audit behavior are unchanged.
+- Establishes Windows 11 at 1920x1080 with 150% scaling as the required frequently-used laptop acceptance configuration while retaining the substantially larger primary production display as the normal environment.
+- TEST REQUIRED: Full Windows smoke test; automated validation cannot prove the 150%-DPI rendering.
+
+## v0.5.0-alpha.8.4
+
+Corrective build for the alpha.8.3 acceptance candidate.
+
+- Fixes the Correct Entire Batch construction crash for valid persisted Batch Entry movements.
+- Shows the exact persisted batch lines in the correction preview and preserves the existing atomic correction service semantics.
+- Keeps the Single Entry button labelled `Save Movement` throughout save confirmation at production DPI.
+- Adds automated regression coverage for deterministic persisted-value resolution, batch authority/scope, roles and atomic failure paths.
+- Documents planned BT-AUD-013 persistent Administrator review infobar behavior and its WinForms/WinUI 3 architecture boundary; the infobar remains unimplemented and requires later Windows acceptance.
+
+## v0.5.0-alpha.8.3
+
+- Fixes the alpha.8.2 release blocker where a correction-of-correction caused fresh Movement History loads to throw a duplicate movement-ID dictionary exception.
+- Represents every correction-lineage relationship on a history row, including the intermediate movement's simultaneous earlier-replacement and later-corrected roles, without a chain-depth limit.
+- Keeps only the latest replacement effective and eligible; all immutable correction rows remain visible in Movement History and Audit evidence.
+- Uses compact `Correction` Source text and a distinct blue correction Status pill while preserving ordinary reversal amber/orange styling.
+- Ensures the full `Last 7 Days` and `Last 30 Days` button captions have DPI-safe widths.
+- PDF required no orchestration workaround; successful report results remain directly consumable by the existing PDF path.
+- Windows/manual acceptance remains open.
+
+## v0.5.0-alpha.8.2
+
+- Keeps correction bookkeeping in immutable Movement History/Audit evidence while operational Daily, Weekly, Monthly, customer recent, statement and Market Floor datasets show only the corrected replacement.
+- Movement History now identifies persisted correction originals, neutralisers and replacements separately from ordinary reversals.
+- Correct Saved Movement uses a DPI-aware two-column layout with single-line corrected-field labels and a fully readable direction selector.
+- Adds regression coverage for quantity, wrong-date, direction, customer/container attribution, totals, ordinary reversal preservation and correction-lineage terminology.
+- Records duplicate configurable Container Type display order as a dedicated follow-up without hard-coding priorities or changing reorder behaviour.
+- Windows/manual acceptance remains open.
+
+## v0.5.0-alpha.8.1
+
+- Fixes the release-blocking alpha.8 Correct Selected crash. The dialog now resolves the exact persisted customer/container IDs against the complete active/inactive service lists and populates ComboBox items directly instead of enumerating an uninitialised data-bound Items collection during construction.
+- Missing or duplicate persistent-ID matches now produce an explicit data-integrity error; no other customer or container is silently substituted.
+- Restores the full Movement History captions `Correct Selected` and `Correct Entire Batch` with DPI-safe widths.
+- Adds regression coverage for exact non-contiguous persisted identifiers, inactive historical values and missing/duplicate match rejection.
+- Windows/manual acceptance remains open.
+
+## v0.5.0-alpha.8
+
+- Implements append-only saved-movement correction from Movement History for date, customer, container type, direction, quantity, reference and notes.
+- Adds whole-persisted-Batch Entry date/direction correction with explicit every-line confirmation and transactional all-or-nothing behavior.
+- Preserves historical reporting by dating neutralisers in the original period and replacements in the corrected period.
+- Extends database-enforced reversal concurrency and idempotency with correction-operation/line lineage and schema migration v16.
+- Adds persistent Administrator acknowledgement for Operator movement changes, consolidated login notification and audited review.
+- Adds authoritative MovementBatch Audit Trail drill-down and automated correction/reporting/authorization/review coverage.
+- This is alpha.8 because externally delivered alpha.7 failed the permanent BT-ARCH source gate and is not reissued.
+
 ## v0.5.0-alpha.6.5
 
 - Widens Import Run History to improve readability at the tested Windows DPI.

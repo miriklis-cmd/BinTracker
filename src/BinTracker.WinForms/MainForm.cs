@@ -128,8 +128,24 @@ public sealed class MainForm : BinTrackerForm
 
         Build();
         FormClosing += MainForm_FormClosing;
+        Shown += async (_, _) => await NotifyUnreviewedMovementChangesAsync();
         ShowDashboard();
         Shown += async (_, _) => await HandleRecoveredBatchAsync();
+    }
+
+    private async Task NotifyUnreviewedMovementChangesAsync()
+    {
+        if (session.Role != UserRole.Administrator) return;
+        var pending = await audit.GetUnreviewedMovementChangesAsync();
+        if (pending.Count == 0) return;
+        var actors = string.Join(", ", pending.GroupBy(x => x.Username)
+            .Select(x => $"{x.Key} ({x.Count()})"));
+        if (MessageBox.Show(this,
+                $"{pending.Count:N0} Operator movement change(s) await Administrator review.\r\nActors: {actors}\r\n\r\nThe changes are already operationally effective. Open Audit Trail now?",
+                "Movement Changes Await Review", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+        {
+            using var form = new AuditLogForm(audit); form.ShowDialog(this);
+        }
     }
 
     private void Build()
@@ -747,6 +763,7 @@ public sealed class MainForm : BinTrackerForm
                 movementHistoryReports,
                 movementHistoryReportPdfs,
                 containerTypes,
+                customers,
                 audit,
                 movementCorrections,
                 session,

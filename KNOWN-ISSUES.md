@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.5.0-alpha.6.5**
+Current release: **v0.5.0-alpha.8.5**
 
 This file contains current defects/limitations that affect testing or production readiness. Completed history is in `docs/CHANGELOG.md`; future features are in `docs/Roadmap.md`; engineering cleanup is in `TECH-DEBT.md`.
 
@@ -26,14 +26,19 @@ Business Information supports Business Name, Trading Name and Default Report Hea
 
 Customer reminder preferences and the `ReminderDelivery` persistence model exist, but no real Email or SMS provider/send workflow has been implemented.
 
-### Movement correction/reversal workflow is in active v0.5 implementation
-- Operator authorization policy changed after smoke acceptance: Operators should now reverse ordinary Manual/Batch movements; Opening Adjustment and Excel Import generic reversal remain blocked pending targeted Windows acceptance.
-- `v0.5.0-alpha.1` added the first append-only Administrator reversal path.
-- `v0.5.0-alpha.1.1` fixed the reversal dialog reason editor collapsing at runtime/DPI, but the action row was still clipped and remained an acceptance blocker.
-- Final correction-by-replacement workflow and dedicated operational placement remain incomplete; Movement History may remain a contextual entry point rather than the final primary home.
+### Movement correction/reversal requires Windows/operator acceptance
+- alpha.8.5 exposes the authoritative persisted Movement ID in Movement History and PDF/CSV exports, and restructures Correct Entire Batch so its scrollable content cannot displace the fixed Cancel/confirmation action band at the required laptop DPI.
+- alpha.8.2 makes the correction dialog labels/values DPI-safe, preserves effective operational reporting, and distinguishes correction lineage from ordinary reversal wording in immutable Movement History.
+- alpha.8.1 corrects the release-blocking alpha.8 dialog-initialisation crash and clipped Movement History correction captions; the corrected UI requires renewed Windows smoke testing.
+- alpha.8 implements append-only single-movement and whole-persisted-batch correction, transactional lineage, database-enforced cross-command exclusion, Operator/Admin authority and Administrator acknowledgement of Operator changes.
+- Opening Adjustment and Excel Import generic correction/reversal remain blocked as required.
+- Correction dialogs, consolidated login notification, Audit Trail batch drill-down and real concurrent multi-window behaviour require Windows/operator smoke acceptance.
 **Area:** Movements / Audit
 
-Saved movements are auditable but there is no controlled workflow to reverse/correct an entry while preserving the original.
+### Container display order permits duplicate priorities
+**Area:** Container Types
+
+Multiple active Container Types can currently be saved with the same configurable Display order, making their relative order depend on a secondary name sort. Preserve manual reordering and do not hard-code Blue/Yellow priorities; a dedicated follow-up must define deterministic conflict handling and reorder UX.
 
 ### Production Backup / Restore is missing
 **Area:** Operations

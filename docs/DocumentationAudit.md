@@ -1,5 +1,48 @@
 # Documentation Audit Record
 
+## v0.5.0-alpha.8.5 Movement History identity and batch-dialog DPI correction
+
+- [x] All repository Markdown files and release/build/audit scripts enumerated; governing architecture, requirements, security, testing, versioning, checklist and current release state reviewed before source inspection.
+- [x] Actual Movement History query, typed row, grid population/sort, PDF/CSV snapshot and correction selection paths traced to the persisted `BinMovement.Id`.
+- [x] Correct Entire Batch clipping traced to a fixed-height DPI-scaled form whose one top-down flow appended the only final action after all content.
+- [x] BT-HIST-007 and BT-UI-015 added without changing BT-AUD-006..013 scope or correction/audit semantics.
+- [x] Required Windows 11 1920x1080/150% laptop acceptance configuration distinguished from the substantially larger primary production display and manual-only visual proof recorded.
+- [x] Source/governance/security audit passed: v0.5.0-alpha.8.5, 228 permanent requirement IDs, 25 Markdown files and all contradiction/security-register gates.
+- [x] Canonical restore/build/test gate passed on .NET SDK 10.0.400 with 0 warnings, 0 errors and 278/278 tests (192 unit + 86 integration).
+- [x] Package audit passed with ZIP filename, sole root folder, Version and InformationalVersion all `0.5.0-alpha.8.5`.
+- [ ] Manual Windows 11 1920x1080/150% and larger-display DPI smoke acceptance remains required; automated gates do not claim visual proof.
+
+## v0.5.0-alpha.8.4 Correct Entire Batch corrective build
+
+- [x] Authoritative Markdown/current-state registers and the intentional dirty correction/reversal diff reviewed before changes.
+- [x] Correct Entire Batch construction path, correction services, lineage, authorization, review, concurrency and rollback tests reviewed.
+- [x] Current-state version surfaces updated without rewriting alpha.8.3 history.
+- [x] BT-AUD-013 added uniquely as planned; existing BT-AUD-006..012 meanings preserved and no infobar implementation claimed.
+- [x] Single Entry stable Save Movement wording and production-DPI size recorded/gated.
+
+## v0.5.0-alpha.8.3 chained-correction history correction
+
+- Reconciles Movement History with correction chains where one immutable movement is both an earlier replacement and a later correction original.
+- Preserves complete lineage, effective-report semantics, blue correction/amber reversal presentation, export readiness, and full quick-range captions.
+- Windows/manual acceptance remains open.
+
+## v0.5.0-alpha.8.2 correction-report semantics and dialog layout
+
+- Revalidated effective operational reporting against persisted correction lineage and preserved raw Movement History/Audit evidence.
+- Added permanent BT-CORR-015 and source/test gates, clarified correction terminology, and recorded the deferred duplicate Container Type display-order issue.
+- Advanced current candidate/version surfaces without claiming Windows/manual acceptance.
+
+## v0.5.0-alpha.8.1 correction-dialog runtime fix
+
+- Recorded the alpha.8 manual-smoke failure, exact pre-parent WinForms data-binding root cause, persistent-ID-safe fix, regression coverage and renewed manual acceptance boundary.
+- Reconciled current version surfaces to alpha.8.1 without rewriting alpha.8 history.
+
+## v0.5.0-alpha.8 movement correction reconciliation
+
+- Reconciled correction semantics, persisted-batch identity, concurrency/idempotency, authorization, Administrator acknowledgement, Audit Trail detail, schema v16 and wrong-date report behavior across current-state documents.
+- Added BT-CORR-007 through BT-CORR-014; post-v1 risk/period policy remains explicitly undecided and unimplemented.
+- Windows/operator acceptance remains open; automated implementation status is not represented as manual acceptance.
+
 ## v0.5.0-alpha.6.5 Import History readability correction
 
 - [x] User screenshot confirmed `Customers`, `Movements` and lower-grid `Direction` headings were clipped.

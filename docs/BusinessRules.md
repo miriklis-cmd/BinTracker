@@ -227,10 +227,12 @@ Important security, master-data and movement changes create audit events.
 
 - Movement History is actual historical movement reporting, not forecasting.
 - Movement History is an integrated full-size main-application page rather than a floating report window.
+- Movement ID is the persisted `BinMovement` identifier used by correction/reversal/audit references. It is displayed after Date, sorts as a number, remains attached to the typed row during filtering/multi-column sorting, and is included in PDF/CSV history exports; no synthetic row number is substituted.
 - Predictable structured columns remain compact. Customer, Status and Notes share remaining width responsively; readable minimums are preserved and horizontal scrolling is allowed only when the host becomes too narrow.
 - Rows remain single-height. Direction is presented with restrained green IN/red OUT badges; reversal status uses amber/orange. Badge/status presentation never changes ledger Notes or authoritative correction state.
 - Truncated Status and Notes cells expose their complete displayed text through tooltips.
 - PDF and CSV use the same suggested filename rule: an applied customer filter that resolves the displayed report to exactly one CustomerId adds its Windows-sanitized stable customer code; otherwise naming remains generic.
+- Correct Entire Batch keeps its action band outside the scrollable content area so long batch previews or DPI scaling cannot make Cancel or final confirmation inaccessible.
 - Date ranges are inclusive and cannot extend past today.
 - Opening adjustments are excluded by default because they are not physical activity.
 - Historical Container Type filtering includes inactive configured types because old movement rows remain legitimate history.
@@ -297,3 +299,13 @@ Important security, master-data and movement changes create audit events.
 - Excel Import movements, including movements linked to an ImportRun, cannot be reversed individually through the generic reversal action. They must use the Administrator Replace / Correct import workflow so import provenance and reconciliation remain internally consistent.
 - Reversal movements cannot themselves be reversed, and an original movement cannot be reversed twice.
 - If formal period locking/close is introduced later, historical-period reversal authorization must be explicitly defined before enabling it.
+- Administrator and Operator may correct eligible ordinary Manual/Batch movements; Viewer may not. Routine correction is effective immediately and has no approval queue.
+- Correction preserves the original, creates an opposite neutraliser dated on the original date, and creates the corrected replacement dated on the corrected operational date. This removes the wrong-period report effect and applies it in the right period.
+- Operational Daily/Weekly/Monthly, statement, customer-recent and floor views suppress correction-consumed originals and correction-only neutralisers, showing the corrected replacement as effective history. Movement History and Audit Trail retain the complete immutable evidence.
+- Whole-batch correction targets only the persisted `MovementBatchId`, affects every persisted line, and fails atomically if any line is already consumed or concurrently becomes ineligible.
+- One database-unique neutraliser per original arbitrates reverse/correct races. Client operation identity makes an identical retry idempotent and rejects different payload reuse.
+- Operator movement changes require later Administrator acknowledgement. Existing pre-migration events are not backfilled as pending.
+- Administrator acknowledgement records review only and never controls the operational effectiveness of an Operator correction/reversal. The review record retains reviewer and UTC time, produces an acknowledgement audit event, and cannot be acknowledged twice.
+- Audit Trail must display review state directly and make outstanding review-required events practically filterable. Mark Selected Reviewed is unavailable unless the current selection is an unreviewed, review-required Operator correction/reversal; role enforcement remains authoritative at the service boundary.
+- While any such reviews remain outstanding, Administrator sessions must retain a non-blocking navigation-wide reminder with the live outstanding count and direct pending-review action. It disappears at zero, is invisible to other roles, supplements the login popup and never changes the immediate operational effectiveness of Operator changes.
+- View Batch Detail is unavailable unless the selected audit event has authoritative persisted MovementBatch detail. Audit event types without an authoritative supported detail surface must not offer a knowingly invalid detail action.

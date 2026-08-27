@@ -104,8 +104,7 @@ internal sealed class MarketFloorReportService(
             .Select(x => x.Id)
             .ToHashSet();
 
-        var movements = await db.BinMovements
-            .AsNoTracking()
+        var movements = await db.EffectiveOperationalMovements()
             .Where(x => x.MovementDate <= date)
             .Select(x => new
             {

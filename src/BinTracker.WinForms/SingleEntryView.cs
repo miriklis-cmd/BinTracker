@@ -9,6 +9,7 @@ namespace BinTracker.WinForms;
 /// </summary>
 public sealed class SingleEntryView : UserControl
 {
+    private const string SaveMovementButtonText = "Save Movement";
     private readonly IMovementService movements;
     private readonly UserSession session;
     private readonly IBusinessClock clock;
@@ -236,7 +237,7 @@ public sealed class SingleEntryView : UserControl
 
         var save = new Button
         {
-            Text = "Save Movement",
+            Text = SaveMovementButtonText,
             AutoSize = false,
             Size = new Size(165, 42),
             Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold),

@@ -6,6 +6,7 @@ public enum UserRole { Administrator = 0, Operator = 1, Viewer = 2 }
 public enum CustomerType { Account = 0, CashCod = 1 }
 public enum CommunicationChannel { Email = 0, Sms = 1 }
 public enum ReminderDeliveryStatus { Pending = 0, Sent = 1, Failed = 2, Skipped = 3 }
+public enum MovementCorrectionKind { Single = 0, WholeBatch = 1 }
 
 public sealed class Customer
 {
@@ -100,6 +101,36 @@ public sealed class BinMovement
     public string? CorrectionReason { get; set; }
 }
 
+public sealed class MovementCorrectionOperation
+{
+    public long Id { get; set; }
+    public Guid ClientOperationId { get; set; }
+    public string RequestFingerprint { get; set; } = string.Empty;
+    public MovementCorrectionKind Kind { get; set; }
+    public int? OriginalBatchId { get; set; }
+    public MovementBatch? OriginalBatch { get; set; }
+    public int? ReplacementBatchId { get; set; }
+    public MovementBatch? ReplacementBatch { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public int ActorUserId { get; set; }
+    public string ActorUsername { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; }
+    public ICollection<MovementCorrectionLine> Lines { get; set; } = new List<MovementCorrectionLine>();
+}
+
+public sealed class MovementCorrectionLine
+{
+    public long Id { get; set; }
+    public long CorrectionOperationId { get; set; }
+    public MovementCorrectionOperation CorrectionOperation { get; set; } = null!;
+    public long OriginalMovementId { get; set; }
+    public BinMovement OriginalMovement { get; set; } = null!;
+    public long NeutralisingMovementId { get; set; }
+    public BinMovement NeutralisingMovement { get; set; } = null!;
+    public long ReplacementMovementId { get; set; }
+    public BinMovement ReplacementMovement { get; set; } = null!;
+}
+
 public sealed class ImportRun
 {
     public Guid? ClientOperationId { get; set; }
@@ -192,6 +223,10 @@ public sealed class AuditEvent
     public string ComputerName { get; set; } = string.Empty;
     public string SessionId { get; set; } = string.Empty;
     public bool Succeeded { get; set; } = true;
+    public bool RequiresAdministratorReview { get; set; }
+    public DateTime? ReviewedUtc { get; set; }
+    public int? ReviewedByUserId { get; set; }
+    public string? ReviewedByUsername { get; set; }
 }
 
 

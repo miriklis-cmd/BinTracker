@@ -555,5 +555,48 @@ public sealed class SqliteMigrationTests
             await DatabaseSetup.GetSchemaVersionAsync(db));
     }
 
+    [Fact]
+    public async Task V16_upgrades_v15_shape_and_does_not_flag_historical_changes_for_review()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<BinTrackerDbContext>().UseSqlite(connection).Options;
+        await using var db = new BinTrackerDbContext(options);
+        await db.Database.EnsureCreatedAsync();
+        await DatabaseSetup.InitializeSqliteAsync(db);
+
+        await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO AuditEvents
+                (TimestampUtc, UserId, Username, Action, EntityType, EntityId, Description,
+                 BeforeValues, AfterValues, ComputerName, SessionId, Succeeded,
+                 RequiresAdministratorReview, ReviewedUtc, ReviewedByUserId, ReviewedByUsername)
+            VALUES
+                ('2026-01-01T00:00:00', NULL, 'old-op', 'MOVEMENT_REVERSED', 'BinMovement', '1',
+                 'Historical reversal', NULL, NULL, 'OLD-PC', 'old', 1, 0, NULL, NULL, NULL);
+            DROP INDEX IF EXISTS IX_AuditEvents_RequiresAdministratorReview_ReviewedUtc;
+            ALTER TABLE AuditEvents DROP COLUMN ReviewedByUsername;
+            ALTER TABLE AuditEvents DROP COLUMN ReviewedByUserId;
+            ALTER TABLE AuditEvents DROP COLUMN ReviewedUtc;
+            ALTER TABLE AuditEvents DROP COLUMN RequiresAdministratorReview;
+            DROP TABLE MovementCorrectionLines;
+            DROP TABLE MovementCorrectionOperations;
+            UPDATE SchemaVersion SET Version = 15 WHERE Id = 1;
+            """);
+
+        await DatabaseSetup.InitializeSqliteAsync(db);
+
+        var auditColumns = await db.Database.SqlQueryRaw<string>(
+            "SELECT name AS Value FROM pragma_table_info('AuditEvents')").ToListAsync();
+        Assert.Contains("RequiresAdministratorReview", auditColumns);
+        Assert.Contains("ReviewedUtc", auditColumns);
+        Assert.Equal(0, await db.Database.SqlQueryRaw<int>(
+            "SELECT RequiresAdministratorReview AS Value FROM AuditEvents WHERE Action = 'MOVEMENT_REVERSED'").SingleAsync());
+        Assert.Equal(0, await db.Database.SqlQueryRaw<int>(
+            "SELECT COUNT(*) AS Value FROM AuditEvents WHERE RequiresAdministratorReview = 1 AND ReviewedUtc IS NULL").SingleAsync());
+        Assert.Equal(1, await db.Database.SqlQueryRaw<int>(
+            "SELECT COUNT(*) AS Value FROM sqlite_master WHERE type='table' AND name='MovementCorrectionOperations'").SingleAsync());
+        Assert.Equal(DatabaseSetup.LatestSchemaVersion, await DatabaseSetup.GetSchemaVersionAsync(db));
+    }
+
 
 }

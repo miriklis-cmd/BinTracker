@@ -1,5 +1,9 @@
 # BinTracker Database
 
+## Schema V16 movement corrections and review
+
+V16 adds `MovementCorrectionOperations` and `MovementCorrectionLines` with unique client-operation and original/neutraliser/replacement lineage indexes. The existing unique `BinMovements.ReversesMovementId` remains the cross-command arbiter. Audit review columns default to false/null so historical reversal events do not become newly pending after upgrade.
+
 ## Schema V14 concurrency foundation
 
 V14 adds optimistic `Revision` tokens, normalized unique Container Type `NameKey`, persisted operation IDs, provenance-only `SourceClientPath`, nullable unique `ImportRun.CurrentCutoverDate`, and import `ClientRequestFingerprint`. SQLite migration SQL remains isolated in Data; PostgreSQL requires its own provider migrations and real integration fixture.

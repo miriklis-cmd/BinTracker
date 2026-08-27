@@ -67,7 +67,7 @@ foreach ($row in $reqRows) {
     if ($allowedScopes -notcontains $row.Scope) { Fail "Invalid requirement scope for $($row.Id): $($row.Scope)" }
     if ($allowedStatuses -notcontains $row.Status) { Fail "Invalid requirement status for $($row.Id): $($row.Status)" }
 }
-$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-RPT-018','BT-RPT-019','BT-RPT-020','BT-RPT-021','BT-UI-014','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-IMP-022','BT-CORR-001','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-HIST-006','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015')
+$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-RPT-018','BT-RPT-019','BT-RPT-020','BT-RPT-021','BT-UI-014','BT-UI-015','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-IMP-022','BT-CORR-001','BT-CORR-007','BT-CORR-008','BT-CORR-009','BT-CORR-010','BT-CORR-011','BT-CORR-012','BT-CORR-013','BT-CORR-014','BT-CORR-015','BT-AUD-013','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-HIST-006','BT-HIST-007','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015')
 foreach ($id in $mustHaveIds) { if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost mandatory ID: $id" } }
 
 # Permanent central-service / concurrency portability gate (BT-ARCH-008..015).
@@ -285,6 +285,83 @@ if ($correctionText -notmatch 'session\.Role is not \(UserRole\.Administrator or
     Fail "BT-CORR source gate failed: append-only linked/audited role-sensitive reversal implementation is incomplete."
 }
 
+# Movement correction-by-replacement invariants (BT-CORR-007..014).
+$domainCorrectionText = Get-Content -Raw 'src/BinTracker.Core/Domain.cs'
+$dbModelCorrectionText = Get-Content -Raw 'src/BinTracker.Data/BinTrackerDbContext.cs'
+$correctionDialogTextV2 = Get-Content -Raw 'src/BinTracker.WinForms/MovementCorrectionDialog.cs'
+$auditFormText = Get-Content -Raw 'src/BinTracker.WinForms/AuditLogForm.cs'
+$servicesCorrectionText = Get-Content -Raw 'src/BinTracker.Services/Services.cs'
+$correctionWorkflowTests = Get-Content -Raw 'tests/BinTracker.IntegrationTests/MovementCorrectionWorkflowTests.cs'
+$correctionConcurrencyTests = Get-Content -Raw 'tests/BinTracker.IntegrationTests/MovementCorrectionConcurrencyTests.cs'
+$migrationTests = Get-Content -Raw 'tests/BinTracker.IntegrationTests/SqliteMigrationTests.cs'
+$effectiveMovementText = Get-Content -Raw 'src/BinTracker.Services/EffectiveMovementQuery.cs'
+$historyMovementText = Get-Content -Raw 'src/BinTracker.Services/MovementHistoryReportService.cs'
+$effectiveConsumers = @(
+    'src/BinTracker.Services/DailyMovementsReportService.cs',
+    'src/BinTracker.Services/WeeklyMovementsReportService.cs',
+    'src/BinTracker.Services/MonthlySummaryReportService.cs',
+    'src/BinTracker.Services/CustomerServices.cs',
+    'src/BinTracker.Services/MarketFloorReportService.cs'
+)
+if ($domainCorrectionText -notmatch 'MovementCorrectionOperation' -or
+    $domainCorrectionText -notmatch 'MovementCorrectionLine' -or
+    $dbModelCorrectionText -notmatch 'HasIndex\(x => x\.OriginalMovementId\)\.IsUnique\(\)' -or
+    $correctionText -notmatch 'Neutraliser\(o, null, reason, o\.MovementDate\)' -or
+    $correctionText -notmatch 'MovementCorrectionKind\.WholeBatch' -or
+    $correctionText -notmatch 'RequiresAdministratorReview = session\.Role == UserRole\.Operator' -or
+    $migrationText -notmatch 'new\(16, "Movement correction operations and administrator review"' -or
+    $migrationText -notmatch 'DEFAULT 0' -or
+    $correctionDialogTextV2 -notmatch 'EVERY line in this persisted batch' -or
+    $correctionDialogTextV2 -notmatch 'MovementCorrectionSelection\.Resolve' -or
+    $correctionDialogTextV2 -notmatch 'customer\.Items\.AddRange\(customerChoices\)' -or
+    $correctionDialogTextV2 -match 'customer\.DataSource\s*=' -or
+    $correctionDialogTextV2 -match 'customer\.Items\.Cast.*\.First' -or
+    $correctionDialogTextV2 -notmatch 'ResolveBatchDirectionIndex' -or
+    $correctionDialogTextV2 -match 'direction\.DataSource\s*=' -or
+    $correctionDialogTextV2 -match 'direction\.Items\.Cast.*\.First' -or
+    $correctionDialogTextV2 -notmatch 'batch\.Lines\.Select' -or
+    $correctionUiText -notmatch 'Text = "Correct Selected", Size = new Size\(190, 40\)' -or
+    $correctionUiText -notmatch 'Text = "Correct Entire Batch", Size = new Size\(225, 40\)' -or
+    $auditFormText -notmatch 'GetMovementBatchDetailAsync' -or
+    $servicesCorrectionText -notmatch 'MOVEMENT_CHANGE_REVIEWED' -or
+    $correctionWorkflowTests -notmatch 'moves_day_week_month_effect' -or
+    $effectiveMovementText -notmatch 'line\.OriginalMovementId == movement\.Id' -or
+    $effectiveMovementText -notmatch 'line\.NeutralisingMovementId == movement\.Id' -or
+    $correctionWorkflowTests -notmatch 'Assert\.Empty\(tuesday\.Rows\)' -or
+    $correctionWorkflowTests -notmatch 'Correction_selection_resolves_exact_persisted_ids_including_inactive_history' -or
+    $correctionWorkflowTests -notmatch 'Batch_direction_resolution_is_exact_explicit_and_independent_of_combo_box_binding' -or
+    $correctionWorkflowTests -notmatch 'Persisted_batch_entry_selection_loads_only_authoritative_batch_lines_for_dialog_preview' -or
+    $correctionConcurrencyTests -notmatch 'reverse-correct' -or
+    $migrationTests -notmatch 'does_not_flag_historical_changes_for_review' -or
+    $historyMovementText -notmatch 'GroupBy\(x => x\.MovementId\)' -or
+    $historyMovementText -notmatch 'CreatedByCorrections' -or
+    $historyMovementText -notmatch 'CorrectedByCorrections' -or
+    $historyMovementText -notmatch 'IsCorrectionRelated \? "Correction"' -or
+    $correctionUiText -notmatch 'isCorrectionStatus' -or
+    $correctionUiText -notmatch 'Color\.FromArgb\(218, 232, 252\)' -or
+    $correctionUiText -notmatch '"Last 7 Days",\s*135' -or
+    $correctionUiText -notmatch '"Last 30 Days",\s*145' -or
+    $correctionWorkflowTests -notmatch 'Chained_correction_preserves_both_intermediate_roles' -or
+    $correctionWorkflowTests -notmatch 'Three_successive_corrections_have_unbounded_projection' -or
+    $correctionWorkflowTests -notmatch 'BuildPdfAsync\(history, includeNotes: true\)' -or
+    $correctionWorkflowTests -notmatch 'Ordinary_reversal_keeps_established_operational_and_history_semantics' -or
+    $correctionDialogTextV2 -notmatch 'ColumnStyle\(SizeType\.Absolute, 220\)' -or
+    $correctionDialogTextV2 -notmatch 'new\(\) \{ DropDownStyle = ComboBoxStyle\.DropDownList, Width = 220 \}') {
+    Fail 'BT-CORR-007..015 source gate failed: correction lineage, effective reporting, historical-date, batch, concurrency, review, audit detail or migration coverage is incomplete.'
+}
+foreach ($path in $effectiveConsumers) {
+    if ((Get-Content -Raw $path) -notmatch 'EffectiveOperationalMovements\(\)') {
+        Fail "BT-CORR-015 source gate failed: $path bypasses effective correction lineage semantics."
+    }
+}
+
+$singleEntryText = Get-Content -Raw 'src/BinTracker.WinForms/SingleEntryView.cs'
+if ($singleEntryText -notmatch 'SaveMovementButtonText = "Save Movement"' -or
+    $singleEntryText -notmatch 'Text = SaveMovementButtonText' -or
+    $singleEntryText -match 'save\.Text\s*=') {
+    Fail 'Single Entry Save Movement label stability source gate failed.'
+}
+
 # Batch Entry acceptance/recovery source guard (BT-BATCH-008/009/010/011).
 $batchViewText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\BatchEntryView.cs")
 $movementServicesText = Get-Content -Raw (Join-Path $root "src\BinTracker.Services\MovementServices.cs")
@@ -435,7 +512,7 @@ if ($migrationText -notmatch 'new\(14, "Multi-user portability and concurrency f
 
 $movementHistoryServiceText = Get-Content -Raw 'src/BinTracker.Services/MovementHistoryReportService.cs'
 if ($movementHistoryServiceText -notmatch 'Reversed — see' -or $movementHistoryServiceText -notmatch 'Reversal of #' -or
-    $movementHistoryServiceText -notmatch 'SourceText => ReversesMovementId\.HasValue \? "Reversal"' -or
+    $movementHistoryServiceText -notmatch 'ReversesMovementId\.HasValue \? "Reversal"' -or
     $correctionUiText -notmatch 'UpdateReverseAvailability' -or $correctionUiText -notmatch 'CanReverse') {
     Fail 'Movement History reversal Status/Source and disabled-action UX is incomplete.'
 }
@@ -474,12 +551,24 @@ if ($mainFormText -notmatch 'OpenEmbeddedReport\(\s*"Movement History"' -or
     $correctionUiText -notmatch 'Color\.FromArgb\(255, 232, 194\)' -or
     $correctionUiText -notmatch 'Cells\["Status"\]\.ToolTipText' -or
     $correctionUiText -notmatch 'Cells\["Notes"\]\.ToolTipText' -or
+    $correctionUiText -notmatch 'Column\("Movement ID", 118, 108, "MovementId"\)' -or
+    $correctionUiText -notmatch 'row\.MovementId,' -or
+    $correctionUiText -notmatch '"MovementId" => left\.MovementId\.CompareTo\(right\.MovementId\)' -or
+    $correctionUiText -notmatch 'Date,Movement ID,Customer Code' -or
     $correctionUiText -notmatch 'MovementHistoryExportFileName\.Build' -or
     $movementHistoryFileNameText -notmatch 'ResolveSingleCustomerCode' -or
     $movementHistoryFileNameText -notmatch 'SanitizeWindowsSegment' -or
     $correctionUiText -notmatch 'Reference,Status' -or
-    (Get-Content -Raw 'src/BinTracker.Services/MovementHistoryReportPdfService.cs') -notmatch 'Header\(table, "Status"\)') {
-    Fail 'BT-HIST-002..006 source gate failed: integrated layout, responsive columns, badges/tooltips or stable customer-code export naming is incomplete.'
+    (Get-Content -Raw 'src/BinTracker.Services/MovementHistoryReportPdfService.cs') -notmatch 'Header\(table, "Status"\)' -or
+    (Get-Content -Raw 'src/BinTracker.Services/MovementHistoryReportPdfService.cs') -notmatch 'Header\(table, "Movement ID"\)') {
+    Fail 'BT-HIST-002..007 source gate failed: integrated layout, responsive columns, persisted Movement ID, badges/tooltips or stable customer-code export naming is incomplete.'
+}
+
+$batchCorrectionDialogText = Get-Content -Raw 'src/BinTracker.WinForms/MovementCorrectionDialog.cs'
+if ($batchCorrectionDialogText -notmatch 'scrollHost = new Panel \{ Dock = DockStyle\.Fill, AutoScroll = true \}' -or
+    $batchCorrectionDialogText -notmatch 'root\.Controls\.Add\(buttons, 0, 1\)' -or
+    $batchCorrectionDialogText -notmatch 'CancelButton = cancel') {
+    Fail 'BT-UI-015 source gate failed: Correct Entire Batch must retain scrollable content and a fixed Cancel/final action band.'
 }
 
 

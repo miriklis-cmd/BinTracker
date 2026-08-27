@@ -256,7 +256,7 @@ internal sealed class CustomerService(
     public async Task<IReadOnlyList<CustomerMovementRow>> GetRecentMovementsAsync(int customerId, int limit = 100, CancellationToken cancellationToken = default)
     {
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        return await db.BinMovements.AsNoTracking().Where(x => x.CustomerId == customerId)
+        return await db.EffectiveOperationalMovements().Where(x => x.CustomerId == customerId)
             .OrderByDescending(x => x.MovementDate).ThenByDescending(x => x.Id)
             .Take(Math.Clamp(limit, 1, 1000))
             .Select(x => new CustomerMovementRow(
@@ -282,7 +282,7 @@ internal sealed class CustomerService(
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         var customer = await db.Customers.AsNoTracking().SingleAsync(x => x.Id == customerId, cancellationToken);
         var containerTypes = await db.ContainerTypes.AsNoTracking().OrderBy(x => x.DisplayOrder).ThenBy(x => x.Name).ToListAsync(cancellationToken);
-        var all = await db.BinMovements.AsNoTracking()
+        var all = await db.EffectiveOperationalMovements()
             .Where(x => x.CustomerId == customerId && x.MovementDate <= toDate)
             .OrderBy(x => x.MovementDate).ThenBy(x => x.Id)
             .Select(x => new

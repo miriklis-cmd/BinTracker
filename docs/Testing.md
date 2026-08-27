@@ -247,7 +247,11 @@ Failure of this audit blocks packaging in the same way as a failed automated tes
 - future-date clamping;
 - reversed-range normalization.
 
-Manual acceptance verifies responsive layout, Last 7 / Last 30 / This Month shortcuts, authoritative Container Type choices, typed Date/Quantity sorting and PDF/CSV visible-order consistency.
+Manual acceptance verifies responsive layout, Last 7 Days / Last 30 Days / This Month shortcuts, authoritative Container Type choices, typed Date/Quantity sorting and PDF/CSV visible-order consistency.
+
+Movement History identity acceptance additionally verifies that the displayed/exported Movement ID is the persisted identifier used by correction/reversal, remains paired with the correct row after filtering and sorting, sorts numerically (for example 2 before 10), and participates in Shift+click multi-column sorting without changing selection semantics.
+
+Required DPI smoke configuration: **Windows 11, 1920x1080, 150% Windows scaling**. Movement History must remain usable with a readable Movement ID. Correct Entire Batch must remain inside the usable working area; its movement list must be inspectable/scrollable, the reason editable, and Cancel/final action fully visible and clickable with no clipped text or overlapping controls. Also check a batch large enough to scroll and confirm the substantially larger primary production display is not obviously degraded. This is a manual visual gate; build/unit success does not prove it.
 
 
 ## Interactive report refresh acceptance
@@ -407,3 +411,14 @@ Verify the approved alpha.24 Reports mock-up implementation:
 ## Movement correction/reversal authorization regression
 
 Integration coverage must verify Operator/Admin ordinary-reversal authorization for Manual and Batch movements, Viewer denial, generic-workflow denial for Opening Adjustment and Excel Import rows, immutable original/reversal linkage, double-reversal protection and reversal-of-reversal protection. Manual Windows acceptance verifies role-based action visibility and the sensitive-source operator messaging.
+
+Correction coverage additionally verifies every editable field, wrong-date day/week/month semantics, persisted whole-batch date/direction replacement, all-or-nothing conflict behavior, database-enforced reverse/correct exclusion, payload-aware retries, Operator review state, audited acknowledgement, migration backfill and authoritative MovementBatch detail. UI/dialog/DPI and real multi-window interaction remain Windows/operator acceptance.
+- Correction reporting regression must cover quantity, wrong-date, direction, customer and container changes across effective Daily/Weekly/Monthly totals, customer recent movements, statements and Market Floor; immutable Movement History must retain and distinguish original/neutraliser/replacement, and ordinary reversal visibility must remain unchanged.
+
+Audit Trail review Windows/regression acceptance must prove the complete sequence: Operator correction/reversal; persisted review requirement; later Administrator login and one consolidated notification; visibly discoverable `Needs review` row through the review-state display/filter; selection enabling **Mark Selected Reviewed**; successful acknowledgement; transition to `Reviewed`; persisted reviewer/UTC time; visible acknowledgement audit event; and rejected/disabled duplicate acknowledgement.
+
+Persistent-reminder acceptance (BT-AUD-013) must additionally prove Administrator-only visibility across main navigation, accurate initial and refreshed outstanding counts, direct routing to the pending Audit Trail set, persistence until the last review is acknowledged, automatic disappearance at zero, retention of the existing login popup and no approval/blocking effect. Contract tests should cover presentation-independent review state/count/navigation separately from WinForms rendering; future WinUI 3 uses the same contract.
+
+Selection-state acceptance must verify **Mark Selected Reviewed** is disabled for no selection, Administrator corrections/reversals, login/logout, report generation, customer/container/import events, already-reviewed rows and every other non-reviewable event. Viewer and Operator must fail unauthorized Administrator review attempts at the service boundary regardless of UI visibility.
+
+Audit detail acceptance must verify **View Batch Detail** is disabled for no selection and non-batch events and enabled for an event with authoritative persisted MovementBatch detail. Existing detail contents remain authoritative; contextual ImportRun and correction-lineage routes are future tracked behavior and are not part of the current implementation claim.

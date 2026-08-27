@@ -45,7 +45,14 @@ public interface IAuditService
         int? userIdOverride = null, string? usernameOverride = null,
         CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AuditEvent>> GetRecentAsync(int limit = 500, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AuditEvent>> GetUnreviewedMovementChangesAsync(CancellationToken cancellationToken = default);
+    Task MarkMovementChangesReviewedAsync(IReadOnlyCollection<long> auditEventIds, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<MovementBatchAuditLine>> GetMovementBatchDetailAsync(int batchId, CancellationToken cancellationToken = default);
 }
+
+public sealed record MovementBatchAuditLine(long MovementId, int BatchId, DateOnly MovementDate,
+    string CustomerCode, string CustomerName, string ContainerType, MovementType Direction,
+    int Quantity, string Reference, string Notes);
 
 internal sealed class AuditService(
     IDbContextFactory<BinTrackerDbContext> factory,
@@ -84,6 +91,55 @@ internal sealed class AuditService(
             .OrderByDescending(x => x.TimestampUtc)
             .Take(Math.Clamp(limit, 1, 5000))
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<AuditEvent>> GetUnreviewedMovementChangesAsync(CancellationToken cancellationToken = default)
+    {
+        if (session.Role != UserRole.Administrator) throw new UnauthorizedAccessException("Administrator access is required.");
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        return await db.AuditEvents.AsNoTracking()
+            .Where(x => x.RequiresAdministratorReview && x.ReviewedUtc == null)
+            .OrderBy(x => x.TimestampUtc).ToListAsync(cancellationToken);
+    }
+
+    public async Task MarkMovementChangesReviewedAsync(IReadOnlyCollection<long> auditEventIds, CancellationToken cancellationToken = default)
+    {
+        if (session.Role != UserRole.Administrator || !session.UserId.HasValue)
+            throw new UnauthorizedAccessException("Administrator access is required.");
+        if (auditEventIds.Count == 0) return;
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        await using var tx = await db.Database.BeginTransactionAsync(cancellationToken);
+        var events = await db.AuditEvents.Where(x => auditEventIds.Contains(x.Id) &&
+            x.RequiresAdministratorReview && x.ReviewedUtc == null).ToListAsync(cancellationToken);
+        if (events.Count == 0)
+        {
+            await tx.RollbackAsync(cancellationToken);
+            return;
+        }
+        var reviewedAt = clock.UtcNow;
+        foreach (var item in events)
+        {
+            item.ReviewedUtc = reviewedAt; item.ReviewedByUserId = session.UserId;
+            item.ReviewedByUsername = session.Username;
+        }
+        db.AuditEvents.Add(new AuditEvent { TimestampUtc = reviewedAt, UserId = session.UserId,
+            Username = session.Username, Action = "MOVEMENT_CHANGE_REVIEWED", EntityType = "AuditEvent",
+            EntityId = string.Join(",", events.Select(x => x.Id)),
+            Description = $"Administrator acknowledged {events.Count} Operator movement change event(s).",
+            BeforeValues = JsonSerializer.Serialize(events.Select(x => new { x.Id, x.Action, x.Username })),
+            AfterValues = JsonSerializer.Serialize(new { ReviewedAt = reviewedAt, ReviewedBy = session.Username }),
+            ComputerName = client.DeviceName, SessionId = session.SessionId, Succeeded = true });
+        await db.SaveChangesAsync(cancellationToken); await tx.CommitAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<MovementBatchAuditLine>> GetMovementBatchDetailAsync(int batchId, CancellationToken cancellationToken = default)
+    {
+        if (session.Role != UserRole.Administrator) throw new UnauthorizedAccessException("Administrator access is required.");
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        return await db.BinMovements.AsNoTracking().Where(x => x.MovementBatchId == batchId)
+            .OrderBy(x => x.Id).Select(x => new MovementBatchAuditLine(x.Id, batchId, x.MovementDate,
+                x.Customer.CustomerCode ?? "", x.Customer.Name, x.ContainerType.Name, x.MovementType,
+                x.Quantity, x.ReferenceNumber ?? "", x.Notes ?? "")).ToListAsync(cancellationToken);
     }
 }
 

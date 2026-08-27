@@ -1,6 +1,12 @@
 # BinTracker Architecture
 
-Current baseline: **v0.5.0-alpha.6.5**
+Current baseline: **v0.5.0-alpha.8.5**
+
+## Display and DPI boundary
+
+The required frequently-used laptop acceptance configuration is Windows 11 at **1920x1080 with 150% Windows scaling**. Every ordinary workflow and modal must remain accessible: action bands stay visible, content fits or scrolls within the working area, text does not clip, controls do not overlap, report grids remain usable, and normal WinForms DPI scaling is preserved.
+
+The primary production environment uses a substantially larger display. The laptop configuration is an acceptance floor for usability, not a direction to globally reduce information density or optimise every screen specifically for a 14-inch panel. Layout concepts should remain presentation-neutral where practical so a future WinUI 3 client can replace WinForms presentation without moving business rules into UI controls; no WinUI dependency is introduced in v1.
 
 ## Permanent target and hard gate
 
@@ -30,6 +36,12 @@ Imports cross the service boundary as `ImportSourceDocument` content plus safe m
 - ImportRun provenance has two distinct immutable snapshots: `CorrectionChangesJson` for same-cutover Replace/Correct comparisons, and `OpeningReconciliationChangesJson` for non-zero opening adjustments generated from normal authoritative cutovers. NULL means the historical build did not capture that snapshot; `[]` means capture occurred with no changes.
 - Single Entry, Batch Entry, reversal and import persist client operation IDs. A retry returns the existing result only when the canonical payload identity matches; reuse with a different payload is rejected.
 - Reversal and import uniqueness constraints are authoritative under races.
+- Correction extends the same invariant: the unique neutraliser FK (`ReversesMovementId`) arbitrates Reverse-vs-Reverse, Reverse-vs-Correct and Correct-vs-Correct; correction-operation identity/fingerprint makes identical retries return persisted lineage and rejects changed payload reuse.
+- A single correction transaction writes original-period neutraliser(s), corrected replacement(s), operation/line lineage, original consumed links and audit. Whole-batch correction uses persisted `MovementBatchId` and rolls back every line on any conflict/failure.
+- Effective operational report queries omit correction-consumed originals and correction-only neutralisers while Movement History retains all ledger evidence; balances remain ledger sums, where each correction pair nets to zero.
+- Administrator acknowledgement is a review record, not an effectiveness gate: Operator corrections/reversals remain operationally effective immediately. Review authorization and duplicate prevention remain service/database concerns even when the Audit Trail disables ineligible UI actions.
+- The outstanding-review count/state and navigation action must be exposed through a presentation-independent service/state/navigation contract. Current WinForms may render that contract with a reusable infobar-style `UserControl` or panel; a future WinUI 3 client replaces only that presentation with native `InfoBar`, retaining the underlying contract. Review business logic must not live in a disposable UI control.
+- Audit detail navigation is keyed by authoritative persisted entity identity. MovementBatch detail is never inferred from description text; future contextual routes may use authoritative ImportRun or correction-lineage identity when available.
 - Authentication counters and account/credential mutations use conditional or atomic database updates.
 
 Moving to PostgreSQL still requires an API host, provider/schema migrations, authentication/authorization deployment, central backup/monitoring and real PostgreSQL integration tests. It must not require rewriting accepted business, reversal, import, report or audit semantics.

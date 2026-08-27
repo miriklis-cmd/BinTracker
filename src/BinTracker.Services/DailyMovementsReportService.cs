@@ -88,8 +88,7 @@ internal sealed class DailyMovementsReportService(
         await using var db =
             await factory.CreateDbContextAsync(cancellationToken);
 
-        var movements = db.BinMovements
-            .AsNoTracking()
+        var movements = db.EffectiveOperationalMovements()
             .Where(x => x.MovementDate == reportDate);
 
         if (!query.IncludeAdjustments)

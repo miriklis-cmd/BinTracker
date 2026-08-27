@@ -13,6 +13,12 @@ public sealed record MovementHistoryReportQuery(
     MovementSource? Source = null,
     bool IncludeAdjustments = false);
 
+public sealed record MovementCorrectionLineage(
+    long CorrectionOperationId,
+    long OriginalMovementId,
+    long NeutralisingMovementId,
+    long ReplacementMovementId);
+
 public sealed record MovementHistoryReportRow(
     long MovementId,
     DateOnly MovementDate,
@@ -33,12 +39,27 @@ public sealed record MovementHistoryReportRow(
     long? ReversesMovementId,
     long? CorrectedByMovementId,
     string LinkedReversalReference,
-    string CorrectionReason)
+    string CorrectionReason,
+    IReadOnlyList<MovementCorrectionLineage>? CorrectionLines = null)
 {
     public string DirectionText =>
         Direction == MovementType.Out ? "OUT" : "IN";
 
-    public string SourceText => ReversesMovementId.HasValue ? "Reversal" : Source switch
+    public IReadOnlyList<MovementCorrectionLineage> Lineage => CorrectionLines ?? [];
+    public IReadOnlyList<MovementCorrectionLineage> CorrectedByCorrections =>
+        Lineage.Where(x => x.OriginalMovementId == MovementId).ToArray();
+    public IReadOnlyList<MovementCorrectionLineage> NeutraliserForCorrections =>
+        Lineage.Where(x => x.NeutralisingMovementId == MovementId).ToArray();
+    public IReadOnlyList<MovementCorrectionLineage> CreatedByCorrections =>
+        Lineage.Where(x => x.ReplacementMovementId == MovementId).ToArray();
+
+    public bool IsCorrectionOriginal => CorrectedByCorrections.Count > 0;
+    public bool IsCorrectionNeutraliser => NeutraliserForCorrections.Count > 0;
+    public bool IsCorrectionReplacement => CreatedByCorrections.Count > 0;
+    public bool IsCorrectionRelated => Lineage.Count > 0;
+
+    public string SourceText => IsCorrectionRelated ? "Correction"
+        : ReversesMovementId.HasValue ? "Reversal" : Source switch
     {
         MovementSource.Manual => "Single Entry",
         MovementSource.Batch => "Batch Entry",
@@ -47,13 +68,25 @@ public sealed record MovementHistoryReportRow(
         _ => Source.ToString()
     };
 
-    public string Status => CorrectedByMovementId.HasValue
+    public string Status => IsCorrectionRelated
+        ? string.Join("; ", CorrectionStatusParts())
+        : CorrectedByMovementId.HasValue
         ? $"Reversed — see {(!string.IsNullOrWhiteSpace(LinkedReversalReference) ? LinkedReversalReference : $"movement #{CorrectedByMovementId}") }"
         : ReversesMovementId.HasValue
             ? $"Reversal of #{ReversesMovementId}" + (string.IsNullOrWhiteSpace(CorrectionReason) ? "" : $" — {CorrectionReason}")
             : "";
 
     public bool CanReverse => !ReversesMovementId.HasValue && !CorrectedByMovementId.HasValue;
+
+    private IEnumerable<string> CorrectionStatusParts()
+    {
+        foreach (var line in CreatedByCorrections)
+            yield return $"Corrected replacement for #{line.OriginalMovementId} (correction #{line.CorrectionOperationId})";
+        foreach (var line in CorrectedByCorrections)
+            yield return $"Corrected — neutraliser #{line.NeutralisingMovementId}; replacement #{line.ReplacementMovementId} (correction #{line.CorrectionOperationId})";
+        foreach (var line in NeutraliserForCorrections)
+            yield return $"Correction neutraliser for #{line.OriginalMovementId} — replacement #{line.ReplacementMovementId} (correction #{line.CorrectionOperationId})";
+    }
 }
 
 public sealed record MovementHistoryContainerTotal(
@@ -170,6 +203,32 @@ internal sealed class MovementHistoryReportService(
             })
             .ToListAsync(cancellationToken);
 
+        var movementIds = raw.Select(x => x.Id).ToList();
+        var correctionLines = await db.MovementCorrectionLines.AsNoTracking()
+            .Where(line => movementIds.Contains(line.OriginalMovementId) ||
+                movementIds.Contains(line.NeutralisingMovementId) ||
+                movementIds.Contains(line.ReplacementMovementId))
+            .Select(line => new { line.CorrectionOperationId, line.OriginalMovementId,
+                line.NeutralisingMovementId, line.ReplacementMovementId })
+            .ToListAsync(cancellationToken);
+        var correctionLinesByMovementId = correctionLines
+            .SelectMany(line => new[]
+            {
+                (MovementId: line.OriginalMovementId, Line: new MovementCorrectionLineage(
+                    line.CorrectionOperationId, line.OriginalMovementId, line.NeutralisingMovementId, line.ReplacementMovementId)),
+                (MovementId: line.NeutralisingMovementId, Line: new MovementCorrectionLineage(
+                    line.CorrectionOperationId, line.OriginalMovementId, line.NeutralisingMovementId, line.ReplacementMovementId)),
+                (MovementId: line.ReplacementMovementId, Line: new MovementCorrectionLineage(
+                    line.CorrectionOperationId, line.OriginalMovementId, line.NeutralisingMovementId, line.ReplacementMovementId))
+            })
+            .GroupBy(x => x.MovementId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyList<MovementCorrectionLineage>)group
+                    .Select(x => x.Line)
+                    .OrderBy(x => x.CorrectionOperationId)
+                    .ToArray());
+
         var search = query.CustomerSearch?.Trim();
 
         var rows = raw
@@ -177,7 +236,10 @@ internal sealed class MovementHistoryReportService(
                 string.IsNullOrWhiteSpace(search) ||
                 Contains(x.CustomerCode, search) ||
                 Contains(x.CustomerName, search))
-            .Select(x => new MovementHistoryReportRow(
+            .Select(x =>
+            {
+                correctionLinesByMovementId.TryGetValue(x.Id, out var movementCorrectionLines);
+                return new MovementHistoryReportRow(
                 x.Id,
                 x.MovementDate,
                 x.CreatedUtc,
@@ -197,7 +259,9 @@ internal sealed class MovementHistoryReportService(
                 x.ReversesMovementId,
                 x.CorrectedByMovementId,
                 x.LinkedReversalReference,
-                x.CorrectionReason))
+                x.CorrectionReason,
+                movementCorrectionLines);
+            })
             .OrderBy(x => x.MovementDate)
             .ThenBy(x => x.CustomerCode, StringComparer.OrdinalIgnoreCase)
             .ThenBy(x => x.ContainerDisplayOrder)

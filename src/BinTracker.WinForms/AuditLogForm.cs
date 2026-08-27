@@ -1,3 +1,4 @@
+using BinTracker.Core;
 using BinTracker.Services;
 
 namespace BinTracker.WinForms;
@@ -53,8 +54,16 @@ public sealed class AuditLogForm : BinTrackerForm
 
         var footer = new Panel { Dock = DockStyle.Bottom, Height = 34, Padding = new Padding(8, 7, 8, 0) };
         footer.Controls.Add(countLabel);
+        var actions = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 50, Padding = new Padding(8), FlowDirection = FlowDirection.LeftToRight };
+        var detail = new Button { Text = "View Batch Detail", AutoSize = true };
+        var reviewed = new Button { Text = "Mark Selected Reviewed", AutoSize = true };
+        detail.Click += async (_, _) => await ShowBatchDetailAsync();
+        reviewed.Click += async (_, _) => await MarkReviewedAsync();
+        actions.Controls.Add(detail); actions.Controls.Add(reviewed);
+        grid.CellDoubleClick += async (_, _) => await ShowBatchDetailAsync();
         Controls.Add(grid);
         Controls.Add(footer);
+        Controls.Add(actions);
         Shown += async (_, _) => await ReloadAsync();
     }
 
@@ -63,5 +72,29 @@ public sealed class AuditLogForm : BinTrackerForm
         var rows = (await audit.GetRecentAsync()).ToList();
         grid.DataSource = rows;
         countLabel.Text = $"Displaying {rows.Count:N0} audit event{(rows.Count == 1 ? string.Empty : "s")}.";
+    }
+
+    private AuditEvent? Selected => grid.CurrentRow?.DataBoundItem as AuditEvent;
+
+    private async Task ShowBatchDetailAsync()
+    {
+        var selected = Selected;
+        if (selected?.EntityType != "MovementBatch" || !int.TryParse(selected.EntityId, out var batchId))
+        { MessageBox.Show(this, "Select a MovementBatch audit event to inspect its persisted line detail."); return; }
+        var rows = await audit.GetMovementBatchDetailAsync(batchId);
+        using var form = new Form { Text = $"MovementBatch #{batchId} — Authoritative Detail", StartPosition = FormStartPosition.CenterParent, ClientSize = new Size(1280, 620) };
+        var detailGrid = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AutoGenerateColumns = true,
+            DataSource = rows.ToList(), AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells,
+            AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells };
+        form.Controls.Add(detailGrid); form.ShowDialog(this);
+    }
+
+    private async Task MarkReviewedAsync()
+    {
+        var selected = Selected;
+        if (selected is null || !selected.RequiresAdministratorReview || selected.ReviewedUtc.HasValue)
+        { MessageBox.Show(this, "Select an unreviewed Operator movement correction/reversal event."); return; }
+        await audit.MarkMovementChangesReviewedAsync([selected.Id]);
+        await ReloadAsync();
     }
 }

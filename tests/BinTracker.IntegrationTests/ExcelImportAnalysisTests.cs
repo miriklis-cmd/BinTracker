@@ -126,6 +126,19 @@ public sealed class ExcelImportAnalysisTests
             int limit = 500,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<AuditEvent>>([]);
+
+        public Task<IReadOnlyList<AuditEvent>> GetUnreviewedMovementChangesAsync(
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<AuditEvent>>([]);
+
+        public Task MarkMovementChangesReviewedAsync(
+            IReadOnlyCollection<long> auditEventIds,
+            CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<IReadOnlyList<MovementBatchAuditLine>> GetMovementBatchDetailAsync(
+            int batchId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<MovementBatchAuditLine>>([]);
     }
 
     // The production implementation is internal, so this tiny test adapter

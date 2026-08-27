@@ -91,7 +91,7 @@ internal sealed class WeeklyMovementsReportService(
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
-        var movements = db.BinMovements.AsNoTracking()
+        var movements = db.EffectiveOperationalMovements()
             .Where(x =>
                 x.MovementDate >= start &&
                 x.MovementDate <= dataThrough);

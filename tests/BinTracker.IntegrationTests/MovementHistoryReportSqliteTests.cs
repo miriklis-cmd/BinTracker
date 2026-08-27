@@ -11,6 +11,53 @@ namespace BinTracker.IntegrationTests;
 public sealed class MovementHistoryReportSqliteTests
 {
     [Fact]
+    public async Task Persisted_movement_ids_survive_filtering_and_are_ordered_numerically()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<BinTrackerDbContext>(
+            options => options.UseSqlite(connection));
+        services.AddBinTrackerServices();
+
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var factory = scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
+
+        var date = new DateOnly(2026, 8, 25);
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            await db.Database.EnsureCreatedAsync();
+            await DatabaseSetup.InitializeSqliteAsync(db);
+            var customer = new Customer
+            {
+                CustomerCode = "JMPL",
+                Name = "JMPL",
+                CustomerType = CustomerType.Account
+            };
+            db.Customers.Add(customer);
+            await db.SaveChangesAsync();
+
+            var movement10 = M(customer.Id, 1, date, MovementType.In, MovementSource.Batch, 2);
+            movement10.Id = 10;
+            var movement2 = M(customer.Id, 1, date, MovementType.In, MovementSource.Batch, 7);
+            movement2.Id = 2;
+            db.BinMovements.AddRange(movement10, movement2);
+            await db.SaveChangesAsync();
+        }
+
+        var result = await scope.ServiceProvider
+            .GetRequiredService<IMovementHistoryReportService>()
+            .QueryAsync(new MovementHistoryReportQuery(date, date, CustomerSearch: "JMPL"));
+
+        Assert.Equal([2L, 10L], result.Rows.Select(x => x.MovementId).ToArray());
+        Assert.Equal(7, Assert.Single(result.Rows, x => x.MovementId == 2).Quantity);
+        Assert.Equal(2, Assert.Single(result.Rows, x => x.MovementId == 10).Quantity);
+    }
+
+    [Fact]
     public async Task Date_range_is_inclusive_and_adjustments_are_excluded_by_default()
     {
         await using var connection =

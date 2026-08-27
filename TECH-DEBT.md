@@ -82,6 +82,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 - Continue the regression rule: when a real defect is found, add a reproducing automated test where practical.
 - Add Release-build CI/validation in addition to Debug.
 - Add high-DPI automated/manual acceptance coverage.
+- Keep Windows 11 at 1920x1080/150% as the frequently-used laptop manual acceptance gate while retaining layouts that expand sensibly on the substantially larger primary production display. Do not replace normal DPI scaling with globally smaller fonts or WinForms-specific business rules.
 - Add stress fixtures for Market Floor row-density extremes.
 
 ## Database provider readiness
@@ -252,6 +253,8 @@ Engineering improvements that are not currently user-facing defects. Product wor
 - If the Reports hub is reimplemented in WinUI 3 post-v1, treat these visual assets and hierarchy as design reference unless a new design is explicitly approved.
 
 ## Movement correction/reversal workflow placement
-- Dedicated movement correction/reversal operational surface is deferred until the reversal engine passes acceptance.
-- Movement History may retain a contextual Correct/Reverse action, but Reports should not become the primary transaction-management surface by accident.
-- Revisit navigation when correction-by-replacement is implemented; prefer a coherent Movements operational area over a reversal-only top-level item.
+- Movement History is the accepted contextual Correct/Reverse entry point for alpha.8 and preserves its reporting behavior.
+- Revisit whether correction needs a dedicated Movements operational surface only after Windows/operator acceptance and real usage evidence; avoid duplicating the correction engine.
+- Audit Trail review-state visibility/filtering and selection-aware acknowledgement/batch-detail enablement are mandatory pre-v1 integration work (BT-AUD-007..009/011), not optional cosmetics. Broader search/general filtering/CSV export and additional contextual drill-down remain explicit release-decision enhancements (BT-AUD-006/010), not implemented claims.
+- Audit retention/archive policy remains a pre-production decision (BT-AUD-012); do not introduce cleanup that weakens append-only evidence or silently assumes indefinite database growth is acceptable.
+- Persistent Administrator review reminder remains pre-v1 implementation work (BT-AUD-013). Keep review count/state/navigation outside the WinForms panel so a future WinUI 3 native `InfoBar` is a presentation replacement, not a business-logic rewrite.

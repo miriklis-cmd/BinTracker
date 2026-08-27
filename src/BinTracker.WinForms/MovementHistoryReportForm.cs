@@ -11,6 +11,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     private readonly IMovementHistoryReportService reports;
     private readonly IMovementHistoryReportPdfService pdfReports;
     private readonly IContainerTypeService containerTypes;
+    private readonly ICustomerService customers;
 
     private readonly DateTimePicker startDate = new()
     {
@@ -75,6 +76,8 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     private readonly IMovementCorrectionService corrections;
     private readonly UserSession session;
     private Button? reverseButton;
+    private Button? correctButton;
+    private Button? correctBatchButton;
     private MovementHistoryReportResult? currentResult;
     private bool autoRefreshReady;
     private bool allocatingColumns;
@@ -85,6 +88,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         IMovementHistoryReportService reports,
         IMovementHistoryReportPdfService pdfReports,
         IContainerTypeService containerTypes,
+        ICustomerService customers,
         IAuditService audit,
         IMovementCorrectionService corrections,
         UserSession session,
@@ -93,6 +97,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         this.reports = reports;
         this.pdfReports = pdfReports;
         this.containerTypes = containerTypes;
+        this.customers = customers;
 
         this.audit = audit;
         this.clock = clock;
@@ -216,14 +221,14 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         actions.WrapContents = true;
         actions.Controls.Add(ActionButton(
             "Last 7 Days",
-            115,
+            135,
             async () => await SetRangeAndRefreshAsync(
                 BusinessToday.AddDays(-6),
                 BusinessToday)));
 
         actions.Controls.Add(ActionButton(
             "Last 30 Days",
-            125,
+            145,
             async () => await SetRangeAndRefreshAsync(
                 BusinessToday.AddDays(-29),
                 BusinessToday)));
@@ -264,6 +269,12 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             };
             reverseButton.Click += async (_, _) => await ReverseSelectedAsync();
             actions.Controls.Add(reverseButton);
+            correctButton = new Button { Text = "Correct Selected", Size = new Size(190, 40), Margin = new Padding(8, 0, 0, 0) };
+            correctButton.Click += async (_, _) => await CorrectSelectedAsync();
+            actions.Controls.Add(correctButton);
+            correctBatchButton = new Button { Text = "Correct Entire Batch", Size = new Size(225, 40), Margin = new Padding(8, 0, 0, 0) };
+            correctBatchButton.Click += async (_, _) => await CorrectBatchAsync();
+            actions.Controls.Add(correctBatchButton);
             grid.SelectionChanged += (_, _) => UpdateReverseAvailability();
         }
 
@@ -381,6 +392,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             {
                 var index = grid.Rows.Add(
                     row.MovementDate.ToString("ddd dd/MM/yyyy"),
+                    row.MovementId,
                     row.CustomerCode,
                     row.CustomerName,
                     CustomerTypeText(row.CustomerType),
@@ -515,12 +527,64 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         reverseButton.Enabled = grid.CurrentRow?.Tag is MovementHistoryReportRow row &&
                                 row.CanReverse &&
                                 row.Source is MovementSource.Manual or MovementSource.Batch;
+        if (correctButton is not null)
+            correctButton.Enabled = reverseButton.Enabled;
+        if (correctBatchButton is not null)
+            correctBatchButton.Enabled = reverseButton.Enabled &&
+                grid.CurrentRow?.Tag is MovementHistoryReportRow { Source: MovementSource.Batch };
+    }
+
+    private async Task CorrectSelectedAsync()
+    {
+        if (grid.CurrentRow?.Tag is not MovementHistoryReportRow selected) return;
+        var detail = await corrections.GetAsync(selected.MovementId);
+        if (detail is null || detail.IsAlreadyReversed) { MessageBox.Show(this, "This movement is no longer eligible for correction."); await LoadReportAsync(); return; }
+        var customerRows = await customers.SearchAsync(null, includeInactive: true);
+        var containerRows = await containerTypes.SearchAsync(null, includeInactive: true);
+        using var dialog = new MovementCorrectionDialog(detail, customerRows, containerRows, clock.Today);
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        try
+        {
+            Enabled = false; UseWaitCursor = true;
+            var result = await corrections.CorrectAsync(new CorrectMovementRequest(Guid.NewGuid(), detail.MovementId,
+                dialog.CorrectedDate, dialog.CustomerId, dialog.ContainerTypeId, dialog.CorrectedDirection,
+                dialog.CorrectedQuantity, dialog.Reference, dialog.Notes, dialog.Reason));
+            MessageBox.Show(this, $"Movement #{detail.MovementId} remains preserved. Linked neutralising and corrected replacement movements were created (correction #{result.CorrectionOperationId}).",
+                "Movement Corrected", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            await LoadReportAsync();
+        }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Correct Movement", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+        finally { Enabled = true; UseWaitCursor = false; }
+    }
+
+    private async Task CorrectBatchAsync()
+    {
+        if (grid.CurrentRow?.Tag is not MovementHistoryReportRow selected) return;
+        var detail = await corrections.GetAsync(selected.MovementId);
+        if (detail?.MovementBatchId is not int batchId) { MessageBox.Show(this, "The selected movement is not part of a persisted Batch Entry."); return; }
+        var batch = await corrections.GetBatchAsync(batchId);
+        if (batch is null || !batch.IsEligible) { MessageBox.Show(this, "The entire batch is no longer eligible. No lines were changed."); return; }
+        using var dialog = new BatchCorrectionDialog(batch, clock.Today);
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        if (MessageBox.Show(this, $"Confirm correction of EVERY one of the {batch.LineCount:N0} lines ({batch.TotalContainers:N0} containers) in persisted batch #{batch.BatchId}?",
+                "Confirm Entire Batch", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+        try
+        {
+            Enabled = false; UseWaitCursor = true;
+            await corrections.CorrectBatchAsync(new CorrectBatchRequest(Guid.NewGuid(), batch.BatchId,
+                dialog.CorrectedDate, dialog.CorrectedDirection, dialog.Reason));
+            MessageBox.Show(this, "The entire batch was corrected atomically. Every original line remains preserved.");
+            await LoadReportAsync();
+        }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Correct Entire Batch", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+        finally { Enabled = true; UseWaitCursor = false; }
     }
 
     private void ConfigureGrid()
     {
         grid.RowTemplate.Height = 30;
         grid.Columns.Add(Column("Date", 150, 146, "Date"));
+        grid.Columns.Add(Column("Movement ID", 118, 108, "MovementId"));
         grid.Columns.Add(Column("Code", 130, 120, "Code"));
         grid.Columns.Add(Column("Customer", 210, 175, "Customer"));
         grid.Columns.Add(Column("Type", 86, 80, "Type"));
@@ -548,9 +612,11 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
         var columnName = grid.Columns[e.ColumnIndex].Name;
         var isDirection = columnName == "Direction";
-        var isReversalStatus = columnName == "Status" &&
+        var isStatus = columnName == "Status";
+        var isCorrectionStatus = isStatus && row.IsCorrectionRelated;
+        var isReversalStatus = isStatus && !isCorrectionStatus &&
             (row.ReversesMovementId.HasValue || row.CorrectedByMovementId.HasValue);
-        if (!isDirection && !isReversalStatus)
+        if (!isDirection && !isReversalStatus && !isCorrectionStatus)
             return;
 
         var text = isDirection ? row.DirectionText : DisplayStatus(row);
@@ -569,12 +635,16 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         e.PaintBackground(e.ClipBounds, true);
         e.Paint(e.ClipBounds, DataGridViewPaintParts.Border);
 
-        var fill = isReversalStatus
+        var fill = isCorrectionStatus
+            ? Color.FromArgb(218, 232, 252)
+            : isReversalStatus
             ? Color.FromArgb(255, 232, 194)
             : row.Direction == MovementType.In
                 ? Color.FromArgb(218, 242, 226)
                 : Color.FromArgb(250, 222, 222);
-        var foreground = isReversalStatus
+        var foreground = isCorrectionStatus
+            ? Color.FromArgb(28, 78, 151)
+            : isReversalStatus
             ? Color.FromArgb(132, 74, 0)
             : row.Direction == MovementType.In
                 ? Color.FromArgb(28, 102, 55)
@@ -612,6 +682,9 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
     private static string DisplayStatus(MovementHistoryReportRow row)
     {
+        if (row.IsCorrectionRelated)
+            return row.Status;
+
         if (row.ReversesMovementId.HasValue)
             return $"Reversal — #{row.ReversesMovementId.Value}";
 
@@ -651,11 +724,12 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         e.SortResult = column switch
         {
             "Date" => left.MovementDate.CompareTo(right.MovementDate),
+            "MovementId" => left.MovementId.CompareTo(right.MovementId),
             "Quantity" => left.Quantity.CompareTo(right.Quantity),
             _ => 0
         };
 
-        if (column is not ("Date" or "Quantity"))
+        if (column is not ("Date" or "MovementId" or "Quantity"))
             return;
 
         if (e.SortResult == 0)
@@ -795,14 +869,15 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             new System.Text.UTF8Encoding(true));
 
         writer.WriteLine(includeNotesInExports.Checked
-            ? "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Status,Notes,Entered By"
-            : "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Status,Entered By");
+            ? "Date,Movement ID,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Status,Notes,Entered By"
+            : "Date,Movement ID,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Status,Entered By");
 
         foreach (var row in result.Rows)
         {
             var fields = new List<string>
             {
                 Csv(row.MovementDate.ToString("dd/MM/yyyy")),
+                row.MovementId.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 Csv(row.CustomerCode),
                 Csv(row.CustomerName),
                 Csv(CustomerTypeText(row.CustomerType)),
@@ -855,6 +930,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             var fixedWidths = new Dictionary<string, int>(StringComparer.Ordinal)
             {
                 ["Date"] = 150,
+                ["MovementId"] = 118,
                 ["Code"] = 130,
                 ["Type"] = 86,
                 ["Container"] = 105,
