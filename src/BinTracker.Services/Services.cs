@@ -45,14 +45,71 @@ public interface IAuditService
         int? userIdOverride = null, string? usernameOverride = null,
         CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AuditEvent>> GetRecentAsync(int limit = 500, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AuditTrailRow>> GetAuditTrailAsync(AuditReviewFilter filter = AuditReviewFilter.All,
+        int limit = 500, CancellationToken cancellationToken = default);
+    Task<AdministratorReviewState> GetAdministratorReviewStateAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AuditEvent>> GetUnreviewedMovementChangesAsync(CancellationToken cancellationToken = default);
     Task MarkMovementChangesReviewedAsync(IReadOnlyCollection<long> auditEventIds, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<MovementBatchAuditLine>> GetMovementBatchDetailAsync(int batchId, CancellationToken cancellationToken = default);
+    Task<MovementChangeAuditDetail?> GetMovementChangeDetailAsync(long auditEventId, CancellationToken cancellationToken = default);
+    event EventHandler<AdministratorReviewState>? AdministratorReviewStateChanged;
+}
+
+public enum AuditReviewFilter { All, NeedsReview, Reviewed }
+
+public sealed record AdministratorReviewState(int PendingCount);
+
+public sealed record AuditTrailRow(long Id, DateTime TimestampUtc, string Username, string Action,
+    string EntityType, string? EntityId, string Description, bool Succeeded,
+    bool RequiresAdministratorReview, DateTime? ReviewedUtc, int? ReviewedByUserId,
+    string? ReviewedByUsername)
+{
+    public string ReviewState => AuditReviewPolicy.StateText(RequiresAdministratorReview, ReviewedUtc);
+    public string ReviewedBy => ReviewedUtc.HasValue
+        ? $"{ReviewedByUsername ?? "Administrator"} · {ReviewedUtc.Value:yyyy-MM-dd HH:mm} UTC"
+        : string.Empty;
+    public bool CanMarkReviewed => AuditReviewPolicy.CanMarkReviewed(this);
+    public bool HasAuthoritativeBatchDetail =>
+        EntityType == "MovementBatch" && int.TryParse(EntityId, out _);
+    public bool HasMovementChangeDetail => AuditReviewPolicy.IsMovementChangeAction(Action);
+}
+
+public static class AuditReviewPolicy
+{
+    private static readonly HashSet<string> MovementChangeActions = new(StringComparer.Ordinal)
+    {
+        "MOVEMENT_REVERSED", "MOVEMENT_CORRECTED", "MOVEMENT_BATCH_CORRECTED"
+    };
+
+    public static bool IsMovementChangeAction(string action) => MovementChangeActions.Contains(action);
+    public static string StateText(bool required, DateTime? reviewedUtc) =>
+        !required ? string.Empty : reviewedUtc.HasValue ? "Reviewed" : "Needs review";
+    public static bool CanMarkReviewed(AuditTrailRow? row) => row is not null && row.Succeeded &&
+        row.RequiresAdministratorReview && !row.ReviewedUtc.HasValue && IsMovementChangeAction(row.Action);
+    public static bool Matches(AuditTrailRow row, AuditReviewFilter filter) => filter switch
+    {
+        AuditReviewFilter.NeedsReview => row.RequiresAdministratorReview && !row.ReviewedUtc.HasValue,
+        AuditReviewFilter.Reviewed => row.RequiresAdministratorReview && row.ReviewedUtc.HasValue,
+        _ => true
+    };
+    public static AuditTrailRow? SelectOldestPending(IEnumerable<AuditTrailRow> rows) => rows
+        .Where(CanMarkReviewed).OrderBy(x => x.TimestampUtc).ThenBy(x => x.Id).FirstOrDefault();
 }
 
 public sealed record MovementBatchAuditLine(long MovementId, int BatchId, DateOnly MovementDate,
     string CustomerCode, string CustomerName, string ContainerType, MovementType Direction,
     int Quantity, string Reference, string Notes);
+
+public sealed record MovementChangeAuditLine(string Role, long MovementId, int? BatchId,
+    DateOnly MovementDate, string CustomerCode, string CustomerName, string ContainerType,
+    MovementType Direction, int Quantity, string Reference, string Notes, long? LinkedMovementId)
+{
+    public string ReferenceAndNotes => string.Join(" · ", new[] { Reference, Notes }.Where(x => !string.IsNullOrWhiteSpace(x)));
+}
+
+public sealed record MovementChangeAuditDetail(long AuditEventId, string Action, string Actor,
+    DateTime ChangedUtc, string Reason, int? OriginalBatchId, int? ReplacementBatchId,
+    IReadOnlyList<MovementChangeAuditLine> Lines);
 
 internal sealed class AuditService(
     IDbContextFactory<BinTrackerDbContext> factory,
@@ -60,6 +117,7 @@ internal sealed class AuditService(
     IBusinessClock clock,
     IClientContext client) : IAuditService
 {
+    public event EventHandler<AdministratorReviewState>? AdministratorReviewStateChanged;
     public async Task WriteAsync(string action, string entityType, string? entityId, string description,
         bool succeeded = true, object? before = null, object? after = null,
         int? userIdOverride = null, string? usernameOverride = null,
@@ -93,6 +151,34 @@ internal sealed class AuditService(
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<AuditTrailRow>> GetAuditTrailAsync(AuditReviewFilter filter = AuditReviewFilter.All,
+        int limit = 500, CancellationToken cancellationToken = default)
+    {
+        if (session.Role != UserRole.Administrator) throw new UnauthorizedAccessException("Administrator access is required.");
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        var query = db.AuditEvents.AsNoTracking();
+        query = filter switch
+        {
+            AuditReviewFilter.NeedsReview => query.Where(x => x.RequiresAdministratorReview && x.ReviewedUtc == null),
+            AuditReviewFilter.Reviewed => query.Where(x => x.RequiresAdministratorReview && x.ReviewedUtc != null),
+            _ => query
+        };
+        return await query.OrderByDescending(x => x.TimestampUtc).ThenByDescending(x => x.Id)
+            .Take(Math.Clamp(limit, 1, 5000))
+            .Select(x => new AuditTrailRow(x.Id, x.TimestampUtc, x.Username, x.Action, x.EntityType,
+                x.EntityId, x.Description, x.Succeeded, x.RequiresAdministratorReview, x.ReviewedUtc,
+                x.ReviewedByUserId, x.ReviewedByUsername))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<AdministratorReviewState> GetAdministratorReviewStateAsync(CancellationToken cancellationToken = default)
+    {
+        if (session.Role != UserRole.Administrator) return new(0);
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        return new(await db.AuditEvents.CountAsync(
+            x => x.RequiresAdministratorReview && x.ReviewedUtc == null, cancellationToken));
+    }
+
     public async Task<IReadOnlyList<AuditEvent>> GetUnreviewedMovementChangesAsync(CancellationToken cancellationToken = default)
     {
         if (session.Role != UserRole.Administrator) throw new UnauthorizedAccessException("Administrator access is required.");
@@ -111,10 +197,10 @@ internal sealed class AuditService(
         await using var tx = await db.Database.BeginTransactionAsync(cancellationToken);
         var events = await db.AuditEvents.Where(x => auditEventIds.Contains(x.Id) &&
             x.RequiresAdministratorReview && x.ReviewedUtc == null).ToListAsync(cancellationToken);
-        if (events.Count == 0)
+        if (events.Count != auditEventIds.Distinct().Count())
         {
             await tx.RollbackAsync(cancellationToken);
-            return;
+            throw new InvalidOperationException("One or more selected movement-change events are not eligible for review or were already reviewed.");
         }
         var reviewedAt = clock.UtcNow;
         foreach (var item in events)
@@ -125,11 +211,13 @@ internal sealed class AuditService(
         db.AuditEvents.Add(new AuditEvent { TimestampUtc = reviewedAt, UserId = session.UserId,
             Username = session.Username, Action = "MOVEMENT_CHANGE_REVIEWED", EntityType = "AuditEvent",
             EntityId = string.Join(",", events.Select(x => x.Id)),
-            Description = $"Administrator acknowledged {events.Count} Operator movement change event(s).",
+            Description = $"Administrator {session.Username} acknowledged Operator movement change audit event(s) " +
+                $"{string.Join(", ", events.OrderBy(x => x.Id).Select(x => $"#{x.Id} {x.Action} ({x.EntityType} #{x.EntityId}) by {x.Username}"))}.",
             BeforeValues = JsonSerializer.Serialize(events.Select(x => new { x.Id, x.Action, x.Username })),
             AfterValues = JsonSerializer.Serialize(new { ReviewedAt = reviewedAt, ReviewedBy = session.Username }),
             ComputerName = client.DeviceName, SessionId = session.SessionId, Succeeded = true });
         await db.SaveChangesAsync(cancellationToken); await tx.CommitAsync(cancellationToken);
+        AdministratorReviewStateChanged?.Invoke(this, await GetAdministratorReviewStateAsync(cancellationToken));
     }
 
     public async Task<IReadOnlyList<MovementBatchAuditLine>> GetMovementBatchDetailAsync(int batchId, CancellationToken cancellationToken = default)
@@ -140,6 +228,83 @@ internal sealed class AuditService(
             .OrderBy(x => x.Id).Select(x => new MovementBatchAuditLine(x.Id, batchId, x.MovementDate,
                 x.Customer.CustomerCode ?? "", x.Customer.Name, x.ContainerType.Name, x.MovementType,
                 x.Quantity, x.ReferenceNumber ?? "", x.Notes ?? "")).ToListAsync(cancellationToken);
+    }
+
+    public async Task<MovementChangeAuditDetail?> GetMovementChangeDetailAsync(long auditEventId, CancellationToken cancellationToken = default)
+    {
+        if (session.Role != UserRole.Administrator) throw new UnauthorizedAccessException("Administrator access is required.");
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        var auditEvent = await db.AuditEvents.AsNoTracking().SingleOrDefaultAsync(x => x.Id == auditEventId, cancellationToken);
+        if (auditEvent is null || !AuditReviewPolicy.IsMovementChangeAction(auditEvent.Action)) return null;
+
+        if (auditEvent.Action == "MOVEMENT_REVERSED")
+        {
+            if (!long.TryParse(auditEvent.EntityId, out var originalId)) return null;
+            var rows = await db.BinMovements.AsNoTracking()
+                .Where(x => x.Id == originalId || x.ReversesMovementId == originalId)
+                .OrderBy(x => x.Id).Select(x => new { Movement = x, x.Customer.CustomerCode,
+                    CustomerName = x.Customer.Name, Container = x.ContainerType.Name }).ToListAsync(cancellationToken);
+            if (rows.Count != 2 || rows.Count(x => x.Movement.Id == originalId) != 1 ||
+                rows.Count(x => x.Movement.ReversesMovementId == originalId) != 1) return null;
+            return new(auditEvent.Id, auditEvent.Action, auditEvent.Username, auditEvent.TimestampUtc,
+                rows.Single(x => x.Movement.ReversesMovementId == originalId).Movement.CorrectionReason ?? "",
+                rows.Single(x => x.Movement.Id == originalId).Movement.MovementBatchId, null,
+                rows.Select(x => ToLine(x.Movement.Id == originalId ? "Original" : "Neutralising reversal",
+                    x.Movement, x.CustomerCode ?? "", x.CustomerName, x.Container,
+                    x.Movement.Id == originalId ? rows.Single(y => y.Movement.ReversesMovementId == originalId).Movement.Id : originalId)).ToArray());
+        }
+
+        var parsed = ParseCorrectionLineage(auditEvent.AfterValues);
+        if (parsed.Length == 0) return null;
+        var originalIds = parsed.Select(x => x.Original).ToList();
+        var neutralIds = parsed.Select(x => x.Neutral).ToList();
+        var replacementIds = parsed.Select(x => x.Replacement).ToList();
+        var allIds = originalIds.Concat(neutralIds).Concat(replacementIds).Distinct().ToList();
+        if (allIds.Count != parsed.Length * 3) return null;
+        var movements = await db.BinMovements.AsNoTracking().Where(x => allIds.Contains(x.Id))
+            .Select(x => new { Movement = x, x.Customer.CustomerCode, CustomerName = x.Customer.Name,
+                Container = x.ContainerType.Name }).ToListAsync(cancellationToken);
+        if (movements.Count != allIds.Count) return null;
+        var operations = await db.MovementCorrectionOperations.AsNoTracking().Include(x => x.Lines)
+            .Where(x => x.Lines.Any(l => originalIds.Contains(l.OriginalMovementId))).ToListAsync(cancellationToken);
+        var matching = operations.Where(op => op.Lines.Count == parsed.Length && parsed.All(p => op.Lines.Any(l =>
+            l.OriginalMovementId == p.Original && l.NeutralisingMovementId == p.Neutral && l.ReplacementMovementId == p.Replacement))).ToArray();
+        if (matching.Length != 1) return null;
+        var operation = matching[0];
+        var lines = new List<MovementChangeAuditLine>();
+        foreach (var item in parsed)
+        {
+            var original = movements.Single(x => x.Movement.Id == item.Original);
+            var neutral = movements.Single(x => x.Movement.Id == item.Neutral);
+            var replacement = movements.Single(x => x.Movement.Id == item.Replacement);
+            lines.Add(ToLine("Original", original.Movement, original.CustomerCode ?? "", original.CustomerName, original.Container, neutral.Movement.Id));
+            lines.Add(ToLine("Neutraliser", neutral.Movement, neutral.CustomerCode ?? "", neutral.CustomerName, neutral.Container, original.Movement.Id));
+            lines.Add(ToLine("Corrected replacement", replacement.Movement, replacement.CustomerCode ?? "", replacement.CustomerName, replacement.Container, original.Movement.Id));
+        }
+        return new(auditEvent.Id, auditEvent.Action, operation.ActorUsername, operation.CreatedUtc,
+            operation.Reason, operation.OriginalBatchId, operation.ReplacementBatchId, lines);
+    }
+
+    private static MovementChangeAuditLine ToLine(string role, BinMovement movement, string code,
+        string customer, string container, long? linkedId) => new(role, movement.Id, movement.MovementBatchId,
+        movement.MovementDate, code, customer, container, movement.MovementType, movement.Quantity,
+        movement.ReferenceNumber ?? "", movement.Notes ?? "", linkedId);
+
+    private static (long Original, long Neutral, long Replacement)[] ParseCorrectionLineage(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Array) return [];
+            return document.RootElement.EnumerateArray().Select(x => (
+                x.GetProperty("Id").GetInt64(),
+                x.GetProperty("NeutralisingMovementId").GetInt64(),
+                x.GetProperty("ReplacementMovementId").GetInt64())).ToArray();
+        }
+        catch (JsonException) { return []; }
+        catch (InvalidOperationException) { return []; }
+        catch (KeyNotFoundException) { return []; }
     }
 }
 

@@ -470,6 +470,73 @@ public sealed class MovementCorrectionWorkflowTests
         Assert.True(await verify.AuditEvents.AnyAsync(x => x.Action == "MOVEMENT_CHANGE_REVIEWED"));
     }
 
+    [Fact]
+    public async Task Review_filters_counts_and_acknowledgement_are_exact_event_scoped()
+    {
+        await using var h = await Harness.Create(UserRole.Operator);
+        await using (var db = await h.Factory.CreateDbContextAsync())
+        {
+            db.AuditEvents.AddRange(
+                new AuditEvent { Username = "operator", Action = "MOVEMENT_BATCH_CORRECTED", EntityType = "MovementBatch", EntityId = "19", Description = "first", RequiresAdministratorReview = true },
+                new AuditEvent { Username = "operator", Action = "MOVEMENT_BATCH_CORRECTED", EntityType = "MovementBatch", EntityId = "19", Description = "second", RequiresAdministratorReview = true },
+                new AuditEvent { Username = "admin", Action = "LOGIN_SUCCESS", EntityType = "User", EntityId = "1", Description = "login" });
+            var admin = new UserAccount { Username = "admin", DisplayName = "Admin", PasswordHash = "x", PasswordSalt = "x", Role = UserRole.Administrator, IsActive = true };
+            db.Add(admin); await db.SaveChangesAsync(); h.Provider.GetRequiredService<UserSession>().SignIn(admin);
+        }
+        var audit = h.Provider.GetRequiredService<IAuditService>();
+        Assert.Equal(2, (await audit.GetAdministratorReviewStateAsync()).PendingCount);
+        Assert.Equal(3, (await audit.GetAuditTrailAsync(AuditReviewFilter.All)).Count);
+        var pending = await audit.GetAuditTrailAsync(AuditReviewFilter.NeedsReview);
+        Assert.Equal(2, pending.Count); Assert.All(pending, x => Assert.Equal("Needs review", x.ReviewState));
+        await audit.MarkMovementChangesReviewedAsync([pending[0].Id]);
+        Assert.Equal(1, (await audit.GetAdministratorReviewStateAsync()).PendingCount);
+        var reviewed = Assert.Single(await audit.GetAuditTrailAsync(AuditReviewFilter.Reviewed));
+        Assert.Equal(pending[0].Id, reviewed.Id); Assert.Equal("Reviewed", reviewed.ReviewState);
+        Assert.NotNull(reviewed.ReviewedUtc); Assert.Equal("admin", reviewed.ReviewedByUsername);
+        Assert.Contains((await audit.GetAuditTrailAsync(AuditReviewFilter.NeedsReview)).Single().Id,
+            pending.Select(x => x.Id));
+        await audit.MarkMovementChangesReviewedAsync([(await audit.GetAuditTrailAsync(AuditReviewFilter.NeedsReview)).Single().Id]);
+        Assert.Equal(0, (await audit.GetAdministratorReviewStateAsync()).PendingCount);
+        await using var verify = await h.Factory.CreateDbContextAsync();
+        Assert.Equal(2, await verify.AuditEvents.CountAsync(x => x.Action == "MOVEMENT_CHANGE_REVIEWED"));
+    }
+
+    [Fact]
+    public async Task Whole_batch_review_detail_resolves_exact_persisted_lineage_only()
+    {
+        await using var h = await Harness.Create(UserRole.Operator);
+        var batch = await h.AddBatch(new DateOnly(2026, 8, 20), MovementType.Out, [2, 3]);
+        await h.AddMovement(new DateOnly(2026, 8, 20), MovementType.Out, 99, h.CustomerId, 1);
+        var result = await h.Corrections.CorrectBatchAsync(new(Guid.NewGuid(), batch, null, MovementType.In, "Wrong direction"));
+        await using (var db = await h.Factory.CreateDbContextAsync())
+        {
+            var admin = new UserAccount { Username = "admin", DisplayName = "Admin", PasswordHash = "x", PasswordSalt = "x", Role = UserRole.Administrator, IsActive = true };
+            db.Add(admin); await db.SaveChangesAsync(); h.Provider.GetRequiredService<UserSession>().SignIn(admin);
+        }
+        var audit = h.Provider.GetRequiredService<IAuditService>();
+        var auditEvent = Assert.Single(await audit.GetAuditTrailAsync(AuditReviewFilter.NeedsReview));
+        var detail = Assert.IsType<MovementChangeAuditDetail>(await audit.GetMovementChangeDetailAsync(auditEvent.Id));
+        Assert.Equal(batch, detail.OriginalBatchId); Assert.Equal(result.ReplacementBatchId, detail.ReplacementBatchId);
+        Assert.Equal("Wrong direction", detail.Reason); Assert.Equal(6, detail.Lines.Count);
+        Assert.Equal(result.Lines.SelectMany(x => new[] { x.OriginalMovementId, x.NeutralisingMovementId, x.ReplacementMovementId }).Order(),
+            detail.Lines.Select(x => x.MovementId).Order());
+        Assert.DoesNotContain(detail.Lines, x => x.Quantity == 99);
+        Assert.All(detail.Lines.Where(x => x.Role == "Corrected replacement"), x => Assert.Equal(MovementType.In, x.Direction));
+    }
+
+    [Fact]
+    public async Task Movement_change_detail_fails_closed_when_audit_lineage_is_missing()
+    {
+        await using var h = await Harness.Create(UserRole.Administrator);
+        long id;
+        await using (var db = await h.Factory.CreateDbContextAsync())
+        {
+            var item = new AuditEvent { Username = "operator", Action = "MOVEMENT_BATCH_CORRECTED", EntityType = "MovementBatch", EntityId = "19", Description = "bad lineage", AfterValues = "[]", RequiresAdministratorReview = true };
+            db.Add(item); await db.SaveChangesAsync(); id = item.Id;
+        }
+        Assert.Null(await h.Provider.GetRequiredService<IAuditService>().GetMovementChangeDetailAsync(id));
+    }
+
     private sealed class Harness : IAsyncDisposable
     {
         private readonly SqliteConnection connection;

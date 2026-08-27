@@ -419,6 +419,8 @@ Audit Trail review Windows/regression acceptance must prove the complete sequenc
 
 Persistent-reminder acceptance (BT-AUD-013) must additionally prove Administrator-only visibility across main navigation, accurate initial and refreshed outstanding counts, direct routing to the pending Audit Trail set, persistence until the last review is acknowledged, automatic disappearance at zero, retention of the existing login popup and no approval/blocking effect. Contract tests should cover presentation-independent review state/count/navigation separately from WinForms rendering; future WinUI 3 uses the same contract.
 
+Movement-change detail acceptance must verify the selected audit event's exact original/neutraliser/replacement lineage, actor/time/reason, before-vs-after date/direction and persisted batch IDs, including exclusion of unrelated same-date/customer movements and fail-closed missing/ambiguous identity. Esc must return detail to Audit Trail and Audit Trail to the underlying main screen (BT-AUD-010/014).
+
 Selection-state acceptance must verify **Mark Selected Reviewed** is disabled for no selection, Administrator corrections/reversals, login/logout, report generation, customer/container/import events, already-reviewed rows and every other non-reviewable event. Viewer and Operator must fail unauthorized Administrator review attempts at the service boundary regardless of UI visibility.
 
 Audit detail acceptance must verify **View Batch Detail** is disabled for no selection and non-batch events and enabled for an event with authoritative persisted MovementBatch detail. Existing detail contents remain authoritative; contextual ImportRun and correction-lineage routes are future tracked behavior and are not part of the current implementation claim.

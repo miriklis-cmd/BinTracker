@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.5.0-alpha.8.5**
+Current planning baseline: **v0.5.0-alpha.8.6**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -190,14 +190,14 @@ Required dashboard pass:
 
 #### Pre-v1 Audit Trail / Administrator oversight acceptance
 
-The underlying append-only correction/reversal evidence, persistent Operator review requirement, consolidated Administrator notification, audited acknowledgement and authoritative MovementBatch detail are implemented. The following integration/UX requirements are recorded but **not implemented**; Windows/manual acceptance remains pending:
+The append-only evidence and corrective review workflow below are implemented in alpha.8.6; Windows/manual acceptance remains pending:
 
-- [ ] **Review-state discoverability (BT-AUD-007):** show `Needs review`, `Reviewed` and not-applicable/blank explicitly, with practical `All`, `Needs review` and `Reviewed` filtering. Administrators must not infer state from Action/User/Description.
-- [ ] **Context-sensitive acknowledgement (BT-AUD-008):** enable **Mark Selected Reviewed** only for the selected unreviewed, review-required Operator correction/reversal. Disable it for no selection, Administrator changes, login/logout, report, customer/container/import, already-reviewed and every other non-reviewable event. Persist status, reviewer and UTC time; audit acknowledgement and prohibit a second acknowledgement.
+- [x] **Review-state discoverability (BT-AUD-007) — IMPLEMENTED, acceptance pending:** explicit state and All/Needs review/Reviewed filtering.
+- [x] **Context-sensitive acknowledgement (BT-AUD-008) — IMPLEMENTED, acceptance pending:** deterministic eligibility, contextual confirmation, immediate status/count feedback, next-pending selection, exact-event evidence and duplicate rejection.
 - [ ] **End-to-end review acceptance (BT-AUD-011):** Operator correction/reversal -> persisted review-required state -> later Administrator login -> consolidated notification -> discoverable `Needs review` event -> eligible selection/action -> successful acknowledgement -> `Reviewed` with persistent reviewer/time -> acknowledgement visible in Audit Trail -> duplicate prevented.
-- [ ] **Persistent Administrator review reminder (BT-AUD-013):** while reviews remain outstanding, show an Administrator-only, non-blocking infobar across main navigation with the live count, clear review message and direct action to the pending Audit Trail set. Refresh after review changes and remove at zero. Retain the login popup. Implement through presentation-independent review state/count/navigation contracts so WinForms presentation can later be replaced by native WinUI 3 `InfoBar` without rewriting business logic.
+- [x] **Persistent Administrator review reminder (BT-AUD-013) — IMPLEMENTED, acceptance pending:** navigation-wide WinForms panel consumes presentation-independent service state/change contracts; future WinUI 3 maps this presentation to native `InfoBar` without changing review semantics.
 - [ ] **Service security boundary:** Administrator audit-review capability remains service-authorized under BT-SEC-005 and BT-CORR-001/004/011. Viewer and Operator UI visibility must never grant Administrator acknowledgement capability.
-- [ ] **Context-sensitive batch detail (BT-AUD-009):** enable **View Batch Detail** only when the selected event has authoritative persisted `MovementBatch` detail; disable for no selection and non-batch events instead of knowingly opening the invalid-selection message. Preserve existing authoritative batch detail.
+- [x] **Context-sensitive batch/detail routing (BT-AUD-009/010) — IMPLEMENTED, acceptance pending:** action enablement follows authoritative identity; correction/reversal events open exact movement-change lineage, while ordinary MovementBatch events retain persisted batch detail. Missing/ambiguous lineage fails closed.
 
 Future contextual drill-down is separately tracked by BT-AUD-010: supported events should route to authoritative existing detail surfaces (`MovementBatch`, ImportRun/Excel Import run detail, and correction/reversal lineage where implemented); events without meaningful detail have no enabled action. These additional routes are not implemented in this task.
 

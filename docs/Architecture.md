@@ -1,6 +1,6 @@
 # BinTracker Architecture
 
-Current baseline: **v0.5.0-alpha.8.5**
+Current baseline: **v0.5.0-alpha.8.6**
 
 ## Display and DPI boundary
 

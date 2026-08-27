@@ -1,6 +1,6 @@
 # Known Issues
 
-Current release: **v0.5.0-alpha.8.5**
+Current release: **v0.5.0-alpha.8.6**
 
 This file contains current defects/limitations that affect testing or production readiness. Completed history is in `docs/CHANGELOG.md`; future features are in `docs/Roadmap.md`; engineering cleanup is in `TECH-DEBT.md`.
 
@@ -32,7 +32,7 @@ Customer reminder preferences and the `ReminderDelivery` persistence model exist
 - alpha.8.1 corrects the release-blocking alpha.8 dialog-initialisation crash and clipped Movement History correction captions; the corrected UI requires renewed Windows smoke testing.
 - alpha.8 implements append-only single-movement and whole-persisted-batch correction, transactional lineage, database-enforced cross-command exclusion, Operator/Admin authority and Administrator acknowledgement of Operator changes.
 - Opening Adjustment and Excel Import generic correction/reversal remain blocked as required.
-- Correction dialogs, consolidated login notification, Audit Trail batch drill-down and real concurrent multi-window behaviour require Windows/operator smoke acceptance.
+- Correction dialogs, the redesigned Administrator review workflow/infobar/detail drill-down, and real concurrent multi-window behaviour require Windows/operator smoke acceptance. Automated tests do not prove 1920x1080/150% visual behaviour.
 **Area:** Movements / Audit
 
 ### Container display order permits duplicate priorities
@@ -70,6 +70,8 @@ Audit persistence is available and remains authoritative, but the Administrator 
 
 ## Cosmetic / deferred
 
+- Movement History still needs manual confirmation/fix for the clipped Movement ID header and avoidable horizontal scrolling/far-right Entered clipping at 1920x1080/150%.
+- Correct Entire Batch still needs manual confirmation/fix for unnecessary content scrollbars on a small two-line batch and the blank success-dialog title bar.
 - Import Review action icons remain smaller/cropped compared with the approved mockup, particularly container-related icons.
 - Review metric tiles do not yet have the approved rounded corners.
 - Password eye / Logout artwork is functional but not final visual polish.

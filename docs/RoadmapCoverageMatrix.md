@@ -1,13 +1,13 @@
 # BinTracker Roadmap Coverage Matrix
 
-Audited: 17 August 2026
+Audited: 27 August 2026
 
 | Workstream | v1? | Roadmap status / gate |
 |---|---|---|
 | Excel Import safety/provenance | Yes | Core complete; transactional failure detail + cosmetic validation remain |
 | Reports | Yes | v0.4 milestone completed/acceptance-cleaned before the v0.5 correction/reversal milestone; Movement History is now an integrated responsive main-workspace page with authoritative persisted Movement ID, reversal badges and customer-code export naming; configured Container Type filters remain reconciled; Daily Print Pack still awaits real preview/print acceptance |
 | Batch Entry acceptance/recovery | Yes | post-add reset and recovery choice are operator-confirmed; edit/remove/Enter/Esc-navigation cleanup is implemented and pending focused smoke acceptance |
-| Movement Correction/Reversal | Yes | Explicit milestone before branding/communications/dashboard |
+| Movement Correction/Reversal | Yes | Correction semantics and Administrator review workflow/infobar/exact lineage detail implemented; full Windows/DPI acceptance pending before milestone closure |
 | Security, Data Integrity & Code Quality Hardening | Yes — HARD GATE | Dedicated post-correction/pre-branding workstream; 50 external audit findings permanently tracked in SecurityHardeningRegister; per-build completeness/order gate and v1.0 unresolved-finding release block |
 | Business Information & Branding | Yes | Textual Default Report Header exists; logo + shared report/email branding remain |
 | Email/SMS Customer Communications | Yes | Google Workspace + Texto direction; reminder/send/history/audit workflow |

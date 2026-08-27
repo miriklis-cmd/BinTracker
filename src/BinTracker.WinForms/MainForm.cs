@@ -13,6 +13,8 @@ public sealed class MainForm : BinTrackerForm
     private readonly Label breadcrumbSeparator = new();
     private readonly Label breadcrumbCurrentPage = new();
     private readonly Panel content = new();
+    private readonly Panel administratorReviewBar = new();
+    private readonly Label administratorReviewText = new();
     private Control? selectedNav;
     private readonly Dictionary<string, Panel> navByPage = new(StringComparer.OrdinalIgnoreCase);
     private CustomersView? activeCustomersView;
@@ -127,8 +129,9 @@ public sealed class MainForm : BinTrackerForm
         Font = new Font("Segoe UI", 10F);
 
         Build();
+        audit.AdministratorReviewStateChanged += Audit_AdministratorReviewStateChanged;
         FormClosing += MainForm_FormClosing;
-        Shown += async (_, _) => await NotifyUnreviewedMovementChangesAsync();
+        Shown += async (_, _) => { await RefreshAdministratorReviewBarAsync(); await NotifyUnreviewedMovementChangesAsync(); };
         ShowDashboard();
         Shown += async (_, _) => await HandleRecoveredBatchAsync();
     }
@@ -144,8 +147,29 @@ public sealed class MainForm : BinTrackerForm
                 $"{pending.Count:N0} Operator movement change(s) await Administrator review.\r\nActors: {actors}\r\n\r\nThe changes are already operationally effective. Open Audit Trail now?",
                 "Movement Changes Await Review", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
         {
-            using var form = new AuditLogForm(audit); form.ShowDialog(this);
+            OpenAuditTrail(needsReview: true);
         }
+    }
+
+    private void Audit_AdministratorReviewStateChanged(object? sender, AdministratorReviewState state)
+    {
+        if (InvokeRequired) { BeginInvoke(() => ApplyAdministratorReviewState(state)); return; }
+        ApplyAdministratorReviewState(state);
+    }
+
+    private async Task RefreshAdministratorReviewBarAsync() =>
+        ApplyAdministratorReviewState(await audit.GetAdministratorReviewStateAsync());
+
+    private void ApplyAdministratorReviewState(AdministratorReviewState state)
+    {
+        administratorReviewText.Text = $"{state.PendingCount:N0} Operator movement change{(state.PendingCount == 1 ? "" : "s")} awaiting Administrator review.";
+        administratorReviewBar.Visible = session.Role == UserRole.Administrator && state.PendingCount > 0;
+    }
+
+    private void OpenAuditTrail(bool needsReview = false)
+    {
+        using var form = new AuditLogForm(audit, needsReview);
+        form.ShowDialog(this);
     }
 
     private void Build()
@@ -326,6 +350,20 @@ public sealed class MainForm : BinTrackerForm
         content.AutoScroll = true;
         content.BackColor = Color.FromArgb(245, 247, 250);
 
+        administratorReviewBar.Dock = DockStyle.Top;
+        administratorReviewBar.Height = 48;
+        administratorReviewBar.Padding = new Padding(24, 8, 24, 8);
+        administratorReviewBar.BackColor = Color.FromArgb(255, 244, 204);
+        administratorReviewBar.Visible = false;
+        administratorReviewText.AutoSize = true;
+        administratorReviewText.ForeColor = Color.FromArgb(92, 62, 0);
+        administratorReviewText.Font = new Font("Segoe UI Semibold", 10F, FontStyle.Bold);
+        administratorReviewText.Location = new Point(24, 14);
+        var openReviews = new Button { Text = "Review now", AutoSize = true, Dock = DockStyle.Right, Margin = Padding.Empty };
+        openReviews.Click += (_, _) => OpenAuditTrail(needsReview: true);
+        administratorReviewBar.Controls.Add(openReviews);
+        administratorReviewBar.Controls.Add(administratorReviewText);
+
         var status = new StatusStrip
         {
             SizingGrip = true
@@ -344,6 +382,7 @@ public sealed class MainForm : BinTrackerForm
         });
 
         Controls.Add(content);
+        Controls.Add(administratorReviewBar);
         Controls.Add(header);
         Controls.Add(side);
         Controls.Add(status);
@@ -1092,8 +1131,7 @@ public sealed class MainForm : BinTrackerForm
 
             auditButton.Click += (_, _) =>
             {
-                using var form = new AuditLogForm(audit);
-                form.ShowDialog(this);
+                OpenAuditTrail();
             };
 
             actions.Controls.Add(usersButton);

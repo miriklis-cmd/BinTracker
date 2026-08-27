@@ -1,5 +1,18 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.8.6
+
+Administrator review-workflow corrective build.
+
+- Audit Trail now shows explicit Needs review / Reviewed / blank state, reviewer/time, and All / Needs review / Reviewed filters.
+- Login notification and the persistent Administrator-only main-shell reminder open the pending set and focus the oldest pending event; the reminder tracks the live count and disappears at zero.
+- Review acknowledgement is selection-aware, confirmed with event context, updates immediately, advances to the next pending item, and records exact audit-event evidence.
+- Contextual detail and double-click routing open an exact Movement Change Detail for corrections/reversals or authoritative persisted batch detail for ordinary batch events. Missing or ambiguous lineage fails closed.
+- Movement Change Detail explains actor/time/reason, before-vs-after date/direction, original, neutraliser and replacement IDs/batches using persisted correction lineage.
+- Esc closes detail back to Audit Trail and closes Audit Trail back to BinTracker.
+- Correction transaction, authorization, immediate-effectiveness, immutable-history and reporting semantics are unchanged.
+- TEST REQUIRED: full Windows 11 1920x1080/150% and larger-production-display smoke acceptance; automated tests do not establish visual/DPI acceptance.
+
 ## v0.5.0-alpha.8.5
 
 Corrective usability build for Movement History and whole-batch correction acceptance.

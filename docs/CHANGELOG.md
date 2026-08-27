@@ -1,3 +1,11 @@
+## v0.5.0-alpha.8.6
+
+- Implemented the Administrator movement-change review workflow: explicit state/filtering, deterministic pending routing, contextual eligibility/confirmation, immediate count/state feedback and exact-event acknowledgement evidence.
+- Added a persistent Administrator-only main-shell review reminder backed by presentation-independent audit service state/change contracts; future WinUI 3 maps the panel to native InfoBar presentation.
+- Replaced generic correction-event batch drill-down with exact persisted correction/reversal lineage detail and retained authoritative batch detail for ordinary MovementBatch events.
+- Added Esc detail → Audit Trail → underlying BinTracker hierarchy and focused unit/integration regressions.
+- Preserved alpha.8.5 correction transaction and effective-report semantics. Windows/DPI acceptance remains pending.
+
 ## v0.5.0-alpha.8.5
 
 - Added the authoritative persisted Movement ID to Movement History immediately after Date and to its PDF/CSV exports.

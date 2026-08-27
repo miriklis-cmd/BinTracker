@@ -1,6 +1,6 @@
 # BinTracker Active Test Checklist
 
-Current baseline: **v0.5.0-alpha.8.5**
+Current baseline: **v0.5.0-alpha.8.6**
 
 Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
 
@@ -9,7 +9,7 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 ## Release / audit / packaging gate
 
 - [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.8.5 and the actually resolved installed SDK.
+- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.8.6 and the actually resolved installed SDK.
 - [ ] Restore succeeds; full solution builds with zero warnings.
 - [ ] All unit tests pass; all integration tests pass.
 - [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
@@ -191,6 +191,8 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 - [ ] Mark Selected Reviewed enables only for a selected unreviewed, review-required Operator correction/reversal; it stays disabled for no selection, Administrator changes, unrelated events and already-reviewed events.
 - [ ] Review acknowledgement persists reviewer/time, writes a visible acknowledgement audit event and cannot be repeated; Viewer/Operator remain denied at the service boundary.
 - [ ] View Batch Detail is disabled for no selection/non-batch events and enabled only for authoritative persisted MovementBatch detail.
+- [ ] Double-click a reviewable movement-change event and confirm Movement Change Detail shows actor/time/reason, exact original/neutraliser/replacement IDs and original-vs-corrected date/direction without unrelated same-date/customer rows.
+- [ ] Press Esc in Movement Change Detail/Batch Detail to return to Audit Trail, then Esc in Audit Trail to return to the underlying BinTracker screen without exiting the application.
 - [ ] Business logo + shared generated-output branding.
 - [ ] Google Workspace email + Texto SMS communications, templates, manual/automatic sends, opt-out, delivery history, retries/idempotency and audit.
 - [ ] Dashboard design discussion **before code**, covering KPIs/charts/drill-through/attention/recent activity/ageing/forecasting-ML/large-monitor behavior.

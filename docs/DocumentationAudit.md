@@ -1,5 +1,15 @@
 # Documentation Audit Record
 
+## v0.5.0-alpha.8.6 Administrator review-workflow corrective build
+
+- [x] Governing Markdown/register/checklist set and clean pushed alpha.8.5 checkpoint inspected before implementation; accepted correction semantics and permanent IDs retained.
+- [x] Existing per-`AuditEvent` review storage retained; no competing review store or correction transaction change introduced.
+- [x] BT-AUD-007..010/013 reconciled to implemented-static/manual-acceptance-pending state; BT-AUD-014 adds the explicit Esc hierarchy.
+- [x] Review filters, eligibility, exact-event acknowledgement/count transitions, exact lineage resolution and fail-closed behaviour receive deterministic service/helper regression coverage.
+- [x] Source audit passed at 229 unique permanent requirement IDs/25 Markdown files; restore succeeded; canonical BAT built with 0 warnings/0 errors and passed 204 unit + 89 integration tests.
+- [x] Package audit passed with ZIP filename, sole root, Version and InformationalVersion all `0.5.0-alpha.8.6`.
+- [ ] Full Windows 11 1920x1080/150% and larger-display smoke acceptance remains required; this document does not claim visual acceptance.
+
 ## v0.5.0-alpha.8.5 Movement History identity and batch-dialog DPI correction
 
 - [x] All repository Markdown files and release/build/audit scripts enumerated; governing architecture, requirements, security, testing, versioning, checklist and current release state reviewed before source inspection.

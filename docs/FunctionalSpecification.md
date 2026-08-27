@@ -42,6 +42,7 @@
 - BT-MOVE-020: Mark Selected Reviewed is available only for an unreviewed, review-required Operator correction/reversal selected by an Administrator. Review evidence includes reviewer and UTC timestamp, acknowledgement is audited, and duplicate acknowledgement is rejected; authorization remains enforced by the service boundary.
 - BT-MOVE-021: Audit Trail detail actions are context-sensitive. View Batch Detail is available only for events backed by authoritative persisted MovementBatch detail; future supported entity types route to their authoritative detail surface and events without meaningful detail expose no enabled action.
 - BT-MOVE-023 / BT-AUD-013: Administrator sessions require a persistent, non-blocking review infobar across main navigation whenever Operator correction/reversal reviews are outstanding. It shows the current count, explains that Operator movement changes require review, opens the pending Audit Trail set, refreshes after review-state changes and disappears at zero. It is Administrator-only, does not block operations, and supplements rather than replaces the login popup. State/count/navigation contracts are presentation-independent for WinForms and future WinUI 3.
+- BT-AUD-010/014: Correction/reversal detail is resolved from the selected audit event's exact persisted lineage and explains original, neutraliser and replacement values/IDs; ambiguous identity fails closed. Esc returns detail to Audit Trail and Audit Trail to the underlying BinTracker screen.
 
 ## Dashboard
 

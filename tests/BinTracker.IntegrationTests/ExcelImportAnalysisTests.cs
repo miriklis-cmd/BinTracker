@@ -109,6 +109,7 @@ public sealed class ExcelImportAnalysisTests
 
     private sealed class TestAuditService : IAuditService
     {
+        public event EventHandler<AdministratorReviewState>? AdministratorReviewStateChanged { add { } remove { } }
         public Task WriteAsync(
             string action,
             string entityType,
@@ -127,6 +128,13 @@ public sealed class ExcelImportAnalysisTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<AuditEvent>>([]);
 
+        public Task<IReadOnlyList<AuditTrailRow>> GetAuditTrailAsync(AuditReviewFilter filter = AuditReviewFilter.All,
+            int limit = 500, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<AuditTrailRow>>([]);
+
+        public Task<AdministratorReviewState> GetAdministratorReviewStateAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new AdministratorReviewState(0));
+
         public Task<IReadOnlyList<AuditEvent>> GetUnreviewedMovementChangesAsync(
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<AuditEvent>>([]);
@@ -139,6 +147,9 @@ public sealed class ExcelImportAnalysisTests
             int batchId,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<MovementBatchAuditLine>>([]);
+
+        public Task<MovementChangeAuditDetail?> GetMovementChangeDetailAsync(long auditEventId,
+            CancellationToken cancellationToken = default) => Task.FromResult<MovementChangeAuditDetail?>(null);
     }
 
     // The production implementation is internal, so this tiny test adapter
