@@ -42,7 +42,7 @@
 - BT-MOVE-020: Mark Selected Reviewed is available only for an unreviewed, review-required Operator correction/reversal selected by an Administrator. Review evidence includes reviewer and UTC timestamp, acknowledgement is audited, and duplicate acknowledgement is rejected; authorization remains enforced by the service boundary.
 - BT-MOVE-021: Audit Trail detail actions are context-sensitive. View Batch Detail is available only for events backed by authoritative persisted MovementBatch detail; future supported entity types route to their authoritative detail surface and events without meaningful detail expose no enabled action.
 - BT-MOVE-023 / BT-AUD-013: Administrator sessions require a persistent, non-blocking review infobar across main navigation whenever Operator correction/reversal reviews are outstanding. It shows the current count, explains that Operator movement changes require review, opens the pending Audit Trail set, refreshes after review-state changes and disappears at zero. It is Administrator-only, does not block operations, and supplements rather than replaces the login popup. State/count/navigation contracts are presentation-independent for WinForms and future WinUI 3.
-- BT-AUD-010/014: Correction/reversal detail is resolved from the selected audit event's exact persisted lineage and explains original, neutraliser and replacement values/IDs; ambiguous identity fails closed. Esc returns detail to Audit Trail and Audit Trail to the underlying BinTracker screen.
+- BT-AUD-010/014: Correction/reversal detail and an exact single-event review acknowledgement resolve the referenced audit event's persisted lineage and explain only actual before/after field differences plus original/neutraliser/replacement IDs. Invalid identity fails closed. Esc returns detail to Audit Trail and Audit Trail to BinTracker.
 
 ## Dashboard
 
@@ -288,7 +288,7 @@
 - BT-REPORT-HISTORY-010: One Include notes in exports option controls Notes in both PDF and CSV.
 - BT-REPORT-HISTORY-011: PDF generation is audited as `MOVEMENT_HISTORY_REPORT_GENERATED`.
 - BT-REPORT-HISTORY-012: The on-screen grid and PDF/CSV exports show the authoritative persisted Movement ID used by correction, reversal and audit references. It sorts numerically and remains associated with its typed movement row through filtering and multi-column sorting.
-- BT-REPORT-HISTORY-013: Correct Entire Batch keeps its Cancel/final action band visible while the batch preview and correction fields scroll within the available working area when necessary, including Windows 11 at 1920x1080 and 150% scaling.
+- BT-REPORT-HISTORY-013: Correct Entire Batch keeps heading/context, correction fields and Cancel/final action visible; only a genuinely long persisted movement list scrolls vertically. Ordinary small batches have no form/content horizontal or vertical scrollbar at Windows 11 1920x1080/150%.
 
 
 ## BinTracker Product Branding

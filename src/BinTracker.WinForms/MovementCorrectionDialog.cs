@@ -99,7 +99,7 @@ internal sealed class BatchCorrectionDialog : BinTrackerForm
     public BatchCorrectionDialog(MovementBatchCorrectionDetail batch, DateOnly businessToday)
     {
         Text = "Correct Entire Saved Batch"; StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.FixedDialog; ClientSize = new Size(720, 600);
+        FormBorderStyle = FormBorderStyle.FixedDialog; ClientSize = new Size(780, 620);
         AutoScaleMode = AutoScaleMode.Dpi; Font = new Font("Segoe UI", 10F);
         MaximizeBox = false; MinimizeBox = false; ShowInTaskbar = false;
         date.MaxDate = businessToday.ToDateTime(TimeOnly.MinValue);
@@ -109,37 +109,38 @@ internal sealed class BatchCorrectionDialog : BinTrackerForm
             batch, directionChoices.Select(x => x.Value).ToArray());
         direction.Items.AddRange(directionChoices);
         direction.SelectedIndex = directionIndex;
-        var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+        // Only the potentially long persisted-line list scrolls. Batch identity,
+        // correction controls and the alpha.8.5 fixed action band stay visible.
+        var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, Padding = new Padding(24, 18, 24, 0) };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var scrollHost = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
-        var panel = new FlowLayoutPanel
-        {
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
-            Padding = new Padding(24),
-            Width = 690
-        };
-        panel.Controls.Add(new Label { Text = "Correct Entire Persisted Batch", AutoSize = true, Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold) });
-        panel.Controls.Add(new Label { Text = $"Batch #{batch.BatchId}\r\n{batch.LineCount:N0} affected lines · {batch.TotalContainers:N0} total containers\r\nExisting date: {batch.MovementDate:dd/MM/yyyy}\r\nExisting direction: {batch.Direction.ToString().ToUpperInvariant()}\r\n\r\nEVERY line in this persisted batch will be neutralised and replaced atomically.", AutoSize = true, MaximumSize = new Size(620, 0), Margin = new Padding(0, 10, 0, 14) });
-        var preview = new ListBox { Width = 640, Height = 120, IntegralHeight = false };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.Controls.Add(new Label { Text = "Correct Entire Persisted Batch", AutoSize = true, Font = new Font("Segoe UI Semibold", 18F, FontStyle.Bold), Margin = new Padding(0, 0, 0, 8) }, 0, 0);
+        root.Controls.Add(new Label { Text = $"Batch #{batch.BatchId} · {batch.LineCount:N0} affected lines · {batch.TotalContainers:N0} total containers\r\nExisting date: {batch.MovementDate:dd/MM/yyyy} · Existing direction: {batch.Direction.ToString().ToUpperInvariant()}\r\nEVERY line in this persisted batch will be neutralised and replaced atomically.", AutoSize = true, MaximumSize = new Size(710, 0), Margin = new Padding(0, 0, 0, 10) }, 0, 1);
+        var preview = new ListBox { Dock = DockStyle.Fill, IntegralHeight = false, HorizontalScrollbar = false, MinimumSize = new Size(0, 100), Margin = new Padding(0, 0, 0, 10) };
         preview.Items.AddRange(batch.Lines.Select(x =>
             (object)$"Movement #{x.MovementId} · {x.CustomerCode} — {x.CustomerName} · {x.ContainerType} · {x.Quantity:N0}").ToArray());
-        panel.Controls.Add(preview);
-        panel.Controls.Add(changeDate); panel.Controls.Add(date); panel.Controls.Add(changeDirection); panel.Controls.Add(direction);
-        panel.Controls.Add(new Label { Text = "Correction reason (required)", AutoSize = true, Margin = new Padding(0, 12, 0, 3) });
-        var reasonHost = new Panel { Width = 640, Height = 90, Margin = Padding.Empty };
-        reasonHost.Controls.Add(reason);
-        panel.Controls.Add(reasonHost);
+        root.Controls.Add(preview, 0, 2);
+        var fields = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, RowCount = 3, Margin = Padding.Empty };
+        fields.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 310)); fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        fields.Controls.Add(changeDate, 0, 0); fields.Controls.Add(date, 1, 0);
+        fields.Controls.Add(changeDirection, 0, 1); fields.Controls.Add(direction, 1, 1);
+        var reasonLabel = new Label { Text = "Correction reason (required)", AutoSize = true, Margin = new Padding(0, 10, 0, 3) };
+        fields.Controls.Add(reasonLabel, 0, 2);
+        fields.SetColumnSpan(reasonLabel, 2);
+        var reasonHost = new Panel { Dock = DockStyle.Top, Height = 76, Margin = new Padding(0, 0, 0, 8) }; reasonHost.Controls.Add(reason);
+        var fieldHost = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1, RowCount = 2, Margin = Padding.Empty };
+        fieldHost.Controls.Add(fields, 0, 0); fieldHost.Controls.Add(reasonHost, 0, 1);
+        root.Controls.Add(fieldHost, 0, 3);
         var buttons = new FlowLayoutPanel
         {
             AutoSize = true,
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.RightToLeft,
             WrapContents = false,
-            Padding = new Padding(16, 10, 16, 10)
+            Padding = new Padding(0, 8, 0, 10)
         };
         var save = new Button { Text = "Confirm Every Line", Size = new Size(180, 40) };
         var cancel = new Button { Text = "Cancel", Size = new Size(110, 40) };
@@ -147,9 +148,7 @@ internal sealed class BatchCorrectionDialog : BinTrackerForm
         cancel.Click += (_, _) => DialogResult = DialogResult.Cancel;
         buttons.Controls.Add(save);
         buttons.Controls.Add(cancel);
-        scrollHost.Controls.Add(panel);
-        root.Controls.Add(scrollHost, 0, 0);
-        root.Controls.Add(buttons, 0, 1);
+        root.Controls.Add(buttons, 0, 4);
         Controls.Add(root);
         AcceptButton = save;
         CancelButton = cancel;

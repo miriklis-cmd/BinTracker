@@ -66,7 +66,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         SelectionMode = DataGridViewSelectionMode.FullRowSelect,
         RowHeadersVisible = false,
         AutoGenerateColumns = false,
-        AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
+        AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells,
         BackgroundColor = Color.White,
         BorderStyle = BorderStyle.FixedSingle,
         ScrollBars = ScrollBars.Both
@@ -573,7 +573,8 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             Enabled = false; UseWaitCursor = true;
             await corrections.CorrectBatchAsync(new CorrectBatchRequest(Guid.NewGuid(), batch.BatchId,
                 dialog.CorrectedDate, dialog.CorrectedDirection, dialog.Reason));
-            MessageBox.Show(this, "The entire batch was corrected atomically. Every original line remains preserved.");
+            MessageBox.Show(this, "The entire batch was corrected atomically. Every original line remains preserved.",
+                "Batch Corrected", MessageBoxButtons.OK, MessageBoxIcon.Information);
             await LoadReportAsync();
         }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Correct Entire Batch", MessageBoxButtons.OK, MessageBoxIcon.Error); }
@@ -583,19 +584,19 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     private void ConfigureGrid()
     {
         grid.RowTemplate.Height = 30;
-        grid.Columns.Add(Column("Date", 150, 146, "Date"));
-        grid.Columns.Add(Column("Movement ID", 118, 108, "MovementId"));
-        grid.Columns.Add(Column("Code", 130, 120, "Code"));
-        grid.Columns.Add(Column("Customer", 210, 175, "Customer"));
-        grid.Columns.Add(Column("Type", 86, 80, "Type"));
-        grid.Columns.Add(Column("Container", 105, 96, "Container"));
-        grid.Columns.Add(Column("Direction", 112, 106, "Direction"));
-        grid.Columns.Add(Column("Qty", 62, 56, "Quantity"));
-        grid.Columns.Add(Column("Source", 125, 116, "Source"));
-        grid.Columns.Add(Column("Reference", 108, 96, "Reference"));
-        grid.Columns.Add(Column("Status", 220, 210, "Status"));
-        grid.Columns.Add(Column("Notes", 175, 155, "Notes"));
-        grid.Columns.Add(Column("Entered by", 105, 90, "EnteredBy"));
+        grid.Columns.Add(Column("Date", 125, 118, "Date"));
+        grid.Columns.Add(Column("Movement ID", 112, 108, "MovementId"));
+        grid.Columns.Add(Column("Code", 100, 90, "Code"));
+        grid.Columns.Add(Column("Customer", 185, 160, "Customer"));
+        grid.Columns.Add(Column("Type", 78, 72, "Type"));
+        grid.Columns.Add(Column("Container", 102, 92, "Container"));
+        grid.Columns.Add(Column("Direction", 98, 92, "Direction"));
+        grid.Columns.Add(Column("Qty", 58, 52, "Quantity"));
+        grid.Columns.Add(Column("Source", 108, 98, "Source"));
+        grid.Columns.Add(Column("Reference", 92, 82, "Reference"));
+        grid.Columns.Add(Column("Status", 185, 165, "Status", wrap: true));
+        grid.Columns.Add(Column("Notes", 155, 135, "Notes", wrap: true));
+        grid.Columns.Add(Column("Entered by", 92, 84, "EnteredBy"));
 
         grid.SortCompare += Grid_SortCompare;
         grid.CellPainting += Grid_CellPainting;
@@ -665,17 +666,15 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         using (var brush = new SolidBrush(fill))
             graphics.FillPath(brush, path);
 
+        var textFlags = TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.NoPrefix |
+            (isDirection ? TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis : TextFormatFlags.WordBreak);
         TextRenderer.DrawText(
             graphics,
             text,
             cellFont,
             Rectangle.Inflate(badgeBounds, -8, 0),
             foreground,
-            TextFormatFlags.VerticalCenter |
-            TextFormatFlags.Left |
-            TextFormatFlags.EndEllipsis |
-            TextFormatFlags.SingleLine |
-            TextFormatFlags.NoPrefix);
+            textFlags);
 
         e.Handled = true;
     }
@@ -929,16 +928,16 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         {
             var fixedWidths = new Dictionary<string, int>(StringComparer.Ordinal)
             {
-                ["Date"] = 150,
-                ["MovementId"] = 118,
-                ["Code"] = 130,
-                ["Type"] = 86,
-                ["Container"] = 105,
-                ["Direction"] = 112,
-                ["Quantity"] = 62,
-                ["Source"] = 125,
-                ["Reference"] = 108,
-                ["EnteredBy"] = 105
+                ["Date"] = 125,
+                ["MovementId"] = 112,
+                ["Code"] = 100,
+                ["Type"] = 78,
+                ["Container"] = 102,
+                ["Direction"] = 98,
+                ["Quantity"] = 58,
+                ["Source"] = 108,
+                ["Reference"] = 92,
+                ["EnteredBy"] = 92
             };
 
             foreach (var pair in fixedWidths)
@@ -954,9 +953,9 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             var fixedTotal = fixedWidths.Values.Sum();
             var flexible = new[]
             {
-                (Name: "Customer", Minimum: 175, Weight: 0.40),
-                (Name: "Status", Minimum: 210, Weight: 0.28),
-                (Name: "Notes", Minimum: 155, Weight: 0.32)
+                (Name: "Customer", Minimum: 160, Weight: 0.40),
+                (Name: "Status", Minimum: 165, Weight: 0.30),
+                (Name: "Notes", Minimum: 135, Weight: 0.30)
             };
             var minimumFlexibleTotal = flexible.Sum(item => item.Minimum);
             var minimumTotal = fixedTotal + minimumFlexibleTotal;
@@ -1050,7 +1049,8 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         string header,
         int width,
         int minimumWidth,
-        string name) =>
+        string name,
+        bool wrap = false) =>
         new()
         {
             Name = name,
@@ -1058,7 +1058,11 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             Width = width,
             MinimumWidth = minimumWidth,
             AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
-            SortMode = DataGridViewColumnSortMode.Automatic
+            SortMode = DataGridViewColumnSortMode.Automatic,
+            DefaultCellStyle = new DataGridViewCellStyle
+            {
+                WrapMode = wrap ? DataGridViewTriState.True : DataGridViewTriState.False
+            }
         };
 
     private static string CustomerTypeText(CustomerType type) =>

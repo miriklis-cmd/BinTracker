@@ -1,12 +1,14 @@
 # BinTracker Architecture
 
-Current baseline: **v0.5.0-alpha.8.6**
+Current baseline: **v0.5.0-alpha.8.7**
 
 ## Display and DPI boundary
 
 The required frequently-used laptop acceptance configuration is Windows 11 at **1920x1080 with 150% Windows scaling**. Every ordinary workflow and modal must remain accessible: action bands stay visible, content fits or scrolls within the working area, text does not clip, controls do not overlap, report grids remain usable, and normal WinForms DPI scaling is preserved.
 
 The primary production environment uses a substantially larger display. The laptop configuration is an acceptance floor for usability, not a direction to globally reduce information density or optimise every screen specifically for a 14-inch panel. Layout concepts should remain presentation-neutral where practical so a future WinUI 3 client can replace WinForms presentation without moving business rules into UI controls; no WinUI dependency is introduced in v1.
+
+Detail/investigation windows use available working-area space for compact identifiers and values, wrapping only genuine prose such as notes/reasons. Main report grids preserve single-line structured fields and selectively wrap long semantic Status/Notes cells with auto-height so the primary workspace does not become unnecessarily wide.
 
 ## Permanent target and hard gate
 

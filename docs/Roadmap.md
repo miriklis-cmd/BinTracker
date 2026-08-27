@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.5.0-alpha.8.6**
+Current planning baseline: **v0.5.0-alpha.8.7**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -190,7 +190,7 @@ Required dashboard pass:
 
 #### Pre-v1 Audit Trail / Administrator oversight acceptance
 
-The append-only evidence and corrective review workflow below are implemented in alpha.8.6; Windows/manual acceptance remains pending:
+The alpha.8.6 core review workflow was manually accepted. Alpha.8.7 adds acknowledgement drill-through, exact difference/readability improvements, Movement History width/wrapping correction and small-batch dialog cleanup; those new visual changes require Windows/DPI retest:
 
 - [x] **Review-state discoverability (BT-AUD-007) — IMPLEMENTED, acceptance pending:** explicit state and All/Needs review/Reviewed filtering.
 - [x] **Context-sensitive acknowledgement (BT-AUD-008) — IMPLEMENTED, acceptance pending:** deterministic eligibility, contextual confirmation, immediate status/count feedback, next-pending selection, exact-event evidence and duplicate rejection.

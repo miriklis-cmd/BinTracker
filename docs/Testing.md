@@ -251,7 +251,7 @@ Manual acceptance verifies responsive layout, Last 7 Days / Last 30 Days / This 
 
 Movement History identity acceptance additionally verifies that the displayed/exported Movement ID is the persisted identifier used by correction/reversal, remains paired with the correct row after filtering and sorting, sorts numerically (for example 2 before 10), and participates in Shift+click multi-column sorting without changing selection semantics.
 
-Required DPI smoke configuration: **Windows 11, 1920x1080, 150% Windows scaling**. Movement History must remain usable with a readable Movement ID. Correct Entire Batch must remain inside the usable working area; its movement list must be inspectable/scrollable, the reason editable, and Cancel/final action fully visible and clickable with no clipped text or overlapping controls. Also check a batch large enough to scroll and confirm the substantially larger primary production display is not obviously degraded. This is a manual visual gate; build/unit success does not prove it.
+Required DPI smoke configuration: **Windows 11, 1920x1080, 150% Windows scaling**. Movement History must show the full Movement ID header and Entered by column without normal-case horizontal scrolling; Status/Notes alone may wrap with auto-height. Correct Entire Batch must keep heading/context/fields/reason/actions visible, show no form/content scrollbar for a two-line batch, and scroll only the movement list for a genuinely long batch. Also confirm the substantially larger primary production display is not degraded. This is a manual visual gate; build/unit success does not prove it.
 
 
 ## Interactive report refresh acceptance
@@ -419,7 +419,7 @@ Audit Trail review Windows/regression acceptance must prove the complete sequenc
 
 Persistent-reminder acceptance (BT-AUD-013) must additionally prove Administrator-only visibility across main navigation, accurate initial and refreshed outstanding counts, direct routing to the pending Audit Trail set, persistence until the last review is acknowledged, automatic disappearance at zero, retention of the existing login popup and no approval/blocking effect. Contract tests should cover presentation-independent review state/count/navigation separately from WinForms rendering; future WinUI 3 uses the same contract.
 
-Movement-change detail acceptance must verify the selected audit event's exact original/neutraliser/replacement lineage, actor/time/reason, before-vs-after date/direction and persisted batch IDs, including exclusion of unrelated same-date/customer movements and fail-closed missing/ambiguous identity. Esc must return detail to Audit Trail and Audit Trail to the underlying main screen (BT-AUD-010/014).
+Movement-change detail acceptance must verify exact original/neutraliser/replacement lineage, actor/time/reason, field-accurate before/after differences and persisted batch IDs, including exclusion of unchanged/unrelated rows and fail-closed identity. An exact single-event review acknowledgement must open the same referenced lineage with reviewer/time, remain non-reviewable, and reject missing/invalid references. Esc hierarchy remains BT-AUD-010/014.
 
 Selection-state acceptance must verify **Mark Selected Reviewed** is disabled for no selection, Administrator corrections/reversals, login/logout, report generation, customer/container/import events, already-reviewed rows and every other non-reviewable event. Viewer and Operator must fail unauthorized Administrator review attempts at the service boundary regardless of UI visibility.
 

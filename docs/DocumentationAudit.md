@@ -1,5 +1,15 @@
 # Documentation Audit Record
 
+## v0.5.0-alpha.8.7 Windows-acceptance corrective/readability build
+
+- [x] Clean committed/pushed alpha.8.6 checkpoint verified at `e2ade92`; governing requirements/checklists and exact touched UI/service paths inspected before edits.
+- [x] Alpha.8.6 manually accepted review-state/filter/routing/confirmation/count/infobar/Esc behavior retained and register statuses reconciled.
+- [x] Existing BT-AUD-007..014, BT-UI-015 and BT-REPORT-HISTORY-013 extended without duplicate IDs; correction transaction path unchanged.
+- [x] Exact comparison/action-label/acknowledgement-resolution tests added; existing correction/history/export gates retained.
+- [x] Source/governance/security audit passed at 229 unique permanent IDs/25 Markdown files; restore succeeded; canonical BAT built with 0 warnings/0 errors and passed 212 unit + 90 integration tests.
+- [x] Package audit passed with ZIP filename, sole root, Version and InformationalVersion all `0.5.0-alpha.8.7`.
+- [ ] Alpha.8.7 Windows 11 1920x1080/150% and larger-display visual acceptance remains required.
+
 ## v0.5.0-alpha.8.6 Administrator review-workflow corrective build
 
 - [x] Governing Markdown/register/checklist set and clean pushed alpha.8.5 checkpoint inspected before implementation; accepted correction semantics and permanent IDs retained.

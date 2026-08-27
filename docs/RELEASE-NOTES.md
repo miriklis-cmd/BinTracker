@@ -1,5 +1,18 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.8.7
+
+Windows-acceptance corrective/readability build following the manually accepted alpha.8.6 review workflow.
+
+- Renames Audit Trail Success to Action succeeded, adds an explanatory tooltip, and displays human-facing Action labels without mutating stored action values.
+- Makes exact single-event review acknowledgements navigable to the referenced movement change, including reviewer/time, with invalid references failing closed and acknowledgements remaining non-reviewable.
+- Enlarges Movement Change Detail from the current monitor working area, widens structured columns, preserves full line-role wording, and wraps only long reference/notes prose.
+- Moves exact before/after comparison into reusable service code and reports only fields that changed, including quantity/customer/container/reference/notes plus batch date/direction.
+- Rebalances Movement History compact widths so Movement ID/Entered by fit normally and selectively wraps Status/Notes with auto-height.
+- Changes Correct Entire Batch so only the movement list scrolls; heading/context/fields/reason and the fixed action band remain visible. Successful completion is titled `Batch Corrected`.
+- Correction/reversal transaction semantics are unchanged.
+- TEST REQUIRED: full Windows 11 1920x1080/150% and larger-display smoke acceptance; automated tests do not prove DPI rendering.
+
 ## v0.5.0-alpha.8.6
 
 Administrator review-workflow corrective build.

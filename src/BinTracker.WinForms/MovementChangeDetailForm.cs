@@ -8,28 +8,33 @@ public sealed class MovementChangeDetailForm : BinTrackerForm
     {
         Text = detail.Action == "MOVEMENT_BATCH_CORRECTED" ? "Batch Correction Detail" : "Movement Change Detail";
         StartPosition = FormStartPosition.CenterParent; AutoScaleMode = AutoScaleMode.Dpi; KeyPreview = true;
-        ClientSize = new Size(1180, 680); MinimumSize = new Size(900, 560);
+        ClientSize = new Size(1380, 780); MinimumSize = new Size(1080, 640);
         var summary = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, Padding = new Padding(16, 12, 16, 8) };
         summary.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 190)); summary.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         Add(summary, "Performed by", detail.Actor); Add(summary, "Changed", $"{detail.ChangedUtc:yyyy-MM-dd HH:mm:ss} UTC");
         Add(summary, "Original batch", detail.OriginalBatchId is int original ? $"Batch #{original}" : "Not a whole-batch correction");
         Add(summary, "Replacement batch", detail.ReplacementBatchId is int replacement ? $"Batch #{replacement}" : "Not applicable");
-        Add(summary, "What changed", DescribeChanges(detail.Lines));
+        if (detail.OpenedFromReviewAcknowledgement)
+            Add(summary, "Review acknowledgement", $"Showing movement change audit event #{detail.AuditEventId} referenced by the selected acknowledgement.");
+        if (detail.ReviewedUtc.HasValue)
+            Add(summary, "Reviewed", $"{detail.ReviewedBy ?? "Administrator"} · {detail.ReviewedUtc:yyyy-MM-dd HH:mm:ss} UTC");
+        Add(summary, "What changed", MovementChangeComparison.Describe(detail.Lines));
         Add(summary, "Correction reason", detail.Reason);
         var explanation = new Label { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(16, 4, 16, 8), ForeColor = Color.FromArgb(55, 65, 80),
             Text = "Original rows remain immutable. Neutralisers remove their original effect; corrected replacements carry the intended operational values." };
         var grid = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AutoGenerateColumns = false, RowHeadersVisible = false,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect, AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells,
             BackgroundColor = Color.White, ScrollBars = ScrollBars.Vertical, DataSource = detail.Lines.ToList() };
-        grid.Columns.Add(Column("Line role", nameof(MovementChangeAuditLine.Role), 155)); grid.Columns.Add(Column("Movement ID", nameof(MovementChangeAuditLine.MovementId), 95));
-        grid.Columns.Add(Column("Batch ID", nameof(MovementChangeAuditLine.BatchId), 75)); grid.Columns.Add(Column("Date", nameof(MovementChangeAuditLine.MovementDate), 90));
-        grid.Columns.Add(Column("Customer", nameof(MovementChangeAuditLine.CustomerCode), 90)); grid.Columns.Add(Column("Container", nameof(MovementChangeAuditLine.ContainerType), 125));
-        grid.Columns.Add(Column("Direction", nameof(MovementChangeAuditLine.Direction), 80)); grid.Columns.Add(Column("Quantity", nameof(MovementChangeAuditLine.Quantity), 75));
-        grid.Columns.Add(Column("Linked movement", nameof(MovementChangeAuditLine.LinkedMovementId), 105));
+        grid.Columns.Add(Column("Line role", nameof(MovementChangeAuditLine.Role), 190, wrap: true)); grid.Columns.Add(Column("Movement ID", nameof(MovementChangeAuditLine.MovementId), 115));
+        grid.Columns.Add(Column("Batch ID", nameof(MovementChangeAuditLine.BatchId), 90)); grid.Columns.Add(Column("Date", nameof(MovementChangeAuditLine.MovementDate), 115));
+        grid.Columns.Add(Column("Customer", nameof(MovementChangeAuditLine.CustomerCode), 105)); grid.Columns.Add(Column("Container", nameof(MovementChangeAuditLine.ContainerType), 150));
+        grid.Columns.Add(Column("Direction", nameof(MovementChangeAuditLine.Direction), 105)); grid.Columns.Add(Column("Quantity", nameof(MovementChangeAuditLine.Quantity), 95));
+        grid.Columns.Add(Column("Linked movement", nameof(MovementChangeAuditLine.LinkedMovementId), 135));
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Reference / notes", DataPropertyName = nameof(MovementChangeAuditLine.ReferenceAndNotes), AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, MinimumWidth = 180, DefaultCellStyle = new DataGridViewCellStyle { WrapMode = DataGridViewTriState.True } });
         var close = new Button { Text = "Close", AutoSize = true, DialogResult = DialogResult.Cancel };
         var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(12) };
         footer.Controls.Add(close); CancelButton = close; Controls.Add(grid); Controls.Add(explanation); Controls.Add(summary); Controls.Add(footer);
+        Shown += (_, _) => UseWorkingArea();
     }
 
     private static void Add(TableLayoutPanel panel, string label, string value)
@@ -38,19 +43,17 @@ public sealed class MovementChangeDetailForm : BinTrackerForm
         panel.Controls.Add(new Label { Text = label, AutoSize = true, Font = new Font("Segoe UI Semibold", 9.5F), Margin = new Padding(0, 3, 10, 3) }, 0, row);
         panel.Controls.Add(new Label { Text = value, AutoSize = true, MaximumSize = new Size(850, 0), Margin = new Padding(0, 3, 0, 3) }, 1, row);
     }
-    private static DataGridViewTextBoxColumn Column(string header, string property, int width) => new() { HeaderText = header, DataPropertyName = property, Width = width };
-
-    private static string DescribeChanges(IReadOnlyList<MovementChangeAuditLine> lines)
+    private static DataGridViewTextBoxColumn Column(string header, string property, int width, bool wrap = false) => new()
     {
-        var originals = lines.Where(x => x.Role == "Original").ToArray();
-        var replacements = lines.Where(x => x.Role == "Corrected replacement").ToArray();
-        if (originals.Length == 0 || replacements.Length == 0) return "A reversal neutralises the selected original movement.";
-        var changes = new List<string>();
-        var oldDates = originals.Select(x => x.MovementDate).Distinct().ToArray(); var newDates = replacements.Select(x => x.MovementDate).Distinct().ToArray();
-        var oldDirections = originals.Select(x => x.Direction).Distinct().ToArray(); var newDirections = replacements.Select(x => x.Direction).Distinct().ToArray();
-        if (!oldDates.SequenceEqual(newDates)) changes.Add($"Date: {string.Join(", ", oldDates)} → {string.Join(", ", newDates)}");
-        if (!oldDirections.SequenceEqual(newDirections)) changes.Add($"Direction: {string.Join(", ", oldDirections)} → {string.Join(", ", newDirections)}");
-        return changes.Count == 0 ? "Customer, container, quantity, reference and/or notes changed; compare original and replacement rows below." : string.Join("; ", changes);
+        HeaderText = header, DataPropertyName = property, Width = width,
+        DefaultCellStyle = new DataGridViewCellStyle { WrapMode = wrap ? DataGridViewTriState.True : DataGridViewTriState.False }
+    };
+
+    private void UseWorkingArea()
+    {
+        var working = Screen.FromControl(this).WorkingArea;
+        Size = new Size(Math.Min(1700, working.Width - 80), Math.Min(980, working.Height - 80));
+        Location = new Point(working.Left + (working.Width - Width) / 2, working.Top + (working.Height - Height) / 2);
     }
 }
 

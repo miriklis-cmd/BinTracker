@@ -537,6 +537,43 @@ public sealed class MovementCorrectionWorkflowTests
         Assert.Null(await h.Provider.GetRequiredService<IAuditService>().GetMovementChangeDetailAsync(id));
     }
 
+    [Fact]
+    public async Task Review_acknowledgement_navigates_to_exact_referenced_change_and_invalid_reference_fails_closed()
+    {
+        await using var h = await Harness.Create(UserRole.Operator);
+        var originalId = await h.AddMovement(new DateOnly(2026, 8, 20), MovementType.In, 7, h.CustomerId, 1);
+        var result = await h.Corrections.CorrectAsync(new(Guid.NewGuid(), originalId, new DateOnly(2026, 8, 20),
+            h.CustomerId, 1, MovementType.In, 5, "ref", "notes", "Quantity was wrong"));
+        await using (var db = await h.Factory.CreateDbContextAsync())
+        {
+            var admin = new UserAccount { Username = "admin", DisplayName = "Admin", PasswordHash = "x", PasswordSalt = "x", Role = UserRole.Administrator, IsActive = true };
+            db.Add(admin); await db.SaveChangesAsync(); h.Provider.GetRequiredService<UserSession>().SignIn(admin);
+        }
+        var audit = h.Provider.GetRequiredService<IAuditService>();
+        var change = Assert.Single(await audit.GetAuditTrailAsync(AuditReviewFilter.NeedsReview));
+        var direct = Assert.IsType<MovementChangeAuditDetail>(await audit.GetMovementChangeDetailAsync(change.Id));
+        await audit.MarkMovementChangesReviewedAsync([change.Id]);
+        var acknowledgement = Assert.Single(await audit.GetAuditTrailAsync(), x => x.Action == "MOVEMENT_CHANGE_REVIEWED");
+        Assert.False(acknowledgement.CanMarkReviewed); Assert.Equal(change.Id, acknowledgement.ReferencedMovementChangeAuditEventId);
+        Assert.Contains($"audit event #{change.Id}", acknowledgement.Description);
+        var throughAcknowledgement = Assert.IsType<MovementChangeAuditDetail>(await audit.GetMovementChangeDetailAsync(acknowledgement.Id));
+        Assert.True(throughAcknowledgement.OpenedFromReviewAcknowledgement);
+        Assert.Equal(direct.AuditEventId, throughAcknowledgement.AuditEventId);
+        Assert.Equal(direct.Lines.Select(x => x.MovementId), throughAcknowledgement.Lines.Select(x => x.MovementId));
+        Assert.Equal(result.Lines.Single().ReplacementMovementId,
+            throughAcknowledgement.Lines.Single(x => x.Role == "Corrected replacement").MovementId);
+        Assert.Equal("admin", throughAcknowledgement.ReviewedBy); Assert.NotNull(throughAcknowledgement.ReviewedUtc);
+
+        await using (var db = await h.Factory.CreateDbContextAsync())
+        {
+            db.AuditEvents.Add(new AuditEvent { Username = "admin", Action = "MOVEMENT_CHANGE_REVIEWED",
+                EntityType = "AuditEvent", EntityId = "999999", Description = "invalid", Succeeded = true });
+            await db.SaveChangesAsync();
+        }
+        var invalid = (await audit.GetAuditTrailAsync()).Single(x => x.Description == "invalid");
+        Assert.Null(await audit.GetMovementChangeDetailAsync(invalid.Id));
+    }
+
     private sealed class Harness : IAsyncDisposable
     {
         private readonly SqliteConnection connection;

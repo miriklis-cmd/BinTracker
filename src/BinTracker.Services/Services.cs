@@ -64,6 +64,7 @@ public sealed record AuditTrailRow(long Id, DateTime TimestampUtc, string Userna
     bool RequiresAdministratorReview, DateTime? ReviewedUtc, int? ReviewedByUserId,
     string? ReviewedByUsername)
 {
+    public string ActionDisplay => AuditActionDisplay.Label(Action);
     public string ReviewState => AuditReviewPolicy.StateText(RequiresAdministratorReview, ReviewedUtc);
     public string ReviewedBy => ReviewedUtc.HasValue
         ? $"{ReviewedByUsername ?? "Administrator"} · {ReviewedUtc.Value:yyyy-MM-dd HH:mm} UTC"
@@ -71,7 +72,28 @@ public sealed record AuditTrailRow(long Id, DateTime TimestampUtc, string Userna
     public bool CanMarkReviewed => AuditReviewPolicy.CanMarkReviewed(this);
     public bool HasAuthoritativeBatchDetail =>
         EntityType == "MovementBatch" && int.TryParse(EntityId, out _);
-    public bool HasMovementChangeDetail => AuditReviewPolicy.IsMovementChangeAction(Action);
+    public long? ReferencedMovementChangeAuditEventId =>
+        AuditReviewPolicy.TryGetAcknowledgedAuditEventId(Action, EntityType, EntityId, out var id) ? id : null;
+    public bool HasMovementChangeDetail =>
+        AuditReviewPolicy.IsMovementChangeAction(Action) || ReferencedMovementChangeAuditEventId.HasValue;
+}
+
+public static class AuditActionDisplay
+{
+    public static string Label(string action) => action switch
+    {
+        "MOVEMENT_REVERSED" => "Movement reversed",
+        "MOVEMENT_CORRECTED" => "Movement corrected",
+        "MOVEMENT_BATCH_CORRECTED" => "Batch corrected",
+        "MOVEMENT_CHANGE_REVIEWED" => "Movement change reviewed",
+        "LOGIN_SUCCESS" => "Login succeeded",
+        "LOGIN_FAILED" => "Login failed",
+        "LOGOUT" => "Logout",
+        _ => string.Join(' ', action.Split('_', StringSplitOptions.RemoveEmptyEntries)
+            .Select((word, index) => index == 0
+                ? char.ToUpperInvariant(word[0]) + word[1..].ToLowerInvariant()
+                : word.ToLowerInvariant()))
+    };
 }
 
 public static class AuditReviewPolicy
@@ -82,6 +104,12 @@ public static class AuditReviewPolicy
     };
 
     public static bool IsMovementChangeAction(string action) => MovementChangeActions.Contains(action);
+    public static bool TryGetAcknowledgedAuditEventId(string action, string entityType, string? entityId, out long id)
+    {
+        id = 0;
+        return action == "MOVEMENT_CHANGE_REVIEWED" && entityType == "AuditEvent" &&
+            long.TryParse(entityId, out id) && id > 0;
+    }
     public static string StateText(bool required, DateTime? reviewedUtc) =>
         !required ? string.Empty : reviewedUtc.HasValue ? "Reviewed" : "Needs review";
     public static bool CanMarkReviewed(AuditTrailRow? row) => row is not null && row.Succeeded &&
@@ -109,7 +137,65 @@ public sealed record MovementChangeAuditLine(string Role, long MovementId, int? 
 
 public sealed record MovementChangeAuditDetail(long AuditEventId, string Action, string Actor,
     DateTime ChangedUtc, string Reason, int? OriginalBatchId, int? ReplacementBatchId,
-    IReadOnlyList<MovementChangeAuditLine> Lines);
+    IReadOnlyList<MovementChangeAuditLine> Lines, bool OpenedFromReviewAcknowledgement = false,
+    string? ReviewedBy = null, DateTime? ReviewedUtc = null);
+
+public sealed record MovementChangeDifference(string Field, string OriginalValue, string CorrectedValue)
+{
+    public string Display => $"{Field}: {OriginalValue} → {CorrectedValue}";
+}
+
+/// <summary>Builds presentation-independent, field-accurate before/after correction differences.</summary>
+public static class MovementChangeComparison
+{
+    public static IReadOnlyList<MovementChangeDifference> Compare(IReadOnlyList<MovementChangeAuditLine> lines)
+    {
+        var originals = lines.Where(x => x.Role == "Original").OrderBy(x => x.MovementId).ToArray();
+        var replacements = lines.Where(x => x.Role == "Corrected replacement").OrderBy(x => x.MovementId).ToArray();
+        if (originals.Length == 0 || originals.Length != replacements.Length) return [];
+        if (originals.Length > 1) return CompareBatch(originals, replacements);
+        var before = originals[0]; var after = replacements[0];
+        var differences = new List<MovementChangeDifference>();
+        Add(differences, "Date", before.MovementDate.ToString("dd/MM/yyyy"), after.MovementDate.ToString("dd/MM/yyyy"));
+        Add(differences, "Customer", Customer(before), Customer(after));
+        Add(differences, "Container", before.ContainerType, after.ContainerType);
+        Add(differences, "Direction", before.Direction.ToString().ToUpperInvariant(), after.Direction.ToString().ToUpperInvariant());
+        Add(differences, "Quantity", before.Quantity.ToString("N0"), after.Quantity.ToString("N0"));
+        Add(differences, "Reference", Text(before.Reference), Text(after.Reference));
+        Add(differences, "Notes", Text(before.Notes), Text(after.Notes));
+        return differences;
+    }
+
+    public static string Describe(IReadOnlyList<MovementChangeAuditLine> lines)
+    {
+        var differences = Compare(lines);
+        if (differences.Count > 0) return string.Join(Environment.NewLine, differences.Select(x => x.Display));
+        return lines.Any(x => x.Role.Contains("reversal", StringComparison.OrdinalIgnoreCase))
+            ? "Reversal neutralises the selected original movement."
+            : "No corrected field difference could be resolved.";
+    }
+
+    private static IReadOnlyList<MovementChangeDifference> CompareBatch(
+        IReadOnlyList<MovementChangeAuditLine> originals, IReadOnlyList<MovementChangeAuditLine> replacements)
+    {
+        var result = new List<MovementChangeDifference>();
+        AddDistinct(result, "Date", originals.Select(x => x.MovementDate.ToString("dd/MM/yyyy")), replacements.Select(x => x.MovementDate.ToString("dd/MM/yyyy")));
+        AddDistinct(result, "Direction", originals.Select(x => x.Direction.ToString().ToUpperInvariant()), replacements.Select(x => x.Direction.ToString().ToUpperInvariant()));
+        return result;
+    }
+
+    private static void AddDistinct(List<MovementChangeDifference> result, string field,
+        IEnumerable<string> originals, IEnumerable<string> replacements)
+    {
+        var before = originals.Distinct().Order().ToArray(); var after = replacements.Distinct().Order().ToArray();
+        Add(result, field, string.Join(", ", before), string.Join(", ", after));
+    }
+    private static void Add(List<MovementChangeDifference> result, string field, string before, string after)
+    { if (!string.Equals(before, after, StringComparison.Ordinal)) result.Add(new(field, before, after)); }
+    private static string Customer(MovementChangeAuditLine line) => string.IsNullOrWhiteSpace(line.CustomerCode)
+        ? line.CustomerName : string.IsNullOrWhiteSpace(line.CustomerName) ? line.CustomerCode : $"{line.CustomerCode} — {line.CustomerName}";
+    private static string Text(string value) => string.IsNullOrWhiteSpace(value) ? "(blank)" : value;
+}
 
 internal sealed class AuditService(
     IDbContextFactory<BinTrackerDbContext> factory,
@@ -211,8 +297,9 @@ internal sealed class AuditService(
         db.AuditEvents.Add(new AuditEvent { TimestampUtc = reviewedAt, UserId = session.UserId,
             Username = session.Username, Action = "MOVEMENT_CHANGE_REVIEWED", EntityType = "AuditEvent",
             EntityId = string.Join(",", events.Select(x => x.Id)),
-            Description = $"Administrator {session.Username} acknowledged Operator movement change audit event(s) " +
-                $"{string.Join(", ", events.OrderBy(x => x.Id).Select(x => $"#{x.Id} {x.Action} ({x.EntityType} #{x.EntityId}) by {x.Username}"))}.",
+            Description = string.Join(" ", events.OrderBy(x => x.Id).Select(x =>
+                $"Administrator {session.Username} reviewed {AuditActionDisplay.Label(x.Action).ToLowerInvariant()} " +
+                $"#{x.EntityId} performed by {x.Username} (audit event #{x.Id}).")),
             BeforeValues = JsonSerializer.Serialize(events.Select(x => new { x.Id, x.Action, x.Username })),
             AfterValues = JsonSerializer.Serialize(new { ReviewedAt = reviewedAt, ReviewedBy = session.Username }),
             ComputerName = client.DeviceName, SessionId = session.SessionId, Succeeded = true });
@@ -234,8 +321,16 @@ internal sealed class AuditService(
     {
         if (session.Role != UserRole.Administrator) throw new UnauthorizedAccessException("Administrator access is required.");
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var auditEvent = await db.AuditEvents.AsNoTracking().SingleOrDefaultAsync(x => x.Id == auditEventId, cancellationToken);
+        var requestedEvent = await db.AuditEvents.AsNoTracking().SingleOrDefaultAsync(x => x.Id == auditEventId, cancellationToken);
+        if (requestedEvent is null) return null;
+        var openedFromAcknowledgement = AuditReviewPolicy.TryGetAcknowledgedAuditEventId(
+            requestedEvent.Action, requestedEvent.EntityType, requestedEvent.EntityId, out var referencedId);
+        var auditEvent = openedFromAcknowledgement
+            ? await db.AuditEvents.AsNoTracking().SingleOrDefaultAsync(x => x.Id == referencedId, cancellationToken)
+            : requestedEvent;
         if (auditEvent is null || !AuditReviewPolicy.IsMovementChangeAction(auditEvent.Action)) return null;
+        if (openedFromAcknowledgement && (!auditEvent.ReviewedUtc.HasValue ||
+            !string.Equals(auditEvent.ReviewedByUsername, requestedEvent.Username, StringComparison.Ordinal))) return null;
 
         if (auditEvent.Action == "MOVEMENT_REVERSED")
         {
@@ -251,7 +346,8 @@ internal sealed class AuditService(
                 rows.Single(x => x.Movement.Id == originalId).Movement.MovementBatchId, null,
                 rows.Select(x => ToLine(x.Movement.Id == originalId ? "Original" : "Neutralising reversal",
                     x.Movement, x.CustomerCode ?? "", x.CustomerName, x.Container,
-                    x.Movement.Id == originalId ? rows.Single(y => y.Movement.ReversesMovementId == originalId).Movement.Id : originalId)).ToArray());
+                    x.Movement.Id == originalId ? rows.Single(y => y.Movement.ReversesMovementId == originalId).Movement.Id : originalId)).ToArray(),
+                openedFromAcknowledgement, auditEvent.ReviewedByUsername, auditEvent.ReviewedUtc);
         }
 
         var parsed = ParseCorrectionLineage(auditEvent.AfterValues);
@@ -282,7 +378,8 @@ internal sealed class AuditService(
             lines.Add(ToLine("Corrected replacement", replacement.Movement, replacement.CustomerCode ?? "", replacement.CustomerName, replacement.Container, original.Movement.Id));
         }
         return new(auditEvent.Id, auditEvent.Action, operation.ActorUsername, operation.CreatedUtc,
-            operation.Reason, operation.OriginalBatchId, operation.ReplacementBatchId, lines);
+            operation.Reason, operation.OriginalBatchId, operation.ReplacementBatchId, lines,
+            openedFromAcknowledgement, auditEvent.ReviewedByUsername, auditEvent.ReviewedUtc);
     }
 
     private static MovementChangeAuditLine ToLine(string role, BinMovement movement, string code,

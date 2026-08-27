@@ -18,18 +18,18 @@ public sealed class AuditLogForm : BinTrackerForm
     {
         this.audit = audit;
         Text = "Audit Trail"; StartPosition = FormStartPosition.CenterParent; AutoScaleMode = AutoScaleMode.Dpi;
-        KeyPreview = true; ClientSize = new Size(1320, 760); MinimumSize = new Size(960, 560);
-        grid.Columns.Add(TextColumn("Time (UTC)", nameof(AuditTrailRow.TimestampUtc), 155));
-        grid.Columns.Add(TextColumn("User", nameof(AuditTrailRow.Username), 100));
-        grid.Columns.Add(TextColumn("Action", nameof(AuditTrailRow.Action), 185));
-        grid.Columns.Add(TextColumn("Entity", nameof(AuditTrailRow.EntityType), 115));
-        grid.Columns.Add(TextColumn("ID", nameof(AuditTrailRow.EntityId), 65));
-        grid.Columns.Add(TextColumn("Review state", nameof(AuditTrailRow.ReviewState), 105));
-        grid.Columns.Add(TextColumn("Reviewed by / time", nameof(AuditTrailRow.ReviewedBy), 205));
+        KeyPreview = true; ClientSize = new Size(1380, 780); MinimumSize = new Size(1040, 600);
+        grid.Columns.Add(TextColumn("Time (UTC)", nameof(AuditTrailRow.TimestampUtc), 145));
+        grid.Columns.Add(TextColumn("User", nameof(AuditTrailRow.Username), 90));
+        grid.Columns.Add(TextColumn("Action", nameof(AuditTrailRow.ActionDisplay), 180));
+        grid.Columns.Add(TextColumn("Entity", nameof(AuditTrailRow.EntityType), 105));
+        grid.Columns.Add(TextColumn("ID", nameof(AuditTrailRow.EntityId), 60));
+        grid.Columns.Add(TextColumn("Review state", nameof(AuditTrailRow.ReviewState), 120));
+        grid.Columns.Add(TextColumn("Reviewed by / time", nameof(AuditTrailRow.ReviewedBy), 215));
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Description", DataPropertyName = nameof(AuditTrailRow.Description),
             AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, MinimumWidth = 260,
             DefaultCellStyle = new DataGridViewCellStyle { WrapMode = DataGridViewTriState.True } });
-        grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Success", DataPropertyName = nameof(AuditTrailRow.Succeeded), Width = 70 });
+        grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Action succeeded", ToolTipText = "Whether the audited action itself completed successfully. This is independent of Administrator review state.", DataPropertyName = nameof(AuditTrailRow.Succeeded), Width = 120 });
         filter.Items.AddRange(["All", "Needs review", "Reviewed"]); filter.SelectedIndex = openNeedsReview ? 1 : 0;
         filter.SelectedIndexChanged += async (_, _) => await ReloadAsync(CurrentFilter == AuditReviewFilter.NeedsReview);
         detail.Click += async (_, _) => await ShowContextDetailAsync();

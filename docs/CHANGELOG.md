@@ -1,3 +1,11 @@
+## v0.5.0-alpha.8.7
+
+- Clarified Audit Trail action success/action labels and added exact review-acknowledgement lineage navigation.
+- Added reusable field-accurate movement-change comparison and expanded/readjusted detail/audit layouts.
+- Rebalanced Movement History widths and selectively wrapped Status/Notes.
+- Restricted Correct Entire Batch scrolling to long movement lists and added the `Batch Corrected` success title.
+- Preserved the manually accepted alpha.8.6 review workflow and all correction transaction semantics; new Windows/DPI acceptance remains pending.
+
 ## v0.5.0-alpha.8.6
 
 - Implemented the Administrator movement-change review workflow: explicit state/filtering, deterministic pending routing, contextual eligibility/confirmation, immediate count/state feedback and exact-event acknowledgement evidence.

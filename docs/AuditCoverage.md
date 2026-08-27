@@ -16,7 +16,7 @@ This is the pre-v1 audit-coverage checklist. Audit history is append-only eviden
 - Authorization coverage: Operator/Admin ordinary Manual/Batch reversal; Viewer denial; generic reversal denial for Opening Adjustment and Excel Import/provenance-linked rows.
 - Administrator review UX acceptance: explicit Needs review/Reviewed/not-applicable state, All/Needs review/Reviewed filtering, eligibility-aware acknowledgement action, persisted reviewer/time, audited acknowledgement and duplicate prevention.
 - Persistent Administrator review-reminder acceptance: navigation-wide non-blocking visibility, live outstanding count, pending-set action, refresh after review changes, disappearance at zero, Administrator-only role behavior and presentation-independent state/navigation contracts (BT-AUD-013). The login popup remains separate.
-- Audit detail action acceptance: View Batch Detail is enabled only for a selected event with persisted MovementBatch identity/detail. Future contextual entity routes remain tracked, not claimed implemented.
+- Audit detail action acceptance: persisted MovementBatch events use authoritative batch identity; correction/reversal events and their exact single-event review acknowledgements use the referenced audit event's authoritative lineage. Invalid/multi-event references fail closed and unrelated events remain non-navigable.
 - Excel Import completion, failure where appropriate, and Replace/Correct.
 - Import Run provenance/replacement relationship.
 - Report generation, including Customer Statement, Market Floor, Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Monthly Summary and Daily Print Pack PDF output.

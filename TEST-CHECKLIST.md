@@ -1,6 +1,6 @@
 # BinTracker Active Test Checklist
 
-Current baseline: **v0.5.0-alpha.8.6**
+Current baseline: **v0.5.0-alpha.8.7**
 
 Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
 
@@ -9,7 +9,7 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 ## Release / audit / packaging gate
 
 - [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.8.6 and the actually resolved installed SDK.
+- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.8.7 and the actually resolved installed SDK.
 - [ ] Restore succeeds; full solution builds with zero warnings.
 - [ ] All unit tests pass; all integration tests pass.
 - [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
@@ -121,7 +121,8 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 - [ ] Weekly PDF/CSV match selected view/order and are audited.
 - [ ] Movement History opens as a full-size integrated main-app page; inclusive range/filters/quick ranges/adjustment opt-in work; PDF/CSV are ordered/audited.
 - [ ] On Windows 11 at 1920x1080 and 150% scaling, Movement History remains usable and shows the real persisted Movement ID after Date; verify IDs such as 2 and 10 sort numerically, Shift+click multi-sort retains priority, filtering preserves each row's ID, and PDF/CSV contain the same IDs in displayed order.
-- [ ] At normal maximized desktop width Movement History has no unnecessary horizontal scrollbar; Customer/Status/Notes receive remaining width. Narrow the app and confirm minimum readable columns are preserved before horizontal scrolling appears. Rows remain single-height.
+- [ ] At normal maximized desktop width Movement History has no unnecessary horizontal scrollbar; Customer/Status/Notes receive remaining width. Structured fields remain single-line; only long Status/Notes wrap and grow row height when needed.
+- [ ] At 1920x1080/150%, the full Movement ID header and far-right Entered by column remain visible without normal-case horizontal scrolling; only Status/Notes wrap and rows grow only when their prose needs it.
 - [ ] IN/OUT cells show restrained green/red badges; reversed originals and reversal rows show amber/orange Status badges. Select each kind of row and confirm text remains readable. Hover truncated Status/Notes and confirm full-text tooltips.
 - [ ] A customer filter resolving to one customer suggests PDF and CSV names containing the sanitized stable customer code; unfiltered and multi-customer results keep generic filenames.
 
@@ -180,6 +181,7 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 - [ ] Correct Selected shows original/current and corrected date/customer/container/direction/quantity/reference/notes, requires a reason, and states that saved history remains preserved.
 - [ ] Correct Entire Batch shows persisted Batch ID, line/container totals, old/new date/direction, says EVERY line is affected, and requires explicit confirmation.
 - [ ] On Windows 11 at 1920x1080 and 150% scaling, Correct Entire Batch remains within the usable working area; inspect a batch long enough to scroll, enter a reason, and confirm Cancel and Confirm Every Line remain fully visible/clickable with no overlap or clipped text. Recheck on the larger production display.
+- [ ] A two-line Correct Entire Batch has no form/content scrollbar; heading/context/controls/reason/actions stay visible. A long batch scrolls only its movement list. Successful completion is titled `Batch Corrected`.
 - [ ] Wrong-date correction removes the operational effect from the wrong day/week/month and applies it to the corrected day/week/month.
 - [ ] Daily/Weekly/Monthly, customer recent, statements and Market Floor show each correction exactly once as its effective replacement; correction-consumed originals and correction neutralisers remain visible only in immutable history/audit evidence. Ordinary reversal rows retain established operational visibility.
 - [ ] Movement History uses compact Source `Correction`, a blue Status pill, and full status/tooltips for original, neutraliser, replacement, and chained replacement-then-corrected roles; ordinary reversals remain amber/orange.
@@ -191,6 +193,9 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 - [ ] Mark Selected Reviewed enables only for a selected unreviewed, review-required Operator correction/reversal; it stays disabled for no selection, Administrator changes, unrelated events and already-reviewed events.
 - [ ] Review acknowledgement persists reviewer/time, writes a visible acknowledgement audit event and cannot be repeated; Viewer/Operator remain denied at the service boundary.
 - [ ] View Batch Detail is disabled for no selection/non-batch events and enabled only for authoritative persisted MovementBatch detail.
+- [ ] An acknowledgement row clearly names the reviewed action/entity/actor/audit-event ID; View Detail/double-click open that exact movement change with reviewer/time, while invalid references fail closed and acknowledgements remain non-reviewable.
+- [ ] Audit Trail uses human-facing Action labels without changing stored values; Action succeeded explicitly means the audited action result and remains independent of review state.
+- [ ] At 1920x1080/150%, Audit Trail shows full review state, understandable action, readable reviewer/time and Action succeeded without harmful normal-case horizontal scrolling.
 - [ ] Double-click a reviewable movement-change event and confirm Movement Change Detail shows actor/time/reason, exact original/neutraliser/replacement IDs and original-vs-corrected date/direction without unrelated same-date/customer rows.
 - [ ] Press Esc in Movement Change Detail/Batch Detail to return to Audit Trail, then Esc in Audit Trail to return to the underlying BinTracker screen without exiting the application.
 - [ ] Business logo + shared generated-output branding.

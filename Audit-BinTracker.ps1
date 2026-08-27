@@ -551,7 +551,10 @@ if ($mainFormText -notmatch 'OpenEmbeddedReport\(\s*"Movement History"' -or
     $correctionUiText -notmatch 'Color\.FromArgb\(255, 232, 194\)' -or
     $correctionUiText -notmatch 'Cells\["Status"\]\.ToolTipText' -or
     $correctionUiText -notmatch 'Cells\["Notes"\]\.ToolTipText' -or
-    $correctionUiText -notmatch 'Column\("Movement ID", 118, 108, "MovementId"\)' -or
+    $correctionUiText -notmatch 'Column\("Movement ID", 112, 108, "MovementId"\)' -or
+    $correctionUiText -notmatch 'Column\("Status", 185, 165, "Status", wrap: true\)' -or
+    $correctionUiText -notmatch 'Column\("Notes", 155, 135, "Notes", wrap: true\)' -or
+    $correctionUiText -notmatch 'AutoSizeRowsMode = DataGridViewAutoSizeRowsMode\.AllCells' -or
     $correctionUiText -notmatch 'row\.MovementId,' -or
     $correctionUiText -notmatch '"MovementId" => left\.MovementId\.CompareTo\(right\.MovementId\)' -or
     $correctionUiText -notmatch 'Date,Movement ID,Customer Code' -or
@@ -565,10 +568,11 @@ if ($mainFormText -notmatch 'OpenEmbeddedReport\(\s*"Movement History"' -or
 }
 
 $batchCorrectionDialogText = Get-Content -Raw 'src/BinTracker.WinForms/MovementCorrectionDialog.cs'
-if ($batchCorrectionDialogText -notmatch 'scrollHost = new Panel \{ Dock = DockStyle\.Fill, AutoScroll = true \}' -or
-    $batchCorrectionDialogText -notmatch 'root\.Controls\.Add\(buttons, 0, 1\)' -or
+if ($batchCorrectionDialogText -notmatch 'only the potentially long persisted-line list scrolls' -or
+    $batchCorrectionDialogText -notmatch 'preview = new ListBox \{ Dock = DockStyle\.Fill' -or
+    $batchCorrectionDialogText -notmatch 'root\.Controls\.Add\(buttons, 0, 4\)' -or
     $batchCorrectionDialogText -notmatch 'CancelButton = cancel') {
-    Fail 'BT-UI-015 source gate failed: Correct Entire Batch must retain scrollable content and a fixed Cancel/final action band.'
+    Fail 'BT-UI-015 source gate failed: Correct Entire Batch must scroll only long line lists and retain visible context/fields/fixed actions.'
 }
 
 
