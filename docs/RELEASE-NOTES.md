@@ -1,5 +1,11 @@
 # BinTracker Current Release Notes
 
+## Documentation-only lineage architecture freeze
+
+- Adds no product behavior and does not change v0.5.0-alpha.8.7 package identity.
+- Records planned logical-root correction architecture/requirements after adversarial review and read-only data preflight.
+- Keeps alpha.8 guards/effective behavior intact until complete implementation and acceptance.
+
 ## v0.5.0-alpha.8.7
 
 Windows-acceptance corrective/readability build following the manually accepted alpha.8.6 review workflow.

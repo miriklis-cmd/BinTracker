@@ -40,21 +40,22 @@ This order is the authoritative pre-v1 sequence. `v0.5.0-alpha.1` began the clea
 
 1. **Finish v0.4 Reporting** — Monthly Summary is user-accepted; validate Daily Print Pack, then complete the final report consistency/real-world print acceptance pass.
 2. **Batch Entry acceptance cleanup** — verify Esc, post-entry field clearing/focus, and implement/decide crash/power-loss draft recovery before production.
-3. **Movement Correction / Reversal** — implemented and automated-tested in alpha.8; Windows/operator acceptance remains open.
-4. **Deterministic configurable Container Type ordering** — design duplicate-order handling and reorder UX without hard-coded container priorities.
-4. **Security, Data Integrity & Code Quality Hardening — HARD GATE** — reconcile and remediate the external security/code-quality audit before branding/communications. Every finding in `docs/SecurityHardeningRegister.md` must remain tracked; accepted v1 findings must be fixed or explicitly dispositioned before v1 release. The build audit mechanically protects the register and this roadmap ordering.
-5. **Business Information & Branding** — logo, custom header/branding text, and one reusable branding source for reports/statements/email and generated output.
-6. **Email, SMS & Customer Communications** — Google Workspace email + Texto SMS direction, manual and automatic reminders, templates, delivery history/retries/audit, statement attachment/link decision.
-7. **Dashboard** — mandatory design discussion before implementation: KPIs, charts, forecasting/ML hooks, drill-through, attention states, responsive/large-monitor behaviour, plus explicit WinForms-v1 vs WinUI-3-v2 comparison for Dashboard, Reports launcher, individual report screens and import workflow.
-8. **Customer operational analytics/polish** — useful sorting by outstanding/credit/last movement, lifetime OUT/IN totals, and statement workflow integration.
-9. **Production Backup / Restore / Recovery** — user backup, validated restore, scheduled automatic backups, retention, pre-upgrade backup and recovery drill.
-10. **Final security, audit & reliability release review** — authorization matrix, audit-coverage matrix, secrets, logging, crash/restart, database integrity, Release build and DPI testing.
-11. **PostgreSQL central deployment** — add the authenticated server/API host and PostgreSQL provider/configuration. The permanent remote-user/concurrency contracts are already hard gates; this milestone supplies infrastructure rather than rewriting business rules.
-12. **Installer / upgrade / deployment** — Windows package, safe upgrades, signing decision and production configuration.
-13. **Full v1 acceptance / regression** — fresh install/database, real workbook import, balances, entries, corrections, reports, communications, branding, dashboard, backup/restore, restart/crash and upgrade testing.
-14. **v1.0 production release** — BinTracker is accepted as the replacement for the daily Excel workflow.
+3. **Movement Correction / Reversal** — alpha.8 foundation implemented and accepted; corrective interactions/canonical gate retained.
+4. **Logical movement-lineage implementation and acceptance** — implement frozen BT-CORR-018..033/BT-HIST-008..009 architecture, per-database preflight/backup, migration, services, reporting, WinForms integration and Batch #30 adversarial acceptance. Do not remove the physical-batch guard independently.
+5. **Whole-codebase layer delineation audit — HARD GATE** — after lineage integration is accepted, inspect presentation/application/domain/infrastructure boundaries and move authoritative WinForms business/persistence logic below UI before subsequent major pre-v1 work.
+6. **Security, Data Integrity & Code Quality Hardening — HARD GATE** — remediate/disposition every protected security finding before branding/communications and v1. The lineage and layer-audit items above are protected completion gates within Movement Correction/Reversal, not intervening feature work.
+7. **Deterministic configurable Container Type ordering** — design duplicate-order handling and reorder UX without hard-coded container priorities.
+8. **Business Information & Branding** — logo, shared header/branding and generated-output source.
+9. **Email, SMS & Customer Communications** — Google Workspace email + Texto SMS, reminders, templates, history/retries/audit.
+10. **Dashboard** — mandatory design discussion before code; future clients remain comparison context only.
+11. **Customer operational analytics/polish** — sorting, lifetime totals and statement integration.
+12. **Production Backup / Restore / Recovery** — user backup, validated restore, scheduling/retention and recovery drill; the earlier lineage migration backup is a blocking safety gate, not a substitute.
+13. **Final security, audit & reliability release review** — authorization/audit matrices, secrets, logging, restart, integrity, Release and DPI.
+14. **Installer / upgrade / deployment** — Windows package, safe upgrades, signing and production configuration.
+15. **Full v1 acceptance / regression** — fresh install/database/import/balances/lineage/reports/communications/branding/dashboard/backup/restart/upgrade.
+16. **v1.0 production release** — accepted replacement for the daily Excel workflow.
 
-Post-v1 remains separate: **Windows UI v2 / WinUI 3**, customer portal, barcode scanning, multiple depots and other commercial/expansion work.
+Post-v1 remains separate: **authenticated API + PostgreSQL central deployment**, Windows UI v2 / WinUI 3 evaluation, customer portal, handheld/mobile clients, barcode scanning, multiple depots and Custom Report Designer. Pre-v1 preserves boundaries/semantics only; it does not implement those clients/providers.
 
 ## Priority 0 — close data-integrity risks before more features
 
@@ -181,6 +182,10 @@ Required dashboard pass:
 
 ### 5. Movement correction / reversal
 
+**Architecture frozen; implementation not begun:** BT-CORR-018..033, BT-HIST-008..009, BT-AUD-015..017 and BT-OPS-011..012 define stable roots/lines, full generations, restoration/RemainReversed, corrected activity/PositionAsOf, root concurrency, provider/client neutrality, migration preflight/backup and fail-closed health. The retained Batch #30 partial reversal is protected acceptance evidence. Alpha.8 physical-batch-only eligibility remains the current safe implementation until the complete lineage migration/service/report/UI change is delivered atomically.
+
+After lineage Windows acceptance, the whole-codebase layer delineation audit at execution step 5 is blocking; do not proceed directly into later feature work.
+
 - [x] **Reversal foundation implemented:** Administrator can select a saved movement in Movement History and create an equal/opposite linked reversal; original ledger row is never edited/deleted.
 - [x] Reversal requires a reason and preserves original/reversal linkage, actor/time and `MOVEMENT_REVERSED` audit in one database transaction.
 - [x] Reversal permission is enforced at service layer: Administrator and Operator may reverse ordinary Manual/Batch movements; Viewer cannot. Opening Adjustment and Excel Import/provenance-linked movements are excluded from generic reversal and routed to Administrator-controlled workflows.
@@ -209,7 +214,7 @@ Post-v1 policy/design requirements (recorded, not implemented):
 
 ### 5A. Security, Data Integrity & Code Quality Hardening — HARD GATE
 
-This dedicated pre-v1 workstream begins immediately after Movement Correction/Reversal and before Business Information/Branding or Communications. `docs/SecurityHardeningRegister.md` is the authoritative finding ledger for the external code/security audit.
+This dedicated pre-v1 workstream begins immediately after the Movement Correction/Reversal workstream is complete, including its logical-lineage acceptance and protected layer-delineation closure gate, and before subsequent feature work, Business Information/Branding or Communications. `docs/SecurityHardeningRegister.md` is the authoritative finding ledger for the external code/security audit.
 
 Implementation is deliberately split into controlled batches: security boundaries; data integrity/concurrency; hostile-input/filesystem resilience; supply-chain/release integrity; then maintainability/code reduction. Findings are not to be silently dropped merely because they are inconvenient or become less visible during feature work.
 
@@ -285,11 +290,11 @@ Developer Database tools are not the production solution.
 - [ ] Decide signing strategy for distributed builds.
 - [ ] Production configuration location and permissions review.
 
-### 10. Multi-computer architecture
+### 10. Multi-computer architecture — post-v1 implementation
 
 Current SQLite deployment is single-PC oriented.
 
-Before simultaneous multi-computer production use:
+The provider/client implementation is post-v1. Before simultaneous multi-computer production use:
 
 - [ ] **PostgreSQL readiness audit** — inventory SQLite-specific SQL, PRAGMA/schema migration code, local-file assumptions, backup/reset tooling and provider-specific tests before introducing the central provider.
 - [ ] Keep Services + `IDbContextFactory<BinTrackerDbContext>` as the business/data-access boundary; do not add a generic Repository layer merely for PostgreSQL migration.

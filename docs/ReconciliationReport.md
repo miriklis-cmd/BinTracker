@@ -1,5 +1,9 @@
 # BinTracker Full Reconciliation Report
 
+## 29 August 2026 lineage architecture reconciliation
+
+Alpha.8 physical-MovementBatch correction remains the implemented safety baseline but is insufficient after partial reversal/correction. Planned BT-CORR-018..033 now governs logical roots/lines/full generations. Read-only v16 preflight found 28 deterministic roots, repeated correction chains and two partial-reversal batches with no ambiguous/invalid/cross-import component. BT-CORR-009/015 remain stable with explicit supersession; BT-ARCH-008 central deployment is post-v1 while v1 groundwork remains mandatory.
+
 Reconciliation candidate: **v0.4.0-alpha.23.5.2**
 
 ## What was actually inspected

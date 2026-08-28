@@ -12,7 +12,7 @@ Detail/investigation windows use available working-area space for compact identi
 
 ## Permanent target and hard gate
 
-BinTracker's target architecture is **Windows desktop / remote clients → authenticated BinTracker API/service → central PostgreSQL**. Clients never receive database credentials or connect directly. The current SQLite application remains the supported local deployment adapter until the central host exists.
+BinTracker's post-v1 target architecture is **Windows desktop / remote clients → authenticated BinTracker API/service → central PostgreSQL**. Clients never receive database credentials or connect directly. v1 remains the local SQLite WinForms product; its mandatory groundwork is client-neutral services, provider-neutral semantics, concurrency/idempotency correctness and replaceable presentation, not API/PostgreSQL deployment.
 
 All production business code must assume multiple authenticated remote users can execute the same operation concurrently. Core, Services, UI contracts and the shared EF model remain provider-neutral; provider migrations and local database tooling stay in `BinTracker.Data`.
 
@@ -39,11 +39,49 @@ Imports cross the service boundary as `ImportSourceDocument` content plus safe m
 - Single Entry, Batch Entry, reversal and import persist client operation IDs. A retry returns the existing result only when the canonical payload identity matches; reuse with a different payload is rejected.
 - Reversal and import uniqueness constraints are authoritative under races.
 - Correction extends the same invariant: the unique neutraliser FK (`ReversesMovementId`) arbitrates Reverse-vs-Reverse, Reverse-vs-Correct and Correct-vs-Correct; correction-operation identity/fingerprint makes identical retries return persisted lineage and rejects changed payload reuse.
-- A single correction transaction writes original-period neutraliser(s), corrected replacement(s), operation/line lineage, original consumed links and audit. Whole-batch correction uses persisted `MovementBatchId` and rolls back every line on any conflict/failure.
-- Effective operational report queries omit correction-consumed originals and correction-only neutralisers while Movement History retains all ledger evidence; balances remain ledger sums, where each correction pair nets to zero.
+- The alpha.8 correction transaction writes neutralisers, replacements, operation/line evidence, consumed links and audit. Its physical-`MovementBatchId` whole-batch guard remains safe until the frozen logical-root model below replaces it; do not remove the guard independently.
+- The alpha.8 effective query suppresses correction-consumed originals/neutralisers while retaining immutable Movement History. The frozen model below replaces that technique with validated current-generation activity without weakening accepted results.
 - Administrator acknowledgement is a review record, not an effectiveness gate: Operator corrections/reversals remain operationally effective immediately. Review authorization and duplicate prevention remain service/database concerns even when the Audit Trail disables ineligible UI actions.
 - The outstanding-review count/state and navigation action must be exposed through a presentation-independent service/state/navigation contract. Current WinForms may render that contract with a reusable infobar-style `UserControl` or panel; a future WinUI 3 client replaces only that presentation with native `InfoBar`, retaining the underlying contract. Review business logic must not live in a disposable UI control.
 - Audit detail navigation is keyed by authoritative persisted entity identity. MovementBatch detail is never inferred from description text; future contextual routes may use authoritative ImportRun or correction-lineage identity when available.
 - Authentication counters and account/credential mutations use conditional or atomic database updates.
 
 Moving to PostgreSQL still requires an API host, provider/schema migrations, authentication/authorization deployment, central backup/monitoring and real PostgreSQL integration tests. It must not require rewriting accepted business, reversal, import, report or audit semantics.
+
+## Frozen movement-lineage architecture (planned v1)
+
+### Authority and state
+
+- `BinMovement` is immutable forensic ledger evidence. `MovementBatch` is immutable physical persistence evidence; operational calculations use movement rows, not a conflicting header.
+- `LogicalMovementBatch` is the stable root and roots never merge/split. Its nullable `RootMovementBatchId` is the sole original physical-batch link; single-entry roots have none.
+- `LogicalMovementLine` is one permanent original-business-line identity with one RootMovementId and remains a member while reversed.
+- Every substantive mutation creates a root-wide generation with one full state row for every permanent line. `CurrentGenerationNumber` is sole current-state/root-concurrency authority; lines have no competing current pointer.
+- Active state references one result-effective movement. Reversed state references the last effective movement and terminal ordinary reversal.
+- Movement links own RootOriginal, CorrectionNeutraliser, CorrectionReplacement, OrdinaryReversal or Restoration transformation role. `MovementSource` remains provenance; no Correction source is added.
+- The existing physical correction-operation table evolves as the single `MovementChangeOperation` envelope. Existing correction lines remain legacy evidence, not a second authority.
+
+Actions are Initial, MigrationBaseline, CarriedForward, AlreadyMatches, Corrected, Reversed, Restored and RemainReversed. Complete semantic no-op creates no artifact. Restoration is substantive without overrides. `OriginalDisplayOrdinal` is immutable presentation metadata (request order; zero for single; ascending RootMovementId on migration), never identity.
+
+Movement History/Audit preserve all evidence. Normal reports project retrospectively corrected current state: Active emits its effective movement once; Reversed emits last effective plus terminal reversal. PositionAsOf(D) signs those rows where `MovementDate <= D`; current position uses the injected business date. GenerationNumber, MovementDate and CreatedUtc are semantic, reporting and forensic order respectively.
+
+Restoration means the reversal was erroneous: start from the last legitimate pre-reversal state, inherit unselected fields and apply explicit overrides. Legitimate later activity is a new line. A whole-root request may RemainReversed with zero contribution/no fake movement. Historical correction dates through today are valid; future dates are not. Period/high-risk approval remains post-v1.
+
+### Physical output, operations and integrity
+
+A correction-output physical batch and its output-only link are optional. It exists only for a whole physical-origin root whose every line receives a newly created Active Corrected/Restored row in that generation, with no carried/already-matching/reversed/remain-reversed line, one truthful date/direction/Batch provenance, no ImportRun, exact members/header and atomic creation. Neutralisers/reversals never join it.
+
+Canonical versioned request JSON/fingerprint records intent (including absent/null/value), never state/report truth; generation lines have structured pointers/action/field mask and no authoritative before/result JSON. Exact ClientOperationId retry returns its committed result even after later generations; changed reuse fails.
+
+Root-wide CAS is v1 concurrency authority. Portable PK/FK/RESTRICT/UNIQUE/CHECK/index constraints combine with transactions/validators. No business rule depends on SQLite triggers, rowid, locking, deferred FKs or disabled FK enforcement. `IntroducedByGenerationLineId` is nullable only during construction and populated before Active commit.
+
+Every numeric read validates relevant complete current snapshots, projects movement IDs and aggregates in one provider-consistent read snapshot. Invalid/unrooted data fails potentially affected results without omission/raw fallback. ReadOnly roots remain projectable but immutable.
+
+Operational lineage health is separate from audit health. New operation/audit/review state commits atomically. Later external audit corruption does not falsify proven mathematics but blocks affected mutation/review and evidence-completeness output with critical health.
+
+WinForms supplies stable IDs, expected generation and intent only. Client-neutral services own planning, authorization, projection, concurrency, persistence, audit and balances.
+
+### Migration and protected layer audit
+
+Migration uses persisted IDs/FKs/correction/reversal relationships only, creates truthful MigrationBaseline rather than fabricated history, and classifies Initializing/Active/ReadOnly/Invalid. ImportRun remains separate. Every database requires read-only preflight and verified recoverable provider-consistent backup before mutation.
+
+After lineage services and WinForms integration are accepted, a protected whole-codebase presentation/application/domain/infrastructure audit must finish before subsequent major pre-v1 work. API/PostgreSQL deployment, portal/handheld clients and WinUI evaluation remain post-v1.

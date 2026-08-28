@@ -1,5 +1,11 @@
 # BinTracker Automated Testing
 
+## Planned logical-lineage acceptance gate
+
+BT-CORR-018..033 is documentation-frozen but not implemented. Acceptance requires schema/ownership constraints; read-only preflight and truthful MigrationBaseline; verified backup/recovery; atomic generation-zero entry; correction/reverse/restore/RemainReversed/partial-no-op/mixed-date workflows; repeated generations; corrected report/export and PositionAsOf/current balance agreement; immutable evidence; same-snapshot Invalid/unrooted failure; operational-versus-audit corruption policy; root races/idempotency/lost-response/import collision; and failure injection after every transaction stage.
+
+Windows acceptance retains Batch #30 and covers RemainReversed, Restore, mixed dates, repeated whole-root correction, selected/whole correction in both orders, later reversal/restoration, descendant navigation, optional physical output, reports/balances, Audit Detail and Administrator Review at the DPI floor and larger display. Automated success never claims this acceptance.
+
 ## Multi-user readiness regression
 
 SQLite integration tests exercise retry identity, different-payload rejection, stale-edit rejection, current-cutover ownership and schema migration. They protect provider-neutral semantics but are not evidence of PostgreSQL/API execution; that requires a real fixture.

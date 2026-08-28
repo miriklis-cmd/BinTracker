@@ -173,6 +173,19 @@ Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete —
 
 ## Remaining pre-v1 milestones
 
+### Frozen logical-lineage implementation (not started)
+
+- [ ] Read-only actual-database preflight classifies roots without matching business values; verified non-rotating pre-lineage backup/recovery passes before migration.
+- [ ] Migration preserves all evidence IDs, creates truthful full MigrationBaseline state and keeps ImportRun data separate.
+- [ ] New Single/Batch Entry atomically creates complete generation-zero lineage or nothing.
+- [ ] Correct/Reverse/Restore/whole-root commands use stable IDs/expected generation below WinForms; full generations include every permanent line.
+- [ ] CarriedForward/AlreadyMatches/RemainReversed create no fake movement; complete no-op creates nothing.
+- [ ] Corrected activity, PositionAsOf/current balance and Daily/Weekly/Monthly/PDF/CSV agree while Movement History/Audit retain evidence.
+- [ ] Invalid/unrooted lineage fails affected numeric results without omission/raw fallback; audit-only corruption preserves proven numbers but blocks mutation/review/compliance.
+- [ ] Root races, stale preview, retries/lost response, import collision and every failure-injection stage commit one complete result or none.
+- [ ] Retained Batch #30 passes RemainReversed, Restore, mixed date, repeated correction, descendant navigation, Batch Detail, Audit/Review and balance Windows/DPI acceptance.
+- [ ] After lineage acceptance, complete the protected whole-codebase layer audit before subsequent major roadmap work.
+
 - [ ] Movement Correction/Reversal: linked, reasoned and audited; original never destructively edited/deleted.
 - [ ] Administrator and Operator both see Reverse for ordinary Single Entry/Batch Entry movements and can complete a reversal.
 - [ ] Viewer does not receive reversal capability.

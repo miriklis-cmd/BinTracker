@@ -1,5 +1,14 @@
 # Documentation Audit Record
 
+## 29 August 2026 — movement-lineage architecture documentation freeze
+
+- [x] Reconciled approved design reviews and read-only schema-v16 preflight without source/schema/tests/version changes.
+- [x] Added planned BT-ARCH-016..018, BT-AUD-015..017, BT-HIST-008..009, BT-CORR-018..033 and BT-OPS-011..012; retained BT-CORR-009/015 as traceable alpha.8 foundations.
+- [x] Froze roots/lines/full generations, restoration/RemainReversed/no-op, corrected activity/PositionAsOf, output predicate, idempotency/CAS, portability, corruption split, migration/preflight/backup and acceptance gates.
+- [x] Corrected API/PostgreSQL implementation to post-v1 and protected the post-lineage whole-codebase layer audit.
+- [x] Preserved BT-CORR-013/014 post-v1 and ImportRun as a separate correction domain.
+- [x] Mechanical audit passed with 257 unique permanent IDs and 26 governed Markdown files; targeted contradiction searches and `git diff --check` passed.
+
 ## v0.5.0-alpha.8.7 Windows-acceptance interaction corrections
 
 - [x] Inspected Development Workflow, Roadmap, Known Issues, Changelog, requirements register, specification, business rules and active acceptance checklist before implementation.

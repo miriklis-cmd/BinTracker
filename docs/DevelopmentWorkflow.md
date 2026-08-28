@@ -1,5 +1,9 @@
 # Development Workflow
 
+## Planned lineage migration hard gate
+
+Before any lineage migration touches a database, BT-CORR-030 and BT-OPS-011/012 require read-only relationship preflight and a unique provider-consistent recovery backup verified by hash, integrity/FKs/schema/table counts and preflight equivalence. Failure aborts before schema writes. This documentation freeze authorizes no migration and existing developer backup tools do not substitute for the gate.
+
 ## Implementation passes
 
 For each meaningful BinTracker change:

@@ -1,5 +1,9 @@
 # Known Issues
 
+## Whole-batch correction after partial lineage
+
+Alpha.8 safely rejects whole-batch correction when any persisted physical member has already been corrected/reversed. This leaves the Batch #30 workflow unresolved. BT-CORR-018..033 is architecture-frozen but not implemented; do not remove the guard. Closure requires explicit RemainReversed/Restore, full generations, corrected reporting, migration/preflight/backup and Windows acceptance.
+
 Current release: **v0.5.0-alpha.8.7**
 
 This file contains current defects/limitations that affect testing or production readiness. Completed history is in `docs/CHANGELOG.md`; future features are in `docs/Roadmap.md`; engineering cleanup is in `TECH-DEBT.md`.

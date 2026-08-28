@@ -149,7 +149,7 @@ Important security, master-data and movement changes create audit events.
 
 ## Daily movement reporting
 
-- Daily Movements defaults to physical activity: Manual/Single Entry, Batch Entry and ExcelImport physical IN/OUT rows.
+- Daily Movements reports authoritative operational activity by `MovementDate`. Alpha.8 obtains that result through effective-movement suppression; planned BT-HIST-008/BT-CORR-020 replaces the mechanism with validated current-generation projection so correction/restoration bookkeeping cannot inflate totals.
 - Opening Adjustment rows are not physical daily movements and are excluded by default; the operator can explicitly include them for investigation.
 - Today and Yesterday are shortcuts that set the report date and rerun the same report logic.
 - Numeric Quantity sorting uses the underlying integer quantity.
@@ -180,7 +180,7 @@ Important security, master-data and movement changes create audit events.
 
 - Operational weeks run Monday through Sunday.
 - Weekly net movement is OUT minus IN; it is movement for the week, not the customer's outstanding balance.
-- Opening adjustments are excluded by default because they are not physical weekly activity.
+- Opening adjustments are excluded by default because they are position-establishing adjustments rather than ordinary corrected operational activity.
 - Weekly summary remains separated by Customer and Container Type.
 
 
@@ -301,8 +301,8 @@ Important security, master-data and movement changes create audit events.
 - If formal period locking/close is introduced later, historical-period reversal authorization must be explicitly defined before enabling it.
 - Administrator and Operator may correct eligible ordinary Manual/Batch movements; Viewer may not. Routine correction is effective immediately and has no approval queue.
 - Correction preserves the original, creates an opposite neutraliser dated on the original date, and creates the corrected replacement dated on the corrected operational date. This removes the wrong-period report effect and applies it in the right period.
-- Operational Daily/Weekly/Monthly, statement, customer-recent and floor views suppress correction-consumed originals and correction-only neutralisers, showing the corrected replacement as effective history. Movement History and Audit Trail retain the complete immutable evidence.
-- Whole-batch correction targets only the persisted `MovementBatchId`, affects every persisted line, and fails atomically if any line is already consumed or concurrently becomes ineligible.
+- Alpha.8 operational views suppress correction-consumed originals/neutralisers and show the corrected replacement; the planned lineage projection preserves that accepted result by resolving a validated current logical generation. Movement History/Audit always retain complete evidence.
+- Alpha.8 whole-batch correction remains safely limited to one persisted `MovementBatchId`. Planned logical-root correction supersedes that limitation only through BT-CORR-018..033; the current guard must not be removed independently.
 - Movement History action availability is computed from the actual selected typed movement after every load/sort and selection change. Reverse and Correct Selected share the ordinary-movement eligibility basis; displayed selection and logical action state must agree.
 - In whole-batch correction, changing the proposed date or direction away from the persisted value automatically selects that correction field, and returning it to the persisted value automatically clears the field. Operators may untick a changed field; its selection is recalculated only when that proposed value changes again. A checked field with its persisted value is not a change; the UI and service reject a request with no semantic date/direction change before any neutraliser, replacement, correction record or audit event is created.
 - One database-unique neutraliser per original arbitrates reverse/correct races. Client operation identity makes an identical retry idempotent and rejects different payload reuse.
@@ -311,3 +311,17 @@ Important security, master-data and movement changes create audit events.
 - Audit Trail must display review state directly and make outstanding review-required events practically filterable. Mark Selected Reviewed is unavailable unless the current selection is an unreviewed, review-required Operator correction/reversal; role enforcement remains authoritative at the service boundary.
 - While any such reviews remain outstanding, Administrator sessions must retain a non-blocking navigation-wide reminder with the live outstanding count and direct pending-review action. It disappears at zero, is invisible to other roles, supplements the login popup and never changes the immediate operational effectiveness of Operator changes.
 - View Batch Detail is unavailable unless the selected audit event has authoritative persisted MovementBatch detail. Audit event types without an authoritative supported detail surface must not offer a knowingly invalid detail action.
+
+## Frozen logical correction rules (planned v1)
+
+- Every eligible ordinary original has one stable logical root and permanent logical line. Physical batches are immutable persistence evidence, not continuing lineage identity; roots/lines never merge or split.
+- Each substantive correction/reversal/restoration advances the root generation and writes one full state decision for every permanent line. Active means one effective movement; Reversed means last effective plus terminal reversal.
+- Corrected authoritative operational activity is projected from the complete validated current generation. PositionAsOf(D) signs that activity through MovementDate D. GenerationNumber, MovementDate and CreatedUtc remain semantic, business and forensic time respectively.
+- Correction retrospectively restates an erroneous historical movement. Valid dates through today are allowed; future dates are prohibited. Formal period locking/high-risk approval remains post-v1.
+- Restoration declares an ordinary reversal erroneous. It restores the last legitimate pre-reversal values, then applies only explicitly selected fields. A later legitimate movement is new activity, not restoration.
+- Whole-root correction defaults reversed lines to an explicit operator decision. RemainReversed retains zero contribution/no fake movement; Restored creates an effective movement. AlreadyMatches and CarriedForward write state evidence but no ledger row.
+- Complete semantic no-op writes nothing. Restoration is substantive even without field overrides. Request intent distinguishes absent, clear and value fields.
+- A physical correction-output batch is optional and only represents a complete uniform newly created result for every logical line. Mixed dates, partial no-op and remain-reversed results have no fabricated batch.
+- Root generation is optimistic concurrency authority. Exact operation retry returns its committed result; changed operation-ID reuse fails. WinForms state is never authorization, eligibility or planning authority.
+- ImportRun/ExcelImport movements remain in the Administrator Replace/Correct import domain and cannot enter generic lineage. Import replacement must fail if ordinary lineage/evidence references would be deleted.
+- Operationally corrupt/incomplete lineage fails every potentially affected numeric result without omission/raw fallback. Audit-only corruption does not falsify proven mathematics, but blocks mutation/review/evidence-completeness output and raises critical health.

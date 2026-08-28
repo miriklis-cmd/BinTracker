@@ -1,5 +1,11 @@
 # Technical Debt
 
+## Frozen logical-lineage delivery (pre-v1 blocking)
+
+- Alpha.8 whole-batch eligibility safely rejects partial lineage through physical MovementBatch. Deliver BT-CORR-018..033 as one coherent migration/service/projection/UI change; never bypass the guard piecemeal.
+- After lineage Windows acceptance, perform the protected whole-codebase presentation/application/domain/infrastructure audit. Move authoritative WinForms validation, data access, balance/report arithmetic, transactions and authorization below presentation before subsequent major pre-v1 work.
+- PostgreSQL/API/portal/handheld/WinUI delivery remains post-v1. v1 debt closure is clean boundaries/provider-neutral semantics, not speculative infrastructure.
+
 Engineering improvements that are not currently user-facing defects. Product work belongs in `docs/Roadmap.md`; active defects/limitations belong in `KNOWN-ISSUES.md`.
 
 ## Architecture

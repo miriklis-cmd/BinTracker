@@ -33,7 +33,7 @@
 - BT-MOVE-011: Generic reversal must reject Opening Adjustments and Excel Import/ImportRun-linked movements; those use Administrator-controlled adjustment or Replace / Correct workflows respectively.
 - BT-MOVE-012: Movement History shows derived reversal Status on original and reversal rows and disables Reverse when the selected row is already reversed or is itself a reversal.
 - BT-MOVE-013: Eligible ordinary movements can be corrected by an atomic append-only neutraliser plus corrected replacement covering date/customer/container/direction/quantity/reference/notes.
-- BT-MOVE-014: Whole persisted Batch Entry correction changes the common date and/or direction for every line, uses MovementBatch identity and never partially succeeds.
+- BT-MOVE-014: Alpha.8 whole persisted Batch Entry correction changes common date/direction for every physical line and never partially succeeds; planned BT-CORR-018..033 replaces physical-batch-only eligibility with complete logical-root planning without weakening the guard first.
 - BT-MOVE-015: A correction neutraliser uses the original movement date; the replacement uses the corrected date so day/week/month history is moved rather than merely offset today.
 - BT-MOVE-016: Operator corrections/reversals take effect immediately and await persistent Administrator acknowledgement; acknowledgement is review, not approval.
 - BT-MOVE-017: Operational Daily/Weekly/Monthly, customer-recent, statement and Market Floor datasets represent a correction once through its replacement after persisted-lineage suppression of the consumed original and correction neutraliser. Movement History/Audit retain all three roles; ordinary reversal reporting is unchanged.
@@ -45,6 +45,9 @@
 - BT-MOVE-024: Movement History synchronizes its initial logical selection after loading/sorting results, and Reverse/Correct Selected eligibility is recalculated consistently from that selected movement.
 - BT-MOVE-025: Whole-batch date/direction controls automatically select a correction field when its proposed value differs from persisted state and clear it when the proposed value returns to persisted state. Manual unticking remains effective until that proposed value changes again. Checkbox selection alone is insufficient: at least one selected value must differ semantically, otherwise no correction artifacts or audit event may be written.
 - BT-AUD-010/014: Correction/reversal detail and an exact single-event review acknowledgement resolve the referenced audit event's persisted lineage and explain only actual before/after field differences plus original/neutraliser/replacement IDs. Invalid identity fails closed. Esc returns detail to Audit Trail and Audit Trail to BinTracker.
+- BT-CORR-018..033: Planned lineage correction resolves a stable logical root/line, previews the complete expected generation, supports Restore/RemainReversed/AlreadyMatches, applies only explicit field changes, rejects complete no-op and commits one full root generation atomically.
+- The operator sees current/result values and understandable Changed / Already correct / Previously reversed—remain / Restore states. The client sends stable IDs, expected generation, explicit intent and reason; services recompute authoritative output.
+- A physical replacement batch is shown/navigable only when every logical line receives one truthful uniform newly created result. Mixed/partial output remains one auditable logical operation without a fabricated batch.
 
 ## Dashboard
 
@@ -76,6 +79,8 @@
 - BT-PRINT-008: Market Floor Blue is implicit; non-standard regular containers are explicit.
 - BT-PRINT-009: Special Floor Report Containers use the dedicated special section.
 - BT-PRINT-010: Import opening adjustments contribute to opening/B/Fwd reporting and are not physical daily OUT/IN.
+- BT-HIST-008/009: Movement History/Audit are immutable evidence; Daily/Weekly/Monthly, balances, Outstanding and statements use current retrospectively corrected activity. PositionAsOf(D) includes authoritative MovementDate activity through D.
+- Numeric reads validate relevant complete current generations and aggregate inside one consistent provider read snapshot. Invalid/unrooted operational lineage fails the affected result rather than returning partial/raw-fallback totals.
 
 ## Reminders / Communications
 
@@ -109,12 +114,13 @@
 - BT-OPS-001: Production data can be backed up safely.
 - BT-OPS-002: Restore requires explicit confirmation and database validation.
 - BT-OPS-003: Upgrades protect existing data and include recovery guidance.
+- BT-OPS-011/012: Lineage migration requires read-only per-database preflight plus a unique verified provider-consistent backup, hash/manifest/integrity/FK/schema/count equivalence and a tested stopped-client recovery route before any schema mutation.
 
 ## Central service and concurrency
 
-- BT-ARCH-008..015: All production business code is designed for multiple authenticated remote users executing concurrently through a central service backed by PostgreSQL.
-- The current local SQLite deployment remains supported until the server/API exists; its desktop session, device and filesystem adapters must not leak into business contracts.
-- Central enablement requires request-scoped authenticated identity, client metadata, configured business time, database-enforced invariants, idempotent retryable commands and content-based file transport.
+- BT-ARCH-009..018: v1 business code preserves request-capable identity, client metadata, configured business time, database invariants, idempotent commands, provider neutrality and presentation-independent services.
+- v1 remains local SQLite/WinForms. Authenticated API hosting and PostgreSQL central deployment are post-v1 BT-ARCH-005/006/008 work and must not require rewriting these semantics.
+- After lineage integration is accepted, the protected whole-codebase layer audit must complete before later major pre-v1 work.
 
 
 - BT-UI-006: Editable Container Type master data must warn before navigation/close discards unsaved changes and offer Save / Discard / Cancel.

@@ -11,6 +11,9 @@ This is the pre-v1 audit-coverage checklist. Audit history is append-only eviden
 - Saved Single Entry and Batch Entry movements.
 - Movement correction/reversal: actor, timestamp, mandatory reason, original/reversal linkage, source class and success/failure where appropriate.
 - Correction operations additionally preserve before/after evidence and original/neutraliser/replacement lineage; Operator changes create persistent Administrator-review state and review acknowledgement is itself audited.
+- Planned logical changes create one primary AuditEvent atomically with the operation/generation, including Restore and partial whole-root decisions. Review remains after-the-fact acknowledgement and references operation/audit identity, not an optional physical output batch.
+- Legacy association requires one unique complete structured persisted-ID match; unmatched evidence remains independently readable and is never linked by prose/time/business values.
+- Operational corruption and audit corruption are distinct: Invalid operational state fails affected numbers; audit-only corruption preserves proven numbers but blocks mutation/review/evidence-completeness output with critical health.
 - Operational report/export regression coverage must prove correction bookkeeping is suppressed by persisted lineage, corrected replacements drive displayed/exported totals, and ordinary reversal rows are not suppressed by correction-only rules.
 - MovementBatch audit events expose authoritative persisted line detail.
 - Authorization coverage: Operator/Admin ordinary Manual/Batch reversal; Viewer denial; generic reversal denial for Opening Adjustment and Excel Import/provenance-linked rows.
@@ -24,6 +27,7 @@ This is the pre-v1 audit-coverage checklist. Audit history is append-only eviden
 - Business Information/settings changes, including future logo/branding changes when implemented.
 - Reminder runs and individual Email/SMS delivery attempts.
 - Production Backup/Restore and database upgrade operations when implemented.
+- Lineage preflight, verified pre-upgrade backup/manifest, migration/postflight and recovery attempts when implemented; recovery evidence must survive restoration to an older database snapshot.
 
 ## Evidence expectations
 

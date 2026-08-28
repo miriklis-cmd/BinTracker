@@ -1,3 +1,9 @@
+## Documentation governance — movement-lineage architecture freeze (29 August 2026)
+
+- Froze planned logical roots/lines/full generations, restoration, corrected activity/PositionAsOf, concurrency, migration/preflight/backup and corruption policies after adversarial review/read-only v16 preflight.
+- Retained alpha.8 physical-batch/effective-query requirements as safe foundations; no behavior, schema, tests or version changed.
+- Corrected PostgreSQL/API delivery to post-v1 while protecting pre-v1 boundaries and the post-lineage whole-codebase layer audit.
+
 ## v0.5.0-alpha.8.7
 
 - Fixed Movement History's initially selected-row action state so Reverse and Correct Selected are recalculated consistently from the real selected movement after results are sorted and displayed.

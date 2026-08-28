@@ -16,7 +16,9 @@ Audited: 27 August 2026
 | Customer operational analytics | Yes | Sorting, lifetime OUT/IN, statement workflow |
 | Backup/Restore | Yes | Manual + scheduled automatic + retention/recovery drill |
 | Security/Audit hardening | Yes | Authorization, audit-coverage matrix, secrets/logging |
-| PostgreSQL/Multi-computer | Readiness before v1 | Preserve Services + IDbContextFactory; central deployment follows readiness decision |
+| Logical movement lineage | Required before v1 | Frozen roots/lines/full generations/restoration/projection/migration; implement and accept before later major work |
+| Whole-codebase layer audit | Protected pre-v1 gate | After lineage acceptance, remove authoritative WinForms business/persistence logic before subsequent major milestones |
+| PostgreSQL/API/Multi-computer | Post-v1 implementation | v1 preserves client/provider-neutral services, concurrency and idempotency; central host/provider/client delivery is post-v1 |
 | Installer/Upgrade | Yes | Production package and safe upgrade path |
 | Full per-build audit discipline | Always | Mandatory gate on every packaged build; includes all Markdown/current-state/version/roadmap reconciliation |
 | BinTracker product branding | v1 | Supplied product icon/logo used by Windows shell and restrained in-app branding; separate from business branding |
