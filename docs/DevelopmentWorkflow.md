@@ -4,6 +4,56 @@
 
 Before any lineage migration touches a database, BT-CORR-030 and BT-OPS-011/012 require read-only relationship preflight and a unique provider-consistent recovery backup verified by hash, integrity/FKs/schema/table counts and preflight equivalence. Failure aborts before schema writes. This documentation freeze authorizes no migration and existing developer backup tools do not substitute for the gate.
 
+## Conversation Context Capacity / Continuity Hard Gate
+
+Before beginning another substantial implementation, audit, refactor, packaging operation, architecture change, multi-step debugging task or comparable work unit, ChatGPT/Codex must conservatively assess whether the current conversation has become large enough that context-window exhaustion or forced rollover is a meaningful risk. Do not claim or imply that an exact remaining-token or remaining-context counter exists unless the product actually exposes one.
+
+Warn early, while enough context remains to construct a reliable continuation checkpoint. Use wording substantially like:
+
+> This chat is becoming context-heavy. We can continue the current coherent task, but before beginning another substantial piece of work we should create/update the repository continuation checkpoint so an unexpected chat cutoff cannot lose project state.
+
+A warning does not automatically stop active work. Where practical, finish the current coherent work unit, complete its directly associated verification and record the resulting state. Once meaningful context pressure has been identified, however, do not begin another major work unit until continuity is protected.
+
+Before a deliberate rollover caused by context pressure, create or update the durable repository continuation record at `docs/CONTINUATION.md`. Do not create an empty or meaningless placeholder merely because this rule exists; create or update the file when an active continuity checkpoint is actually needed.
+
+The continuation record must be intentionally extensive and self-contained. Where applicable, it must record:
+
+- the current BinTracker version, branch and HEAD;
+- the exact worktree, staged, modified and untracked state;
+- the exact active task and original objective;
+- completed work, partial work and the exact stopping point;
+- accepted functional and UI/UX behaviour;
+- accepted architecture decisions and data-semantics/integrity rules;
+- accepted security, testing and release decisions;
+- decisions and behaviour that must not regress;
+- approaches considered or rejected and why important approaches were rejected;
+- provisional or incomplete experiments that must not be mistaken for accepted work;
+- outstanding work and exact recommended next steps;
+- unresolved bugs and symptoms;
+- compiler warnings and test failures, counts and results;
+- source, audit and release-gate failures;
+- relevant technical debt;
+- current build, test, audit/source-gate, release and package state;
+- relevant files, classes, services, tests, scripts, migrations and documents;
+- useful commands already run and their material results;
+- commands and tests the next session should run before modifications;
+- architecture, data-integrity, concurrency, security and compatibility constraints;
+- traps, subtle behaviour and anything the next session must preserve or must not assume.
+
+Do not optimise the rollover handoff for brevity. A new ChatGPT/Codex session with repository access but no access to the previous conversation must be able to understand the project state, understand why important decisions were made, verify the baseline and continue safely without asking the user to reconstruct the old conversation. Reference stable authoritative repository documents instead of copying entire specifications where appropriate, but explain why those documents matter and record current-session state that they do not contain.
+
+Before declaring the rollover handoff complete, explicitly ask:
+
+> Could a new session that cannot see this conversation safely continue this exact work using only the repository and this handoff?
+
+If the answer is no, expand the handoff. This is a hard gate.
+
+At the start of a new session, before modifying the repository, read the applicable `AGENTS.md`, this workflow including this continuity gate, `docs/CONTINUATION.md` when it exists and represents an active continuation, and every other governing document normally required for the task. Mechanically verify repository reality rather than blindly trusting the handoff. Where applicable verify branch, HEAD, worktree, version, build baseline, test baseline and release/audit gates. If repository reality conflicts with the continuation record, stop and investigate before modifying application code.
+
+This continuity gate supplements rather than replaces every existing BinTracker roadmap, roadmap-matrix, architecture, requirements, security, audit, testing, known-issues, technical-debt, versioning, packaging and release gate.
+
+The user must not have to notice an almost-full conversation and request preservation manually. ChatGPT/Codex must proactively assess context pressure, warn early, protect continuity before beginning another major work unit once risk becomes meaningful, create the extensive repository handoff when rollover becomes advisable and provide the user with a matching detailed human-readable rollover summary. Never claim an exact context or token remainder unless the product exposes it.
+
 ## Implementation passes
 
 For each meaningful BinTracker change:

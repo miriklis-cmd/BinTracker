@@ -18,6 +18,8 @@ Practical read order and authority:
 
 If current authoritative sources genuinely conflict, stop and report the conflict; do not silently select, merge, or invent a new source of truth.
 
+Conversation-context continuity is a hard gate. Before substantial work, read and obey **Conversation Context Capacity / Continuity Hard Gate** in `docs/DevelopmentWorkflow.md`; if `docs/CONTINUATION.md` exists and contains an active handoff, read it before modifying the repository. Verify branch, HEAD, worktree, version and applicable build/test/audit reality mechanically rather than trusting the handoff blindly, and investigate conflicts before application-code changes. When context pressure becomes material, finish the current coherent unit where practical and create or update the required extensive continuation checkpoint before starting another major unit.
+
 ## Hard workflow gates
 
 - **Implement means implement.** When the user unambiguously says implement, do it, start, fix it, go ahead, or equivalent, the proposal/mockup phase is over: change the actual codebase. Do not answer only with mockups, pseudocode, screenshots, or another permission request. Exceptions are an explicitly requested design phase, a genuine unresolved ambiguity, or a repository/data/security gate that requires clarification. Inspection, safety, tests, and governance still apply. The Roadmap's mandatory Dashboard design gate remains an explicit exception.
