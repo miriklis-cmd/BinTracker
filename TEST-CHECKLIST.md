@@ -2,279 +2,122 @@
 
 Current baseline: **v0.5.0-alpha.8.7**
 
-Historical defect/build chronology belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`. Permanent behaviors recovered from old alpha checklists are retained by ID in `docs/RequirementsAcceptanceRegister.md` and in the active checks below.
+This is the practical operator/release checklist. `docs/RequirementsAcceptanceRegister.md` remains the authoritative implementation/status ledger; historical candidate detail belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`.
 
-Accepted baseline: Jack reported **v0.5.0-alpha.4 manual acceptance complete — 8/8 smoke tests passed**. Later candidates must preserve that accepted behaviour; this record does not imply acceptance of later UI/DPI changes.
+Status legend:
 
-## Release / audit / packaging gate
+- `[A]` — operator/manual accepted. Explicit recorded human acceptance exists for every behavior represented by the checklist line.
+- `[S]` — implemented/static/automated evidence exists, but no manual acceptance is claimed unless separately stated. This includes internal or dormant implementation for which manual UI testing is not the relevant gate.
+- `[R]` — implementation exists, but a specific current manual/operator/Windows/DPI/preview/print/real-workbook retest remains required.
+- `[P]` — genuinely pending, incomplete or not yet implemented.
+- `[G]` — repeat for every applicable candidate/release; a previous pass is historical evidence only.
 
-- [ ] `Audit-BinTracker.ps1` passes.
-- [ ] `Build-BinTracker.bat` reports v0.5.0-alpha.8.7 and the actually resolved installed SDK.
-- [ ] Restore succeeds; full solution builds with zero warnings.
-- [ ] All unit tests pass; all integration tests pass.
-- [ ] Failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
-- [ ] `Package-BinTracker.ps1` produces ZIP filename/root folder/Version/InformationalVersion all exactly equal to the current `Directory.Build.props` Version.
-- [ ] No unexpected `global.json` is packaged.
+Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candidate-specific changes retain their own `[R]` status until actually retested.
 
-## Authentication / users / shell
+## Release, audit and packaging
 
-- [ ] First-run Administrator creation works.
-- [ ] Login/logout and login-again without restarting work.
-- [ ] Failed login/lockout/unlock works.
-- [ ] Change/reset password and role/active controls work.
-- [ ] Password fields start masked; all supported eye controls reveal/re-hide correctly.
-- [ ] Audit Trail / Settings admin actions respect roles.
-- [ ] Login, Main, integrated report surfaces and dialogs use BinTracker icon; taskbar is branded before login. Current taskbar/icon rendering remains part of normal Windows visual smoke acceptance.
-- [ ] Splash shows BinTracker branding/version during startup.
-- [ ] Sidebar logo + full BinTracker wordmark remain aligned/unclipped.
+- [G] Before accepted behaviour changes, identify precise characterization; add missing coverage, run it before the change and rerun it afterward.
+- [G] Structured input/persisted-state boundaries have relevant malformed/adversarial coverage and fully validate or fail closed without partial state.
+- [G] Perform semantic reconciliation of every governed Markdown file and record the review separately from the mechanical audit.
+- [G] `Audit-BinTracker.ps1` passes its mechanical source/governance checks.
+- [G] `Build-BinTracker.bat` reports the current version/resolved SDK, restores, builds with zero warnings/errors and passes every unit/integration test without skips.
+- [G] A failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
+- [G] When packaging is authorised, `Package-BinTracker.ps1` verifies ZIP filename/root/Version/InformationalVersion against the current `Directory.Build.props` Version and excludes unexpected `global.json`.
 
-## Customers / Container Types / Business Information
+## Authentication, users and shell
 
-- [ ] Customer search by code/name works and no-result search clears stale details.
-- [ ] Customer dirty edits prompt Save / Discard / Cancel on customer switch/search/navigation/logout/close.
-- [ ] Customer balances remain separated by Container Type.
-- [ ] Current Position and Recent History remain usable/scrollable with no large blank band.
-- [ ] Container Type duplicate name/short code rejected; rename preserves history links.
-- [ ] Container display order changes entry dropdown order; inactive types disappear from new entry but remain historical.
-- [ ] Special Floor Report flag and usage statistics behave correctly; create/update/deactivate/reactivate are audited.
-- [ ] Business Information saves/reloads and `BUSINESS_INFORMATION_UPDATED` is audited.
-- [ ] Report header fallback: Default Report Header → Trading Name → Business Name → BinTracker.
+- [R] First-run Administrator, login/logout/login-again, failed-login lockout/unlock and password/role/active workflows work on the current candidate.
+- [R] Password fields start masked and supported eye controls reveal/re-hide correctly.
+- [R] Audit Trail and Settings actions respect roles at UI and service boundaries.
+- [R] Login, Main, integrated reports and dialogs use the BinTracker icon; taskbar branding is present before login.
+- [R] Startup splash shows BinTracker branding/version and exits without artificial delay (BT-UI-003 is implemented-static; current-candidate visual retest remains pending).
+- [A] Sidebar logo and full BinTracker wordmark remain aligned and unclipped.
 
-## Single Entry
+## Customers, containers and business information
 
-- [ ] Customer lookup/autocomplete works; invalid customer rejected; quantity starts blank.
-- [ ] Returned/Taken preview calculates correct After Save position.
-- [ ] Save writes movement, balance/history and `MOVEMENT_RECORDED`; Viewer cannot save.
-- [ ] `Ctrl+Enter` saves.
-- [ ] Successful save resets date=today, direction=Returned/IN, customer, container, quantity, reference, notes and preview, then focuses Customer.
+- [R] Customer code/name search and no-result clearing work; dirty edits prompt Save/Discard/Cancel on all navigation/logout/close paths.
+- [R] Balances remain separated by Container Type; Current Position/Recent History remain usable without a large blank band.
+- [R] Duplicate container name/short code is rejected; rename preserves history; display order and inactive-history rules work.
+- [R] Container create/update/deactivate/reactivate and Special Floor changes are audited and role-protected.
+- [R] Business Information saves/reloads/audits; report header fallback is Default Report Header → Trading Name → Business Name → BinTracker.
+- [P] Business logo storage and shared generated-output branding.
 
-## Batch Entry
+## Single and Batch Entry
 
-- [ ] `Ctrl+Enter` saves transactionally; Tab/Shift+Tab flow works.
-- [ ] Enter from Quantity/Reference/Notes adds a new line in Add mode and updates the selected line in Edit mode; it never appends a duplicate while editing.
-- [ ] Pending rows affect Current vs With Draft preview.
-- [ ] Clicking a draft line loads edit fields; Update Line replaces that row, then clears Customer/Quantity/Reference/Notes/preview and returns to Add to Batch mode.
-- [ ] Remove clears the editor and exits edit mode; removing the final row leaves Add to Batch ready for the next new line with no ghost edit state.
-- [ ] Esc while editing cancels edit mode, clears the editor/preview, retains every draft line, and shows the retained-draft status beneath the line/container summary.
-- [ ] After Esc cancels an edit, the pending grid has no live CurrentCell/CurrentRow selection capable of asynchronously restoring `Update Line`; button remains `Add to Batch`.
-- [ ] Draft survives navigation and logout/login while application process remains running.
-- [ ] Esc with current unsaved entry data clears Customer/Quantity/Reference/Notes/customer preview only, retains the draft, and focuses Customer.
-- [ ] Esc with no edit/current entry leaves Batch Entry for Dashboard, highlights Dashboard in left navigation, and retains the draft; Batch Entry can immediately be clicked to return.
-- [ ] Add to Batch clears Customer/Quantity/Reference/Notes/customer preview, focuses Customer, carries Movement Date / Batch Type / Container Type forward, leaves no draft row selected, and does not reload the just-added row into the editor.
-- [ ] Add at least two draft lines, then close/terminate BinTracker without saving (normal close, Stop Debugging, crash/power loss equivalent), relaunch/login, and confirm the Unsaved Batch Recovered prompt appears with date/direction/line count/total/last-saved details.
-- [ ] Recovery prompt buttons appear left-to-right as Continue Batch, Save Batch, Discard Batch.
-- [ ] Continue Batch restores the draft without saving it.
-- [ ] Save Batch saves the recovered movements and removes recovery state: restart and confirm no draft returns.
-- [ ] Discard Batch requires confirmation and removes recovery state: restart and confirm no draft returns.
-- [ ] Clear Batch also removes recovery state: restart and confirm no draft returns. If Clear Batch is pressed while editing (including when no draft rows remain), it clears the editor/preview and returns immediately to Add to Batch mode with no stale Update Line state.
-- [ ] Cancelling edit with Esc cannot be undone by a late asynchronous customer/row load: after Esc the editor stays cleared and Add to Batch remains active.
+- [R] Single Entry lookup/validation/preview, atomic save/audit, Viewer denial, `Ctrl+Enter` and post-save reset/focus work.
+- [A] Batch `Ctrl+Enter`, Tab/Shift+Tab, same-process draft retention and post-add reset/focus remain accepted.
+- [S] Batch pending Current/With Draft preview is implemented; no separate manual acceptance is claimed.
+- [R] Batch Enter/add/update/remove/Esc transitions never duplicate or resurrect a stale selected row; Dashboard navigation/highlight and retained draft remain correct.
+- [R] Crash/close recovery offers Continue Batch / Save Batch / Discard Batch in order; Save/Discard/Clear remove persisted state.
+- [R] Cancellation/late async loads cannot restore Update Line after Esc/Clear.
+- [P] After lineage activation, eligible Single/Batch saves atomically create complete generation-zero lineage or nothing.
 
-## Excel import / re-import
+## Excel import and re-import
 
-- [ ] Fresh test database → latest real workbook import succeeds and Blue/Yellow/Bulk balances reconcile.
-- [ ] Analyse/Map/Review perform no database writes before Import.
-- [ ] Existing populated database matches/merges existing customers correctly.
-- [ ] Unknown explicit container token blocks until mapped; mappings/decisions persist through wizard navigation.
-- [ ] New customer Create/Skip and existing match confirmation/override are explicit and persistent.
-- [ ] Excel B/Fwd is authoritative; cutover OUT/IN remain physical movements.
-- [ ] Exact successful workbook cannot import twice.
-- [ ] Workbook changed after preflight is rejected.
-- [ ] Changed workbook/same cutover presents Replace/Correct before execution and preserves legitimate same-day/later Manual/Batch activity.
-- [ ] Import History shows run/source/SHA/cutover/user/counts/status/replacement chain/linked movements and same-cutover correction differences.
-- [ ] A normal new-cutover import that creates opening adjustments shows `Opening reconciliation changes` with previous BinTracker position, Excel B/Fwd and adjustment.
-- [ ] A historical normal-cutover run created before reconciliation snapshots existed says the detail was not captured by that build; it must not say `Correction changes: not applicable`.
-- [ ] Replace/Correct continues to show `Correction changes` and the replacement chain independently of normal-cutover opening reconciliation.
-- [ ] Forced post-SaveChanges failure fully rolls back and exact-source retry remains possible.
-- [ ] Non-Administrator cannot access Import History.
-- [ ] **Before v1:** execution failure report identifies useful row/customer/container context.
+- [R] Fresh real-workbook import and populated-database merge reconcile Blue/Yellow/Bulk balances.
+- [R] Analyse/Map/Review are read-only; unknown tokens and create/skip/match decisions remain explicit and stable through navigation.
+- [R] Exact source cannot import twice; post-preflight file change is rejected.
+- [A] Changed workbook/same cutover exposes Replace/Correct before execution.
+- [S] Replace/Correct preserves legitimate same-day/later Manual/Batch activity outside replaced import-generated movements.
+- [R] Import History exposes source/SHA/cutover/user/count/status/replacement/linked movement and separate opening-reconciliation/correction evidence truthfully.
+- [R] Forced post-SaveChanges failure rolls back and allows exact-source retry; non-Administrator history access is denied.
+- [P] Before v1, execution failures identify useful row/customer/container context.
 
-## Market Floor
+## Reports and statements
 
-- [ ] Market Floor remains first and inline on Reports.
-- [ ] Selected date cannot exceed today; historical date regenerates correctly.
-- [ ] Current real workbook produces exactly two printable A4 pages for duplex use.
-- [ ] Front: Account owing / Cash owing / Account CREDIT / special-container rules remain correct.
-- [ ] Blue implicit; Yellow explicit; Bulk/special configured containers treated correctly.
-- [ ] Reverse: OUT/IN/B-Fwd/Total correct; Opening Adjustments affect B/Fwd, not physical daily OUT/IN.
-- [ ] High-Yellow-day adaptive-layout stress test completed before v1.
+- [A] Market Floor generates the accepted two-page duplex front/reverse output.
+- [S] Market Floor Account/Cash/credit grouping, Blue implicit/Yellow explicit treatment and opening-adjustment B/Fwd semantics are implemented; no manual acceptance is claimed for those rules.
+- [P] Complete a genuinely high-Yellow-day Market Floor density stress pass.
+- [R] Reports hub keeps Market Floor inline and opens each detailed report as one integrated main-workspace page with `Reports › <Report Name>` navigation.
+- [R] Integrated pages fit laptop/large-monitor working areas; filters/actions stay visible and grids use remaining space.
+- [R] Interactive filters, Customer-on-Enter, typed multi-sort/indicators and PDF/CSV displayed-order preservation work without layout shifts.
+- [A] Outstanding multi-column sorting and readable balance selector remain accepted; current-candidate report regressions still use `[R]` above.
+- [R] Outstanding, Daily, Weekly and Movement History filters/date semantics/totals/audited exports remain correct; Movement History remains forensic and preserves persisted IDs.
+- [A] Monthly Summary month/range/totals/filters/PDF/CSV workflow remains accepted.
+- [A] Customer Statement shared Customers/Reports workflow, date guard, Generate PDF/Open and printable output remain accepted.
+- [S] Existing Customer Statement running balances reconcile opening, movement and closing positions by container.
+- [P] The future lineage numerical cutover must implement and prove Opening = `PositionAsOf(StartDate - 1)`, inclusive StartDate..EndDate corrected activity and Closing = `PositionAsOf(EndDate)` without StartDate double counting.
+- [R] Daily Print Pack contains Outstanding Summary plus physical Movement Detail in one audited, readable PDF.
+- [P] Decide whether native Excel report export adds enough value beyond CSV.
 
-## Report launcher / common behavior
+## Alpha.8 correction, reversal and Administrator review authority
 
-- [ ] Detailed reports open as one active integrated main-workspace page with `Reports › <Report Name>` navigation; clicking the selected Reports sidebar item returns to the Reports overview.
-- [ ] Laptop and large-monitor sizing gives available space to data grid; no controls/buttons clipped.
-- [ ] Interactive reports have **no separate Run Report button**.
-- [ ] Date/dropdown/checkbox filters refresh live; Customer filter runs on Enter with visible cue.
-- [ ] Customer Code/Type and similar columns remain readable for real data.
-- [ ] Numeric columns sort numerically.
-- [ ] PDF/CSV preserve current displayed grid order.
-- [ ] Future historical periods cannot be selected; current week/month stops at today.
-- [ ] Notes export controls behave consistently where supported.
+- [R] Administrator/Operator may reverse or correct eligible ordinary Manual/Batch movements; Viewer is denied; Opening Adjustment/ImportRun rows remain outside generic mutation.
+- [R] Original evidence is immutable; reversal and correction evidence/reason/actor/time/idempotency/concurrency/audit remain transactional.
+- [R] Alpha.8 physical whole-batch guard remains active and rejects partial lineage; `EffectiveMovementQuery` remains current runtime authority.
+- [A] Movement History selection/action synchronization (BT-CORR-016) and whole-batch auto-select/clear/no-op/focus behavior (BT-CORR-017) remain accepted.
+- [A] Administrator review state/filtering, acknowledgement, end-to-end Operator review, persistent reminder and Esc hierarchy remain accepted (BT-AUD-007/008/011/013/014).
+- [R] Alpha.8.7 acknowledgement drill-through/differences/readability, Movement History wrapping and batch-dialog DPI layout need current Windows retest.
+- [R] Audit detail uses authoritative movement/batch identity and fails closed; BT-AUD-009/010 current-candidate extensions remain pending acceptance.
+- [P] Broader Audit Trail search/general filtering/CSV export remains a release decision, not an implemented claim.
 
-## Outstanding / Daily / Weekly / History
+## Dormant lineage foundation and remaining cutover
 
-- [ ] Outstanding current/as-of-date filters work; All Containers keeps each customer's container rows adjacent.
-- [ ] Outstanding PDF/CSV are readable, correctly ordered and audited.
-- [ ] Daily Today/Yesterday shortcuts, customer/container/direction/source filters and adjustment opt-in work.
-- [ ] Daily PDF/CSV preserve sort and are audited; optional Notes work.
-- [ ] Weekly resolves Monday–Sunday and This Week/Last Week correctly.
-- [ ] Weekly Daily Detail + Weekly Overview totals are correct; wrapping never clips actions.
-- [ ] Weekly PDF/CSV match selected view/order and are audited.
-- [ ] Movement History opens as a full-size integrated main-app page; inclusive range/filters/quick ranges/adjustment opt-in work; PDF/CSV are ordered/audited.
-- [ ] On Windows 11 at 1920x1080 and 150% scaling, Movement History remains usable and shows the real persisted Movement ID after Date; verify IDs such as 2 and 10 sort numerically, Shift+click multi-sort retains priority, filtering preserves each row's ID, and PDF/CSV contain the same IDs in displayed order.
-- [ ] At normal maximized desktop width Movement History has no unnecessary horizontal scrollbar; Customer/Status/Notes receive remaining width. Structured fields remain single-line; only long Status/Notes wrap and grow row height when needed.
-- [ ] At 1920x1080/150%, the full Movement ID header and far-right Entered by column remain visible without normal-case horizontal scrolling; only Status/Notes wrap and rows grow only when their prose needs it.
-- [ ] IN/OUT cells show restrained green/red badges; reversed originals and reversal rows show amber/orange Status badges. Select each kind of row and confirm text remains readable. Hover truncated Status/Notes and confirm full-text tooltips.
-- [ ] A customer filter resolving to one customer suggests PDF and CSV names containing the sanitized stable customer code; unfiltered and multi-customer results keep generic filenames.
+- [S] Dormant Core contracts pin lineage vocabulary and persisted enum values; no runtime authority changed.
+- [S] Read-only preflight, exact-source verified recovery artifact, exclusive upgrade lease and recovery classification exist under isolated automated tests; no operator acceptance is claimed.
+- [S] Dormant schema-16→17 DDL/backfill/postflight creates truthful complete MigrationBaseline state under isolated automated tests and leaves normal startup at schema 16; the foundation is externally reviewed/approved while production activation remains pending.
+- [S] Automated migration evidence proves schema-16 operation Kind outside historical 0/1 blocks before mutation and can never become schema-17 Reverse/Restore.
+- [P] Activate the upgrade coordinator only after explicit approval and safe production rehearsal; do not auto-restore over a valid rolled-back source.
+- [P] Integrate generation-zero lineage into new Single/Batch Entry atomically.
+- [P] Implement client-neutral Correct/Reverse/Restore/whole-root commands, root CAS/idempotency and complete-generation planner/validator.
+- [P] Implement CarriedForward/AlreadyMatches/RemainReversed and complete semantic no-op without fake movements.
+- [P] Atomically cut all operational numeric consumers to validated corrected activity/PositionAsOf while Movement History/Audit remain evidence.
+- [P] Prove Invalid/unrooted fail-closed numeric behavior and audit-only corruption separation.
+- [P] Run required root races, retries/lost response, import collision and transaction failure-injection acceptance.
+- [P] Retained Batch #30 passes RemainReversed, Restore, mixed dates, repeated correction, navigation/details/audit/review, reports/balances and Windows/DPI acceptance.
+- [P] After lineage acceptance, complete the protected whole-codebase layer audit before later major work.
 
-## Customer Statement
+## Remaining pre-v1 product and release gates
 
-- [ ] Customer Statement works from Customers and Reports and uses the same workflow.
-- [ ] Reports customer selection/search/inactive option and double-click work.
-- [ ] Statement date range cannot extend past today.
-- [ ] Generate PDF saves to chosen location; Generate & Open opens without requiring a chosen save path.
-- [ ] Statement opening/movement/closing balances reconcile by container and opened PDF prints normally.
+- [P] Dashboard design discussion precedes implementation; then validate KPIs, attention/drill-through, activity, summaries, charts/ageing and display layouts.
+- [P] Google Workspace email + Texto SMS delivery, templates, secure settings, manual/automatic sends, opt-out, history, retry/idempotency and audit.
+- [P] Production user-facing Backup/Restore, scheduled retention and recovery drill (separate from pre-lineage migration safety).
+- [P] Security/Data Integrity/Code Quality hardening and all required BT-SH dispositions.
+- [P] Installer/upgrade/deployment acceptance and full v1 production regression.
 
-## Outstanding Containers multi-sort trial
+## Current manual acceptance floor
 
-- [ ] Balance selector displays `Outstanding only`, `Credits only` and `All non-zero` without clipping.
-- [ ] Click **Type** to sort by customer type, then Shift+click **Code**; Account/Cash-COD grouping remains primary and Code is alphabetical within each group.
-- [ ] Outstanding Containers: Position ascending treats CREDIT as negative and OUT as positive; descending reverses that signed order.
-- [ ] Shift+click an existing sort column toggles its direction without discarding the other sort levels.
-- [ ] A plain click on a column returns to a single-column sort.
-- [ ] Generated PDF/CSV follows the current multi-column grid order.
-
-## Monthly Summary
-
-- [x] Month/year picker shows full year and cannot select future month.
-- [x] This Month / Last Month select correct calendar month.
-- [x] Customer Enter search; Container/Source live filters; adjustment opt-in work.
-- [x] OUT/IN/Net totals and customer/container rows are correct and sort numerically.
-- [x] Current month states activity through today.
-- [x] PDF/Generate & Open/CSV preserve grid order and audit correctly.
-- [x] User acceptance/sign-off recorded during v0.4.0-alpha.24.2.7 review.
-
-## Daily Print Pack
-
-- [ ] Date cannot exceed today.
-- [ ] One PDF contains Outstanding Summary first and physical Movement Detail second.
-- [ ] Opening Adjustments are excluded from physical Movement Detail.
-- [ ] Generate & Open opens generated pack.
-- [ ] Exactly one `DAILY_PRINT_PACK_GENERATED` event is written per generated pack.
-- [ ] Real PDF preview/print is readable at production DPI.
-
-## CSV audit trail
-
-- [ ] Outstanding CSV → `OUTSTANDING_CONTAINERS_CSV_EXPORTED`.
-- [ ] Daily CSV → `DAILY_MOVEMENTS_CSV_EXPORTED`.
-- [ ] Weekly Detail/Overview CSV → `WEEKLY_MOVEMENTS_CSV_EXPORTED`.
-- [ ] Movement History CSV → `MOVEMENT_HISTORY_CSV_EXPORTED`.
-- [ ] Monthly Summary CSV → `MONTHLY_SUMMARY_CSV_EXPORTED`.
-- [ ] CSV audit contains filename, row count and relevant date/filter/view context.
-
-## Remaining pre-v1 milestones
-
-### Frozen logical-lineage implementation (not started)
-
-- [ ] Read-only actual-database preflight classifies roots without matching business values; verified non-rotating pre-lineage backup/recovery passes before migration.
-- [ ] Migration preserves all evidence IDs, creates truthful full MigrationBaseline state and keeps ImportRun data separate.
-- [ ] New Single/Batch Entry atomically creates complete generation-zero lineage or nothing.
-- [ ] Correct/Reverse/Restore/whole-root commands use stable IDs/expected generation below WinForms; full generations include every permanent line.
-- [ ] CarriedForward/AlreadyMatches/RemainReversed create no fake movement; complete no-op creates nothing.
-- [ ] Corrected activity, PositionAsOf/current balance and Daily/Weekly/Monthly/PDF/CSV agree while Movement History/Audit retain evidence.
-- [ ] Invalid/unrooted lineage fails affected numeric results without omission/raw fallback; audit-only corruption preserves proven numbers but blocks mutation/review/compliance.
-- [ ] Root races, stale preview, retries/lost response, import collision and every failure-injection stage commit one complete result or none.
-- [ ] Retained Batch #30 passes RemainReversed, Restore, mixed date, repeated correction, descendant navigation, Batch Detail, Audit/Review and balance Windows/DPI acceptance.
-- [ ] After lineage acceptance, complete the protected whole-codebase layer audit before subsequent major roadmap work.
-
-- [ ] Movement Correction/Reversal: linked, reasoned and audited; original never destructively edited/deleted.
-- [ ] Administrator and Operator both see Reverse for ordinary Single Entry/Batch Entry movements and can complete a reversal.
-- [ ] Viewer does not receive reversal capability.
-- [ ] Opening Adjustment generic reversal is blocked and directs to Administrator-controlled adjustment handling.
-- [ ] Excel Import / ImportRun-linked generic reversal is blocked and directs to Administrator Replace / Correct.
-- [ ] Correct Selected shows original/current and corrected date/customer/container/direction/quantity/reference/notes, requires a reason, and states that saved history remains preserved.
-- [ ] Correct Entire Batch shows persisted Batch ID, line/container totals, old/new date/direction, says EVERY line is affected, and requires explicit confirmation.
-- [ ] On Windows 11 at 1920x1080 and 150% scaling, Correct Entire Batch remains within the usable working area; inspect a batch long enough to scroll, enter a reason, and confirm Cancel and Confirm Every Line remain fully visible/clickable with no overlap or clipped text. Recheck on the larger production display.
-- [ ] A two-line Correct Entire Batch has no form/content scrollbar; heading/context/controls/reason/actions stay visible. A long batch scrolls only its movement list. Successful completion is titled `Batch Corrected`.
-- [ ] Wrong-date correction removes the operational effect from the wrong day/week/month and applies it to the corrected day/week/month.
-- [ ] Daily/Weekly/Monthly, customer recent, statements and Market Floor show each correction exactly once as its effective replacement; correction-consumed originals and correction neutralisers remain visible only in immutable history/audit evidence. Ordinary reversal rows retain established operational visibility.
-- [ ] Movement History uses compact Source `Correction`, a blue Status pill, and full status/tooltips for original, neutraliser, replacement, and chained replacement-then-corrected roles; ordinary reversals remain amber/orange.
-- [ ] A replacement corrected again is ineligible for Correct/Reverse, its final replacement is eligible, and a fresh Movement History load plus PDF/CSV export succeeds.
-- [x] After each Movement History search, the visually selected first row immediately gives Reverse and Correct Selected the correct enabled state for that row; clicking it again is unnecessary. Eligible initial/later row selection passed focused Windows acceptance.
-- [x] In Correct Entire Persisted Batch, changing date/direction away from persisted values auto-ticks the matching field and returning to persisted values auto-unticks it; manual no-op attempts are rejected without artifacts. Focus/Cancel interaction leaves `Confirm Every Line` fully visible. Passed focused Windows acceptance.
-- [ ] Administrator receives one consolidated notification for unreviewed Operator reversals/corrections; Audit Trail can acknowledge them and the acknowledgement is audited.
-- [ ] Administrator-only persistent, non-blocking review infobar remains visible across navigation while Operator correction/reversal reviews are outstanding, shows the current count, opens the pending Audit Trail set, refreshes after review changes and disappears at zero; the existing login popup remains.
-- [ ] MovementBatch Audit Trail event supports authoritative persisted-line drill-down.
-- [ ] Audit Trail visibly distinguishes Needs review / Reviewed / not applicable and filters All / Needs review / Reviewed.
-- [ ] Mark Selected Reviewed enables only for a selected unreviewed, review-required Operator correction/reversal; it stays disabled for no selection, Administrator changes, unrelated events and already-reviewed events.
-- [ ] Review acknowledgement persists reviewer/time, writes a visible acknowledgement audit event and cannot be repeated; Viewer/Operator remain denied at the service boundary.
-- [ ] View Batch Detail is disabled for no selection/non-batch events and enabled only for authoritative persisted MovementBatch detail.
-- [ ] An acknowledgement row clearly names the reviewed action/entity/actor/audit-event ID; View Detail/double-click open that exact movement change with reviewer/time, while invalid references fail closed and acknowledgements remain non-reviewable.
-- [ ] Audit Trail uses human-facing Action labels without changing stored values; Action succeeded explicitly means the audited action result and remains independent of review state.
-- [ ] At 1920x1080/150%, Audit Trail shows full review state, understandable action, readable reviewer/time and Action succeeded without harmful normal-case horizontal scrolling.
-- [ ] Double-click a reviewable movement-change event and confirm Movement Change Detail shows actor/time/reason, exact original/neutraliser/replacement IDs and original-vs-corrected date/direction without unrelated same-date/customer rows.
-- [ ] Press Esc in Movement Change Detail/Batch Detail to return to Audit Trail, then Esc in Audit Trail to return to the underlying BinTracker screen without exiting the application.
-- [ ] Business logo + shared generated-output branding.
-- [ ] Google Workspace email + Texto SMS communications, templates, manual/automatic sends, opt-out, delivery history, retries/idempotency and audit.
-- [ ] Dashboard design discussion **before code**, covering KPIs/charts/drill-through/attention/recent activity/ageing/forecasting-ML/large-monitor behavior.
-- [ ] Production backup/restore/scheduled retention/pre-upgrade recovery drill.
-- [ ] Security/reliability/Release/DPI hardening.
-- [ ] Installer/upgrade/deployment acceptance.
-- [ ] Full v1 regression/production acceptance.
-
-
-## alpha.24 Reports landing page
-
-- [ ] Reports header/subtitle matches approved mock-up.
-- [ ] Quick Reports contains Market Floor Sheet and Daily Print Pack side-by-side.
-- [ ] Quick Reports uses exact approved icon artwork.
-- [ ] Market Floor date / Generate PDF / Generate & Open still work.
-- [ ] Daily Print Pack date / Generate PDF / Generate & Open still work.
-- [ ] Explore Reports is 3×2 at normal desktop width.
-- [ ] All six Explore report icons match the approved mock-up.
-- [ ] Outstanding Containers opens.
-- [ ] Outstanding Containers Balance filter defaults to Outstanding only; Credits only shows only negative/credit positions; All non-zero shows both, and PDF/CSV match the selected mode.
-- [ ] Daily Movements opens.
-- [ ] Weekly Movements opens.
-- [ ] Movement History opens.
-- [ ] Monthly Summary opens.
-- [ ] Customer Statement opens.
-- [ ] No report controls or card text are clipped at 100% DPI.
-- [ ] Repeat visual pass at 125% and 150% DPI.
-- [ ] Reports landing page shows no page scrollbar when maximized at the supported test scales.
-- [ ] Generate PDF shows the small document icon; Generate & Open stays on one line; every Explore Open button shows the full word `Open` without clipping.
-- [ ] Containers is a dedicated left-navigation destination immediately below Customers; no duplicate Container Types administration entry remains in Settings.
-
-
-## alpha.24.1 Containers navigation
-- [ ] Containers appears immediately below Customers in the left navigation.
-- [ ] Administrator can add, rename, reorder, deactivate/reactivate and save Container Types.
-- [ ] Operator can open Containers and search/view active/inactive Container Types but cannot modify them.
-- [ ] Viewer can open Containers and search/view active/inactive Container Types but cannot modify them.
-- [ ] Unsaved Administrator edits prompt before navigating away from Containers.
-- [ ] Settings no longer contains a duplicate Container Types button.
-
-
-## alpha.24.2 Reports layout
-- [ ] Reports page subtitle is fully visible beneath the Reports heading.
-- [ ] Both Quick Reports cards show title, description, date and both buttons without clipping.
-- [ ] All six Explore Reports cards show the complete two-line description.
-- [ ] All six Explore Reports cards show the complete Open footer.
-- [ ] No report card overlaps or clips at the Windows display scaling used for the acceptance workstation.
-
-
-## alpha.24.2.1 audit gate
-- [ ] Build-BinTracker.bat passes the source/package-state audit.
-- [ ] Audit reports the permanent requirement count rather than a false BT-CT-005 missing error.
-- [ ] Continue the alpha.24.2 Reports visual smoke test after build/tests pass.
-
-- [ ] Reports landing page has no bottom PDF/CSV/date information bar and all Explore report descriptions/Open captions are fully visible at the affected display scaling.
-
-### Report multi-column sorting
-- [ ] Each applicable report grid shows the sort hint.
-- [ ] Click a column for primary sort; Shift+click a second column and confirm grouping is preserved with the second sort inside each group.
-- [ ] Numeric report columns sort numerically (for example 2, 3, 21, 26), not lexically (2, 21, 26, 3).
-- [ ] Date columns sort chronologically, including weekday-prefixed dates.
-- [ ] Active multi-column sort order is preserved after changing report filters/reloading results.
-- [ ] Outstanding Containers shows Today, Generate PDF, Generate & Open and Export CSV without clipping at normal Windows scaling.
-
-- [ ] Report sort-state indicator: every active sort column visibly shows direction and priority (for example `▲1`, `▼1`, `▲2`), including Daily Movements Direction and both Weekly Movements tabs at 100%, 125% and 150% scaling; active indicators stay on one line and sorting does not change the grid/header height or any column widths.
+- [G] Windows 11, 1920x1080 at 150%: required actions remain reachable; no harmful clipping/overlap; report grids remain usable.
+- [G] Recheck materially changed UI on the substantially larger production display.
+- [G] Reports/printing changes receive real PDF preview/print evidence; importer behavior depending on the production workbook receives a real-workbook pass.
+- [G] Automated success never marks a manual/DPI/preview/print item accepted.

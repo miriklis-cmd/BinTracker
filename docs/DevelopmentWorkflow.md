@@ -1,8 +1,14 @@
 # Development Workflow
 
+## Characterization and structured-input hard gate
+
+Before modifying, replacing, refactoring or placing new authoritative logic beside accepted behaviour, identify tests that precisely characterize the affected behaviour. If adequate coverage is missing, add and run characterization tests before the change and rerun them afterward. When correcting a known defect, retain useful characterization separately from the expected-behaviour regression test; characterization never makes a defect permanent.
+
+Every parser, deserializer, importer, migration reader, recovery-manifest reader or other structured persisted-input boundary must have format-appropriate adversarial tests. The boundary must either accept and fully validate the input or fail with a controlled outcome and no partially accepted or persisted state. Exercise relevant truncation, omission, duplicates, wrong types, unsupported values, invalid IDs/relationships/dates, overflows, malformed shape, inconsistent checksums and mid-operation cancellation/failure; do not add irrelevant cases for formats the component does not consume. In particular, an undefined persisted enum value in an older schema must not acquire a new meaning merely because a later schema allocates that number.
+
 ## Planned lineage migration hard gate
 
-Before any lineage migration touches a database, BT-CORR-030 and BT-OPS-011/012 require read-only relationship preflight and a unique provider-consistent recovery backup verified by hash, integrity/FKs/schema/table counts and preflight equivalence. Failure aborts before schema writes. This documentation freeze authorizes no migration and existing developer backup tools do not substitute for the gate.
+Before any lineage migration touches a database, BT-CORR-030 and BT-OPS-011/012 require read-only relationship preflight, exclusive database-scoped upgrade ownership and a unique provider-consistent recovery backup verified for the exact source by hash, integrity/FKs/schema/table counts and preflight equivalence. Failure aborts before schema writes. Dormant schema-17 migration tests use these typed prerequisites against isolated databases; normal production startup remains schema 16 and existing developer backup tools do not substitute for the gate.
 
 ## Conversation Context Capacity / Continuity Hard Gate
 
@@ -78,6 +84,10 @@ For each meaningful BinTracker change:
 ## Documentation discipline
 
 Current-state documents must describe the current product, not accumulate contradictory historical alpha notes. Release history belongs in `docs/CHANGELOG.md`.
+
+`Audit-BinTracker.ps1` is a **mechanical audit**: it checks required files, permanent-ID integrity, version surfaces, selected forbidden strings/source gates and other mechanically expressible policy. A pass does not prove that every Markdown statement is semantically current.
+
+**Semantic documentation reconciliation** is a separate human/agent review. Inventory every governed Markdown file; read current-state authorities relevant to the change; compare their claims with the requirements register, current implementation and acceptance evidence; distinguish implemented-static from human acceptance and genuinely pending work; preserve historical records as history; and stop on contradictory authorities rather than silently choosing one. Handoffs and `docs/DocumentationAudit.md` must report mechanical-audit and semantic-reconciliation results separately.
 
 
 ## Version consistency

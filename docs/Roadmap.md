@@ -137,7 +137,7 @@ Still required:
 - [x] **Movement History audit identity** — the grid and PDF/CSV exports expose the authoritative persisted Movement ID used by correction/reversal/audit workflows; ID sorting is numeric and participates in the existing multi-column sort.
 - [x] **Monthly Summary** — selected-month OUT, IN and net movement totals with customer/container breakdown, This Month/Last Month shortcuts, customer/container/source filters, optional opening adjustments, typed numeric sorting, audited PDF and CSV preserving current grid order.
 - [x] **Daily Print Pack** — selected-date Outstanding Summary + physical Movement Detail in one audited PDF; acceptance testing remains.
-- [x] **Monthly Summary on-screen interaction** — dedicated responsive window with live dropdown/date/checkbox refresh, Customer-on-Enter search and sortable summary grid.
+- [x] **Monthly Summary on-screen interaction** — integrated responsive main-workspace page with live dropdown/date/checkbox refresh, Customer-on-Enter search and sortable summary grid.
 - [x] CSV export is implemented for Outstanding Containers, Daily Movements, Weekly Movements, Movement History and Monthly Summary, with audited export events.
 - [ ] Decide whether native Excel export adds enough operational value beyond CSV before v1; do not add it merely for feature parity.
 - [ ] Stress-test Market Floor with a genuinely high Yellow-bin day; adaptive sizing is accepted for now but remains a real-world validation item.
@@ -182,7 +182,7 @@ Required dashboard pass:
 
 ### 5. Movement correction / reversal
 
-**Architecture frozen; implementation not begun:** BT-CORR-018..033, BT-HIST-008..009, BT-AUD-015..017 and BT-OPS-011..012 define stable roots/lines, full generations, restoration/RemainReversed, corrected activity/PositionAsOf, root concurrency, provider/client neutrality, migration preflight/backup and fail-closed health. The retained Batch #30 partial reversal is protected acceptance evidence. Alpha.8 physical-batch-only eligibility remains the current safe implementation until the complete lineage migration/service/report/UI change is delivered atomically.
+**Architecture frozen; dormant persistence foundation implemented, runtime cutover not begun:** BT-CORR-018..033, BT-HIST-008..009, BT-AUD-015..017 and BT-OPS-011..012 define stable roots/lines, full generations, restoration/RemainReversed, corrected activity/PositionAsOf, root concurrency, provider/client neutrality, migration preflight/backup and fail-closed health. Core vocabulary, migration-safety infrastructure and an isolated schema-16→17 migrator/postflight exist as reviewed/approved dormant implementation; production activation and runtime cutover remain pending. The retained Batch #30 partial reversal is protected acceptance evidence. Alpha.8 physical-batch-only eligibility remains the current safe runtime implementation until migration activation and the complete service/report/UI change are delivered coherently.
 
 After lineage Windows acceptance, the whole-codebase layer delineation audit at execution step 5 is blocking; do not proceed directly into later feature work.
 

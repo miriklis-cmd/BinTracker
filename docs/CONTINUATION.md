@@ -2,13 +2,144 @@
 
 **Status:** ACTIVE
 
-**Purpose:** Preserve complete continuity before movement-lineage production implementation begins.
+**Purpose:** Preserve complete continuity through the dormant movement-lineage implementation slices before runtime authority activation.
 
 **Created:** 29 August 2026 (Australia/Sydney)
 
-**Implementation state:** The movement-lineage architecture is frozen in authoritative documentation, but production implementation has **not begun**.
+**Implementation state:** The movement-lineage architecture is frozen. External oversight has reviewed and approved the dormant foundation through BIN-LIN-IMP-03B for this local checkpoint commit: Core contracts, migration-safety infrastructure, schema-17 DDL, deterministic schema-16 backfill and postflight validation. Normal startup and all runtime correction/reporting authority remain schema 16/alpha.8 and have **not** changed.
 
 This record is governed by **Conversation Context Capacity / Continuity Hard Gate** in `docs/DevelopmentWorkflow.md`. A new ChatGPT/Codex session must read the repository-root `AGENTS.md`, that workflow section and this active continuation before modifying the repository. This handoff supplements the authoritative requirements and architecture; it does not replace them.
+
+## Current session update — BIN-LIN-CHECKPOINT-03 reviewed foundation checkpoint
+
+On 31 August 2026, external oversight approved the accumulated BIN-LIN-IMP-01, IMP-02A plus IMP-03A correction, IMP-02C, IMP-03 and IMP-03B dormant lineage foundation for one reviewed local checkpoint commit. The checkpoint records the accepted contracts, fail-closed migration preflight and verified recovery evidence, dormant schema-17 DDL/backfill/postflight, schema-16 Kind 0/1-only correction, tests and governance reconciliation.
+
+This approval does not activate schema 17. Production startup remains schema 16, the alpha.8 physical whole-batch guard remains authoritative, and no correction writer, resolver, balance/report service or UI has cut over to lineage. BIN-LIN-IMP-04 has not started; the next separately authorized slice is the resolver plus operational/audit invariant-health validator foundation. A real retained-database migration rehearsal, production activation and Windows/operator acceptance remain later gates. No push is claimed by this checkpoint record.
+
+## Current session update — BIN-LIN-IMP-03B evidence/checklist reconciliation
+
+On 31 August 2026, external review of IMP-03A found evidence-classification and documentation-strength defects, not a new lineage code defect. `TEST-CHECKLIST.md` now separates operator/manual acceptance `[A]`, implemented static/automated evidence `[S]`, a specific outstanding manual retest `[R]`, genuinely pending work `[P]` and repeatable candidate gates `[G]`. Mixed Import Replace/Correct, Market Floor, Batch Entry and Customer Statement lines were split against the permanent requirements ledger, and dormant lineage infrastructure moved from `[R]` to `[S]` because external architectural/oversight approval—not an operator UI test—is the relevant remaining gate.
+
+The IMP-03A 27-Markdown matrix no longer claims `Read fully = Yes` for every file. It records conservative review methods and explicitly acknowledges that the combined raw read was tool-truncated and followed by targeted searches, relevant excerpts and individual-file checks. The semantic conclusions remain unchanged; only the strength and terminology of the evidence claim were corrected.
+
+The substantive IMP-03A schema-16 Kind correction remains unchanged: only historical values 0/1 are valid, every other value blocks migration database-wide, and no unsupported value can acquire schema-17 Reverse/Restore meaning. Schema 17 remains dormant. BIN-LIN-IMP-03B governance correction was complete with external oversight approval pending at that handoff; the later CHECKPOINT-03 update above records the subsequent approval. IMP-04 remains blocked and has not started.
+
+## Current session update — BIN-LIN-IMP-03A full drift repair/reconciliation
+
+On 30 August 2026, independent oversight withheld IMP-03 approval after identifying a cross-slice migration defect: IMP-02A classified a schema-16 `MovementCorrectionOperations.Kind` outside historical values 0/1 as root-scoped ReadOnly, and IMP-03 migrated it unchanged even though schema 17 allocates 2=Reverse and 3=Restore. That could fabricate new semantics from corrupt legacy evidence.
+
+Corrected permanent rule: in a schema-16 source, Kind 0 is Single and Kind 1 is WholeBatch; every other value is a database-wide migration blocker. Preflight now returns `GlobalBlocker/UnsupportedCorrectionKind`, and the migrator independently rejects any prerequisite containing that reason before schema mutation. Values are never normalized or reinterpreted. Legitimate ReadOnly classification remains available for separately proven projection-safe reasons; this fix removes only the unsafe enum case.
+
+New adversarial integration coverage exercises schema-16 Kind 2, 3, -1 and 99 at both preflight and migration boundaries. It proves stable blocking, schema version 16, no committed lineage artifacts, retained verified recovery evidence and unchanged raw Kind. Schema-17 Core/schema tests continue to pin Single=0, WholeBatch=1, Reverse=2 and Restore=3.
+
+This round also completed a semantic review of all 27 governed Markdown files, recorded file-by-file in `docs/DocumentationAudit.md`; IMP-03B subsequently corrected that matrix's review-evidence terminology after external review found the blanket full-read claim stronger than the raw session evidence. It corrected stale current-state report-window wording, balance-reconciliation status, lineage implementation status, security finding-capture/current-version labels, Audit/Admin review debt, migration-backup debt and the active test checklist. The checklist now uses the clarified `[A]`/`[S]`/`[R]`/`[P]`/`[G]` model recorded above. No automated/static evidence was converted into new manual acceptance.
+
+Governance now explicitly separates the mechanical `Audit-BinTracker.ps1` result from semantic all-Markdown reconciliation. Narrow guards protect the exact stale phrases fixed here; they do not claim to automate semantic review. Undefined persisted enum values acquiring later-schema meaning is now an explicit structured-input fail-closed example in Testing, Workflow and BT-REL-012.
+
+Final IMP-03A validation: the corrected focused lineage migration suites passed 55/55; complete Release UnitTests passed 219/219 and IntegrationTests passed 153/153 (372 total), with 0 failed/skipped; Release solution build passed with 0 warnings/errors; 259 permanent requirement IDs had zero duplicates; the mechanical audit passed with 27 Markdown files inventoried; and `git diff --check` reported no whitespace error (only existing LF-to-CRLF notices). The canonical `Build-BinTracker.bat` then passed audit, restore, Debug build with 0 warnings/errors, 219 unit and 153 integration tests. No package, retained-database rehearsal or Windows UI/manual acceptance was performed.
+
+IMP-03A implementation complete; external oversight approval pending. Schema 17 remains dormant, `DatabaseSetup.LatestSchemaVersion` and normal startup remain 16, the retained/user-like database was not touched, and alpha.8 correction/effective-query/report authority is unchanged. IMP-04 requires explicit oversight approval and has not started.
+
+## Current session update — BIN-LIN-IMP-03 dormant schema 17 and deterministic migration
+
+On 30 August 2026, BIN-LIN-IMP-03 reverified committed HEAD `1d9b9ab7dfaa338629f1c7901b1a8051cd056553`, branch/upstream `codex/movement-correction` / `origin/codex/movement-correction` at `+0/-0`, version `0.5.0-alpha.8.7`, no staging, and exactly the reviewed IMP-01/02A/02C dirty state. Before schema changes, 6 focused unit characterization tests and 69 correction/reversal/import/migration integration tests passed; `SqliteMigrationTests` were explicitly rerun 15/15. No unexpected schema/runtime implementation existed.
+
+The local dormant implementation now adds `MovementCorrectionKind.Reverse=2` and `Restore=3`, persistence-only lineage classes not registered in the production DbContext, and `SqliteLineageSchema17Migrator`. The explicit migrator requires the exact-source upgrade lease, schema-16 read-only preflight and verified recovery artifact from IMP-02A. It is absent from `DatabaseSetup` and `SqliteSchemaMigrations`; `DatabaseSetup.LatestSchemaVersion` remains 16 and `EnsureCreatedAsync` still creates the schema-16 shape.
+
+The migration transaction rebuilds the existing correction-operation table with the frozen operation-envelope columns and kind constraint, creates `LogicalMovementBatches`, `LogicalMovementLines`, `LogicalMovementGenerations`, `LogicalMovementGenerationLines`, `LogicalMovementLedgerLinks` and output-only `LogicalMovementPhysicalOutputs`, adds the nullable unique AuditEvent operation FK, and rebuilds `BinMovements` while preserving every column/index/membership and changing only its MovementBatch delete action from SET NULL to RESTRICT. It then uses persisted correction/reversal/batch/import IDs only to create root-wide generation-0 MigrationBaseline state, zero-based RootMovementId ordinals, Active/Reversed pointers, ownership roles and non-null baseline introduction links. Legacy operation request/schema/expected/result generation fields remain null; generation 0 references no operation; historical PhysicalOutput backfill is exactly zero; operation root and AuditEvent links use unique structural proof only. Import/Adjustment rows remain outside generic lineage. A structurally complete root carrying a separately approved projection-safe ReadOnly reason may receive a complete projection and stable reason while unrelated roots remain Active; schema-16 unsupported operation Kind is not such a reason and blocks the database before writes. Invalid/GlobalBlocker/unscoped ReadOnly evidence fails before writes rather than receiving invented state.
+
+Transaction-bound postflight checks required tables, no committed Initializing root, exact root/line/current-generation completeness, baseline action/mask/predecessor/operation shape, Active/Reversed pointers, pointer ownership and transformation roles, non-null same-root/line introduction links, complete ordinary movement ownership, null legacy new-write-only fields, zero historical PhysicalOutput and zero FK violations. Twelve deterministic failure-injection checkpoints cover prerequisites-to-schema, every backfill stage, legacy associations, FK rebuild and postflight/publication. Every injected failure opens a fresh connection and proves schema 16, no committed lineage tables, valid FKs and preserved verified recovery evidence.
+
+New schema tests use only disposable SQLite databases. They cover schema-16 startup nonactivation; exact baseline and Batch-30-like Active/Reversed shape; unique structured audit association; DDL tables/indexes/FKs/CHECK/UNIQUE/output selector; future generation-linked PhysicalOutput capability; MovementBatch RESTRICT membership; ImportRun-owned movement deletion; whole-file developer reset; schema-17 rerun; partial schema/wrong prerequisites; all failure checkpoints; Invalid graph rejection; fail-closed unsupported schema-16 operation kinds; and postflight pointer-ownership tamper rejection. `MovementLineageContractTests` plus new unit guards pin all enum/schema/checkpoint identities.
+
+Development iterations retained for continuity: the first Data build exposed four `DbTransaction`/`SqliteTransaction` compile errors; the first integration compile exposed a static fixture call and wrong gate type; the first run had 20 sandbox-denied lock-path failures; the next had two fixture/assertion/lease-cleanup failures; a later added physical-output test failed once because its raw MovementBatch insert omitted required `IsReversed`; and one investigation `rg` command had a PowerShell quote terminator error. Each introduced problem was corrected without suppression. The final focused schema suite passed 28/28; the combined lineage/migration/alpha.8/import regression filter passed 113/113 before the last two adversarial schema cases were added; final complete UnitTests passed 219/219 and complete IntegrationTests passed 146/146. Release solution build passed with 0 warnings/errors; `Audit-BinTracker.ps1` passed with 259 permanent IDs/27 Markdown files; and the final canonical `Build-BinTracker.bat` passed restore, Debug build (0 warnings/errors), 219 unit and 146 integration tests. This is automated/static evidence only: no real retained database migration rehearsal, packaging, Windows UI/DPI or operator acceptance occurred.
+
+Governance now includes BT-REL-011 characterization-before-change and BT-REL-012 structured-input fail-closed testing, with matching rules in `docs/Testing.md`, `TEST-CHECKLIST.md` and `docs/DevelopmentWorkflow.md`. `docs/Database.md` records schema 17 as implemented only behind isolated dormant migration tests. Runtime mutation/projection/report/UI semantics are not marked implemented.
+
+IMP-03 stopping point: review this dormant schema/migration layer. Do not activate it or begin IMP-04 automatically. The next dependency-ordered slice, only after oversight approval, is the client-neutral resolver plus operational/audit invariant-health validator foundation; it must not yet switch writers or numeric consumers.
+
+## Current session update — BIN-LIN-IMP-02C schema-capability/population reconciliation
+
+On 30 August 2026, BIN-LIN-IMP-02C reverified committed HEAD `1d9b9ab7dfaa338629f1c7901b1a8051cd056553`, branch/upstream `codex/movement-correction` / `origin/codex/movement-correction` at `+0/-0`, version `0.5.0-alpha.8.7`, no staging and exactly the accepted IMP-01/02A plus provisional 02B dirty files. Schema remains 16; no IMP-03 implementation or runtime-authority change exists. This round changed authoritative documentation only.
+
+The retained adversarial/final-freeze evidence and reviewed implementation plan resolve the 02B ambiguity by separating schema capability from migration population:
+
+- schema 17 retains `LogicalMovementPhysicalOutput` with exactly one generation or uniquely-proven legacy-operation selector;
+- schema-16 -> 17 MigrationBaseline creates **no** `LogicalMovementPhysicalOutput` rows for historical correction-output batches and never claims generation 0 created them;
+- the seven historical output batches observed in the final-freeze database remain evidenced by `MovementCorrectionOperations.ReplacementBatchId`, their `MovementBatch` rows and exact `BinMovement.MovementBatchId` membership;
+- every new truthful lineage-native correction-output batch created after activation must have exactly one generation-linked output row;
+- any later conversion of legacy physical-output evidence would require a separately authorized deterministic process and cannot fabricate chronology.
+
+The complete population contract is now explicit in `docs/Database.md` and the relevant permanent requirements. Active/ReadOnly migration must build full generation 0, lines, state pointers, ownership/roles and non-null ledger introduction pointers. A baseline `IntroducedByGenerationLineId` points to that line's generation-0 state to mean “introduced into the logical-lineage model”, not that the historical movement was created then. Generation predecessor/operation and generation-line predecessor are null for MigrationBaseline. Legacy operation `RequestJson`, `RequestSchemaVersion`, `ExpectedGenerationNumber` and `ResultGenerationNumber` remain null because they cannot be truthfully reconstructed; `LogicalMovementBatchId` is populated only from a unique structural root proof. Existing operation IDs/fingerprint/kind/original/replacement evidence is preserved unchanged. No separate target-line FK is frozen.
+
+Schema-17 migration populates `AuditEvent.MovementCorrectionOperationId` only for the unique complete structured-ID matches governed by BT-AUD-017; weak/unmatched legacy evidence stays null with a diagnostic. Exact legacy correction-line association on a ledger link is likewise conditional structural evidence. Existing `BinMovement.MovementBatchId` values are preserved while schema 17 changes ordinary delete behavior from SET NULL to RESTRICT/NO ACTION; Import Replace/Correct movement deletion and developer whole-database reset require regression coverage but do not justify detachable physical evidence.
+
+The inspected 495-movement/30-batch/10-operation/17-triple/7-reversal database would therefore produce 28 Active roots with complete baselines and ledger ownership, including Batch #30's Active/Reversed pair; retain all 10 legacy operations, conditionally root-link them, leave their new request/generation fields null, conditionally link the strong audits, and create zero historical physical-output association rows for the seven legacy outputs. Every real database must still repeat preflight.
+
+Files changed by 02C: `docs/Database.md`, `docs/RequirementsAcceptanceRegister.md`, `docs/Architecture.md` and this continuation only. No source, tests, EF, migration, schema constant, startup, database or runtime behavior changed. The permanent enum values and schema-17 allocation from 02B were not reopened. `Audit-BinTracker.ps1` passed at v0.5.0-alpha.8.7 with 257 permanent IDs/27 Markdown files/current-state contradiction checks; corrected first-column validation found 257 IDs and zero duplicates; targeted migration-population contradiction searches found no remaining current-authority conflict; `git diff --check` passed with only line-ending notices. The final expected worktree adds these four modified documentation files to the accepted IMP-01/02A dirty state, remains unstaged, and is still `+0/-0`. IMP-03 remains prohibited until oversight approves this reconciliation; all repository facts must be rechecked mechanically by the next session.
+
+## Current session update — BIN-LIN-IMP-02B persistence-contract documentation freeze
+
+On 30 August 2026, BIN-LIN-IMP-02B mechanically reverified the same committed HEAD/branch/upstream/version and exactly the accepted IMP-01/IMP-02A dirty state; nothing was staged and no IMP-03/schema/runtime implementation existed. This round changed documentation only.
+
+Source, migrations, tests, current authoritative documents and retained reviewed/final-freeze evidence were reconciled before allocation. `MovementCorrectionKind.Single=0` and `WholeBatch=1` are the only current enum members; migration/schema SQL contains no competing operation-kind CHECK; no current or historical migration assigns values 2/3 another meaning. The reviewed implementation plan explicitly assigned `Reverse=2` and `Restore=3`, and no later frozen decision superseded those meanings. BT-CORR-025 and `docs/Database.md` now make all four values permanent persisted identities. Production C# remains deliberately unchanged until the replacement IMP-03 implementation slice.
+
+The active SQLite migration catalogue and derived `DatabaseSetup.LatestSchemaVersion` end at 16, no hidden/uncommitted schema implementation exists, IMP-02A preflight explicitly expects source schema 16, and no other feature owns 17. The logical-lineage migration is now permanently allocated as **schema 16 -> schema 17** in BT-CORR-030 and `docs/Database.md`. This allocation does not change `LatestSchemaVersion`, create a migration or activate startup.
+
+The persistence map was reconfirmed without semantic redesign: `RootMovementBatchId` remains the sole original physical-batch authority; `LogicalMovementPhysicalOutput` is named and mandatory only as the output association when an optional truthful physical output exists; the existing operation table evolves rather than being replaced; `MovementCorrectionLines` remains legacy forensic evidence; `AuditEvent.MovementCorrectionOperationId` is nullable/unique/RESTRICT for one primary new-operation audit; evidence relationships use RESTRICT/NO ACTION; no `MovementSource.Correction` or authoritative before/result JSON is introduced.
+
+Files changed by BIN-LIN-IMP-02B: `docs/Database.md`, `docs/RequirementsAcceptanceRegister.md` and this continuation. No requirements were added or renumbered. `Audit-BinTracker.ps1` passed at v0.5.0-alpha.8.7 with 257 permanent requirement IDs and 27 Markdown files; a correct first-column register check found 257 IDs and zero duplicates; targeted contradiction searches found no `v17-or-next` or superseded `LogicalMovementPhysicalBatchLink` wording in current authoritative files; `git diff --check` passed with only existing LF-to-CRLF notices. No application build/test was run because this was documentation-only.
+
+Final expected unstaged state after this round is modified `docs/CONTINUATION.md`, `docs/Database.md`, `docs/RequirementsAcceptanceRegister.md` and the pre-existing IMP-02A `src/BinTracker.Data/DatabaseConfiguration.cs`; untracked IMP-01/02A Core contracts, migration infrastructure and their two test files; nothing staged. IMP-03 was not started. The next safe step after oversight approval is a replacement schema/migration prompt using these permanent identifiers.
+
+## Current session update — dormant Core lineage foundation
+
+On 30 August 2026, repository reality was reverified at committed HEAD `1d9b9ab7dfaa338629f1c7901b1a8051cd056553` (`Add conversation continuity hard gate`), branch `codex/movement-correction`, upstream `origin/codex/movement-correction` at `+0/-0`, with a clean worktree and version `0.5.0-alpha.8.7`. No unexpected lineage implementation existed.
+
+Before production edits, the existing correction/reversal characterization suites were run unchanged:
+
+```text
+dotnet test tests/BinTracker.IntegrationTests/BinTracker.IntegrationTests.csproj --no-restore --filter "FullyQualifiedName~MovementCorrectionSqliteTests|FullyQualifiedName~MovementCorrectionWorkflowTests|FullyQualifiedName~MovementCorrectionConcurrencyTests" --logger "console;verbosity=minimal"
+Passed: 49, Failed: 0, Skipped: 0
+```
+
+The current local implementation adds only:
+
+- `src/BinTracker.Core/MovementLineageContracts.cs` — dormant client-neutral logical root/line/generation identity value types, root status, line state, generation action, transformation role and explicit movement-change field mask;
+- `tests/BinTracker.UnitTests/MovementLineageContractTests.cs` — persisted numeric-value/identity/flag guards.
+
+Focused post-change validation recorded:
+
+- new contract tests: 4 passed, 0 failed/skipped;
+- the same alpha.8 correction/reversal suites: 49 passed, 0 failed/skipped;
+- builds performed by those focused `dotnet test` commands produced no warnings/errors.
+
+No DbSet/EF configuration, schema migration/version, startup behavior, movement writer, correction/reversal service, `EffectiveMovementQuery`, report/balance path, import behavior or WinForms surface changed. `MovementCorrectionKind.Single=0` and `WholeBatch=1` remain protected; BIN-LIN-IMP-02B has now authoritatively allocated `Reverse=2` and `Restore=3`, but production C# must add them only in the approved schema implementation slice with persisted-value tests.
+
+Historical IMP-01 stopping point: review the dormant foundation before the read-only migration-safety slice. That later slice is now present and corrected as recorded below; do not repeat it.
+
+## Current session update — BIN-LIN-IMP-02/02A migration-safety infrastructure
+
+On 30 August 2026, BIN-LIN-IMP-02 started from the same committed HEAD/branch/upstream/version and exactly the accepted three-file BIN-LIN-IMP-01 dirty state; nothing was staged and no unexpected lineage implementation existed. Focused pre-edit characterization passed: 6 unit tests covering database configuration and the dormant lineage contracts, and all 15 existing `SqliteMigrationTests`.
+
+The current local slice additionally adds:
+
+- `src/BinTracker.Data/DatabaseConfiguration.cs` — frozen LocalAppData recovery/companion-lock locations, separate from ordinary developer backups;
+- `src/BinTracker.Data/LineageMigrationInfrastructure.cs` — dormant provider-facing contracts and SQLite/Windows implementations for a physical-database-scoped shared-runtime/exclusive-upgrade gate, read-only schema-v16 structural lineage preflight, exact-source verified recovery backup/manifest/checksums, and recovery disposition;
+- `tests/BinTracker.IntegrationTests/LineageMigrationInfrastructureTests.cs` — isolated temporary-database coverage for gate contention/release/path scoping/no database mutation, deterministic correction/reversal/repeated-chain/import/partial-batch preflight, invalid/cross-domain/physical-batch rejection, backup/hash/manifest/integrity/FK/schema/table-count/preflight equivalence, tamper rejection, and recovery classification;
+- `docs/Database.md` — durable implementation-detail record that this safety infrastructure exists but remains unactivated.
+
+The corrected concrete gate derives a companion lock identity from the selected database's Windows volume/file ID, so normalized paths and hard-link aliases cannot bypass it. Normal participating runtimes can hold shared read leases; upgrade/recovery requires an exclusive lease and checks the pending-operation marker before ownership is returned. It is scoped per physical database rather than making BinTracker globally single-instance, releases on disposal or process termination, and has a real child-process contention/termination test. Production activation must make every database-using process acquire the runtime lease before opening/using the database, and must retain one exclusive upgrade lease over the complete preflight/backup/comparison/migration/postflight critical section. This is the mechanical no-conflicting-operation contract; the current slice deliberately does not hook it into startup.
+
+Preflight opens SQLite with `Mode=ReadOnly`, `query_only=ON`, private non-pooled connections and FK enforcement. It verifies the expected schema/tables, full `integrity_check`, `foreign_key_check`, correction triples, ordinary reversal links, correction chains, physical batch relationships, generic-lineage/import-or-adjustment separation and graph cycles. It emits stable classification/reason codes, relevant category counts, exact application-table counts and a canonical structural SHA-256 fingerprint. It never matches customer/container/date/quantity/text/timestamps and writes no lineage data.
+
+The frozen production recovery directory is `%LOCALAPPDATA%\BinTracker-RecoveryPreUpgrade`, separate from developer/ordinary backup retention and never automatically deleted in v1. Backup names are `BinTracker-pre-lineage-v<schema>-<yyyyMMddTHHmmssfffZ>-<short-guid>.db`; an atomic no-overwrite publish prevents collision overwrite. The service requires a non-empty provider-consistent SQLite `BackupDatabase` result, reruns source/backup preflight, and compares integrity, FKs, schema, exact application-table counts and structural fingerprint. Its versioned manifest records artifact/purpose/application/provider, canonical and physical source identity, source schema/size/timestamp/journal mode, backup size/hash, counts/classification/fingerprint and recovery-policy instructions. Adjacent checksum evidence independently binds both backup and manifest hashes. `VerifyForSourceAsync` must match the expected active database path, path hash, Windows physical file identity and schema; a valid backup for database A is not recovery evidence for database B. Failed construction deletes only its own incomplete unique artifacts where possible and never returns them as verified.
+
+Recovery classification now has three stable outcomes: preserve a mathematically valid active database; allow controlled restore only when the active database is invalid/unusable and a backup verifies after a known migration failure; or prohibit recovery when the backup is not verified/conditions are unknown. It performs no automatic restore.
+
+IMP-02A corrected oversight gaps in destination/naming/no-overwrite, non-zero verification, manifest evidence, dual checksums, exact-source binding, alias-safe physical identity, shared/exclusive cross-process participation, pending-operation proof and frozen retention. Development iterations included one compile failure from an initially selected source-generated interop declaration under the repository's unsafe-code policy, one compile failure for conversion/nullability issues, one test compile failure while test helpers were incomplete, and one 16/19 test run exposing shared-lock-file creation and child-process argument defects; each introduced defect was corrected rather than suppressed. Final corrective validation passed 20/20 infrastructure tests, 6/6 targeted unit tests, and 84/84 combined integration tests (20 infrastructure + all 15 `SqliteMigrationTests` + the retained 49 alpha.8 correction/reversal characterization tests), with no failures/skips or build warnings/errors. `Audit-BinTracker.ps1` passed at version `0.5.0-alpha.8.7` with 257 permanent requirement IDs and 27 Markdown files. This is focused automated/static evidence, not the canonical BAT/full suite, a production migration rehearsal, or Windows/operator acceptance.
+
+This remains deliberately dormant: `DatabaseSetup.InitializeSqliteAsync` still calls `EnsureCreatedAsync` before numbered migrations; schema stays v16; no runtime or upgrade lease is registered/invoked during startup; no backup/preflight runs automatically; no lineage row is persisted; no correction/reversal/report/UI authority changed. Do not begin the replacement IMP-03 until oversight approves the IMP-02B persistence-contract freeze.
 
 ## Mechanically verified repository baseline
 
@@ -74,7 +205,7 @@ The current governance and continuation Markdown edits are not application-teste
 
 ## Current development phase and original objective
 
-The project is immediately before substantial production implementation of lineage-aware correction/reversal/restoration.
+The project has completed the dormant Core, migration-safety and schema-17 migration foundations and is immediately before client-neutral lineage resolution/invariant-health implementation. Runtime correction/reversal/restoration and reporting authority have not changed.
 
 The original objective was to extend the safe but limited alpha.8 immutable correction/reversal workflow so whole-batch correction remains truthful after individual corrections, partial reversals, repeated corrections, restoration, mixed dates, partial no-ops and explicit `RemainReversed` decisions. Investigation was deliberately completed before code because a false lineage or balance can silently corrupt operational reporting.
 
@@ -392,7 +523,7 @@ The authoritative database details are in `docs/Database.md`. Implementation pla
 - nullable unique primary operation FK on `AuditEvent` for new operations;
 - legacy `MovementCorrectionLines` retained as forensic evidence, not populated as a second authority for new generations.
 
-Expected persisted enum values must be explicit and never renumber old values. Existing `MovementCorrectionKind.Single=0` and `WholeBatch=1` remain; planned additions are Reverse and Restore. New statuses/actions/states/roles must match the frozen docs and tests.
+Expected persisted enum values are explicit and permanent. `MovementCorrectionKind.Single=0`, `WholeBatch=1`, `Reverse=2` and `Restore=3`; statuses/actions/states/roles must match `docs/Database.md` and the frozen contract tests. Never renumber persisted values without an explicit data migration.
 
 Recommended focused client-neutral services include a lineage resolver, invariant validator, pure change planner, movement-change command service, corrected-activity/position projection, physical-output policy, migration preflight/classifier, transaction-compatible audit appender and no-op/test failure injector. Do not let `MovementCorrectionService` grow into another monolith.
 
@@ -480,13 +611,10 @@ Do not ship the schema-only or engine-only internal checkpoints. Do not remove o
 
 ## Relevant outstanding work
 
-No implementation has begun. Outstanding work is the complete dependency chain above, including:
+The reviewed dormant/unactivated foundation is recorded by BIN-LIN-CHECKPOINT-03. Outstanding work in the dependency chain includes:
 
-- select and test the concrete exclusive SQLite/Windows upgrade gate;
-- characterize current behavior and add lineage test fixtures/builders;
-- create Core persisted types/enums without renumbering legacy values;
-- implement migration-grade read-only preflight and verified backup/manifest/recovery;
-- implement schema-v17-or-next lineage migration/backfill and postflight;
+- retain and extend the focused alpha.8 characterization and isolated lineage fixtures as each authority changes;
+- keep schema-17 production activation blocked pending its later rehearsal and activation gates;
 - implement root/line/generation resolver and invariant/health validators;
 - integrate generation zero into Single/Batch Entry atomically;
 - implement unified change planner/commands, CAS, retry and provider exception translation;
@@ -510,8 +638,8 @@ Before modifying any repository file, the next session must:
 4. Read current `docs/Roadmap.md`, `docs/RoadmapCoverageMatrix.md` and `docs/RequirementsAcceptanceRegister.md`.
 5. Read the applicable lineage sections in `docs/Architecture.md`, `docs/BusinessRules.md`, `docs/FunctionalSpecification.md`, `docs/Database.md`, `docs/Testing.md`, `TEST-CHECKLIST.md`, `docs/AuditCoverage.md` and import safety documents.
 6. Mechanically verify root, branch, HEAD, upstream, worktree/staging/untracked state and `Directory.Build.props` version.
-7. Inspect the complete uncommitted diff for `AGENTS.md`, `docs/DevelopmentWorkflow.md` and this continuation. Preserve it; investigate any discrepancy before application-code changes.
-8. Confirm no lineage implementation has already appeared unexpectedly. If it has, stop and reconcile it against the frozen requirements rather than layering work over it.
+7. Inspect the committed BIN-LIN-CHECKPOINT-03 file list and any remaining working-tree files. Preserve unrelated evidence artifacts; investigate any discrepancy before application-code changes.
+8. Confirm no lineage implementation beyond the reviewed dormant/unactivated IMP-01/02A/02C/03/03A/03B foundation has appeared unexpectedly. Do not begin IMP-04 without separate authorization; if other implementation exists, stop and reconcile it rather than layering work over it.
 9. Before the first implementation modification, characterize the relevant alpha.8 behavior and decide which focused tests establish the baseline. Run broader gates in proportion to the slice; do not invent a current full-suite result.
 10. Do not stage, commit or push without explicit user instruction.
 

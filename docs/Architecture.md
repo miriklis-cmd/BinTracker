@@ -48,7 +48,7 @@ Imports cross the service boundary as `ImportSourceDocument` content plus safe m
 
 Moving to PostgreSQL still requires an API host, provider/schema migrations, authentication/authorization deployment, central backup/monitoring and real PostgreSQL integration tests. It must not require rewriting accepted business, reversal, import, report or audit semantics.
 
-## Frozen movement-lineage architecture (planned v1)
+## Frozen movement-lineage architecture (dormant foundation implemented; runtime planned v1)
 
 ### Authority and state
 
@@ -72,7 +72,7 @@ A correction-output physical batch and its output-only link are optional. It exi
 
 Canonical versioned request JSON/fingerprint records intent (including absent/null/value), never state/report truth; generation lines have structured pointers/action/field mask and no authoritative before/result JSON. Exact ClientOperationId retry returns its committed result even after later generations; changed reuse fails.
 
-Root-wide CAS is v1 concurrency authority. Portable PK/FK/RESTRICT/UNIQUE/CHECK/index constraints combine with transactions/validators. No business rule depends on SQLite triggers, rowid, locking, deferred FKs or disabled FK enforcement. `IntroducedByGenerationLineId` is nullable only during construction and populated before Active commit.
+Root-wide CAS is v1 concurrency authority. Portable PK/FK/RESTRICT/UNIQUE/CHECK/index constraints combine with transactions/validators. No business rule depends on SQLite triggers, rowid, locking, deferred FKs or disabled FK enforcement. `IntroducedByGenerationLineId` is nullable only during construction/backfill and populated before Active or ReadOnly commit.
 
 Every numeric read validates relevant complete current snapshots, projects movement IDs and aggregates in one provider-consistent read snapshot. Invalid/unrooted data fails potentially affected results without omission/raw fallback. ReadOnly roots remain projectable but immutable.
 
@@ -82,6 +82,6 @@ WinForms supplies stable IDs, expected generation and intent only. Client-neutra
 
 ### Migration and protected layer audit
 
-Migration uses persisted IDs/FKs/correction/reversal relationships only, creates truthful MigrationBaseline rather than fabricated history, and classifies Initializing/Active/ReadOnly/Invalid. ImportRun remains separate. Every database requires read-only preflight and verified recoverable provider-consistent backup before mutation.
+Migration uses persisted IDs/FKs/correction/reversal relationships only, creates truthful MigrationBaseline rather than fabricated history, and classifies Initializing/Active/ReadOnly/Invalid. A schema-16 correction-operation Kind outside historical values 0/1 is a database-wide migration blocker: later schema-17 values 2/3 must never reinterpret corrupt legacy evidence as Reverse/Restore. Schema capability does not imply baseline population: historical physical outputs remain evidenced by legacy ReplacementBatchId/membership and receive no output-link row, while every new lineage-native truthful output is linked. Baseline ledger-link introduction pointers identify introduction into the lineage model, not historical movement creation. ImportRun remains separate. Every database requires read-only preflight and verified recoverable provider-consistent backup before mutation.
 
 After lineage services and WinForms integration are accepted, a protected whole-codebase presentation/application/domain/infrastructure audit must finish before subsequent major pre-v1 work. API/PostgreSQL deployment, portal/handheld clients and WinUI evaluation remain post-v1.

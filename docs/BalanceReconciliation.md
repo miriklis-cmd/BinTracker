@@ -16,4 +16,4 @@ Example: current 12, B/Fwd 20, OUT 5, IN 3, Total 22.
 
 Opening adjustment is +8 and projected is 22 — not 34.
 
-No reconciliation writes are enabled in v0.4.0-alpha.13.
+Transactional import execution now writes only the reviewed opening adjustment required to reach the authoritative Excel cutover balance. Same-cutover Replace/Correct remains separately governed and preserves legitimate later Manual/Batch activity. The earlier v0.4.0-alpha.13 no-write statement is historical, not current behavior.

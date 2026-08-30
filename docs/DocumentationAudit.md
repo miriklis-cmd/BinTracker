@@ -1,5 +1,61 @@
 # Documentation Audit Record
 
+## 31 August 2026 — BIN-LIN-CHECKPOINT-03 reviewed foundation checkpoint
+
+- External oversight approved the accumulated BIN-LIN-IMP-01, IMP-02A plus IMP-03A correction, IMP-02C, IMP-03 and IMP-03B dormant foundation for one local checkpoint commit.
+- Reconciled current-state status wording without changing the frozen lineage semantics: schema 17 remains dormant, normal production startup remains schema 16, unsupported schema-16 operation Kind outside 0/1 remains a database-wide blocker, and no runtime/report/service/UI cutover is claimed.
+- The 27-file governed Markdown inventory and targeted contradiction checks remain separate from the mechanical audit. Historical IMP handoff statements retain their at-the-time evidence status; this entry records the later approval.
+- BIN-LIN-IMP-04 has not started. Retained-database rehearsal, production activation and Windows/operator acceptance remain later gates.
+
+## 31 August 2026 — BIN-LIN-IMP-03B evidence/checklist reconciliation
+
+- External oversight found documentation/evidence-classification defects in IMP-03A, not a new lineage implementation defect.
+- Reconciled every active `[A]` checklist line against explicit `IMPLEMENTED-ACCEPTED` ledger/history evidence; split mixed Batch Entry, Import Replace/Correct and Market Floor lines, and separated existing statement running balances from the planned lineage statement-boundary rule.
+- Added `[S]` for implemented static/automated/internal evidence where no operator retest is the relevant gate; retained `[R]` only for a specific outstanding manual/Windows/DPI/preview/print/real-workbook retest.
+- Replaced the 03A matrix's blanket `Read fully? Yes` claim with conservative review-method evidence acknowledging tool truncation. The semantic findings remain unchanged.
+- No application, runtime, migration, schema or test file changed in 03B; schema 17 remains dormant and IMP-04 remains blocked pending external approval.
+
+## 30 August 2026 — BIN-LIN-IMP-03A full governed-Markdown semantic reconciliation
+
+This review is separate from `Audit-BinTracker.ps1`. The script is a mechanical gate; it cannot prove that prose/status across all documents is semantically current. All 27 Git-governed Markdown files were inventoried and semantically reviewed using the evidence methods recorded below. A combined raw read was truncated by the Codex display layer, so this record does not claim an uninterrupted full-file read for every file. Subsequent targeted searches, relevant excerpts and individual-file checks supported the recorded conclusions. Current-state claims were compared with the requirements register, source/test evidence and recorded acceptance; historical documents were retained as history.
+
+| File | Review method / evidence | Classification | Relevant? | Stale/contradiction found? | Change? | Reason/evidence |
+|---|---|---|---|---|---|---|
+| `AGENTS.md` | Targeted semantic/search review | Current governance | Yes | No | No | Existing truth/acceptance/Git gates remain controlling. |
+| `KNOWN-ISSUES.md` | Targeted semantic/search review | Current state | Yes | Yes | Yes | “Lineage not implemented” ignored dormant IMP-01/02A/03 work; runtime limitation retained. |
+| `README.md` | Targeted semantic/search review | Current overview | Yes | Yes | Yes | Breakout report-window wording contradicted BT-RPT-001/018 and source. |
+| `TECH-DEBT.md` | Targeted semantic/search review | Current debt | Yes | Yes | Yes | Report windows, migration backup and already-implemented Administrator review/reminder wording were stale. |
+| `TEST-CHECKLIST.md` | Targeted semantic/search review | Current acceptance | Yes | Yes | Yes | Mixed historical checkboxes falsely made implemented-static/accepted behavior look unimplemented; replaced by explicit evidence states and active checks. |
+| `docs/Architecture.md` | Targeted semantic/search review | Current authority | Yes | Yes | Yes | Partial dormant implementation status and schema-16 unknown-Kind blocker required clarification. |
+| `docs/AuditCoverage.md` | Targeted semantic/search review | Current authority | Yes | Yes | Yes | Dormant infrastructure existed, but production audit wiring remains activation-time work. |
+| `docs/BalanceReconciliation.md` | Targeted semantic/search review | Current authority | Yes | Yes | Yes | v0.4.0-alpha.13 no-write statement contradicted implemented transactional reconciliation. |
+| `docs/BusinessRules.md` | Targeted semantic/search review | Current authority | Yes | Yes | Yes | Dedicated report-window rules contradicted integrated pages. |
+| `docs/CHANGELOG.md` | Historical/reference review | Historical record | Yes | No current-state defect | No | Old window/version/status statements are dated historical evidence. |
+| `docs/CONTINUATION.md` | Targeted semantic/search review | Active working state | Yes | Yes | Yes | IMP-03 recorded the unsafe ReadOnly Kind behavior and lacked 03A state. |
+| `docs/Database.md` | Targeted semantic/search review | Current authority | Yes | Yes | Yes | Required explicit schema-16 Kind 0/1-only blocker rule. |
+| `docs/DevelopmentWorkflow.md` | Targeted semantic/search review | Current governance | Yes | Yes | Yes | Mechanical audit and semantic reconciliation were not distinguished strongly enough; enum migration trap added. |
+| `docs/DocumentationAudit.md` | Targeted semantic/search review | Governance/history | Yes | Yes | Yes | Needed this semantic inventory and separate gate evidence. |
+| `docs/FunctionalSpecification.md` | Targeted semantic/search review | Current authority | Yes | Yes | Yes | Single report-window instance rule contradicted integrated page hosting. |
+| `docs/ImportWizard.md` | Targeted semantic/search review | Current authority | Yes | No | No | Current Replace/Correct/read-only review semantics remain consistent. |
+| `docs/LegacyContainerRules.md` | Not materially applicable; targeted consistency check | Current reference | No | No | No | Legacy container mapping remains consistent and unrelated. |
+| `docs/MasterData.md` | Not materially applicable; targeted consistency check | Current authority | No | No | No | Text branding/logo status remains accurate. |
+| `docs/ReconciliationReport.md` | Historical/reference review | Dated reconciliation record | Yes | No current-state defect | No | Older inspected-state claims are explicitly part of that historical reconciliation. |
+| `docs/ReimportSafety.md` | Targeted semantic/search review | Current authority | Yes | No | No | Import domain boundary remains consistent with lineage. |
+| `docs/RELEASE-NOTES.md` | Historical/reference review | Current package/history | Yes | No | No | Describes released alpha.8.7 and documentation-freeze package, not unaccepted working-tree implementation. |
+| `docs/RequirementsAcceptanceRegister.md` | Targeted semantic/search review | Current authority | Yes | Yes | Yes | Added fail-closed old-enum rule and separate mechanical/semantic audit requirement without new IDs. |
+| `docs/Roadmap.md` | Targeted semantic/search review | Current sequencing | Yes | Yes | Yes | “Implementation not begun” and Monthly breakout-window wording were stale. |
+| `docs/RoadmapCoverageMatrix.md` | Targeted semantic/search review | Current coverage | Yes | Yes | Yes | Logical-lineage row omitted dormant implementation progress. |
+| `docs/SecurityHardeningRegister.md` | Targeted semantic/search review | Current finding ledger | Yes | Yes | Yes | Alpha.6.5 was finding-capture baseline, not current application version; labels now distinguish both. |
+| `docs/Testing.md` | Targeted semantic/search review | Current authority | Yes | Yes | Yes | Report-window and “lineage not implemented” wording stale; hostile old-enum rule added. |
+| `docs/Versioning.md` | Targeted semantic/search review | Current governance | Yes | No | No | Version source/package rules remain correct; examples are illustrative. |
+
+Additional reconciliation outcomes:
+
+- Schema-16 `MovementCorrectionOperations.Kind` values outside historical 0/1 are database-wide migration blockers, never root-scoped ReadOnly evidence and never schema-17 Reverse/Restore.
+- Checklist status now distinguishes accepted manual evidence, implemented-static/automated evidence, specific manual retest, genuine pending work and per-candidate gates without claiming new human acceptance.
+- Narrow mechanical guards were added for the exact stale report/reconciliation/lineage phrases fixed here. They supplement rather than replace semantic review.
+- No historical changelog/release record was rewritten merely because its older behavior differs from current state.
+
 ## 29 August 2026 — movement-lineage architecture documentation freeze
 
 - [x] Reconciled approved design reviews and read-only schema-v16 preflight without source/schema/tests/version changes.

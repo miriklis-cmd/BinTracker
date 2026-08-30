@@ -108,6 +108,14 @@ $staleChecks = @(
     @{ Path='docs/RELEASE-NOTES.md'; Text='Container Types/Containers remains inside Settings pending an explicit navigation decision.'; Why='Containers navigation decision is implemented' },
     @{ Path='docs/Roadmap.md'; Text='Container Types/Containers left-navigation placement remains a separate pending decision'; Why='Containers navigation decision is implemented' },
     @{ Path='docs/Testing.md'; Text='Containers remains in Settings until an explicit navigation decision is approved.'; Why='Containers navigation decision is implemented' }
+    @{ Path='README.md'; Text='detailed reports in dedicated single-instance windows'; Why='detailed reports are integrated main-workspace pages' },
+    @{ Path='docs/BusinessRules.md'; Text='Detailed reports normally use dedicated windows'; Why='detailed reports are integrated main-workspace pages' },
+    @{ Path='TECH-DEBT.md'; Text='Most detailed/filter-heavy reports use dedicated windows'; Why='detailed reports are integrated main-workspace pages' },
+    @{ Path='docs/FunctionalSpecification.md'; Text='Only one live instance of a given report window'; Why='detailed reports are integrated main-workspace pages' },
+    @{ Path='docs/Testing.md'; Text='single-instance WinForms window ownership/activation'; Why='detailed reports are integrated main-workspace pages' },
+    @{ Path='docs/BalanceReconciliation.md'; Text='No reconciliation writes are enabled in v0.4.0-alpha.13.'; Why='transactional import reconciliation is implemented' },
+    @{ Path='docs/Roadmap.md'; Text='Architecture frozen; implementation not begun'; Why='dormant lineage persistence implementation now exists' },
+    @{ Path='TEST-CHECKLIST.md'; Text='Frozen logical-lineage implementation (not started)'; Why='dormant lineage persistence implementation now exists' }
 )
 foreach ($check in $staleChecks) {
     if ((Get-Content -Raw -LiteralPath $check.Path).Contains($check.Text)) { Fail "$($check.Path) retains $($check.Why)." }
@@ -695,5 +703,5 @@ if ($customerStatementText -notmatch 'Width = 395' -or
     Fail 'Integrated Customer Statement polish gate failed: full keyboard search cue must remain readable.'
 }
 
-Write-Host "Audit passed: $expected; $($reqRows.Count) permanent requirement IDs; $($mdFiles.Count) Markdown files; current-state contradiction checks passed." -ForegroundColor Green
+Write-Host "Mechanical audit passed: $expected; $($reqRows.Count) permanent requirement IDs; $($mdFiles.Count) Markdown files inventoried; configured contradiction guards passed. Semantic all-Markdown reconciliation is separate evidence." -ForegroundColor Green
 exit 0

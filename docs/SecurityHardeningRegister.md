@@ -1,6 +1,6 @@
 # Security Hardening Finding Register
 
-Current baseline: **v0.5.0-alpha.6.5**
+External finding-capture baseline: **v0.5.0-alpha.6.5**. Current repository/application baseline: **v0.5.0-alpha.8.7**.
 
 This is the permanent ledger for the 50 findings supplied by the external BinTracker code/security audit on 19 August 2026. It is a **hard-gated pre-v1 input**, not a claim that every external severity rating is accepted unchanged. Each item must be reconciled against current source before implementation.
 

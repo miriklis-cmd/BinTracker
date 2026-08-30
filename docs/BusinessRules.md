@@ -130,8 +130,8 @@ Important security, master-data and movement changes create audit events.
 ## Report catalogue navigation
 
 - Market Floor Sheet remains the first/inline operational report.
-- Detailed reports normally use dedicated windows so filters, tables and export/print actions have full working space. Movement History is the explicit exception: it uses the full main-application workspace because it also hosts the operational reversal action.
-- “Today” is a shortcut inside the relevant report window, not a separate report.
+- Detailed reports use integrated main-workspace pages so filters, tables and export/print actions have full working space. Movement History uses the same host and also provides operational correction/reversal actions.
+- “Today” is a shortcut inside the relevant report page, not a separate report.
 
 
 ## Interactive report sorting and printing

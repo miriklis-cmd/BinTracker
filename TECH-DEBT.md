@@ -19,7 +19,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 - Add source-row/import-profile metadata needed for changed-workbook correction tooling.
 - Review useful database-level constraints/indexes rather than relying only on service validation.
-- Establish a production backup-before-migration policy.
+- Activate and production-rehearse the dormant verified pre-lineage backup/exclusive-upgrade infrastructure before schema 17 may run at startup; this does not replace the later user-facing Backup/Restore workstream.
 - Review SQLite concurrency assumptions before production and before any network/shared deployment.
 - PostgreSQL remains a candidate for future simultaneous multi-computer deployment; do not enable it until concurrency, migration and deployment are designed/tested.
 
@@ -49,7 +49,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 - Integrated detailed report pages must be responsive to the available main-workspace area rather than fixed desktop dimensions. Filters/actions keep their required height; result grids consume the remaining client area.
 
-- Reports page is a launcher, not a scrolling host for every report. Keep Market Floor inline. Most detailed/filter-heavy reports use dedicated windows, while Movement History is deliberately integrated into the main workspace because it is also the operational reversal surface. MainForm owns each active report surface and prevents duplicate windows/pages.
+- Reports page is a launcher. Keep Market Floor inline; detailed/filter-heavy reports use integrated main-workspace pages, with one active hosted page per report. Movement History uses the same host and also remains the operational correction/reversal surface.
 
 - Market Floor is an operational ~4am document: maximise readable type while guaranteeing front + reverse pagination.
 - Both Market Floor pages must derive density from actual rendered row load, including extra non-standard container rows and likely wraps.
@@ -261,6 +261,6 @@ Engineering improvements that are not currently user-facing defects. Product wor
 ## Movement correction/reversal workflow placement
 - Movement History is the accepted contextual Correct/Reverse entry point for alpha.8 and preserves its reporting behavior.
 - Revisit whether correction needs a dedicated Movements operational surface only after Windows/operator acceptance and real usage evidence; avoid duplicating the correction engine.
-- Audit Trail review-state visibility/filtering and selection-aware acknowledgement/batch-detail enablement are mandatory pre-v1 integration work (BT-AUD-007..009/011), not optional cosmetics. Broader search/general filtering/CSV export and additional contextual drill-down remain explicit release-decision enhancements (BT-AUD-006/010), not implemented claims.
+- Audit Trail review-state visibility/filtering, selection-aware acknowledgement and authoritative movement/batch detail are implemented; preserve their accepted/static distinctions in the requirements register. Broader search/general filtering/CSV export and ImportRun drill-down remain explicit release-decision enhancements (BT-AUD-006/010), not implemented claims.
 - Audit retention/archive policy remains a pre-production decision (BT-AUD-012); do not introduce cleanup that weakens append-only evidence or silently assumes indefinite database growth is acceptable.
-- Persistent Administrator review reminder remains pre-v1 implementation work (BT-AUD-013). Keep review count/state/navigation outside the WinForms panel so a future WinUI 3 native `InfoBar` is a presentation replacement, not a business-logic rewrite.
+- Persistent Administrator review reminder is implemented and accepted (BT-AUD-013). Keep review count/state/navigation outside the WinForms panel so a future WinUI 3 native `InfoBar` is a presentation replacement, not a business-logic rewrite.

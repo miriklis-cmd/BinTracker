@@ -16,7 +16,7 @@ Audited: 27 August 2026
 | Customer operational analytics | Yes | Sorting, lifetime OUT/IN, statement workflow |
 | Backup/Restore | Yes | Manual + scheduled automatic + retention/recovery drill |
 | Security/Audit hardening | Yes | Authorization, audit-coverage matrix, secrets/logging |
-| Logical movement lineage | Required before v1 | Frozen roots/lines/full generations/restoration/projection/migration; implement and accept before later major work |
+| Logical movement lineage | Required before v1 | Frozen roots/lines/full generations/restoration/projection/migration; dormant Core/migration-safety/schema-17 backfill foundation reviewed/approved under isolated tests, with production activation still pending; runtime services/projection/UI and full acceptance remain before later major work |
 | Whole-codebase layer audit | Protected pre-v1 gate | After lineage acceptance, remove authoritative WinForms business/persistence logic before subsequent major milestones |
 | PostgreSQL/API/Multi-computer | Post-v1 implementation | v1 preserves client/provider-neutral services, concurrency and idempotency; central host/provider/client delivery is post-v1 |
 | Installer/Upgrade | Yes | Production package and safe upgrade path |

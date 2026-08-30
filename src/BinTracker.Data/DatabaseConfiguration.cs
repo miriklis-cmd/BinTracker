@@ -34,6 +34,12 @@ public static class DatabaseConfiguration
     public static string SettingsPath => Path.Combine(AppFolder, SettingsFileName);
     public static string DefaultSqlitePath => Path.Combine(AppFolder, "BinTracker.db");
     public static string DeveloperBackupFolder => Path.Combine(AppFolder, "DeveloperBackups");
+    public static string LineageRecoveryFolder => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "BinTracker-RecoveryPreUpgrade");
+    public static string DatabaseAccessLockFolder => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "BinTracker-DatabaseAccessLocks");
     public static string PendingDatabaseOperationPath =>
         Path.Combine(AppFolder, "pending-database-operation.json");
     public static string PendingDatabaseFilePath =>

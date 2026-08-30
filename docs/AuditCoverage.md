@@ -26,8 +26,8 @@ This is the pre-v1 audit-coverage checklist. Audit history is append-only eviden
 - CSV export for Outstanding Containers, Daily Movements, Weekly Movements, Movement History and Monthly Summary.
 - Business Information/settings changes, including future logo/branding changes when implemented.
 - Reminder runs and individual Email/SMS delivery attempts.
-- Production Backup/Restore and database upgrade operations when implemented.
-- Lineage preflight, verified pre-upgrade backup/manifest, migration/postflight and recovery attempts when implemented; recovery evidence must survive restoration to an older database snapshot.
+- Production Backup/Restore operations when implemented, plus database upgrade attempts when the dormant lineage coordinator is activated.
+- Lineage preflight, verified pre-upgrade backup/manifest, migration/postflight and recovery attempts when activated; the dormant infrastructure and isolated migration tests do not yet constitute production audit wiring. Recovery evidence must survive restoration to an older database snapshot.
 
 ## Evidence expectations
 

@@ -20,7 +20,7 @@ BinTracker is a .NET 8 Windows desktop application for tracking reusable contain
 - Integrated full-size Movement History page with append-only single/whole-persisted-batch correction, reversal, responsive history, and audited PDF/CSV export.
 - Monthly Summary report with selected-month OUT/IN/net totals, customer/container breakdown, filters, PDF and CSV.
 - Daily Print Pack combining selected-date Outstanding Summary and physical Movement Detail in one audited PDF.
-- Compact Reports launcher architecture: Market Floor inline, detailed reports in dedicated single-instance windows.
+- Compact Reports launcher architecture: Market Floor inline, detailed reports in integrated single-instance main-workspace pages.
 - Configurable Business Information/report identity.
 - Transactional legacy Excel Import Wizard with Analyse, Map, Review, balance reconciliation and Step 4 execution.
 - ImportRun SHA-256 exact-reimport protection.

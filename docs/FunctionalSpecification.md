@@ -182,7 +182,7 @@
 - BT-REPORT-UI-001: The Reports page is a compact launcher as the report catalogue grows.
 - BT-REPORT-UI-002: Market Floor Sheet remains directly accessible inline because it is the primary daily operational report.
 - BT-REPORT-UI-003: Filter-heavy/data-grid reports open as integrated main-workspace pages under the Reports hub; Movement History uses the same host and also provides operational reversal actions.
-- BT-REPORT-UI-004: Only one live instance of a given report window should exist per MainForm session; reopening brings the existing window forward.
+- BT-REPORT-UI-004: Only one hosted instance of a given integrated report page exists per MainForm session; reopening navigates to or refreshes that page rather than creating a floating window.
 
 
 - BT-REPORT-UI-005: Integrated detailed report pages size themselves from the available main-workspace area within sensible minimum/maximum bounds.

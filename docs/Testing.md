@@ -1,8 +1,18 @@
 # BinTracker Automated Testing
 
+## Characterization-before-change
+
+Before changing accepted behaviour or placing new authority beside it, identify existing tests that precisely characterize the affected path. Where coverage is inadequate, add characterization coverage and run it before the change, then rerun it afterward. If the existing behaviour is intentionally defective, characterize it where useful and add a separate expected-behaviour regression test; do not preserve a known defect merely because it was characterized.
+
+## Structured-input fail-closed stress testing
+
+Parsers, deserializers, importers, migration readers, recovery-manifest readers and structured persisted-input boundaries require adversarial malformed-input coverage appropriate to their actual format. Input must be fully accepted and validated or fail with a controlled/stable outcome and no partially accepted or persisted state. Relevant cases include truncation, missing/extra fields, duplicate keys or records, wrong types, unsupported enum values, invalid IDs/FKs/dates, numeric overflow/extremes, empty/null/whitespace edges, malformed JSON or worksheet/database graphs, inconsistent manifest/checksum metadata, and cancellation/failure during an operation. NaN/Infinity and other format-specific cases apply only where the boundary actually accepts those representations.
+
+For schema 16 -> 17, the structured input is the persisted legacy database graph. Migration coverage therefore includes malformed correction/reversal ownership, cross-domain ImportRun relationships, invalid operation kinds/schema state, partial lineage artifacts, prerequisite tampering and transaction-stage failure injection. An undefined persisted enum value in the source schema is hostile/invalid input: it must not acquire meaning merely because a later schema allocates the same number. Every case must classify deterministically or fail closed without a partially committed schema 17.
+
 ## Planned logical-lineage acceptance gate
 
-BT-CORR-018..033 is documentation-frozen but not implemented. Acceptance requires schema/ownership constraints; read-only preflight and truthful MigrationBaseline; verified backup/recovery; atomic generation-zero entry; correction/reverse/restore/RemainReversed/partial-no-op/mixed-date workflows; repeated generations; corrected report/export and PositionAsOf/current balance agreement; immutable evidence; same-snapshot Invalid/unrooted failure; operational-versus-audit corruption policy; root races/idempotency/lost-response/import collision; and failure injection after every transaction stage.
+BT-CORR-018..033 is documentation-frozen. Dormant Core contracts, verified migration-safety infrastructure and schema-17 DDL/backfill/postflight exist under isolated tests, but normal startup remains schema 16 and production lineage authority is not activated or accepted. Remaining acceptance includes production gate activation; atomic generation-zero entry; correction/reverse/restore/RemainReversed/partial-no-op/mixed-date workflows; repeated generations; corrected report/export and PositionAsOf/current balance agreement; immutable evidence; same-snapshot Invalid/unrooted failure; operational-versus-audit corruption policy; root races/idempotency/lost-response/import collision; and failure injection across later runtime transactions.
 
 Windows acceptance retains Batch #30 and covers RemainReversed, Restore, mixed dates, repeated whole-root correction, selected/whole correction in both orders, later reversal/restoration, descendant navigation, optional physical output, reports/balances, Audit Detail and Administrator Review at the DPI floor and larger display. Automated success never claims this acceptance.
 
@@ -122,10 +132,10 @@ Outstanding reporting regression coverage also checks customer/container adjacen
 
 ## Report launcher UI acceptance
 
-The report launcher architecture is manually verified because single-instance WinForms window ownership/activation is UI behaviour. Outstanding report calculation remains covered independently by SQLite integration tests.
+The report launcher architecture is manually verified because integrated main-workspace page ownership/navigation is WinForms UI behaviour. Outstanding report calculation remains covered independently by SQLite integration tests.
 
 
-Report-window UI acceptance includes a laptop-sized display and a larger desktop/27-inch monitor resolution. Verify filters/actions remain visible and the dataset expands with available client space.
+Integrated-report UI acceptance includes a laptop-sized display and a larger desktop/27-inch monitor resolution. Verify filters/actions remain visible and the dataset expands with available client space.
 
 
 ## Compile-time dependency wiring

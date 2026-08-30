@@ -6,7 +6,13 @@ public enum UserRole { Administrator = 0, Operator = 1, Viewer = 2 }
 public enum CustomerType { Account = 0, CashCod = 1 }
 public enum CommunicationChannel { Email = 0, Sms = 1 }
 public enum ReminderDeliveryStatus { Pending = 0, Sent = 1, Failed = 2, Skipped = 3 }
-public enum MovementCorrectionKind { Single = 0, WholeBatch = 1 }
+public enum MovementCorrectionKind
+{
+    Single = 0,
+    WholeBatch = 1,
+    Reverse = 2,
+    Restore = 3
+}
 
 public sealed class Customer
 {
