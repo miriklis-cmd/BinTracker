@@ -76,6 +76,8 @@ Root-wide CAS is v1 concurrency authority. Portable PK/FK/RESTRICT/UNIQUE/CHECK/
 
 Every numeric read validates relevant complete current snapshots, projects movement IDs and aggregates in one provider-consistent read snapshot. Invalid/unrooted data fails potentially affected results without omission/raw fallback. ReadOnly roots remain projectable but immutable.
 
+The dormant schema-17 foundation includes a validation-gated resolver for one requested CURRENT logical root. SQLite materialization/transaction mechanics remain in Data; invariant validation and the immutable result are provider-neutral. `CurrentGenerationNumber` selects the sole current generation, exact permanent/current membership is required, and validated success objects have no public construction/mutation surface. Ordinary proof covers RootOriginal plus current effective/terminal ledger links and their introductions, not unrelated superseded historical links; broader history remains migration/diagnostic authority. `RootMovementBatchId` is exposed only after exact original movement membership in that physical batch is proven (or null original membership for a single root). Ordinary resolution does not scan full history. The resolver is unregistered and unused by normal schema-16 startup and application consumers.
+
 Operational lineage health is separate from audit health. New operation/audit/review state commits atomically. Later external audit corruption does not falsify proven mathematics but blocks affected mutation/review and evidence-completeness output with critical health.
 
 WinForms supplies stable IDs, expected generation and intent only. Client-neutral services own planning, authorization, projection, concurrency, persistence, audit and balances.

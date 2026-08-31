@@ -556,6 +556,25 @@ public sealed class SqliteLineageSchema17Migrator(
                 throw new InvalidOperationException("LINEAGE_POSTFLIGHT_TABLE_MISSING");
         }
 
+        // Reuse the provider-neutral committed-current authority for every projectable root.
+        // MigrationBaseline-only checks remain below and deliberately do not leak into ordinary reads.
+        await using (var roots = c.CreateCommand())
+        {
+            roots.Transaction = tx;
+            roots.CommandText = "SELECT Id FROM LogicalMovementBatches WHERE Status IN (1,2);";
+            var rootIds = new List<long>();
+            await using (var reader = await roots.ExecuteReaderAsync(token))
+                while (await reader.ReadAsync(token)) rootIds.Add(reader.GetInt64(0));
+            foreach (var rootId in rootIds)
+            {
+                var current = await SqliteLogicalMovementCurrentRootResolver.ResolveInSnapshotAsync(
+                    c, tx,
+                    new LogicalMovementBatchId(rootId), token);
+                if (current.Kind != LogicalMovementCurrentRootResolutionKind.Resolved)
+                    throw new InvalidOperationException("LINEAGE_POSTFLIGHT_INVARIANT_FAILURE");
+            }
+        }
+
         var initializing = await CountAsync(c, tx, "SELECT COUNT(*) FROM LogicalMovementBatches WHERE Status=0;", token);
         var incompleteRoots = await CountAsync(c, tx, """
             SELECT COUNT(*) FROM LogicalMovementBatches b

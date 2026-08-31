@@ -82,6 +82,8 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 
 ## Alpha.8 correction, reversal and Administrator review authority
 
+- [S] Dormant IMP-04/04A resolves one requested schema-17 CURRENT root under one SQLite read transaction and exposes non-forgeable read-only success models only after exact membership, current-pointer/role/introduction, RootOriginal physical-batch/null-single and ordinal validation. Unrelated historical-only links remain migration/diagnostic scope; `StatusReasonCode` is preserved. It remains unregistered with no production consumer.
+
 - [R] Administrator/Operator may reverse or correct eligible ordinary Manual/Batch movements; Viewer is denied; Opening Adjustment/ImportRun rows remain outside generic mutation.
 - [R] Original evidence is immutable; reversal and correction evidence/reason/actor/time/idempotency/concurrency/audit remain transactional.
 - [R] Alpha.8 physical whole-batch guard remains active and rejects partial lineage; `EffectiveMovementQuery` remains current runtime authority.

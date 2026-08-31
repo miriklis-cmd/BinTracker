@@ -12,6 +12,10 @@ BT-CORR-009 and BT-CORR-015 remain stable IDs for the implemented alpha.8 safety
 
 Persistence-contract reconciliation on 30 August 2026 promoted two previously reviewed but omitted durable identifiers without changing lineage semantics: BT-CORR-025 permanently assigns `MovementCorrectionKind` values Single=0, WholeBatch=1, Reverse=2 and Restore=3; BT-CORR-030 permanently allocates the lineage migration as schema 16 -> schema 17. Source/schema inspection proved values 2/3 and schema 17 were unallocated. This decision changes documentation only; the active enum and migration catalogue remain at their alpha.8/schema-16 implementation until the approved schema slice.
 
+BIN-LIN-IMP-04 supplies partial static evidence toward BT-CORR-018..020/023/029/032 through a dormant validation-gated CURRENT-root reader. Those broader rows remain `PLANNED-V1`: no production consumer, writer, numerical cutover, full-history diagnostic or startup activation is complete.
+
+IMP-04A corrects that partial implementation so successful read models cannot be publicly fabricated, current proof ignores unrelated historical-only links, original batch/null-single membership is structurally proven, persisted status reason is retained and presentation ordinals are validated. It does not change requirement status or activate runtime lineage.
+
 ## Status / provenance legend
 
 Allowed scopes: `v1`, `post-v1`, `candidate`.

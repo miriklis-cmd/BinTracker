@@ -1,5 +1,18 @@
 # Documentation Audit Record
 
+## 31 August 2026 — BIN-LIN-IMP-04A current-validation correction
+
+- Corrected the dormant IMP-04 contract for non-forgeable validated models, current-proof-only ledger relevance, original physical-batch/null-single proof, preserved status reason and ordinal structure.
+- Preserved broader MigrationBaseline/global postflight checks and did not introduce historical runtime diagnostics or later-slice behavior.
+- Reconciled all 27 governed files separately from the mechanical audit; static evidence remains `[S]`, schema 17 remains dormant and no manual acceptance is claimed.
+
+## 31 August 2026 — BIN-LIN-IMP-04 dormant current-root resolver
+
+- Reconciled the validation-gated CURRENT-root slice without claiming production activation or broad requirement completion.
+- Ordinary resolution validates exactly the selected current snapshot under one read transaction; full-chain diagnostics and future mutation predecessor/planner/CAS validation remain separate.
+- Schema 17 remains dormant, normal startup remains schema 16, historical PhysicalOutput baseline remains zero and IMP-05/06/07 remain pending.
+- Static/automated evidence remains `[S]`; no operator acceptance was promoted. Mechanical audit and 27-file semantic review remain separate evidence.
+
 ## 31 August 2026 — BIN-LIN-CHECKPOINT-03 reviewed foundation checkpoint
 
 - External oversight approved the accumulated BIN-LIN-IMP-01, IMP-02A plus IMP-03A correction, IMP-02C, IMP-03 and IMP-03B dormant foundation for one local checkpoint commit.

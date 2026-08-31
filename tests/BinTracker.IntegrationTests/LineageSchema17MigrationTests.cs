@@ -228,6 +228,108 @@ public sealed class LineageSchema17MigrationTests
     }
 
     [Fact]
+    public async Task Dormant_current_root_resolver_projects_migrated_active_and_reversed_lines()
+    {
+        await using var fixture = await MigrationFixture.CreateAsync(seed: true);
+        await fixture.MigrateAsync();
+        await using var connection = await fixture.OpenAsync();
+        var rootId = await ScalarAsync(connection,
+            "SELECT Id FROM LogicalMovementBatches WHERE RootMovementBatchId=1;");
+        var resolver = new SqliteLogicalMovementCurrentRootResolver(
+            $"Data Source={fixture.DatabasePath};Foreign Keys=True;Pooling=False");
+
+        var result = await resolver.ResolveAsync(new(rootId));
+
+        Assert.Equal(LogicalMovementCurrentRootResolutionKind.Resolved, result.Kind);
+        Assert.Equal(2, result.Root!.Lines.Count);
+        Assert.Contains(result.Root.Lines, x => x.State == LogicalMovementLineState.Active);
+        Assert.Contains(result.Root.Lines, x => x.State == LogicalMovementLineState.Reversed);
+        var singleRootId = await ScalarAsync(connection,
+            "SELECT Id FROM LogicalMovementBatches WHERE RootMovementBatchId IS NULL;");
+        var single = await resolver.ResolveAsync(new(singleRootId));
+        Assert.Equal(LogicalMovementCurrentRootResolutionKind.Resolved, single.Kind);
+        Assert.Null(single.Root!.RootMovementBatchId);
+        Assert.Equal(LogicalMovementCurrentRootResolutionKind.NotFound,
+            (await resolver.ResolveAsync(new(long.MaxValue))).Kind);
+    }
+
+    [Fact]
+    public async Task Dormant_current_root_resolver_fails_closed_on_tampered_introduction()
+    {
+        await using var fixture = await MigrationFixture.CreateAsync(seed: true);
+        await fixture.MigrateAsync();
+        await using var connection = await fixture.OpenAsync();
+        var rootId = await ScalarAsync(connection,
+            "SELECT Id FROM LogicalMovementBatches WHERE RootMovementBatchId=1;");
+        await ExecuteAsync(connection, "PRAGMA foreign_keys=OFF; UPDATE LogicalMovementLedgerLinks SET IntroducedByGenerationLineId=999999 WHERE LogicalMovementBatchId=" + rootId + ";");
+        var resolver = new SqliteLogicalMovementCurrentRootResolver(
+            $"Data Source={fixture.DatabasePath};Foreign Keys=False;Pooling=False");
+
+        var result = await resolver.ResolveAsync(new(rootId));
+
+        Assert.Equal(LogicalMovementCurrentRootResolutionKind.Unhealthy, result.Kind);
+        Assert.Equal(LogicalMovementCurrentRootFailure.InvalidIntroduction, result.Failure);
+    }
+
+    [Fact]
+    public async Task Current_resolver_ignores_unrelated_historical_link_but_postflight_remains_strict()
+    {
+        await using var fixture = await MigrationFixture.CreateAsync(seed: true);
+        await fixture.MigrateAsync();
+        await using var connection = await fixture.OpenAsync();
+        var rootId = await ScalarAsync(connection,
+            "SELECT Id FROM LogicalMovementBatches WHERE RootMovementBatchId=1;");
+        var lineId = await ScalarAsync(connection,
+            "SELECT Id FROM LogicalMovementLines WHERE LogicalMovementBatchId=" + rootId + " LIMIT 1;");
+        await ExecuteAsync(connection, $"""
+            INSERT INTO LogicalMovementLedgerLinks
+                (BinMovementId,LogicalMovementBatchId,LogicalMovementLineId,Role,
+                 IntroducedByGenerationLineId,LegacyMovementCorrectionLineId,CreatedUtc)
+            VALUES (10,{rootId},{lineId},1,NULL,NULL,CURRENT_TIMESTAMP);
+            """);
+        var resolver = new SqliteLogicalMovementCurrentRootResolver(
+            $"Data Source={fixture.DatabasePath};Foreign Keys=True;Pooling=False");
+
+        Assert.Equal(LogicalMovementCurrentRootResolutionKind.Resolved,
+            (await resolver.ResolveAsync(new(rootId))).Kind);
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            SqliteLineageSchema17Migrator.ValidatePostflightAsync(connection, null));
+        Assert.Equal("LINEAGE_POSTFLIGHT_INVARIANT_FAILURE", error.Message);
+    }
+
+    [Fact]
+    public async Task Current_resolver_proves_root_batch_membership_and_preserves_ReadOnly_reason()
+    {
+        await using var fixture = await MigrationFixture.CreateAsync(seed: true);
+        await fixture.MigrateAsync();
+        await using var connection = await fixture.OpenAsync();
+        var rootId = await ScalarAsync(connection,
+            "SELECT Id FROM LogicalMovementBatches WHERE RootMovementBatchId=1;");
+        await ExecuteAsync(connection, $"""
+            UPDATE LogicalMovementBatches
+            SET Status=2, StatusReasonCode='LEGACY_UNSUPPORTED'
+            WHERE Id={rootId};
+            """);
+        var resolver = new SqliteLogicalMovementCurrentRootResolver(
+            $"Data Source={fixture.DatabasePath};Foreign Keys=True;Pooling=False");
+
+        var valid = await resolver.ResolveAsync(new(rootId));
+        Assert.Equal(LogicalMovementCurrentRootResolutionKind.Resolved, valid.Kind);
+        Assert.Equal("LEGACY_UNSUPPORTED", valid.Root!.StatusReasonCode);
+
+        await ExecuteAsync(connection, """
+            INSERT INTO MovementBatches (MovementDate,MovementType,Source,CreatedUtc,IsReversed)
+            VALUES ('2026-08-31',0,1,CURRENT_TIMESTAMP,0);
+            """);
+        var wrongExistingBatch = await ScalarAsync(connection, "SELECT MAX(Id) FROM MovementBatches;");
+        await ExecuteAsync(connection, $"UPDATE LogicalMovementBatches SET RootMovementBatchId={wrongExistingBatch} WHERE Id={rootId};");
+
+        var invalid = await resolver.ResolveAsync(new(rootId));
+        Assert.Equal(LogicalMovementCurrentRootResolutionKind.Unhealthy, invalid.Kind);
+        Assert.Equal(LogicalMovementCurrentRootFailure.InvalidRootOriginal, invalid.Failure);
+    }
+
+    [Fact]
     public async Task Movement_batch_membership_is_preserved_and_cannot_be_detached_by_batch_delete()
     {
         await using var fixture = await MigrationFixture.CreateAsync(seed: true);

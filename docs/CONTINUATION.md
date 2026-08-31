@@ -10,6 +10,14 @@
 
 This record is governed by **Conversation Context Capacity / Continuity Hard Gate** in `docs/DevelopmentWorkflow.md`. A new ChatGPT/Codex session must read the repository-root `AGENTS.md`, that workflow section and this active continuation before modifying the repository. This handoff supplements the authoritative requirements and architecture; it does not replace them.
 
+## Current session update — BIN-LIN-IMP-04 dormant validated CURRENT-root resolver
+
+IMP-04A corrects the reviewed current-validation contract without expanding the slice. Validated root/line/resolution types are sealed get-only classes with non-public construction, so normal consumers cannot fabricate or `with`-clone successful operational truth. The reader now loads only RootOriginal and current effective/terminal proof links; unrelated superseded historical links do not decide ordinary projectability, while migration postflight retains its global baseline ledger/introduction checks. Current proof now validates exact original `MovementBatchId` membership against `RootMovementBatchId` (or null membership for single roots), preserves `StatusReasonCode`, and rejects negative/duplicate `OriginalDisplayOrdinal`. Schema 17 remains dormant and IMP-05/06/07 remain unstarted.
+
+IMP-04 adds an unregistered application-facing resolver contract, immutable current-root/line model, minimal Resolved/NotFound/Unhealthy result and typed current-validation failures. An internal provider-neutral validator proves Active/ReadOnly projectability from exact permanent/current membership, state pointer shape, movement ownership/roles, RootOriginal ownership and same-root/line introductions. Initializing, Invalid and malformed/tampered structured state fail closed. The SQLite reader uses one read transaction and loads only the requested root, permanent lines, selected current generation/state and required evidence; validation performs no lazy reads and no full-history scan.
+
+Migration postflight reuses this current validator for migrated Active/ReadOnly roots while retaining generation-zero/MigrationBaseline action-mask-predecessor rules, legacy-null fields, global migration ownership, zero historical PhysicalOutput and FK checks as migration-only authority. The resolver is not registered in startup, DbContext or services; schema 16 remains normal authority. IMP-05/06/07 are not started.
+
 ## Current session update — BIN-LIN-CHECKPOINT-03 reviewed foundation checkpoint
 
 On 31 August 2026, external oversight approved the accumulated BIN-LIN-IMP-01, IMP-02A plus IMP-03A correction, IMP-02C, IMP-03 and IMP-03B dormant lineage foundation for one reviewed local checkpoint commit. The checkpoint records the accepted contracts, fail-closed migration preflight and verified recovery evidence, dormant schema-17 DDL/backfill/postflight, schema-16 Kind 0/1-only correction, tests and governance reconciliation.
