@@ -66,7 +66,7 @@ public sealed class MovementCorrectionSqliteTests
 
         var history = scope.ServiceProvider.GetRequiredService<IMovementHistoryReportService>();
         var displayed = await history.QueryAsync(new MovementHistoryReportQuery(
-            new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 31)));
+            new DateOnly(2026, 8, 1), reversal.MovementDate));
         var originalRow = Assert.Single(displayed.Rows, x => x.MovementId == movementId);
         var reversalRow = Assert.Single(displayed.Rows, x => x.MovementId == reversal.Id);
         Assert.Equal($"Reversed — see REV-{movementId}", originalRow.Status);

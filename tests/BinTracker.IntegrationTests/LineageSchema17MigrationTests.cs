@@ -9,6 +9,26 @@ namespace BinTracker.IntegrationTests;
 
 public sealed class LineageSchema17MigrationTests
 {
+    public enum PersistedReversalPairCorruption
+    {
+        WrongReversesMovementId,
+        NullReversesMovementId,
+        SameDirection,
+        WrongCustomer,
+        WrongContainerType,
+        WrongQuantity,
+        NonManualSource,
+        PhysicalBatchMembership,
+        ImportRunMembership
+    }
+
+    public enum PersistedCurrentDateCorruption
+    {
+        TerminalReversal,
+        ReversedLastEffective,
+        ActiveEffective
+    }
+
     [Fact]
     public async Task Normal_startup_remains_schema_16_without_lineage_tables()
     {
@@ -251,6 +271,175 @@ public sealed class LineageSchema17MigrationTests
         Assert.Null(single.Root!.RootMovementBatchId);
         Assert.Equal(LogicalMovementCurrentRootResolutionKind.NotFound,
             (await resolver.ResolveAsync(new(long.MaxValue))).Kind);
+    }
+
+    [Fact]
+    public async Task Dormant_planning_materializer_binds_exact_current_facts_without_writes()
+    {
+        await using var fixture = await MigrationFixture.CreateAsync(seed: true);
+        await fixture.MigrateAsync();
+        await using var connection = await fixture.OpenAsync();
+        var rootId = await ScalarAsync(connection,
+            "SELECT Id FROM LogicalMovementBatches WHERE RootMovementBatchId=1;");
+        var beforeMovements = await ScalarAsync(connection, "SELECT COUNT(*) FROM BinMovements;");
+        var beforeGenerations = await ScalarAsync(connection, "SELECT COUNT(*) FROM LogicalMovementGenerations;");
+        var materializer = new SqliteMovementPlanningSnapshotMaterializer(
+            $"Data Source={fixture.DatabasePath};Foreign Keys=True;Pooling=False");
+
+        var snapshot = await materializer.MaterializeAsync(new(rootId));
+
+        Assert.Equal(rootId, snapshot.Root.Id.Value);
+        Assert.Equal(2, snapshot.Lines.Count);
+        Assert.All(snapshot.Lines, x => Assert.Equal(x.Current.EffectiveMovementId, x.LastEffective.MovementId));
+        var reversed = Assert.Single(snapshot.Lines, x => x.TerminalReversal is not null);
+        Assert.Equal(reversed.LastEffective.MovementId, reversed.TerminalReversal!.ReversesMovementId);
+        Assert.Equal(reversed.LastEffective.Direction == MovementType.In ? MovementType.Out : MovementType.In,
+            reversed.TerminalReversal.Direction);
+        Assert.Equal(reversed.LastEffective.CustomerId, reversed.TerminalReversal.CustomerId);
+        Assert.Equal(reversed.LastEffective.ContainerTypeId, reversed.TerminalReversal.ContainerTypeId);
+        Assert.Equal(reversed.LastEffective.Quantity, reversed.TerminalReversal.Quantity);
+        Assert.Equal(MovementSource.Manual, reversed.TerminalReversal.Source);
+        Assert.Null(reversed.TerminalReversal.MovementBatchId);
+        Assert.Null(reversed.TerminalReversal.ImportRunId);
+        Assert.Equal(beforeMovements, await ScalarAsync(connection, "SELECT COUNT(*) FROM BinMovements;"));
+        Assert.Equal(beforeGenerations, await ScalarAsync(connection, "SELECT COUNT(*) FROM LogicalMovementGenerations;"));
+        Assert.Equal(0L, await ScalarAsync(connection, "SELECT COUNT(*) FROM LogicalMovementPhysicalOutputs;"));
+    }
+
+    [Fact]
+    public async Task Planning_materializer_fails_closed_on_malformed_current_fact()
+    {
+        await using var fixture = await MigrationFixture.CreateAsync(seed: true);
+        await fixture.MigrateAsync();
+        await using var connection = await fixture.OpenAsync();
+        var rootId = await ScalarAsync(connection,
+            "SELECT Id FROM LogicalMovementBatches WHERE RootMovementBatchId=1;");
+        var effectiveId = await ScalarAsync(connection, $"""
+            SELECT gl.ResultEffectiveMovementId
+            FROM LogicalMovementGenerationLines gl
+            JOIN LogicalMovementGenerations g ON g.Id=gl.LogicalMovementGenerationId
+            WHERE g.LogicalMovementBatchId={rootId} AND gl.ResultEffectiveMovementId IS NOT NULL LIMIT 1;
+            """);
+        await ExecuteAsync(connection, $"UPDATE BinMovements SET Quantity=0 WHERE Id={effectiveId};");
+        var materializer = new SqliteMovementPlanningSnapshotMaterializer(
+            $"Data Source={fixture.DatabasePath};Foreign Keys=True;Pooling=False");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => materializer.MaterializeAsync(new(rootId)));
+    }
+
+    [Theory]
+    [InlineData(PersistedReversalPairCorruption.WrongReversesMovementId)]
+    [InlineData(PersistedReversalPairCorruption.NullReversesMovementId)]
+    [InlineData(PersistedReversalPairCorruption.SameDirection)]
+    [InlineData(PersistedReversalPairCorruption.WrongCustomer)]
+    [InlineData(PersistedReversalPairCorruption.WrongContainerType)]
+    [InlineData(PersistedReversalPairCorruption.WrongQuantity)]
+    [InlineData(PersistedReversalPairCorruption.NonManualSource)]
+    [InlineData(PersistedReversalPairCorruption.PhysicalBatchMembership)]
+    [InlineData(PersistedReversalPairCorruption.ImportRunMembership)]
+    public async Task Planning_materializer_rejects_persisted_reversal_pair_corruption(
+        PersistedReversalPairCorruption corruption)
+    {
+        await using var fixture = await MigrationFixture.CreateAsync(seed: true);
+        await fixture.MigrateAsync();
+        await using var connection = await fixture.OpenAsync();
+        var rootId = await ScalarAsync(connection,
+            "SELECT Id FROM LogicalMovementBatches WHERE RootMovementBatchId=1;");
+        var effectiveId = await ScalarAsync(connection, $"""
+            SELECT gl.LastEffectiveMovementId
+            FROM LogicalMovementGenerationLines gl
+            JOIN LogicalMovementGenerations g ON g.Id=gl.LogicalMovementGenerationId
+            WHERE g.LogicalMovementBatchId={rootId} AND gl.TerminalReversalMovementId IS NOT NULL;
+            """);
+        var reversalId = await ScalarAsync(connection, $"""
+            SELECT gl.TerminalReversalMovementId
+            FROM LogicalMovementGenerationLines gl
+            JOIN LogicalMovementGenerations g ON g.Id=gl.LogicalMovementGenerationId
+            WHERE g.LogicalMovementBatchId={rootId} AND gl.TerminalReversalMovementId IS NOT NULL;
+            """);
+        var wrongTargetId = effectiveId == 1 ? 4 : 1;
+        var assignment = corruption switch
+        {
+            PersistedReversalPairCorruption.WrongReversesMovementId => $"ReversesMovementId={wrongTargetId}",
+            PersistedReversalPairCorruption.NullReversesMovementId => "ReversesMovementId=NULL",
+            PersistedReversalPairCorruption.SameDirection =>
+                $"MovementType=(SELECT MovementType FROM BinMovements WHERE Id={effectiveId})",
+            PersistedReversalPairCorruption.WrongCustomer => "CustomerId=999999",
+            PersistedReversalPairCorruption.WrongContainerType => "ContainerTypeId=1",
+            PersistedReversalPairCorruption.WrongQuantity => "Quantity=2",
+            PersistedReversalPairCorruption.NonManualSource => $"Source={(int)MovementSource.Batch}",
+            PersistedReversalPairCorruption.PhysicalBatchMembership => "MovementBatchId=1",
+            PersistedReversalPairCorruption.ImportRunMembership => "ImportRunId=1",
+            _ => throw new ArgumentOutOfRangeException(nameof(corruption))
+        };
+        await ExecuteAsync(connection, "PRAGMA foreign_keys=OFF;");
+        await ExecuteAsync(connection, $"UPDATE BinMovements SET {assignment} WHERE Id={reversalId};");
+        var materializer = new SqliteMovementPlanningSnapshotMaterializer(
+            $"Data Source={fixture.DatabasePath};Foreign Keys=True;Pooling=False");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => materializer.MaterializeAsync(new(rootId)));
+    }
+
+    [Theory]
+    [InlineData(PersistedCurrentDateCorruption.TerminalReversal)]
+    [InlineData(PersistedCurrentDateCorruption.ReversedLastEffective)]
+    [InlineData(PersistedCurrentDateCorruption.ActiveEffective)]
+    public async Task Planning_rejects_persisted_current_movement_after_authoritative_business_date(
+        PersistedCurrentDateCorruption corruption)
+    {
+        await using var fixture = await MigrationFixture.CreateAsync(seed: true);
+        await fixture.MigrateAsync();
+        await using var connection = await fixture.OpenAsync();
+        var rootId = await ScalarAsync(connection,
+            "SELECT Id FROM LogicalMovementBatches WHERE RootMovementBatchId=1;");
+        var selector = corruption switch
+        {
+            PersistedCurrentDateCorruption.TerminalReversal => "gl.TerminalReversalMovementId",
+            PersistedCurrentDateCorruption.ReversedLastEffective => "gl.LastEffectiveMovementId",
+            PersistedCurrentDateCorruption.ActiveEffective => "gl.ResultEffectiveMovementId",
+            _ => throw new ArgumentOutOfRangeException(nameof(corruption))
+        };
+        var predicate = corruption == PersistedCurrentDateCorruption.ActiveEffective
+            ? "gl.ResultEffectiveMovementId IS NOT NULL"
+            : "gl.TerminalReversalMovementId IS NOT NULL";
+        var movementId = await ScalarAsync(connection, $"""
+            SELECT {selector}
+            FROM LogicalMovementGenerationLines gl
+            JOIN LogicalMovementGenerations g ON g.Id=gl.LogicalMovementGenerationId
+            WHERE g.LogicalMovementBatchId={rootId} AND {predicate};
+            """);
+        await ExecuteAsync(connection,
+            $"UPDATE BinMovements SET MovementDate='2026-09-02' WHERE Id={movementId};");
+        var materializer = new SqliteMovementPlanningSnapshotMaterializer(
+            $"Data Source={fixture.DatabasePath};Foreign Keys=True;Pooling=False");
+        var snapshot = await materializer.MaterializeAsync(new(rootId));
+        var target = snapshot.Lines.Single(x => corruption == PersistedCurrentDateCorruption.ActiveEffective
+            ? x.Current.State == LogicalMovementLineState.Active
+            : x.Current.State == LogicalMovementLineState.Reversed);
+        var request = corruption == PersistedCurrentDateCorruption.ActiveEffective
+            ? MovementMutationRequest.Reverse(MovementMutationScope.Individual, [target.Current.Id], "future active")
+            : MovementMutationRequest.Restore(MovementMutationScope.Individual, [target.Current.Id], "future reversal pair");
+
+        Assert.Throws<InvalidOperationException>(() => MovementMutationPlanner.Plan(
+            snapshot, request, new DateOnly(2026, 9, 1)));
+    }
+
+    [Fact]
+    public async Task Planning_materializer_does_not_scan_unrelated_history_or_accept_ReadOnly_root_for_mutation()
+    {
+        await using var fixture = await MigrationFixture.CreateAsync(seed: true);
+        await fixture.MigrateAsync();
+        await using var connection = await fixture.OpenAsync();
+        var rootId = await ScalarAsync(connection,
+            "SELECT Id FROM LogicalMovementBatches WHERE RootMovementBatchId=1;");
+        await ExecuteAsync(connection, "UPDATE BinMovements SET Source=99 WHERE Id=(SELECT MAX(Id) FROM BinMovements);");
+        var materializer = new SqliteMovementPlanningSnapshotMaterializer(
+            $"Data Source={fixture.DatabasePath};Foreign Keys=True;Pooling=False");
+        var snapshot = await materializer.MaterializeAsync(new(rootId));
+        Assert.Equal(2, snapshot.Lines.Count);
+
+        await ExecuteAsync(connection, $"UPDATE LogicalMovementBatches SET Status=2 WHERE Id={rootId};");
+        await Assert.ThrowsAsync<InvalidOperationException>(() => materializer.MaterializeAsync(new(rootId)));
     }
 
     [Fact]
@@ -642,7 +831,7 @@ public sealed class LineageSchema17MigrationTests
             db.MovementBatches.AddRange(partialBatch, outputOriginalBatch, outputBatch);
             var blue = Movement(1, MovementSource.Batch, customer.Id, 1, 4, partialBatch);
             var yellow = Movement(2, MovementSource.Batch, customer.Id, 3, 1, partialBatch);
-            var yellowReversal = Movement(3, MovementSource.Batch, customer.Id, 3, 1, null, MovementType.Out);
+            var yellowReversal = Movement(3, MovementSource.Manual, customer.Id, 3, 1, null, MovementType.Out);
             yellowReversal.ReversesMovementId = yellow.Id;
             yellow.CorrectedByMovementId = yellowReversal.Id;
 

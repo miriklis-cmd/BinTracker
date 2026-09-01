@@ -101,8 +101,8 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 - [S] Automated migration evidence proves schema-16 operation Kind outside historical 0/1 blocks before mutation and can never become schema-17 Reverse/Restore.
 - [P] Activate the upgrade coordinator only after explicit approval and safe production rehearsal; do not auto-restore over a valid rolled-back source.
 - [P] Integrate generation-zero lineage into new Single/Batch Entry atomically.
-- [P] Implement client-neutral Correct/Reverse/Restore/whole-root commands, root CAS/idempotency and complete-generation planner/validator.
-- [P] Implement CarriedForward/AlreadyMatches/RemainReversed and complete semantic no-op without fake movements.
+- [S] IMP-05C-corrected dormant planning implements the infrastructure-internal trusted snapshot and pure provider-neutral complete-generation planner, including explicit per-reversed-line whole-root decisions, complete existing/plan-local result pointers, exact persisted equal/opposite ordinary-reversal pair proof, current-pair business-date guards, generic import/adjustment exclusion, exact AppliedFieldMask rules, complete no-op and the frozen physical-output predicate. It remains unregistered/write-free, schema 17 remains dormant, and external source/diff review is pending.
+- [P] Implement client-neutral Correct/Reverse/Restore/whole-root command persistence, root CAS/idempotency, transaction-compatible audit and publication of the already planned generation.
 - [P] Atomically cut all operational numeric consumers to validated corrected activity/PositionAsOf while Movement History/Audit remain evidence.
 - [P] Prove Invalid/unrooted fail-closed numeric behavior and audit-only corruption separation.
 - [P] Run required root races, retries/lost response, import collision and transaction failure-injection acceptance.

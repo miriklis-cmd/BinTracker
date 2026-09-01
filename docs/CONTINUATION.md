@@ -6,33 +6,35 @@
 
 **Created:** 29 August 2026 (Australia/Sydney)
 
-**Implementation state:** The movement-lineage architecture is frozen. External oversight has reviewed and approved the dormant foundation through BIN-LIN-IMP-03B for this local checkpoint commit: Core contracts, migration-safety infrastructure, schema-17 DDL, deterministic schema-16 backfill and postflight validation. Normal startup and all runtime correction/reporting authority remain schema 16/alpha.8 and have **not** changed.
+**Implementation state:** Exact starting and working HEAD remains `8011cc6b4004a4c786d5f0018e5d11517d2bfbd7` (`Add validated current movement lineage resolver`). External oversight approved the dormant foundation through BIN-LIN-IMP-04/04A, returned the first IMP-05 implementation with eight bounded findings corrected by IMP-05B, and then identified one trusted current reversal-pair proof defect. BIN-LIN-IMP-05C corrects that defect in the unstaged working tree and awaits independent source/diff review. The one unambiguous next safe action is that external review—not IMP-06/07. Schema 17 remains dormant and unregistered, and normal startup plus runtime correction/reporting authority remain schema 16/alpha.8.
 
 This record is governed by **Conversation Context Capacity / Continuity Hard Gate** in `docs/DevelopmentWorkflow.md`. A new ChatGPT/Codex session must read the repository-root `AGENTS.md`, that workflow section and this active continuation before modifying the repository. This handoff supplements the authoritative requirements and architecture; it does not replace them.
 
-## Current session update — BIN-LIN-IMP-04 dormant validated CURRENT-root resolver
+## Current session update — BIN-LIN-IMP-05C trusted current reversal-pair correction
 
-IMP-04A corrects the reviewed current-validation contract without expanding the slice. Validated root/line/resolution types are sealed get-only classes with non-public construction, so normal consumers cannot fabricate or `with`-clone successful operational truth. The reader now loads only RootOriginal and current effective/terminal proof links; unrelated superseded historical links do not decide ordinary projectability, while migration postflight retains its global baseline ledger/introduction checks. Current proof now validates exact original `MovementBatchId` membership against `RootMovementBatchId` (or null membership for single roots), preserves `StatusReasonCode`, and rejects negative/duplicate `OriginalDisplayOrdinal`. Schema 17 remains dormant and IMP-05/06/07 remain unstarted.
+BIN-LIN-IMP-05C strengthens the dormant, unregistered mutation-planning trust boundary without expanding it into history diagnostics or command execution. The materializer now loads persisted `ReversesMovementId` and returns a trusted snapshot only after each current Reversed terminal row is proven to reverse that exact LastEffective movement, be opposite with equal customer/container/quantity, use Manual provenance and have no ImportRun or physical MovementBatch membership. Planning rechecks those facts and rejects terminal, LastEffective and Active effective dates after the separate authoritative business date. The genuine pre-05C 37-test alpha.8 workflow characterization passed before correction editing. All eight IMP-05B corrections remain: infrastructure-internal materialization; explicit per-Reversed-line Restore/RemainReversed decisions and line-specific restore overrides/masks; complete existing/plan-local result pointers; generic import/adjustment exclusion; separate business date; deterministic persisted reversal-date characterization; truthful approved-NEW classification; and truthful recovered IMP-05 ordering. AppliedFieldMask, no-op, restoration, provenance and physical-output semantics remain unchanged. There are still no persistence, audit, CAS, idempotency, runtime-registration or schema-activation writes. IMP-06/07 remain unstarted; normal startup remains schema 16.
+
+IMP-04A corrects the reviewed current-validation contract without expanding the slice. Validated root/line/resolution types are sealed get-only classes with non-public construction, so normal consumers cannot fabricate or `with`-clone successful operational truth. The reader now loads only RootOriginal and current effective/terminal proof links; unrelated superseded historical links do not decide ordinary projectability, while migration postflight retains its global baseline ledger/introduction checks. Current proof now validates exact original `MovementBatchId` membership against `RootMovementBatchId` (or null membership for single roots), preserves `StatusReasonCode`, and rejects negative/duplicate `OriginalDisplayOrdinal`. Schema 17 remains dormant; the later IMP-05 working-tree update above supersedes this section's former sequencing status.
 
 IMP-04 adds an unregistered application-facing resolver contract, immutable current-root/line model, minimal Resolved/NotFound/Unhealthy result and typed current-validation failures. An internal provider-neutral validator proves Active/ReadOnly projectability from exact permanent/current membership, state pointer shape, movement ownership/roles, RootOriginal ownership and same-root/line introductions. Initializing, Invalid and malformed/tampered structured state fail closed. The SQLite reader uses one read transaction and loads only the requested root, permanent lines, selected current generation/state and required evidence; validation performs no lazy reads and no full-history scan.
 
-Migration postflight reuses this current validator for migrated Active/ReadOnly roots while retaining generation-zero/MigrationBaseline action-mask-predecessor rules, legacy-null fields, global migration ownership, zero historical PhysicalOutput and FK checks as migration-only authority. The resolver is not registered in startup, DbContext or services; schema 16 remains normal authority. IMP-05/06/07 are not started.
+Migration postflight reuses this current validator for migrated Active/ReadOnly roots while retaining generation-zero/MigrationBaseline action-mask-predecessor rules, legacy-null fields, global migration ownership, zero historical PhysicalOutput and FK checks as migration-only authority. The resolver is not registered in startup, DbContext or services; schema 16 remains normal authority. The later IMP-05 working-tree update above supersedes this section's former sequencing status; IMP-06/07 remain unstarted.
 
-## Current session update — BIN-LIN-CHECKPOINT-03 reviewed foundation checkpoint
+## Historical non-operative update — BIN-LIN-CHECKPOINT-03 reviewed foundation checkpoint
 
 On 31 August 2026, external oversight approved the accumulated BIN-LIN-IMP-01, IMP-02A plus IMP-03A correction, IMP-02C, IMP-03 and IMP-03B dormant lineage foundation for one reviewed local checkpoint commit. The checkpoint records the accepted contracts, fail-closed migration preflight and verified recovery evidence, dormant schema-17 DDL/backfill/postflight, schema-16 Kind 0/1-only correction, tests and governance reconciliation.
 
-This approval does not activate schema 17. Production startup remains schema 16, the alpha.8 physical whole-batch guard remains authoritative, and no correction writer, resolver, balance/report service or UI has cut over to lineage. BIN-LIN-IMP-04 has not started; the next separately authorized slice is the resolver plus operational/audit invariant-health validator foundation. A real retained-database migration rehearsal, production activation and Windows/operator acceptance remain later gates. No push is claimed by this checkpoint record.
+At that historical checkpoint, this approval did not activate schema 17. Production startup remained schema 16, the alpha.8 physical whole-batch guard remained authoritative, and no correction writer, resolver, balance/report service or UI had cut over to lineage. The then-current statement that BIN-LIN-IMP-04 had not started and was the next separately authorized slice is historical chronology only and is superseded by the exact-HEAD implementation state above. A real retained-database migration rehearsal, production activation and Windows/operator acceptance remain later gates. No push was claimed by this checkpoint record.
 
-## Current session update — BIN-LIN-IMP-03B evidence/checklist reconciliation
+## Historical non-operative update — BIN-LIN-IMP-03B evidence/checklist reconciliation
 
 On 31 August 2026, external review of IMP-03A found evidence-classification and documentation-strength defects, not a new lineage code defect. `TEST-CHECKLIST.md` now separates operator/manual acceptance `[A]`, implemented static/automated evidence `[S]`, a specific outstanding manual retest `[R]`, genuinely pending work `[P]` and repeatable candidate gates `[G]`. Mixed Import Replace/Correct, Market Floor, Batch Entry and Customer Statement lines were split against the permanent requirements ledger, and dormant lineage infrastructure moved from `[R]` to `[S]` because external architectural/oversight approval—not an operator UI test—is the relevant remaining gate.
 
 The IMP-03A 27-Markdown matrix no longer claims `Read fully = Yes` for every file. It records conservative review methods and explicitly acknowledges that the combined raw read was tool-truncated and followed by targeted searches, relevant excerpts and individual-file checks. The semantic conclusions remain unchanged; only the strength and terminology of the evidence claim were corrected.
 
-The substantive IMP-03A schema-16 Kind correction remains unchanged: only historical values 0/1 are valid, every other value blocks migration database-wide, and no unsupported value can acquire schema-17 Reverse/Restore meaning. Schema 17 remains dormant. BIN-LIN-IMP-03B governance correction was complete with external oversight approval pending at that handoff; the later CHECKPOINT-03 update above records the subsequent approval. IMP-04 remains blocked and has not started.
+The substantive IMP-03A schema-16 Kind correction remains unchanged: only historical values 0/1 are valid, every other value blocks migration database-wide, and no unsupported value can acquire schema-17 Reverse/Restore meaning. Schema 17 remains dormant. BIN-LIN-IMP-03B governance correction was complete with external oversight approval pending at that handoff; the later CHECKPOINT-03 update above records the subsequent approval. Its statement that IMP-04 remained blocked and unstarted is historical chronology only and is superseded by the exact-HEAD implementation state above.
 
-## Current session update — BIN-LIN-IMP-03A full drift repair/reconciliation
+## Historical non-operative update — BIN-LIN-IMP-03A full drift repair/reconciliation
 
 On 30 August 2026, independent oversight withheld IMP-03 approval after identifying a cross-slice migration defect: IMP-02A classified a schema-16 `MovementCorrectionOperations.Kind` outside historical values 0/1 as root-scoped ReadOnly, and IMP-03 migrated it unchanged even though schema 17 allocates 2=Reverse and 3=Restore. That could fabricate new semantics from corrupt legacy evidence.
 
@@ -48,7 +50,7 @@ Final IMP-03A validation: the corrected focused lineage migration suites passed 
 
 IMP-03A implementation complete; external oversight approval pending. Schema 17 remains dormant, `DatabaseSetup.LatestSchemaVersion` and normal startup remain 16, the retained/user-like database was not touched, and alpha.8 correction/effective-query/report authority is unchanged. IMP-04 requires explicit oversight approval and has not started.
 
-## Current session update — BIN-LIN-IMP-03 dormant schema 17 and deterministic migration
+## Historical non-operative update — BIN-LIN-IMP-03 dormant schema 17 and deterministic migration
 
 On 30 August 2026, BIN-LIN-IMP-03 reverified committed HEAD `1d9b9ab7dfaa338629f1c7901b1a8051cd056553`, branch/upstream `codex/movement-correction` / `origin/codex/movement-correction` at `+0/-0`, version `0.5.0-alpha.8.7`, no staging, and exactly the reviewed IMP-01/02A/02C dirty state. Before schema changes, 6 focused unit characterization tests and 69 correction/reversal/import/migration integration tests passed; `SqliteMigrationTests` were explicitly rerun 15/15. No unexpected schema/runtime implementation existed.
 
@@ -66,7 +68,7 @@ Governance now includes BT-REL-011 characterization-before-change and BT-REL-012
 
 IMP-03 stopping point: review this dormant schema/migration layer. Do not activate it or begin IMP-04 automatically. The next dependency-ordered slice, only after oversight approval, is the client-neutral resolver plus operational/audit invariant-health validator foundation; it must not yet switch writers or numeric consumers.
 
-## Current session update — BIN-LIN-IMP-02C schema-capability/population reconciliation
+## Historical non-operative update — BIN-LIN-IMP-02C schema-capability/population reconciliation
 
 On 30 August 2026, BIN-LIN-IMP-02C reverified committed HEAD `1d9b9ab7dfaa338629f1c7901b1a8051cd056553`, branch/upstream `codex/movement-correction` / `origin/codex/movement-correction` at `+0/-0`, version `0.5.0-alpha.8.7`, no staging and exactly the accepted IMP-01/02A plus provisional 02B dirty files. Schema remains 16; no IMP-03 implementation or runtime-authority change exists. This round changed authoritative documentation only.
 
@@ -86,7 +88,7 @@ The inspected 495-movement/30-batch/10-operation/17-triple/7-reversal database w
 
 Files changed by 02C: `docs/Database.md`, `docs/RequirementsAcceptanceRegister.md`, `docs/Architecture.md` and this continuation only. No source, tests, EF, migration, schema constant, startup, database or runtime behavior changed. The permanent enum values and schema-17 allocation from 02B were not reopened. `Audit-BinTracker.ps1` passed at v0.5.0-alpha.8.7 with 257 permanent IDs/27 Markdown files/current-state contradiction checks; corrected first-column validation found 257 IDs and zero duplicates; targeted migration-population contradiction searches found no remaining current-authority conflict; `git diff --check` passed with only line-ending notices. The final expected worktree adds these four modified documentation files to the accepted IMP-01/02A dirty state, remains unstaged, and is still `+0/-0`. IMP-03 remains prohibited until oversight approves this reconciliation; all repository facts must be rechecked mechanically by the next session.
 
-## Current session update — BIN-LIN-IMP-02B persistence-contract documentation freeze
+## Historical non-operative update — BIN-LIN-IMP-02B persistence-contract documentation freeze
 
 On 30 August 2026, BIN-LIN-IMP-02B mechanically reverified the same committed HEAD/branch/upstream/version and exactly the accepted IMP-01/IMP-02A dirty state; nothing was staged and no IMP-03/schema/runtime implementation existed. This round changed documentation only.
 
@@ -100,7 +102,7 @@ Files changed by BIN-LIN-IMP-02B: `docs/Database.md`, `docs/RequirementsAcceptan
 
 Final expected unstaged state after this round is modified `docs/CONTINUATION.md`, `docs/Database.md`, `docs/RequirementsAcceptanceRegister.md` and the pre-existing IMP-02A `src/BinTracker.Data/DatabaseConfiguration.cs`; untracked IMP-01/02A Core contracts, migration infrastructure and their two test files; nothing staged. IMP-03 was not started. The next safe step after oversight approval is a replacement schema/migration prompt using these permanent identifiers.
 
-## Current session update — dormant Core lineage foundation
+## Historical non-operative update — dormant Core lineage foundation
 
 On 30 August 2026, repository reality was reverified at committed HEAD `1d9b9ab7dfaa338629f1c7901b1a8051cd056553` (`Add conversation continuity hard gate`), branch `codex/movement-correction`, upstream `origin/codex/movement-correction` at `+0/-0`, with a clean worktree and version `0.5.0-alpha.8.7`. No unexpected lineage implementation existed.
 
@@ -126,7 +128,7 @@ No DbSet/EF configuration, schema migration/version, startup behavior, movement 
 
 Historical IMP-01 stopping point: review the dormant foundation before the read-only migration-safety slice. That later slice is now present and corrected as recorded below; do not repeat it.
 
-## Current session update — BIN-LIN-IMP-02/02A migration-safety infrastructure
+## Historical non-operative update — BIN-LIN-IMP-02/02A migration-safety infrastructure
 
 On 30 August 2026, BIN-LIN-IMP-02 started from the same committed HEAD/branch/upstream/version and exactly the accepted three-file BIN-LIN-IMP-01 dirty state; nothing was staged and no unexpected lineage implementation existed. Focused pre-edit characterization passed: 6 unit tests covering database configuration and the dormant lineage contracts, and all 15 existing `SqliteMigrationTests`.
 
@@ -149,7 +151,7 @@ IMP-02A corrected oversight gaps in destination/naming/no-overwrite, non-zero ve
 
 This remains deliberately dormant: `DatabaseSetup.InitializeSqliteAsync` still calls `EnsureCreatedAsync` before numbered migrations; schema stays v16; no runtime or upgrade lease is registered/invoked during startup; no backup/preflight runs automatically; no lineage row is persisted; no correction/reversal/report/UI authority changed. Do not begin the replacement IMP-03 until oversight approves the IMP-02B persistence-contract freeze.
 
-## Mechanically verified repository baseline
+## Historical initial mechanically verified repository baseline (non-operative)
 
 - Repository root: `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`
 - Branch: `codex/movement-correction`
@@ -175,9 +177,9 @@ Those two changes are intentional governance work from the current session and m
 
 This new `docs/CONTINUATION.md` is expected to appear as an untracked file until the user explicitly authorizes staging/commit. Nothing is staged. No commit or push has been authorized for these local governance/continuity changes.
 
-If actual branch, HEAD, version, upstream or worktree state differs when a later session starts, stop and investigate before changing application code. Do not reset, discard, overwrite or auto-merge the three intended local documentation changes.
+This was the baseline when the original continuation was created. It is superseded by the exact active implementation state at the top and the current next-session instructions below. A later session must still stop and investigate any discrepancy against those active sections; do not use this historical file list to discard or overwrite newer reviewed work.
 
-## Evidence levels and last known validation
+## Historical evidence levels retained from continuation creation
 
 Do not turn historical evidence into a newer claim.
 
@@ -195,7 +197,7 @@ This evidence predates the documentation-only lineage freeze. It is the last kno
 
 The current release notes also retain a manual Windows 11 1920x1080/150% and larger-display smoke requirement for the complete alpha.8.7 candidate. Do not infer broad visual acceptance beyond the explicitly recorded interaction checks.
 
-### Documentation-freeze validation at current HEAD
+### Documentation-freeze validation at its historical HEAD
 
 The committed documentation freeze at `faaafb2...` changed no source, tests, schema or version. `docs/DocumentationAudit.md` records:
 
@@ -207,17 +209,17 @@ The committed documentation freeze at `faaafb2...` changed no source, tests, sch
 
 No newer full application build/test run was claimed for that documentation-only commit.
 
-### Current local changes
+### Historical local changes at continuation creation
 
 The current governance and continuation Markdown edits are not application-tested and do not require an application build merely to establish continuity. Before implementation, mechanically verify the baseline and run the focused/full tests appropriate to each implementation slice. Before a distributable lineage activation, run the canonical `Build-BinTracker.bat`, mandatory audit, migration tests against copies of representative databases, and required Windows acceptance. Never claim those gates before they actually pass.
 
 ## Current development phase and original objective
 
-The project has completed the dormant Core, migration-safety and schema-17 migration foundations and is immediately before client-neutral lineage resolution/invariant-health implementation. Runtime correction/reversal/restoration and reporting authority have not changed.
+The project has completed the reviewed dormant Core, migration-safety, schema-17 migration and IMP-04/04A current-root validation foundations. The unstaged IMP-05B planner plus the bounded IMP-05C trusted reversal-pair correction now await external source/diff review. Runtime correction/reversal/restoration and reporting authority have not changed.
 
 The original objective was to extend the safe but limited alpha.8 immutable correction/reversal workflow so whole-batch correction remains truthful after individual corrections, partial reversals, repeated corrections, restoration, mixed dates, partial no-ops and explicit `RemainReversed` decisions. Investigation was deliberately completed before code because a false lineage or balance can silently corrupt operational reporting.
 
-The immediate next task, once explicitly authorized, is implementation planning/execution from the frozen specification. No production lineage entity, migration, resolver, command, projection or Restore UI exists yet.
+The immediate next task is external review of IMP-05C. Do not begin IMP-06/07. Dormant persistence types/migration/resolver/planner exist only behind isolated tests; no production registration, activated migration, command writer, projection cutover or Restore UI exists yet.
 
 ## How the project reached this stopping point
 
@@ -500,7 +502,7 @@ Use controlled recovery only when the active database is unusable or a committed
 
 Before implementation chooses/activates migration, specify and test a concrete v1 infrastructure mechanism that excludes competing BinTracker processes and database operations throughout preflight, backup, source/backup comparison, migration and postflight. “Exclusive gate” must not remain an undefined diagram box. This is SQLite/Windows infrastructure policy, not domain semantics, and must have failure behavior that aborts before schema writes.
 
-## Current codebase findings and implementation seams
+## Baseline codebase findings and implementation seams
 
 - `src/BinTracker.Core/Domain.cs` currently owns `MovementBatch`, `BinMovement`, `MovementCorrectionOperation`, `MovementCorrectionLine`, `ImportRun`, `AuditEvent` and persisted enums. Prefer a focused lineage Core file rather than further crowding it.
 - `src/BinTracker.Data/BinTrackerDbContext.cs` owns current indexes/FKs. Existing useful constraints include unique batch/movement operation IDs, unique reversal target and unique correction-line original/neutraliser/replacement IDs.
@@ -623,7 +625,8 @@ The reviewed dormant/unactivated foundation is recorded by BIN-LIN-CHECKPOINT-03
 
 - retain and extend the focused alpha.8 characterization and isolated lineage fixtures as each authority changes;
 - keep schema-17 production activation blocked pending its later rehearsal and activation gates;
-- implement root/line/generation resolver and invariant/health validators;
+- preserve the completed dormant IMP-04/04A current-root resolver and validator without broadening their boundary;
+- obtain external source/diff approval for the IMP-05B planner and bounded IMP-05C trusted reversal-pair correction before any IMP-06/07 work;
 - integrate generation zero into Single/Batch Entry atomically;
 - implement unified change planner/commands, CAS, retry and provider exception translation;
 - implement physical output predicate;
@@ -647,8 +650,8 @@ Before modifying any repository file, the next session must:
 5. Read the applicable lineage sections in `docs/Architecture.md`, `docs/BusinessRules.md`, `docs/FunctionalSpecification.md`, `docs/Database.md`, `docs/Testing.md`, `TEST-CHECKLIST.md`, `docs/AuditCoverage.md` and import safety documents.
 6. Mechanically verify root, branch, HEAD, upstream, worktree/staging/untracked state and `Directory.Build.props` version.
 7. Inspect the committed BIN-LIN-CHECKPOINT-03 file list and any remaining working-tree files. Preserve unrelated evidence artifacts; investigate any discrepancy before application-code changes.
-8. Confirm no lineage implementation beyond the reviewed dormant/unactivated IMP-01/02A/02C/03/03A/03B foundation has appeared unexpectedly. Do not begin IMP-04 without separate authorization; if other implementation exists, stop and reconcile it rather than layering work over it.
-9. Before the first implementation modification, characterize the relevant alpha.8 behavior and decide which focused tests establish the baseline. Run broader gates in proportion to the slice; do not invent a current full-suite result.
+8. Confirm exact HEAD `8011cc6b4004a4c786d5f0018e5d11517d2bfbd7` plus the recorded unstaged working tree contains the reviewed dormant/unactivated IMP-01/02A/02C/03/03A/03B and IMP-04/04A foundation, the eight IMP-05B corrections and only the bounded IMP-05C trusted reversal-pair correction recorded above. The next safe action is independent IMP-05C source/diff review; do not begin IMP-06/07. If repository reality differs, stop and reconcile it rather than layering work over it.
+9. Preserve the truthful characterization record: the original IMP-05 ordering gate was missed; the full 37-test alpha.8 workflow suite was executed before IMP-05B correction edits as recovery evidence and rerun afterward. IMP-05C separately ran that exact suite before its correction edit and must rerun it afterward. Run broader gates in proportion to any later slice; do not invent a current full-suite result.
 10. Do not stage, commit or push without explicit user instruction.
 
 Useful baseline commands:

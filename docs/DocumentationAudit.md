@@ -1,5 +1,18 @@
 # Documentation Audit Record
 
+## 1 September 2026 — BIN-LIN-IMP-05/05B/05C dormant mutation planner
+
+- BIN-LIN-IMP-05C corrected the externally reviewed trusted reversal-pair defect: the materializer now carries persisted `ReversesMovementId`, rejects contradictory current ordinary-reversal business facts before returning a trusted snapshot, and planning rejects future current effective/terminal dates against the separate authoritative business date. The implementation remains dormant/unregistered and awaits external source/diff review.
+- BIN-LIN-IMP-05B previously corrected the externally reviewed request, result-pointer, trusted-construction, domain-eligibility, business-date and deterministic-test defects; all eight corrections remain part of the current review baseline.
+- IMP-05C ran all 37 `MovementCorrectionWorkflowTests` before correction editing. Adversarial unit and persisted disposable-schema tests now cover every reviewed pair/date corruption while the positive restoration/remain/mixed cases remain.
+- The first IMP-05 implementation did not execute the required alpha.8 characterization before its first application edit. IMP-05B recovered the gate before correction editing by running all 37 `MovementCorrectionWorkflowTests`; this is recovery evidence, not retroactive ordering compliance. Post-correction results are recorded in the IMP-05B evidence.
+- Authority classification now truthfully records the already approved NEW trusted snapshot/materialization boundary, controlled complete-generation plan contract and IMP-05A per-action AppliedFieldMask equality design; these were not invented during IMP-05B.
+- Reconciled continuation sequencing so exact HEAD `8011cc6b4004a4c786d5f0018e5d11517d2bfbd7` identifies IMP-04/04A as complete, the unstaged IMP-05B plus IMP-05C correction as current external-review scope, and IMP-06/07 as prohibited; earlier checkpoint instructions are explicitly historical/non-operative.
+- Added the permanent exact-HEAD continuation sequencing cross-check to `docs/DevelopmentWorkflow.md` and separately passed the mechanical audit after the governance-only repair.
+- Recorded the formally frozen AppliedFieldMask meaning, trusted exact-fact snapshot, pure complete-generation planner and physical-output predicate without claiming persistence, runtime registration, schema-17 activation, command/CAS/idempotency/audit work or operator acceptance.
+- Stabilized the directly exercised alpha.8 reversal regression so its fixed historical start date uses the actual current reversal date as the query end; this preserves the assertion and removes calendar-dependent exclusion of the row under test.
+- Reviewed all 27 governed Markdown files by inventory and mechanical sequencing/status/version/dormancy searches plus direct review of the affected lineage authorities. Repaired the active continuation's stale initial-baseline/current-phase labels, and reconciled current Roadmap coverage and Known Issues status. Historical chronology was preserved and no operative instruction directs IMP-06/07 or claims runtime/schema activation.
+
 ## 31 August 2026 — BIN-LIN-IMP-04A current-validation correction
 
 - Corrected the dormant IMP-04 contract for non-forgeable validated models, current-proof-only ledger relevance, original physical-batch/null-single proof, preserved status reason and ordinal structure.
