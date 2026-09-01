@@ -1,5 +1,13 @@
 # Documentation Audit Record
 
+## 2 September 2026 — IMP-06 checkpoint governance reconciliation
+
+- Mechanically reconciled the active continuation to committed HEAD/upstream `eb84a61567cce232238cf66ace8048851650988c` (`Add transaction-compatible audit primitive`), 0 ahead / 0 behind, version `0.5.0-alpha.8.7`, and the verified clean tracked/staged starting state with only `.codex-evidence/` plus `BIN-LIN-IMP-03A-HANDOFF.tmp` untracked. This reconciliation itself leaves only `docs/CONTINUATION.md` and `docs/DocumentationAudit.md` modified and unstaged.
+- Corrected operative sequencing to record IMP-06 complete, independently reviewed and followed by a canonical BAT pass of 443/443 automated tests with 0 failed, 0 skipped, 0 warnings and 0 errors. IMP-07 generation-zero Single/Batch integration is next in dependency order but remains unimplemented and is not yet authorized for production/application-code editing.
+- Recorded the IMP-07 characterization gate: characterization must precede the first production edit; production code must not be changed merely to manufacture a characterization seam; an otherwise inaccessible failure mode receives truthful observable-behavior characterization first and new failure-injection proof only during or after approved implementation.
+- This reconciliation changes documentation governance only. It changes no frozen semantics, architecture, requirement ID/status, roadmap scope, source, tests, schema, version, runtime behavior or acceptance classification.
+- `Audit-BinTracker.ps1` passed at v0.5.0-alpha.8.7 with 259 permanent requirement IDs, 27 Markdown files inventoried and configured contradiction guards passed. `git diff --check` passed with only line-ending notices.
+
 ## 2 September 2026 — BIN-LIN-IMP-06 caller-transaction audit primitive
 
 - Started from clean tracked/staged checkpoint `e08acc9fbe07bb8f0f9fe48b33549b8a283560ed`, synchronized with `origin/codex/movement-correction`, with only `.codex-evidence/` and `BIN-LIN-IMP-03A-HANDOFF.tmp` untracked and version `0.5.0-alpha.8.7`.
@@ -11,7 +19,7 @@
 - Independent review approved the bounded IMP-06 source design and corrected proof. The subsequent canonical `Build-BinTracker.bat` passed source/package-state audit, restore and Debug build with 0 warnings/errors; 266/266 UnitTests and 177/177 IntegrationTests passed, totaling 443/443 with 0 failed/skipped. No package or Windows/operator acceptance is implied.
 - Reconciled only current lineage/audit status and evidence documents. No requirement ID/status, schema, migration registration, runtime service registration, existing audit service behavior, version or release acceptance changed.
 - Schema 17 remains dormant/unregistered and normal authority remains schema 16/alpha.8. No production lineage writer, generation-zero integration, Correct/Reverse/Restore execution, CAS/idempotency execution, projection/report/numeric cutover, review/detail expansion or UI work occurred. IMP-07 remains unstarted and unauthorized.
-- This is static/focused automated/source-gate evidence only. No retained-production-database rehearsal, package, Windows/operator or external IMP-06 review is claimed.
+- This is static/focused automated/source-gate evidence plus the independent IMP-06 review recorded above; no retained-production-database rehearsal, package or Windows/operator acceptance is claimed.
 
 ## 1 September 2026 — BIN-LIN-IMP-05D post-approval checkpoint reconciliation
 
