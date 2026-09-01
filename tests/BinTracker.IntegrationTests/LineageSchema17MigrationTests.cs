@@ -165,6 +165,39 @@ public sealed class LineageSchema17MigrationTests
     }
 
     [Fact]
+    public async Task Audit_operation_association_is_restrict_foreign_key_and_unique()
+    {
+        await using var fixture = await MigrationFixture.CreateAsync(seed: true);
+        await fixture.MigrateAsync();
+        await using var connection = await fixture.OpenAsync();
+
+        Assert.Equal(1L, await ScalarAsync(connection, """
+            SELECT COUNT(*) FROM pragma_foreign_key_list('AuditEvents')
+            WHERE "table"='MovementCorrectionOperations'
+              AND "from"='MovementCorrectionOperationId'
+              AND on_delete='RESTRICT';
+            """));
+
+        await Assert.ThrowsAsync<SqliteException>(() => ExecuteAsync(connection, """
+            INSERT INTO AuditEvents
+                (TimestampUtc, UserId, Username, Action, EntityType, EntityId, Description,
+                 BeforeValues, AfterValues, ComputerName, SessionId, Succeeded,
+                 RequiresAdministratorReview, MovementCorrectionOperationId)
+            SELECT TimestampUtc, UserId, Username, Action, EntityType, EntityId,
+                   'duplicate primary audit', BeforeValues, AfterValues, ComputerName,
+                   SessionId, Succeeded, RequiresAdministratorReview,
+                   MovementCorrectionOperationId
+            FROM AuditEvents
+            WHERE MovementCorrectionOperationId IS NOT NULL
+            ORDER BY Id
+            LIMIT 1;
+            """));
+
+        Assert.Equal(3L, await ScalarAsync(connection,
+            "SELECT COUNT(*) FROM AuditEvents WHERE MovementCorrectionOperationId IS NOT NULL;"));
+    }
+
+    [Fact]
     public async Task Schema_constraints_reject_invalid_enum_selector_and_duplicate_identity()
     {
         await using var fixture = await MigrationFixture.CreateAsync(seed: true);

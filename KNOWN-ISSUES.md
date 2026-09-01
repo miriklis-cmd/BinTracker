@@ -2,7 +2,7 @@
 
 ## Whole-batch correction after partial lineage
 
-Alpha.8 safely rejects whole-batch correction when any persisted physical member has already been corrected/reversed. This leaves the Batch #30 workflow unresolved. BT-CORR-018..033 is architecture-frozen; dormant Core contracts, migration-safety infrastructure, schema-17 migration/backfill, validated CURRENT-root resolution and the IMP-05C-corrected trusted planner now exist under isolated tests. External planner review, production activation and runtime lineage authority are still not complete or accepted. Do not remove the guard. Closure still requires activation, command/projection/report integration and Windows acceptance of explicit RemainReversed/Restore.
+Alpha.8 safely rejects whole-batch correction when any persisted physical member has already been corrected/reversed. This leaves the Batch #30 workflow unresolved. BT-CORR-018..033 is architecture-frozen; dormant Core contracts, migration-safety infrastructure, schema-17 migration/backfill, validated CURRENT-root resolution, the externally reviewed IMP-05C-corrected trusted planner and the unregistered IMP-06 caller-transaction audit appender now exist under isolated tests. Production operation/audit wiring, activation and runtime lineage authority are still not complete or accepted. Do not remove the guard. Closure still requires activation, command/projection/report integration and Windows acceptance of explicit RemainReversed/Restore.
 
 Current release: **v0.5.0-alpha.8.7**
 

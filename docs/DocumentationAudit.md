@@ -1,5 +1,18 @@
 # Documentation Audit Record
 
+## 2 September 2026 — BIN-LIN-IMP-06 caller-transaction audit primitive
+
+- Started from clean tracked/staged checkpoint `e08acc9fbe07bb8f0f9fe48b33549b8a283560ed`, synchronized with `origin/codex/movement-correction`, with only `.codex-evidence/` and `BIN-LIN-IMP-03A-HANDOFF.tmp` untracked and version `0.5.0-alpha.8.7`.
+- Satisfied BT-REL-011 before the first production edit: 43/43 accepted correction/reversal/audit workflow characterization cases passed, 0 failed/skipped.
+- Added the unregistered Data-boundary `TransactionAuditAppender`. It requires an active caller-owned DbContext transaction, tracks exactly one new primary AuditEvent and owns no DbContext, transaction, SaveChanges or commit. Existing independent `AuditService.WriteAsync` source/behavior remains unchanged.
+- Focused appender tests passed 4/4 and prove unsaved Added state, exact caller-commit persistence, atomic rollback of both the audit and legitimate sibling customer state saved in the same caller transaction, fail-closed missing transaction and unchanged independent audit persistence. The combined appender plus correction/reversal/workflow/concurrency filter passed 53/53 before the tests-only proof correction, 0 failed/skipped.
+- Existing dormant tests already proved unique complete structured legacy audit mapping and required audit column/index presence. The added `Audit_operation_association_is_restrict_foreign_key_and_unique` test supplies the previously missing behavioral proof that `AuditEvent.MovementCorrectionOperationId` is a RESTRICT FK and rejects a second primary audit for the same operation. These three exact structural tests passed 3/3 without schema registration or production activation.
+- Release solution build passed with 0 warnings/errors. `Audit-BinTracker.ps1` passed at v0.5.0-alpha.8.7 with 259 permanent requirement IDs and 27 Markdown files inventoried; `git diff --check` passed with only line-ending notices. The direct audit invocation was blocked by local execution policy before running, so the same repository script was executed successfully with a process-scoped `-ExecutionPolicy Bypass`.
+- Independent review approved the bounded IMP-06 source design and corrected proof. The subsequent canonical `Build-BinTracker.bat` passed source/package-state audit, restore and Debug build with 0 warnings/errors; 266/266 UnitTests and 177/177 IntegrationTests passed, totaling 443/443 with 0 failed/skipped. No package or Windows/operator acceptance is implied.
+- Reconciled only current lineage/audit status and evidence documents. No requirement ID/status, schema, migration registration, runtime service registration, existing audit service behavior, version or release acceptance changed.
+- Schema 17 remains dormant/unregistered and normal authority remains schema 16/alpha.8. No production lineage writer, generation-zero integration, Correct/Reverse/Restore execution, CAS/idempotency execution, projection/report/numeric cutover, review/detail expansion or UI work occurred. IMP-07 remains unstarted and unauthorized.
+- This is static/focused automated/source-gate evidence only. No retained-production-database rehearsal, package, Windows/operator or external IMP-06 review is claimed.
+
 ## 1 September 2026 — BIN-LIN-IMP-05D post-approval checkpoint reconciliation
 
 - After the earlier IMP-05/05B/05C audit entry, independent external source/diff review approved the dormant mutation-planning boundary. Canonical `Build-BinTracker.bat` passed at v0.5.0-alpha.8.7: source/package-state audit, restore and build PASS; 438/438 automated tests passed, 0 failed and 0 skipped; no compiler warnings/errors were reported.
