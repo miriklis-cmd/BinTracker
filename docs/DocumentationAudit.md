@@ -1,5 +1,14 @@
 # Documentation Audit Record
 
+## 2 September 2026 — pre-IMP-07 schema-17 validation lifecycle correction
+
+- Characterized the lifecycle contradiction before production editing: a test-fixture-only valid native `Initial` generation-zero root resolved successfully through the existing current-root validator, but the prior `MigrateAsync` AlreadyComplete path failed it with `LINEAGE_POSTFLIGHT_INVARIANT_FAILURE` because it reapplied global MigrationBaseline-only predicates.
+- Preserved strict schema-16 -> 17 migration-publication proof unchanged in authority: actual migration output must still contain only generation-zero `MigrationBaseline` generations and `MigrationBaseline` generation-line actions with the frozen baseline-only operation, field-mask, ledger-role, legacy-field and zero-physical-output shape.
+- Separated AlreadyComplete validation into required-table/foreign-key/ownership/introduction/current-health checks and reused the provider-neutral current-root invariant validator for every Active/ReadOnly root. Valid mixed MigrationBaseline + Initial state is accepted; malformed native current lineage fails with `LINEAGE_SCHEMA17_HEALTH_INVARIANT_FAILURE`.
+- The focused lifecycle cases passed 4/4 and the complete `LineageSchema17MigrationTests` class passed 55/55, with 0 failed and 0 skipped. The combined migration/infrastructure/audit/approved-entry-characterization integration filter passed 100/100, and the provider-neutral current-root/schema-contract unit filter passed 25/25, all with 0 failed and 0 skipped.
+- `Audit-BinTracker.ps1` passed at v0.5.0-alpha.8.7 with 259 permanent requirement IDs, 27 Markdown files inventoried and configured contradiction guards passed. The canonical BAT was not run for this bounded prerequisite.
+- This prerequisite changes no frozen semantics, permanent requirement IDs/statuses, DDL, backfill population, startup catalogue, DbContext registration, version, Single/Batch production writer, Correct/Reverse/Restore/CAS, projection/report/UI behavior or runtime schema authority. Schema 17 remains dormant and normal startup remains schema 16.
+
 ## 2 September 2026 — IMP-06 checkpoint governance reconciliation
 
 - Mechanically reconciled the active continuation to committed HEAD/upstream `eb84a61567cce232238cf66ace8048851650988c` (`Add transaction-compatible audit primitive`), 0 ahead / 0 behind, version `0.5.0-alpha.8.7`, and the verified clean tracked/staged starting state with only `.codex-evidence/` plus `BIN-LIN-IMP-03A-HANDOFF.tmp` untracked. This reconciliation itself leaves only `docs/CONTINUATION.md` and `docs/DocumentationAudit.md` modified and unstaged.

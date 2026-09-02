@@ -98,7 +98,9 @@ public sealed class SqliteLineageSchema17Migrator(
             connection, null, "SELECT Version FROM SchemaVersion WHERE Id=1;", cancellationToken));
         if (existingVersion == TargetSchemaVersion)
         {
-            var complete = await ValidatePostflightAsync(connection, null, cancellationToken);
+            var complete = await ValidateAlreadyCompleteSchema17Async(
+                connection,
+                cancellationToken);
             return new(LineageSchema17MigrationOutcome.AlreadyComplete, complete);
         }
         if (existingVersion != SourceSchemaVersion)
@@ -547,17 +549,91 @@ public sealed class SqliteLineageSchema17Migrator(
     public static async Task<LineageSchema17PostflightResult> ValidatePostflightAsync(
         SqliteConnection c, SqliteTransaction? tx, CancellationToken token = default)
     {
+        var physicalOutputs = await ValidateStructuralAndCurrentHealthAsync(
+            c,
+            tx,
+            "LINEAGE_POSTFLIGHT_TABLE_MISSING",
+            "LINEAGE_POSTFLIGHT_INVARIANT_FAILURE",
+            token);
+
+        // These predicates prove what the schema-16 -> 17 migration itself published.
+        // They deliberately remain stricter than ongoing schema-17 health validation:
+        // native Initial roots and later native generations cannot exist in this
+        // migration transaction and must never weaken MigrationBaseline proof.
+        var badBaselineShape = await CountAsync(c, tx, """
+            SELECT COUNT(*) FROM LogicalMovementGenerations g
+            LEFT JOIN LogicalMovementBatches b ON b.Id=g.LogicalMovementBatchId
+            WHERE g.GenerationNumber<>0 OR g.PreviousGenerationNumber IS NOT NULL
+               OR g.MovementCorrectionOperationId IS NOT NULL OR g.Kind<>1
+               OR g.LineCount<>b.LineCount;
+            """, token) + await CountAsync(c, tx, """
+            SELECT COUNT(*) FROM LogicalMovementGenerationLines
+            WHERE Action<>1 OR AppliedFieldMask<>0 OR PreviousGenerationLineId IS NOT NULL;
+            """, token);
+        var badLedgerRoles = await CountAsync(c, tx, """
+            SELECT COUNT(*) FROM LogicalMovementLedgerLinks ll
+            JOIN BinMovements m ON m.Id=ll.BinMovementId
+            WHERE (ll.Role=0 AND (m.ReversesMovementId IS NOT NULL OR ll.LegacyMovementCorrectionLineId IS NOT NULL))
+               OR (ll.Role=1 AND NOT EXISTS (
+                     SELECT 1 FROM MovementCorrectionLines cl
+                     WHERE cl.Id=ll.LegacyMovementCorrectionLineId AND cl.NeutralisingMovementId=ll.BinMovementId))
+               OR (ll.Role=2 AND NOT EXISTS (
+                     SELECT 1 FROM MovementCorrectionLines cl
+                     WHERE cl.Id=ll.LegacyMovementCorrectionLineId AND cl.ReplacementMovementId=ll.BinMovementId))
+               OR (ll.Role=3 AND (m.ReversesMovementId IS NULL OR ll.LegacyMovementCorrectionLineId IS NOT NULL))
+               OR ll.Role=4;
+            """, token);
+        var legacyNewFields = await CountAsync(c, tx, """
+            SELECT COUNT(*) FROM MovementCorrectionOperations
+            WHERE RequestJson IS NOT NULL OR RequestSchemaVersion IS NOT NULL
+               OR ExpectedGenerationNumber IS NOT NULL OR ResultGenerationNumber IS NOT NULL;
+            """, token);
+        if (badBaselineShape != 0 || badLedgerRoles != 0 ||
+            legacyNewFields != 0 || physicalOutputs != 0)
+        {
+            throw new InvalidOperationException("LINEAGE_POSTFLIGHT_INVARIANT_FAILURE");
+        }
+
+        return await ReadPostflightResultAsync(c, tx, physicalOutputs, token);
+    }
+
+    private static async Task<LineageSchema17PostflightResult> ValidateAlreadyCompleteSchema17Async(
+        SqliteConnection connection,
+        CancellationToken cancellationToken)
+    {
+        var physicalOutputs = await ValidateStructuralAndCurrentHealthAsync(
+            connection,
+            null,
+            "LINEAGE_SCHEMA17_TABLE_MISSING",
+            "LINEAGE_SCHEMA17_HEALTH_INVARIANT_FAILURE",
+            cancellationToken);
+
+        return await ReadPostflightResultAsync(
+            connection,
+            null,
+            physicalOutputs,
+            cancellationToken);
+    }
+
+    private static async Task<int> ValidateStructuralAndCurrentHealthAsync(
+        SqliteConnection c,
+        SqliteTransaction? tx,
+        string missingTableError,
+        string invariantError,
+        CancellationToken token)
+    {
         var required = new[] { "LogicalMovementBatches", "LogicalMovementLines", "LogicalMovementGenerations",
             "LogicalMovementGenerationLines", "LogicalMovementLedgerLinks", "LogicalMovementPhysicalOutputs" };
         foreach (var table in required)
         {
             if (Convert.ToInt64(await ScalarAsync(c, tx,
                     "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=$name;", token, ("$name", table))) != 1)
-                throw new InvalidOperationException("LINEAGE_POSTFLIGHT_TABLE_MISSING");
+                throw new InvalidOperationException(missingTableError);
         }
 
         // Reuse the provider-neutral committed-current authority for every projectable root.
-        // MigrationBaseline-only checks remain below and deliberately do not leak into ordinary reads.
+        // Migration-publication-only checks remain in ValidatePostflightAsync and do not
+        // leak into ordinary schema-17 health or current-state reads.
         await using (var roots = c.CreateCommand())
         {
             roots.Transaction = tx;
@@ -571,7 +647,7 @@ public sealed class SqliteLineageSchema17Migrator(
                     c, tx,
                     new LogicalMovementBatchId(rootId), token);
                 if (current.Kind != LogicalMovementCurrentRootResolutionKind.Resolved)
-                    throw new InvalidOperationException("LINEAGE_POSTFLIGHT_INVARIANT_FAILURE");
+                    throw new InvalidOperationException(invariantError);
             }
         }
 
@@ -596,16 +672,6 @@ public sealed class SqliteLineageSchema17Migrator(
             WHERE NOT ((State=0 AND ResultEffectiveMovementId IS NOT NULL AND LastEffectiveMovementId IS NULL AND TerminalReversalMovementId IS NULL)
                     OR (State=1 AND ResultEffectiveMovementId IS NULL AND LastEffectiveMovementId IS NOT NULL AND TerminalReversalMovementId IS NOT NULL));
             """, token);
-        var badBaselineShape = await CountAsync(c, tx, """
-            SELECT COUNT(*) FROM LogicalMovementGenerations g
-            LEFT JOIN LogicalMovementBatches b ON b.Id=g.LogicalMovementBatchId
-            WHERE g.GenerationNumber<>0 OR g.PreviousGenerationNumber IS NOT NULL
-               OR g.MovementCorrectionOperationId IS NOT NULL OR g.Kind<>1
-               OR g.LineCount<>b.LineCount;
-            """, token) + await CountAsync(c, tx, """
-            SELECT COUNT(*) FROM LogicalMovementGenerationLines
-            WHERE Action<>1 OR AppliedFieldMask<>0 OR PreviousGenerationLineId IS NOT NULL;
-            """, token);
         var badPointerOwnership = await CountAsync(c, tx, """
             SELECT COUNT(*) FROM LogicalMovementGenerationLines gl
             WHERE (gl.State=0 AND NOT EXISTS (
@@ -626,19 +692,6 @@ public sealed class SqliteLineageSchema17Migrator(
                                      AND ll.LogicalMovementLineId=gl.LogicalMovementLineId
                                      AND ll.Role=3)));
             """, token);
-        var badLedgerRoles = await CountAsync(c, tx, """
-            SELECT COUNT(*) FROM LogicalMovementLedgerLinks ll
-            JOIN BinMovements m ON m.Id=ll.BinMovementId
-            WHERE (ll.Role=0 AND (m.ReversesMovementId IS NOT NULL OR ll.LegacyMovementCorrectionLineId IS NOT NULL))
-               OR (ll.Role=1 AND NOT EXISTS (
-                     SELECT 1 FROM MovementCorrectionLines cl
-                     WHERE cl.Id=ll.LegacyMovementCorrectionLineId AND cl.NeutralisingMovementId=ll.BinMovementId))
-               OR (ll.Role=2 AND NOT EXISTS (
-                     SELECT 1 FROM MovementCorrectionLines cl
-                     WHERE cl.Id=ll.LegacyMovementCorrectionLineId AND cl.ReplacementMovementId=ll.BinMovementId))
-               OR (ll.Role=3 AND (m.ReversesMovementId IS NULL OR ll.LegacyMovementCorrectionLineId IS NOT NULL))
-               OR ll.Role=4;
-            """, token);
         var missingIntroductions = await CountAsync(c, tx, """
             SELECT COUNT(*) FROM LogicalMovementLedgerLinks ll
             LEFT JOIN LogicalMovementGenerationLines gl ON gl.Id=ll.IntroducedByGenerationLineId
@@ -651,22 +704,24 @@ public sealed class SqliteLineageSchema17Migrator(
             WHERE m.Source IN (0,1) AND m.ImportRunId IS NULL
               AND NOT EXISTS (SELECT 1 FROM LogicalMovementLedgerLinks ll WHERE ll.BinMovementId=m.Id);
             """, token);
-        var legacyNewFields = await CountAsync(c, tx, """
-            SELECT COUNT(*) FROM MovementCorrectionOperations
-            WHERE RequestJson IS NOT NULL OR RequestSchemaVersion IS NOT NULL
-               OR ExpectedGenerationNumber IS NOT NULL OR ResultGenerationNumber IS NOT NULL;
-            """, token);
         var physicalOutputs = await CountAsync(c, tx, "SELECT COUNT(*) FROM LogicalMovementPhysicalOutputs;", token);
         var fkViolations = await ForeignKeyViolationCountAsync(c, tx, token);
         if (initializing != 0 || incompleteRoots != 0 || duplicateOrForeignLines != 0 ||
-            badPointers != 0 || badBaselineShape != 0 || badPointerOwnership != 0 ||
-            badLedgerRoles != 0 || missingIntroductions != 0 || unownedOrdinary != 0 ||
-            legacyNewFields != 0 || physicalOutputs != 0 || fkViolations != 0)
+            badPointers != 0 || badPointerOwnership != 0 ||
+            missingIntroductions != 0 || unownedOrdinary != 0 || fkViolations != 0)
         {
-            throw new InvalidOperationException("LINEAGE_POSTFLIGHT_INVARIANT_FAILURE");
+            throw new InvalidOperationException(invariantError);
         }
 
-        return new(
+        return physicalOutputs;
+    }
+
+    private static async Task<LineageSchema17PostflightResult> ReadPostflightResultAsync(
+        SqliteConnection c,
+        SqliteTransaction? tx,
+        int physicalOutputs,
+        CancellationToken token) =>
+        new(
             await CountAsync(c, tx, "SELECT COUNT(*) FROM LogicalMovementBatches;", token),
             await CountAsync(c, tx, "SELECT COUNT(*) FROM LogicalMovementLines;", token),
             await CountAsync(c, tx, "SELECT COUNT(*) FROM LogicalMovementGenerations;", token),
@@ -674,7 +729,6 @@ public sealed class SqliteLineageSchema17Migrator(
             await CountAsync(c, tx, "SELECT COUNT(*) FROM LogicalMovementLedgerLinks;", token),
             physicalOutputs,
             await CountAsync(c, tx, "SELECT COUNT(*) FROM AuditEvents WHERE MovementCorrectionOperationId IS NOT NULL;", token));
-    }
 
     private static async Task EnsureNoPartialLineageSchemaAsync(SqliteConnection c, CancellationToken token)
     {

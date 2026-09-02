@@ -12,13 +12,14 @@ This record is governed by **Conversation Context Capacity / Continuity Hard Gat
 
 - Repository root: `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`.
 - Branch: `codex/movement-correction`.
-- **Current repository checkpoint HEAD/upstream:** `eb84a61567cce232238cf66ace8048851650988c` (`Add transaction-compatible audit primitive`), synchronized with `origin/codex/movement-correction` at 0 ahead / 0 behind.
+- **Verified baseline entering this pre-IMP-07 checkpoint:** `0e7752f45d74def016a945be5f4c9335aa39deeb` (`Reconcile IMP-06 checkpoint for IMP-07`), then synchronized with `origin/codex/movement-correction` at 0 ahead / 0 behind. This document does not predict the commit SHA that contains the checkpoint; after checkpoint commit/push, mechanically verify actual HEAD/upstream and divergence rather than inferring them from this record.
 - **Reviewed IMP-05 implementation checkpoint:** `c0dfc7e51cae1296fd5a5da31876e54364901405` (`Add trusted movement mutation planner`). Do not describe this older implementation commit as the current repository HEAD.
 - Version remains `0.5.0-alpha.8.7`; assembly/file version remains `0.5.0.0`.
-- At the verified `eb84a615...` starting checkpoint, tracked and staged files were clean and the only untracked paths were `.codex-evidence/` and `BIN-LIN-IMP-03A-HANDOFF.tmp`. This governance-only reconciliation leaves `docs/CONTINUATION.md` and `docs/DocumentationAudit.md` modified and unstaged; staging remains empty and the same two unrelated evidence paths remain untracked.
+- This checkpoint contains the bounded pre-IMP-07 schema-17 publication/live-validation lifecycle prerequisite and the approved 17-case schema-16 characterization at `tests/BinTracker.IntegrationTests/MovementEntryCharacterizationTests.cs`. The unrelated `.codex-evidence/` and `BIN-LIN-IMP-03A-HANDOFF.tmp` paths are not part of this checkpoint. No production Single/Batch generation-zero writer exists and IMP-07 production writing has not started.
 - BIN-LIN-IMP-01, IMP-02/02A/02B/02C, IMP-03/03A/03B, IMP-04/04A, IMP-05/05B/05C, IMP-05D and IMP-06 are complete.
 - **BIN-LIN-IMP-06 is committed, independently reviewed and source-gate verified.** It adds only the caller-owned transaction audit primitive described below and makes no runtime registration or authority change.
 - **BIN-LIN-IMP-07 generation-zero Single/Batch integration is the next dependency-ordered slice.** Its direction is approved in principle, but it is not implemented and production/application-code edits are not yet authorized.
+- The pre-IMP-07 schema-17 validation-lifecycle prerequisite separates strict migration-publication proof from live AlreadyComplete structural/current-health validation. It does not implement generation-zero entry writing or activate schema 17.
 
 Normal startup and runtime authority remain schema 16 and the accepted alpha.8 correction/reversal model. Schema 17 is implemented only as a dormant, explicit, unregistered migrator used by isolated tests. There is no production lineage writer, lineage operation-envelope persistence, root CAS/idempotency execution, runtime/DbContext registration, startup migration activation, corrected-activity/report projection cutover, Restore UI or other WinForms cutover.
 
@@ -35,6 +36,7 @@ Git history and `.codex-evidence/` retain the detailed development diaries, inte
 7. IMP-05/05B/05C added the dormant infrastructure-internal trusted planning materializer and pure provider-neutral complete-generation mutation/physical-output planner. The corrected boundary requires explicit per-Reversed-line Restore/RemainReversed decisions, line-specific restoration overrides, complete existing or typed plan-local result pointers, generic import/adjustment exclusion, a separate authoritative business date, deterministic persisted reversal-date proof, exact applied-field masks and artifact-free complete no-op handling. Each current Reversed terminal must be proven to reverse the exact persisted LastEffective movement, be equal-and-opposite for customer/container/quantity, have Manual provenance, have no ImportRun or physical-batch membership, and have no future current dates. Active current effective dates also cannot be future-dated.
 8. IMP-05D reconciled current documentation after independent external source/diff approval and the canonical build. Commit `d1cc1d1...` is documentation-only relative to reviewed implementation checkpoint `c0dfc7e...`; it changed no application source, tests, schema, version, requirements or runtime behavior.
 9. IMP-06 adds `TransactionAuditAppender` at the Data persistence boundary. It accepts one new `AuditEvent` and a caller-owned `BinTrackerDbContext` with an active caller-owned transaction, tracks exactly that event, and performs no context/transaction creation, save or commit. It is deliberately unregistered and does not alter the existing independent `AuditService.WriteAsync` path. Independent review approved this bounded implementation, and the subsequent canonical BAT passed 443/443 automated tests with 0 failed, 0 skipped, 0 warnings and 0 errors.
+10. The current bounded pre-IMP-07 prerequisite preserves strict MigrationBaseline-only publication postflight for the actual 16 -> 17 transaction, while schema-17 AlreadyComplete uses separate structural/current-health validation and the existing provider-neutral current-root validator. A valid mixed Baseline+Initial database is accepted; malformed native current lineage remains rejected. Schema 17 remains dormant and IMP-07 writing is not implemented.
 
 The committed IMP-06 checkpoint contains exactly these implementation-slice files relative to `e08acc9f...`:
 
@@ -42,7 +44,7 @@ The committed IMP-06 checkpoint contains exactly these implementation-slice file
 - tests: `tests/BinTracker.IntegrationTests/TransactionAuditAppenderTests.cs` and the focused BT-AUD-015 constraint proof in `tests/BinTracker.IntegrationTests/LineageSchema17MigrationTests.cs`;
 - current-state reconciliation: `KNOWN-ISSUES.md`, `TEST-CHECKLIST.md`, `docs/Architecture.md`, `docs/AuditCoverage.md`, `docs/CONTINUATION.md`, `docs/DocumentationAudit.md`, `docs/Roadmap.md`, `docs/RoadmapCoverageMatrix.md` and `docs/Testing.md`.
 
-The pre-existing `.codex-evidence/` and `BIN-LIN-IMP-03A-HANDOFF.tmp` remain unrelated untracked evidence. Apart from the two unstaged governance documents identified above, no other file is currently modified, staged or untracked.
+The pre-IMP-07 checkpoint content is limited to the lifecycle prerequisite, its focused tests and directly affected documentation, plus the approved characterization described above. `.codex-evidence/` and `BIN-LIN-IMP-03A-HANDOFF.tmp` remain unrelated evidence outside this checkpoint.
 
 The original IMP-05 edit missed the required pre-edit alpha.8 characterization ordering. IMP-05B ran all 37 `MovementCorrectionWorkflowTests` before its correction edits and again afterward as truthful recovery evidence; this did not retroactively satisfy the missed ordering. IMP-05C ran the same 37-test suite before and after its own correction edit. Preserve this evidence distinction.
 
@@ -166,6 +168,7 @@ The protected order is:
 -> `current resolver/invariant validator`
 -> `trusted planner and physical-output policy`
 -> **`IMP-06 transaction-compatible audit primitive (complete, independently reviewed and source-gate verified)`**
+-> **`schema-17 publication/live-validation lifecycle prerequisite (included in this checkpoint)`**
 -> **`IMP-07 generation-zero Single/Batch integration (next; approved in principle, not implemented or authorized for production editing)`**
 -> `unified Correct/Reverse/Restore commands`
 -> `root CAS/idempotency/provider translation`
@@ -191,6 +194,8 @@ An activated migration with incomplete entry/mutation/projection integration is 
 - IMP-06 satisfied BT-REL-011 before production editing: 43/43 accepted movement-correction workflow and SQLite audit/reversal characterization cases passed. The corrected appender proof passed 4/4, including atomic rollback with sibling state; the combined audit/correction/reversal/concurrency regression filter passed 53/53 before this tests-only proof correction, with 0 failed/skipped. Exact dormant BT-AUD-015 structural mapping/FK/uniqueness tests passed 3/3.
 - Release `dotnet build BinTracker.sln --no-restore` passed with 0 warnings and 0 errors. `Audit-BinTracker.ps1` passed with 259 permanent requirement IDs and 27 Markdown files inventoried; `git diff --check` passed with only line-ending notices.
 - After independent IMP-06 approval, canonical `Build-BinTracker.bat` passed at v0.5.0-alpha.8.7: source/package-state audit and restore passed; Debug build passed with 0 warnings and 0 errors; 266/266 UnitTests and 177/177 IntegrationTests passed, for 443/443 automated tests with 0 failed and 0 skipped.
+- The current pre-IMP-07 lifecycle prerequisite was characterized red before production editing: a valid test-fixture-only native Initial root resolved successfully but the old AlreadyComplete path failed it with `LINEAGE_POSTFLIGHT_INVARIANT_FAILURE`. After the validation split, focused lifecycle cases passed 4/4, the complete migration class passed 55/55, the combined adjacent integration filter passed 100/100 and the provider-neutral validator/contract unit filter passed 25/25, all with 0 failed/skipped. This is targeted evidence, not a canonical BAT.
+- `Audit-BinTracker.ps1` passed for this prerequisite at v0.5.0-alpha.8.7 with 259 permanent requirement IDs, 27 Markdown files inventoried and configured contradiction guards passed.
 - No current compiler warning, automated-test failure or source-gate failure is known. This is checkpoint evidence, not a promise about later changes.
 - No retained-production-database migration rehearsal, schema-17 production activation, package build, PostgreSQL equivalence proof, complete Windows UI/DPI interaction pass or operator acceptance has occurred for lineage.
 - Static implementation, focused automated tests, full automated suite, source/build gate, external code review, migration rehearsal, packaging and Windows/operator acceptance are distinct evidence levels. Never convert one into another or mark `IMPLEMENTED-ACCEPTED` without explicit human evidence.
@@ -242,9 +247,9 @@ Before modifying application code, the next session must:
 
 1. Read repository-root `AGENTS.md`, the full **Conversation Context Capacity / Continuity Hard Gate** and this continuation completely.
 2. Read the current authoritative documents applicable to IMP-07, including the protected Roadmap/coverage and permanent requirements.
-3. Mechanically verify repository root, branch, exact HEAD/upstream, divergence, staged/tracked/untracked worktree state and `Directory.Build.props` version. Expected baseline is the current checkpoint and worktree described at the top; stop and investigate any discrepancy.
+3. Mechanically verify repository root, branch, actual HEAD/upstream and divergence, staged/tracked/untracked worktree state and `Directory.Build.props` version. Reconcile those facts against this continuation and stop on any unexpected difference.
 4. Confirm from source/migration registration that schema 17 is still dormant, schema 16/alpha.8 is normal authority and no writer/CAS/idempotency/projection/UI cutover has appeared.
-5. Inspect current HEAD `eb84a61567cce232238cf66ace8048851650988c`, the completed IMP-06 appender/tests/evidence, the existing Single/Batch entry paths and relevant schema-17 seams. Preserve unrelated evidence artifacts.
+5. Mechanically verify that the checkpoint commit containing this prerequisite descends from the verified entering baseline `0e7752f45d74def016a945be5f4c9335aa39deeb` (`Reconcile IMP-06 checkpoint for IMP-07`); do not require the actual future HEAD to equal that baseline or infer it from this document. Then inspect the completed IMP-06 appender/tests/evidence, the existing Single/Batch entry paths and relevant schema-17 seams. Preserve unrelated evidence artifacts and stop if ancestry or repository reality is unexpected.
 6. Before the first production edit, satisfy the IMP-07 characterization constraint above without changing production code merely to manufacture a seam.
 7. IMP-07 is the next dependency-ordered slice, but do not begin its production/application-code edits or activate runtime/schema/report/UI authority without explicit authorization.
 8. Keep evidence classifications truthful and run `git diff --check` before handoff. Do not stage, commit or push without explicit instruction.

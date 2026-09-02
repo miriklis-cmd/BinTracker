@@ -98,6 +98,7 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 - [S] Dormant Core contracts pin lineage vocabulary and persisted enum values; no runtime authority changed.
 - [S] Read-only preflight, exact-source verified recovery artifact, exclusive upgrade lease and recovery classification exist under isolated automated tests; no operator acceptance is claimed.
 - [S] Dormant schema-16→17 DDL/backfill/postflight creates truthful complete MigrationBaseline state under isolated automated tests and leaves normal startup at schema 16; the foundation is externally reviewed/approved while production activation remains pending.
+- [S] Migration-publication postflight remains strictly MigrationBaseline-only, while the dormant schema-17 AlreadyComplete path separately reuses current-root validation so valid native Initial roots are accepted and malformed native current lineage is rejected without activating schema 17.
 - [S] Automated migration evidence proves schema-16 operation Kind outside historical 0/1 blocks before mutation and can never become schema-17 Reverse/Restore.
 - [P] Activate the upgrade coordinator only after explicit approval and safe production rehearsal; do not auto-restore over a valid rolled-back source.
 - [P] Integrate generation-zero lineage into new Single/Batch Entry atomically.

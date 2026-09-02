@@ -607,6 +607,93 @@ public sealed class LineageSchema17MigrationTests
     }
 
     [Fact]
+    public async Task Already_complete_accepts_valid_mixed_baseline_and_native_initial_roots()
+    {
+        await using var fixture = await MigrationFixture.CreateAsync(seed: true);
+        var prerequisites = await fixture.CreatePrerequisitesAsync();
+        try
+        {
+            var migrator = new SqliteLineageSchema17Migrator();
+            await migrator.MigrateAsync(prerequisites);
+            await using (var connection = await fixture.OpenAsync())
+                await AddValidNativeInitialSingleRootAsync(connection);
+
+            var result = await migrator.MigrateAsync(prerequisites);
+
+            Assert.Equal(LineageSchema17MigrationOutcome.AlreadyComplete, result.Outcome);
+            Assert.Equal(4, result.Postflight.Roots);
+            Assert.Equal(5, result.Postflight.Lines);
+            Assert.Equal(4, result.Postflight.Generations);
+            Assert.Equal(5, result.Postflight.GenerationLines);
+            Assert.Equal(12, result.Postflight.LedgerLinks);
+        }
+        finally
+        {
+            prerequisites.UpgradeLease.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Already_complete_rejects_malformed_native_initial_current_lineage()
+    {
+        await using var fixture = await MigrationFixture.CreateAsync(seed: true);
+        var prerequisites = await fixture.CreatePrerequisitesAsync();
+        try
+        {
+            var migrator = new SqliteLineageSchema17Migrator();
+            await migrator.MigrateAsync(prerequisites);
+            await using (var connection = await fixture.OpenAsync())
+            {
+                var rootId = await AddValidNativeInitialSingleRootAsync(connection);
+                await ExecuteAsync(connection, $"""
+                    UPDATE LogicalMovementLedgerLinks
+                    SET IntroducedByGenerationLineId=NULL
+                    WHERE LogicalMovementBatchId={rootId};
+                    """);
+            }
+
+            var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                migrator.MigrateAsync(prerequisites));
+
+            Assert.Equal("LINEAGE_SCHEMA17_HEALTH_INVARIANT_FAILURE", error.Message);
+        }
+        finally
+        {
+            prerequisites.UpgradeLease.Dispose();
+        }
+    }
+
+    [Theory]
+    [InlineData("generation")]
+    [InlineData("generation-line")]
+    public async Task Migration_publication_postflight_rejects_non_baseline_generation_shape(
+        string corruption)
+    {
+        await using var fixture = await MigrationFixture.CreateAsync(seed: true);
+        await fixture.MigrateAsync();
+        await using var connection = await fixture.OpenAsync();
+        await ExecuteAsync(connection, corruption switch
+        {
+            "generation" => """
+                UPDATE LogicalMovementGenerations
+                SET Kind=0
+                WHERE Id=(SELECT MIN(Id) FROM LogicalMovementGenerations);
+                """,
+            "generation-line" => """
+                UPDATE LogicalMovementGenerationLines
+                SET Action=0
+                WHERE Id=(SELECT MIN(Id) FROM LogicalMovementGenerationLines);
+                """,
+            _ => throw new InvalidOperationException("Unknown publication corruption.")
+        });
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            SqliteLineageSchema17Migrator.ValidatePostflightAsync(connection, null));
+
+        Assert.Equal("LINEAGE_POSTFLIGHT_INVARIANT_FAILURE", error.Message);
+    }
+
+    [Fact]
     public async Task Partial_lineage_schema_is_rejected_before_writes()
     {
         await using var fixture = await MigrationFixture.CreateAsync(seed: true);
@@ -940,6 +1027,96 @@ public sealed class LineageSchema17MigrationTests
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
         await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task<long> AddValidNativeInitialSingleRootAsync(SqliteConnection connection)
+    {
+        await using var transaction = await connection.BeginTransactionAsync();
+
+        async Task<long> InsertIdAsync(string sql)
+        {
+            await using var command = connection.CreateCommand();
+            command.Transaction = (SqliteTransaction)transaction;
+            command.CommandText = sql;
+            return Convert.ToInt64(await command.ExecuteScalarAsync());
+        }
+
+        async Task ExecuteInTransactionAsync(string sql)
+        {
+            await using var command = connection.CreateCommand();
+            command.Transaction = (SqliteTransaction)transaction;
+            command.CommandText = sql;
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var movementId = await InsertIdAsync("""
+            INSERT INTO BinMovements
+                (ClientOperationId, MovementDate, MovementType, Source, CustomerId,
+                 ContainerTypeId, MovementBatchId, ImportRunId, Quantity,
+                 ReferenceNumber, Notes, CreatedBy, CreatedUtc,
+                 ReversesMovementId, CorrectedByMovementId, CorrectionReason)
+            VALUES
+                ('10000000-0000-0000-0000-000000000001', '2026-09-01', 1, 0, 1,
+                 1, NULL, NULL, 3, 'native-ref', 'native-note', 'operator',
+                 '2026-09-02T01:02:03.0000000Z', NULL, NULL, NULL)
+            RETURNING Id;
+            """);
+        var rootId = await InsertIdAsync("""
+            INSERT INTO LogicalMovementBatches
+                (RootMovementBatchId, Status, CurrentGenerationNumber, LineCount,
+                 StatusReasonCode, CreatedUtc)
+            VALUES (NULL, 0, NULL, 1, NULL, '2026-09-02T01:02:03.0000000Z')
+            RETURNING Id;
+            """);
+        var lineId = await InsertIdAsync($"""
+            INSERT INTO LogicalMovementLines
+                (LogicalMovementBatchId, RootMovementId, OriginalDisplayOrdinal, CreatedUtc)
+            VALUES ({rootId}, {movementId}, 0, '2026-09-02T01:02:03.0000000Z')
+            RETURNING Id;
+            """);
+        var generationId = await InsertIdAsync($"""
+            INSERT INTO LogicalMovementGenerations
+                (LogicalMovementBatchId, GenerationNumber, PreviousGenerationNumber,
+                 MovementCorrectionOperationId, Kind, LineCount, CreatedUtc)
+            VALUES ({rootId}, 0, NULL, NULL, 0, 1, '2026-09-02T01:02:03.0000000Z')
+            RETURNING Id;
+            """);
+        var generationLineId = await InsertIdAsync($"""
+            INSERT INTO LogicalMovementGenerationLines
+                (LogicalMovementBatchId, LogicalMovementGenerationId, LogicalMovementLineId,
+                 State, Action, AppliedFieldMask, PreviousGenerationLineId,
+                 ResultEffectiveMovementId, LastEffectiveMovementId,
+                 TerminalReversalMovementId, CreatedUtc)
+            VALUES ({rootId}, {generationId}, {lineId}, 0, 0, 0, NULL,
+                    {movementId}, NULL, NULL, '2026-09-02T01:02:03.0000000Z')
+            RETURNING Id;
+            """);
+        await ExecuteInTransactionAsync($"""
+            INSERT INTO LogicalMovementLedgerLinks
+                (BinMovementId, LogicalMovementBatchId, LogicalMovementLineId, Role,
+                 IntroducedByGenerationLineId, LegacyMovementCorrectionLineId, CreatedUtc)
+            VALUES ({movementId}, {rootId}, {lineId}, 0, {generationLineId}, NULL,
+                    '2026-09-02T01:02:03.0000000Z');
+            UPDATE LogicalMovementBatches
+            SET Status=1, CurrentGenerationNumber=0
+            WHERE Id={rootId};
+            INSERT INTO AuditEvents
+                (TimestampUtc, UserId, Username, Action, EntityType, EntityId,
+                 Description, BeforeValues, AfterValues, ComputerName, SessionId,
+                 Succeeded, RequiresAdministratorReview, MovementCorrectionOperationId)
+            VALUES
+                ('2026-09-02T01:02:03.0000000Z', 1, 'operator', 'MOVEMENT_RECORDED',
+                 'BinMovement', '{movementId}', 'native initial movement', NULL, NULL,
+                 'test', 'native-initial', 1, 0, NULL);
+            """);
+
+        await transaction.CommitAsync();
+
+        var resolver = new SqliteLogicalMovementCurrentRootResolver(connection.ConnectionString);
+        var resolution = await resolver.ResolveAsync(new(rootId));
+        Assert.Equal(LogicalMovementCurrentRootResolutionKind.Resolved, resolution.Kind);
+        Assert.Equal(0, resolution.Root!.CurrentGenerationNumber.Value);
+        return rootId;
     }
 
     private static async Task<long> ScalarAsync(SqliteConnection connection, string sql)
