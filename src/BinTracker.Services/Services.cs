@@ -997,6 +997,9 @@ public static class ServiceSetup
         services.AddScoped<IMovementHistoryReportPdfService, MovementHistoryReportPdfService>();
         services.AddScoped<IMonthlySummaryReportService, MonthlySummaryReportService>();
         services.AddScoped<IMonthlySummaryReportPdfService, MonthlySummaryReportPdfService>();
+        services.TryAddScoped<
+            IInitialMovementLineageWriter,
+            DormantInitialMovementLineageWriter>();
         services.AddScoped<IMovementService, MovementService>();
         services.AddScoped<IMovementCorrectionService, MovementCorrectionService>();
         return services;

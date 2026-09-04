@@ -222,7 +222,8 @@ internal sealed class MovementService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IUserContext session,
     IBusinessClock clock,
-    IClientContext client) : IMovementService
+    IClientContext client,
+    IInitialMovementLineageWriter initialLineageWriter) : IMovementService
 {
     public async Task<IReadOnlyList<MovementCustomerOption>> GetActiveCustomersAsync(
         CancellationToken cancellationToken = default)
@@ -346,14 +347,34 @@ internal sealed class MovementService(
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
-        var existingBatch = await GetMatchingBatchRetryAsync(
-            db,
-            request,
-            cancellationToken);
+        if (!initialLineageWriter.IsEnabled)
+        {
+            var existingBatch = await GetMatchingBatchRetryAsync(
+                db,
+                request,
+                cancellationToken);
 
-        if (existingBatch is not null)
-            return existingBatch;
+            if (existingBatch is not null)
+                return existingBatch;
+        }
+
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+
+        if (initialLineageWriter.IsEnabled)
+        {
+            await initialLineageWriter.EnsureReadyAsync(db, cancellationToken);
+            var existingBatch = await GetMatchingBatchRetryAsync(
+                db,
+                request,
+                cancellationToken);
+            if (existingBatch is not null)
+            {
+                await initialLineageWriter.ValidateExistingBatchAsync(
+                    db, existingBatch.BatchId, cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return existingBatch;
+            }
+        }
 
         var customerIds = request.Lines.Select(x => x.CustomerId).Distinct().ToList();
         var containerIds = request.Lines.Select(x => x.ContainerTypeId).Distinct().ToList();
@@ -399,20 +420,38 @@ internal sealed class MovementService(
             await using var verify =
                 await factory.CreateDbContextAsync(cancellationToken);
 
-            var duplicate = await GetMatchingBatchRetryAsync(
-                verify,
-                request,
-                cancellationToken);
-
-            if (duplicate is not null)
-                return duplicate;
+            if (initialLineageWriter.IsEnabled)
+            {
+                await using var verifyTransaction =
+                    await verify.Database.BeginTransactionAsync(cancellationToken);
+                await initialLineageWriter.EnsureReadyAsync(verify, cancellationToken);
+                var duplicate = await GetMatchingBatchRetryAsync(
+                    verify,
+                    request,
+                    cancellationToken);
+                if (duplicate is not null)
+                {
+                    await initialLineageWriter.ValidateExistingBatchAsync(
+                        verify, duplicate.BatchId, cancellationToken);
+                    await verifyTransaction.CommitAsync(cancellationToken);
+                    return duplicate;
+                }
+            }
+            else
+            {
+                var duplicate = await GetMatchingBatchRetryAsync(
+                    verify,
+                    request,
+                    cancellationToken);
+                if (duplicate is not null)
+                    return duplicate;
+            }
 
             throw;
         }
 
-        foreach (var line in request.Lines)
-        {
-            db.BinMovements.Add(new BinMovement
+        var movements = request.Lines
+            .Select(line => new BinMovement
             {
                 MovementDate = request.MovementDate,
                 MovementType = request.MovementType,
@@ -425,10 +464,21 @@ internal sealed class MovementService(
                 Notes = Clean(line.Notes),
                 CreatedBy = session.Username,
                 CreatedUtc = clock.UtcNow
-            });
-        }
+            })
+            .ToList();
+        db.BinMovements.AddRange(movements);
 
         await db.SaveChangesAsync(cancellationToken);
+
+        if (initialLineageWriter.IsEnabled)
+        {
+            await initialLineageWriter.WriteInitialAsync(
+                db,
+                batch.Id,
+                movements.Select(x => x.Id).ToArray(),
+                clock.UtcNow,
+                cancellationToken);
+        }
 
         var totalQuantity = request.Lines.Sum(x => x.Quantity);
         var direction = request.MovementType == MovementType.In
@@ -487,14 +537,34 @@ internal sealed class MovementService(
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
-        var existingMovement = await GetMatchingSingleRetryAsync(
-            db,
-            request,
-            cancellationToken);
+        if (!initialLineageWriter.IsEnabled)
+        {
+            var existingMovement = await GetMatchingSingleRetryAsync(
+                db,
+                request,
+                cancellationToken);
 
-        if (existingMovement is not null)
-            return existingMovement;
+            if (existingMovement is not null)
+                return existingMovement;
+        }
+
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+
+        if (initialLineageWriter.IsEnabled)
+        {
+            await initialLineageWriter.EnsureReadyAsync(db, cancellationToken);
+            var existingMovement = await GetMatchingSingleRetryAsync(
+                db,
+                request,
+                cancellationToken);
+            if (existingMovement is not null)
+            {
+                await initialLineageWriter.ValidateExistingSingleAsync(
+                    db, existingMovement.MovementId, cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return existingMovement;
+            }
+        }
 
         var customer = await db.Customers
             .AsNoTracking()
@@ -544,15 +614,44 @@ internal sealed class MovementService(
             await using var verify =
                 await factory.CreateDbContextAsync(cancellationToken);
 
-            var duplicate = await GetMatchingSingleRetryAsync(
-                verify,
-                request,
-                cancellationToken);
-
-            if (duplicate is not null)
-                return duplicate;
+            if (initialLineageWriter.IsEnabled)
+            {
+                await using var verifyTransaction =
+                    await verify.Database.BeginTransactionAsync(cancellationToken);
+                await initialLineageWriter.EnsureReadyAsync(verify, cancellationToken);
+                var duplicate = await GetMatchingSingleRetryAsync(
+                    verify,
+                    request,
+                    cancellationToken);
+                if (duplicate is not null)
+                {
+                    await initialLineageWriter.ValidateExistingSingleAsync(
+                        verify, duplicate.MovementId, cancellationToken);
+                    await verifyTransaction.CommitAsync(cancellationToken);
+                    return duplicate;
+                }
+            }
+            else
+            {
+                var duplicate = await GetMatchingSingleRetryAsync(
+                    verify,
+                    request,
+                    cancellationToken);
+                if (duplicate is not null)
+                    return duplicate;
+            }
 
             throw;
+        }
+
+        if (initialLineageWriter.IsEnabled)
+        {
+            await initialLineageWriter.WriteInitialAsync(
+                db,
+                null,
+                [movement.Id],
+                clock.UtcNow,
+                cancellationToken);
         }
 
         var newBalance = MovementPositionMath.Apply(

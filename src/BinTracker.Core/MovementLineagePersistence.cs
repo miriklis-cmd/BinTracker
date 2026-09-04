@@ -70,3 +70,141 @@ public sealed class LogicalMovementPhysicalOutput
     public long? LegacyMovementCorrectionOperationId { get; set; }
     public DateTime CreatedUtc { get; set; }
 }
+
+/// <summary>
+/// Validates the materialized, transaction-local construction state for one
+/// native generation-zero root before that root may become current.
+/// Committed-current projection remains the responsibility of
+/// <see cref="LogicalMovementCurrentRootValidator"/>.
+/// </summary>
+internal static class LogicalMovementInitialConstructionValidator
+{
+    private const string InvalidConstruction = "INITIAL_MOVEMENT_LINEAGE_CONSTRUCTION_INVALID";
+
+    internal static void Validate(
+        LogicalMovementBatch root,
+        IReadOnlyList<LogicalMovementLine> lines,
+        IReadOnlyList<LogicalMovementGeneration> generations,
+        IReadOnlyList<LogicalMovementGenerationLine> generationLines,
+        IReadOnlyList<LogicalMovementLedgerLink> ledgerLinks,
+        IReadOnlyList<long> expectedOrderedMovementIds,
+        IReadOnlyDictionary<long, int?> physicalMovementBatchIds,
+        IReadOnlySet<long> rootBatchMovementIds,
+        int correctionOperationCount,
+        int physicalOutputCount)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        ArgumentNullException.ThrowIfNull(lines);
+        ArgumentNullException.ThrowIfNull(generations);
+        ArgumentNullException.ThrowIfNull(generationLines);
+        ArgumentNullException.ThrowIfNull(ledgerLinks);
+        ArgumentNullException.ThrowIfNull(expectedOrderedMovementIds);
+        ArgumentNullException.ThrowIfNull(physicalMovementBatchIds);
+        ArgumentNullException.ThrowIfNull(rootBatchMovementIds);
+
+        if (root.Id <= 0 || root.Status != LogicalMovementBatchStatus.Initializing ||
+            root.CurrentGenerationNumber is not null || root.StatusReasonCode is not null ||
+            root.LineCount <= 0 || root.LineCount != expectedOrderedMovementIds.Count ||
+            expectedOrderedMovementIds.Any(x => x <= 0) ||
+            expectedOrderedMovementIds.Distinct().Count() != expectedOrderedMovementIds.Count ||
+            correctionOperationCount != 0 || physicalOutputCount != 0)
+        {
+            Fail();
+        }
+
+        if (lines.Count != root.LineCount ||
+            lines.Any(x => x.Id <= 0 || x.LogicalMovementBatchId != root.Id) ||
+            lines.Select(x => x.Id).Distinct().Count() != lines.Count ||
+            lines.Select(x => x.RootMovementId).Distinct().Count() != lines.Count ||
+            lines.Select(x => x.OriginalDisplayOrdinal).Order().SequenceEqual(
+                Enumerable.Range(0, root.LineCount)) is false)
+        {
+            Fail();
+        }
+
+        var orderedLines = lines.OrderBy(x => x.OriginalDisplayOrdinal).ToArray();
+        if (!orderedLines.Select(x => x.RootMovementId).SequenceEqual(expectedOrderedMovementIds))
+            Fail();
+
+        if (generations.Count != 1)
+            Fail();
+        var generation = generations[0];
+        if (generation.Id <= 0 || generation.LogicalMovementBatchId != root.Id ||
+            generation.GenerationNumber != 0 || generation.PreviousGenerationNumber is not null ||
+            generation.MovementCorrectionOperationId is not null ||
+            generation.Kind != LogicalMovementGenerationAction.Initial ||
+            generation.LineCount != root.LineCount)
+        {
+            Fail();
+        }
+
+        var lineIds = lines.Select(x => x.Id).ToHashSet();
+        if (generationLines.Count != root.LineCount ||
+            generationLines.Any(x => x.Id <= 0 || x.LogicalMovementBatchId != root.Id ||
+                x.LogicalMovementGenerationId != generation.Id || !lineIds.Contains(x.LogicalMovementLineId)) ||
+            generationLines.Select(x => x.Id).Distinct().Count() != generationLines.Count ||
+            generationLines.Select(x => x.LogicalMovementLineId).Distinct().Count() != generationLines.Count)
+        {
+            Fail();
+        }
+
+        foreach (var line in lines)
+        {
+            var state = generationLines.Single(x => x.LogicalMovementLineId == line.Id);
+            if (state.State != LogicalMovementLineState.Active ||
+                state.Action != LogicalMovementGenerationAction.Initial ||
+                state.AppliedFieldMask != MovementChangeField.None ||
+                state.PreviousGenerationLineId is not null ||
+                state.ResultEffectiveMovementId != line.RootMovementId ||
+                state.LastEffectiveMovementId is not null ||
+                state.TerminalReversalMovementId is not null)
+            {
+                Fail();
+            }
+        }
+
+        if (ledgerLinks.Count != root.LineCount ||
+            ledgerLinks.Any(x => x.LogicalMovementBatchId != root.Id || !lineIds.Contains(x.LogicalMovementLineId) ||
+                x.Role != LogicalMovementTransformationRole.RootOriginal ||
+                x.IntroducedByGenerationLineId is null || x.LegacyMovementCorrectionLineId is not null) ||
+            ledgerLinks.Select(x => x.BinMovementId).Distinct().Count() != ledgerLinks.Count ||
+            !ledgerLinks.Select(x => x.BinMovementId).ToHashSet().SetEquals(expectedOrderedMovementIds))
+        {
+            Fail();
+        }
+
+        foreach (var line in lines)
+        {
+            var state = generationLines.Single(x => x.LogicalMovementLineId == line.Id);
+            if (ledgerLinks.Count(x => x.BinMovementId == line.RootMovementId &&
+                    x.LogicalMovementLineId == line.Id &&
+                    x.IntroducedByGenerationLineId == state.Id) != 1)
+            {
+                Fail();
+            }
+        }
+
+        if (physicalMovementBatchIds.Count != expectedOrderedMovementIds.Count ||
+            !physicalMovementBatchIds.Keys.ToHashSet().SetEquals(expectedOrderedMovementIds))
+        {
+            Fail();
+        }
+
+        if (root.RootMovementBatchId is { } rootBatchId)
+        {
+            if (rootBatchId <= 0 || physicalMovementBatchIds.Values.Any(x => x != rootBatchId) ||
+                !rootBatchMovementIds.SetEquals(expectedOrderedMovementIds))
+            {
+                Fail();
+            }
+        }
+        else if (expectedOrderedMovementIds.Count != 1 ||
+                 physicalMovementBatchIds.Values.Single() is not null ||
+                 rootBatchMovementIds.Count != 0)
+        {
+            Fail();
+        }
+    }
+
+    private static void Fail() => throw new InvalidOperationException(InvalidConstruction);
+}

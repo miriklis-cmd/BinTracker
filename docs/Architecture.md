@@ -48,7 +48,7 @@ Imports cross the service boundary as `ImportSourceDocument` content plus safe m
 
 Moving to PostgreSQL still requires an API host, provider/schema migrations, authentication/authorization deployment, central backup/monitoring and real PostgreSQL integration tests. It must not require rewriting accepted business, reversal, import, report or audit semantics.
 
-## Frozen movement-lineage architecture (dormant foundation implemented; runtime planned v1)
+## Frozen movement-lineage architecture (dormant foundation and initial-entry writer implemented; runtime planned v1)
 
 ### Authority and state
 
@@ -83,6 +83,8 @@ The dormant schema-17 foundation includes a validation-gated resolver for one re
 Schema-16 -> 17 migration-publication postflight remains a strict proof that the migration transaction created only the frozen generation-zero `MigrationBaseline` shape. Re-entry against an already-schema-17 database instead performs separate structural/current-health validation, reusing the same provider-neutral current-root invariant validator, so legitimate lineage-native `Initial` roots and later native generations are not reclassified as migration corruption. This lifecycle split is dormant and does not register or activate schema 17.
 
 Operational lineage health is separate from audit health. New operation/audit/review state commits atomically. The dormant IMP-06 persistence primitive can track one new primary AuditEvent only through a caller-owned DbContext with an active caller-owned transaction; it creates no context/transaction, performs no SaveChanges/commit and leaves the existing independent AuditService path unchanged. It is unregistered and is not a lineage writer or runtime activation. Later external audit corruption does not falsify proven mathematics but blocks affected mutation/review and evidence-completeness output with critical health.
+
+IMP-07 adds an explicit isolated initial-lineage writer behind the existing Single/Batch `MovementService`, which remains the sole authority for authentication, authorization, validation, master-data checks, idempotency, physical movement/batch creation, audit and returned results. Normal composition supplies a dormant no-op writer that performs no schema probe, query or lineage write; only isolated schema-17 composition supplies the SQLite implementation. For a newly committed eligible Single/Batch entry, that implementation creates one generation-zero `Initial` logical root atomically, with one permanent line per original movement, zero for the Single ordinal and first-successful request enumeration order for Batch ordinals. It completes RootOriginal ownership and introduction links, validates the temporary provider-neutral graph, then activates the root at generation 0. It creates no generation-zero correction operation or physical-output link and does not change existing entry audit actions. Equivalent reordered Batch retries preserve the committed root and ordinals, and migrated `MigrationBaseline` roots remain unchanged. SQLite transaction/schema mechanics stay in Data; Core owns provider-neutral construction invariants and Services owns the client-neutral workflow. This reviewed source and targeted evidence do not activate schema 17, register lineage in the production DbContext/startup catalogue, or implement any PostgreSQL/API/client work.
 
 WinForms supplies stable IDs, expected generation and intent only. Client-neutral services own planning, authorization, projection, concurrency, persistence, audit and balances.
 

@@ -94,4 +94,225 @@ public sealed class MovementLineageContractTests
         Assert.Equal(31, generation.Value);
         Assert.Equal(4, generationNumber.Value);
     }
+
+    [Fact]
+    public void Initial_construction_accepts_valid_single_and_batch_without_using_generated_id_order()
+    {
+        AssertValid(CreateSingle());
+
+        var batch = CreateBatch([900, 12, 400]);
+        AssertValid(batch);
+        Assert.Equal(
+            [900L, 12L, 400L],
+            batch.Lines.OrderBy(x => x.OriginalDisplayOrdinal).Select(x => x.RootMovementId));
+    }
+
+    [Fact]
+    public void Initial_construction_rejects_invalid_root_state_and_current_pointer()
+    {
+        var status = CreateSingle();
+        status.Root.Status = LogicalMovementBatchStatus.Active;
+        AssertInvalid(status);
+
+        var current = CreateSingle();
+        current.Root.CurrentGenerationNumber = 0;
+        AssertInvalid(current);
+    }
+
+    [Fact]
+    public void Initial_construction_rejects_invalid_generation_shape()
+    {
+        foreach (var mutate in new Action<Construction>[]
+        {
+            x => x.Generations.Clear(),
+            x => x.Generations.Add(new LogicalMovementGeneration { Id=99, LogicalMovementBatchId=1,
+                GenerationNumber=1, Kind=LogicalMovementGenerationAction.Initial, LineCount=1 }),
+            x => x.Generations[0].GenerationNumber = 1,
+            x => x.Generations[0].PreviousGenerationNumber = 0,
+            x => x.Generations[0].MovementCorrectionOperationId = 4,
+            x => x.Generations[0].Kind = LogicalMovementGenerationAction.MigrationBaseline
+        })
+        {
+            var construction = CreateSingle();
+            mutate(construction);
+            AssertInvalid(construction);
+        }
+    }
+
+    [Fact]
+    public void Initial_construction_rejects_invalid_generation_line_semantics()
+    {
+        foreach (var mutate in new Action<LogicalMovementGenerationLine>[]
+        {
+            x => x.State = LogicalMovementLineState.Reversed,
+            x => x.Action = LogicalMovementGenerationAction.Corrected,
+            x => x.AppliedFieldMask = MovementChangeField.Quantity,
+            x => x.PreviousGenerationLineId = 9,
+            x => x.ResultEffectiveMovementId = 999,
+            x => x.LastEffectiveMovementId = 10,
+            x => x.TerminalReversalMovementId = 11
+        })
+        {
+            var construction = CreateSingle();
+            mutate(construction.GenerationLines[0]);
+            AssertInvalid(construction);
+        }
+    }
+
+    [Fact]
+    public void Initial_construction_rejects_invalid_permanent_membership_and_ordinals()
+    {
+        var duplicateOrdinal = CreateBatch([10, 20, 30]);
+        duplicateOrdinal.Lines[2].OriginalDisplayOrdinal = 1;
+        AssertInvalid(duplicateOrdinal);
+
+        var nonContiguous = CreateBatch([10, 20, 30]);
+        nonContiguous.Lines[2].OriginalDisplayOrdinal = 4;
+        AssertInvalid(nonContiguous);
+
+        var missing = CreateBatch([10, 20, 30]);
+        missing.Lines.RemoveAt(2);
+        AssertInvalid(missing);
+
+        var crossOwned = CreateSingle();
+        crossOwned.Lines[0].LogicalMovementBatchId = 44;
+        AssertInvalid(crossOwned);
+    }
+
+    [Fact]
+    public void Initial_construction_rejects_missing_surplus_or_cross_owned_generation_lines_and_links()
+    {
+        var missingState = CreateSingle();
+        missingState.GenerationLines.Clear();
+        AssertInvalid(missingState);
+
+        var surplusState = CreateSingle();
+        surplusState.GenerationLines.Add(new LogicalMovementGenerationLine
+        {
+            Id=88, LogicalMovementBatchId=1, LogicalMovementGenerationId=20,
+            LogicalMovementLineId=10, State=LogicalMovementLineState.Active,
+            Action=LogicalMovementGenerationAction.Initial, ResultEffectiveMovementId=101
+        });
+        AssertInvalid(surplusState);
+
+        var missingLink = CreateSingle();
+        missingLink.Links.Clear();
+        AssertInvalid(missingLink);
+
+        var crossOwnedLink = CreateSingle();
+        crossOwnedLink.Links[0].LogicalMovementBatchId = 77;
+        AssertInvalid(crossOwnedLink);
+    }
+
+    [Fact]
+    public void Initial_construction_rejects_invalid_introduction_and_legacy_association()
+    {
+        var missingIntroduction = CreateSingle();
+        missingIntroduction.Links[0].IntroducedByGenerationLineId = null;
+        AssertInvalid(missingIntroduction);
+
+        var wrongIntroduction = CreateSingle();
+        wrongIntroduction.Links[0].IntroducedByGenerationLineId = 999;
+        AssertInvalid(wrongIntroduction);
+
+        var legacy = CreateSingle();
+        legacy.Links[0].LegacyMovementCorrectionLineId = 5;
+        AssertInvalid(legacy);
+    }
+
+    [Fact]
+    public void Initial_construction_rejects_incorrect_single_or_batch_physical_ownership()
+    {
+        var singleInBatch = CreateSingle();
+        singleInBatch.PhysicalMovementBatchIds[101] = 7;
+        AssertInvalid(singleInBatch);
+
+        var incompleteBatch = CreateBatch([10, 20]);
+        incompleteBatch.RootBatchMovementIds.Remove(20);
+        AssertInvalid(incompleteBatch);
+
+        var wrongBatch = CreateBatch([10, 20]);
+        wrongBatch.PhysicalMovementBatchIds[20] = 51;
+        AssertInvalid(wrongBatch);
+    }
+
+    [Fact]
+    public void Initial_construction_rejects_operation_or_physical_output_evidence()
+    {
+        var operation = CreateSingle();
+        operation.CorrectionOperationCount = 1;
+        AssertInvalid(operation);
+
+        var output = CreateSingle();
+        output.PhysicalOutputCount = 1;
+        AssertInvalid(output);
+    }
+
+    private static Construction CreateSingle() => Create(null, [101]);
+
+    private static Construction CreateBatch(IReadOnlyList<long> movementIds) => Create(50, movementIds);
+
+    private static Construction Create(int? batchId, IReadOnlyList<long> movementIds)
+    {
+        var root = new LogicalMovementBatch
+        {
+            Id=1, RootMovementBatchId=batchId, Status=LogicalMovementBatchStatus.Initializing,
+            CurrentGenerationNumber=null, LineCount=movementIds.Count, CreatedUtc=DateTime.UnixEpoch
+        };
+        var lines = movementIds.Select((movementId, ordinal) => new LogicalMovementLine
+        {
+            Id=10 + ordinal, LogicalMovementBatchId=1, RootMovementId=movementId,
+            OriginalDisplayOrdinal=ordinal, CreatedUtc=DateTime.UnixEpoch
+        }).ToList();
+        var generation = new LogicalMovementGeneration
+        {
+            Id=20, LogicalMovementBatchId=1, GenerationNumber=0, PreviousGenerationNumber=null,
+            MovementCorrectionOperationId=null, Kind=LogicalMovementGenerationAction.Initial,
+            LineCount=movementIds.Count, CreatedUtc=DateTime.UnixEpoch
+        };
+        var states = lines.Select((line, ordinal) => new LogicalMovementGenerationLine
+        {
+            Id=30 + ordinal, LogicalMovementBatchId=1, LogicalMovementGenerationId=20,
+            LogicalMovementLineId=line.Id, State=LogicalMovementLineState.Active,
+            Action=LogicalMovementGenerationAction.Initial, AppliedFieldMask=MovementChangeField.None,
+            PreviousGenerationLineId=null, ResultEffectiveMovementId=line.RootMovementId,
+            LastEffectiveMovementId=null, TerminalReversalMovementId=null, CreatedUtc=DateTime.UnixEpoch
+        }).ToList();
+        var links = lines.Select((line, ordinal) => new LogicalMovementLedgerLink
+        {
+            BinMovementId=line.RootMovementId, LogicalMovementBatchId=1,
+            LogicalMovementLineId=line.Id, Role=LogicalMovementTransformationRole.RootOriginal,
+            IntroducedByGenerationLineId=states[ordinal].Id,
+            LegacyMovementCorrectionLineId=null, CreatedUtc=DateTime.UnixEpoch
+        }).ToList();
+        var physical = movementIds.ToDictionary(x => x, _ => batchId);
+        return new(root, lines, [generation], states, links, movementIds.ToArray(),
+            physical, batchId.HasValue ? movementIds.ToHashSet() : [], 0, 0);
+    }
+
+    private static void AssertValid(Construction construction) =>
+        LogicalMovementInitialConstructionValidator.Validate(
+            construction.Root, construction.Lines, construction.Generations,
+            construction.GenerationLines, construction.Links, construction.ExpectedOrderedMovementIds,
+            construction.PhysicalMovementBatchIds, construction.RootBatchMovementIds,
+            construction.CorrectionOperationCount, construction.PhysicalOutputCount);
+
+    private static void AssertInvalid(Construction construction) =>
+        Assert.Throws<InvalidOperationException>(() => AssertValid(construction));
+
+    private sealed record Construction(
+        LogicalMovementBatch Root,
+        List<LogicalMovementLine> Lines,
+        List<LogicalMovementGeneration> Generations,
+        List<LogicalMovementGenerationLine> GenerationLines,
+        List<LogicalMovementLedgerLink> Links,
+        IReadOnlyList<long> ExpectedOrderedMovementIds,
+        Dictionary<long, int?> PhysicalMovementBatchIds,
+        HashSet<long> RootBatchMovementIds,
+        int InitialCorrectionOperationCount,
+        int InitialPhysicalOutputCount)
+    {
+        public int CorrectionOperationCount { get; set; } = InitialCorrectionOperationCount;
+        public int PhysicalOutputCount { get; set; } = InitialPhysicalOutputCount;
+    }
 }

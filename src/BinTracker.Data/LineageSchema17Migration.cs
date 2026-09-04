@@ -615,7 +615,7 @@ public sealed class SqliteLineageSchema17Migrator(
             cancellationToken);
     }
 
-    private static async Task<int> ValidateStructuralAndCurrentHealthAsync(
+    internal static async Task<int> ValidateStructuralAndCurrentHealthAsync(
         SqliteConnection c,
         SqliteTransaction? tx,
         string missingTableError,
