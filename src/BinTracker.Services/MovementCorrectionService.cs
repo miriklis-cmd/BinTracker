@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using BinTracker.Core;
@@ -35,6 +36,45 @@ public sealed record MovementCorrectionSelections(
 public sealed record BatchCorrectionProposal(DateOnly? CorrectedDate, MovementType? CorrectedDirection)
 {
     public bool HasActualChange => CorrectedDate.HasValue || CorrectedDirection.HasValue;
+}
+
+public sealed record LogicalMovementMutationCommand(
+    Guid ClientOperationId,
+    LogicalMovementBatchId LogicalMovementBatchId,
+    LogicalMovementGenerationNumber ExpectedGeneration,
+    MovementMutationRequest Mutation);
+
+public enum LogicalMovementMutationResultKind
+{
+    Committed = 0,
+    Replayed = 1,
+    NoChange = 2
+}
+
+public sealed record LogicalMovementMutationResult(
+    LogicalMovementMutationResultKind Kind,
+    LogicalMovementBatchId LogicalMovementBatchId,
+    LogicalMovementGenerationNumber ResultGeneration,
+    long? OperationId,
+    int? PhysicalOutputBatchId);
+
+public enum LogicalMovementMutationFailure
+{
+    SchemaUnavailable = 0,
+    OperationIdConflict = 1,
+    StaleGeneration = 2,
+    NotFound = 3,
+    ReadOnly = 4,
+    Unhealthy = 5,
+    IntegrityFailure = 6,
+    PersistenceFailure = 7
+}
+
+public sealed class LogicalMovementMutationException(
+    LogicalMovementMutationFailure failure, string message, Exception? innerException = null)
+    : InvalidOperationException(message, innerException)
+{
+    public LogicalMovementMutationFailure Failure { get; } = failure;
 }
 
 public static class MovementCorrectionSelection
@@ -93,10 +133,14 @@ public interface IMovementCorrectionService
     Task<ReverseMovementResult> ReverseAsync(ReverseMovementRequest request, CancellationToken token = default);
     Task<MovementCorrectionResult> CorrectAsync(CorrectMovementRequest request, CancellationToken token = default);
     Task<MovementCorrectionResult> CorrectBatchAsync(CorrectBatchRequest request, CancellationToken token = default);
+    Task<LogicalMovementMutationResult> ExecuteLogicalAsync(
+        LogicalMovementMutationCommand command, CancellationToken token = default);
 }
 
 internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbContext> factory,
-    IUserContext session, IBusinessClock clock, IClientContext client) : IMovementCorrectionService
+    IUserContext session, IBusinessClock clock, IClientContext client,
+    IMovementMutationWriter mutationWriter,
+    TransactionAuditAppender transactionAuditAppender) : IMovementCorrectionService
 {
     public async Task<MovementCorrectionDetail?> GetAsync(long id, CancellationToken token = default)
     {
@@ -215,6 +259,424 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
         return await CorrectCore(request.ClientOperationId, MovementCorrectionKind.WholeBatch,
             request.MovementBatchId, ids, proposal.CorrectedDate, proposal.CorrectedDirection,
             null, null, null, null, null, reason, fp, token);
+    }
+
+    public async Task<LogicalMovementMutationResult> ExecuteLogicalAsync(
+        LogicalMovementMutationCommand command, CancellationToken token = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentNullException.ThrowIfNull(command.Mutation);
+        Authorize(command.Mutation.Kind switch
+        {
+            MovementMutationKind.Correct => "correct",
+            MovementMutationKind.Reverse => "reverse",
+            MovementMutationKind.Restore => "restore",
+            _ => throw new ArgumentOutOfRangeException(nameof(command))
+        });
+        if (!mutationWriter.IsEnabled)
+            throw new LogicalMovementMutationException(LogicalMovementMutationFailure.SchemaUnavailable,
+                "Logical movement mutation execution is dormant in normal runtime composition.");
+        OperationId(command.ClientOperationId);
+        if (command.LogicalMovementBatchId.Value <= 0 || command.ExpectedGeneration.Value < 0)
+            throw new ArgumentException("A valid logical root and expected generation are required.", nameof(command));
+
+        var actorUserId = session.UserId ?? throw new InvalidOperationException(
+            "You must be signed in to change a logical movement.");
+        var requestJson = CanonicalLogicalRequest(command);
+        var intent = new MovementMutationOperationIntent(command.ClientOperationId,
+            command.LogicalMovementBatchId, command.ExpectedGeneration,
+            OperationKind(command.Mutation), GenerationKind(command.Mutation.Kind), 1,
+            requestJson, HashUtf8(requestJson));
+
+        await using var db = await factory.CreateDbContextAsync(token);
+        await using var transaction = await db.Database.BeginTransactionAsync(token);
+        try
+        {
+            try
+            {
+                await mutationWriter.EnsureReadyAsync(db, command.LogicalMovementBatchId, token);
+            }
+            catch (InvalidOperationException ex) when (
+                ex.Message.Contains("SCHEMA17_REQUIRED", StringComparison.Ordinal))
+            {
+                throw new LogicalMovementMutationException(LogicalMovementMutationFailure.SchemaUnavailable,
+                    "Exact schema 17 is required for dormant logical movement mutation execution.", ex);
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new LogicalMovementMutationException(LogicalMovementMutationFailure.Unhealthy,
+                    "Schema-17 structural, current, or operation/audit health validation failed.", ex);
+            }
+            var replay = await mutationWriter.FindCommittedAsync(db, intent, token);
+            if (replay is not null)
+            {
+                await transaction.RollbackAsync(token);
+                return ReplayResult(replay);
+            }
+
+            TrustedMovementPlanningSnapshot snapshot;
+            try
+            {
+                snapshot = await mutationWriter.MaterializeAsync(db, command.LogicalMovementBatchId, token);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("NotFound", StringComparison.Ordinal))
+            {
+                throw new LogicalMovementMutationException(LogicalMovementMutationFailure.NotFound,
+                    "The logical movement root was not found.", ex);
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "MOVEMENT_MUTATION_ROOT_READ_ONLY")
+            {
+                throw new LogicalMovementMutationException(LogicalMovementMutationFailure.ReadOnly,
+                    "The logical movement root is read-only.", ex);
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new LogicalMovementMutationException(LogicalMovementMutationFailure.Unhealthy,
+                    "The logical movement root is not healthy enough to mutate.", ex);
+            }
+
+            if (snapshot.Root.CurrentGenerationNumber != command.ExpectedGeneration)
+                throw new LogicalMovementMutationException(LogicalMovementMutationFailure.StaleGeneration,
+                    "The logical movement root changed; reload and preview the current generation.");
+
+            var plan = MovementMutationPlanner.Plan(snapshot, command.Mutation, clock.Today);
+            if (plan.Kind == MovementMutationPlanKind.NoOp)
+            {
+                await transaction.RollbackAsync(token);
+                return new(LogicalMovementMutationResultKind.NoChange, snapshot.Root.Id,
+                    snapshot.Root.CurrentGenerationNumber, null, null);
+            }
+
+            PendingMovementMutation pending;
+            try
+            {
+                pending = await mutationWriter.PersistAsync(db, intent, snapshot, plan,
+                    actorUserId, session.Username, clock.UtcNow, token);
+            }
+            catch (MovementMutationWriteConflictException ex)
+            {
+                await transaction.RollbackAsync(token);
+                return await ClassifyFreshAsync(intent, token, retryHealthyExpected: true,
+                    healthyExpectedFailure: ex.Kind == MovementMutationWriteConflictKind.TransientContention
+                        ? LogicalMovementMutationFailure.PersistenceFailure
+                        : LogicalMovementMutationFailure.IntegrityFailure);
+            }
+
+            var audit = transactionAuditAppender.AppendPrimary(db,
+                LogicalMutationAudit(command.Mutation, snapshot, plan, pending));
+            await db.SaveChangesAsync(token);
+            await mutationWriter.AssociatePrimaryAuditAsync(db, pending, audit.Id, token);
+            await mutationWriter.ValidateOperationAuditHealthAsync(db, pending.RootId, token);
+
+            bool published;
+            try
+            {
+                published = await mutationWriter.TryPublishAsync(
+                    db, pending, command.ExpectedGeneration, token);
+            }
+            catch (MovementMutationWriteConflictException ex)
+            {
+                await transaction.RollbackAsync(token);
+                return await ClassifyFreshAsync(intent, token, retryHealthyExpected: true,
+                    healthyExpectedFailure: ex.Kind == MovementMutationWriteConflictKind.TransientContention
+                        ? LogicalMovementMutationFailure.PersistenceFailure
+                        : LogicalMovementMutationFailure.IntegrityFailure);
+            }
+            if (!published)
+            {
+                await transaction.RollbackAsync(token);
+                return await ClassifyFreshAsync(intent, token);
+            }
+
+            await mutationWriter.ValidatePublishedAsync(db, pending, token);
+            await transaction.CommitAsync(token);
+            return new(LogicalMovementMutationResultKind.Committed, pending.RootId,
+                pending.ResultGeneration, pending.OperationId, pending.PhysicalOutputBatchId);
+        }
+        catch (LogicalMovementMutationException)
+        {
+            await RollbackIfActiveAsync(transaction);
+            throw;
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "MOVEMENT_MUTATION_OPERATION_ID_CONFLICT")
+        {
+            await RollbackIfActiveAsync(transaction);
+            throw new LogicalMovementMutationException(LogicalMovementMutationFailure.OperationIdConflict,
+                "This client operation ID was already used for a different logical movement request.", ex);
+        }
+        catch
+        {
+            await RollbackIfActiveAsync(transaction);
+            throw;
+        }
+    }
+
+    private async Task<LogicalMovementMutationResult> ClassifyFreshAsync(
+        MovementMutationOperationIntent intent, CancellationToken token,
+        bool retryHealthyExpected = false,
+        LogicalMovementMutationFailure healthyExpectedFailure = LogicalMovementMutationFailure.IntegrityFailure)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            await using var verify = await factory.CreateDbContextAsync(token);
+            await using var verifyTransaction = await verify.Database.BeginTransactionAsync(token);
+            MovementMutationFreshState state;
+            try
+            {
+                state = await mutationWriter.ClassifyFreshAsync(verify, intent, token);
+                await verifyTransaction.RollbackAsync(token);
+            }
+            catch
+            {
+                await RollbackIfActiveAsync(verifyTransaction);
+                throw;
+            }
+            if (retryHealthyExpected && state.Kind == MovementMutationFreshStateKind.IntegrityFailure && attempt < 4)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(25 * (attempt + 1)), token);
+                continue;
+            }
+            return FreshResult(state, healthyExpectedFailure);
+        }
+    }
+
+    private static LogicalMovementMutationResult FreshResult(MovementMutationFreshState state,
+        LogicalMovementMutationFailure healthyExpectedFailure = LogicalMovementMutationFailure.IntegrityFailure) =>
+        state.Kind switch
+        {
+            MovementMutationFreshStateKind.Replay when state.Replay is not null => ReplayResult(state.Replay),
+            MovementMutationFreshStateKind.OperationIdConflict => throw new LogicalMovementMutationException(
+                LogicalMovementMutationFailure.OperationIdConflict,
+                "This client operation ID was already used for a different logical movement request."),
+            MovementMutationFreshStateKind.StaleGeneration => throw new LogicalMovementMutationException(
+                LogicalMovementMutationFailure.StaleGeneration,
+                "The logical movement root changed; reload and preview the current generation."),
+            MovementMutationFreshStateKind.NotFound => throw new LogicalMovementMutationException(
+                LogicalMovementMutationFailure.NotFound, "The logical movement root was not found."),
+            MovementMutationFreshStateKind.Unhealthy => throw new LogicalMovementMutationException(
+                LogicalMovementMutationFailure.Unhealthy,
+                "The logical movement root or its operation/audit evidence is unhealthy."),
+            _ => throw new LogicalMovementMutationException(healthyExpectedFailure,
+                healthyExpectedFailure == LogicalMovementMutationFailure.PersistenceFailure
+                    ? "The mutation could not complete because database contention did not resolve."
+                    : "The mutation could not publish although the expected healthy generation remains current.")
+        };
+
+    private AuditEvent LogicalMutationAudit(MovementMutationRequest request,
+        TrustedMovementPlanningSnapshot snapshot, MovementMutationPlan plan,
+        PendingMovementMutation pending)
+    {
+        var action = request.Kind switch
+        {
+            MovementMutationKind.Correct when request.Scope == MovementMutationScope.WholeRoot => "MOVEMENT_BATCH_CORRECTED",
+            MovementMutationKind.Correct => "MOVEMENT_CORRECTED",
+            MovementMutationKind.Reverse => "MOVEMENT_REVERSED",
+            MovementMutationKind.Restore => "MOVEMENT_RESTORED",
+            _ => throw new InvalidOperationException("Unsupported logical mutation audit action.")
+        };
+        return Audit(action, "LogicalMovementBatch", pending.RootId.Value.ToString(CultureInfo.InvariantCulture),
+            $"Logical movement root #{pending.RootId.Value} advanced to generation {pending.ResultGeneration.Value}. Reason: {request.Reason}",
+            new
+            {
+                CurrentGeneration = snapshot.Root.CurrentGenerationNumber.Value,
+                Lines = snapshot.Lines.Select(x => new
+                {
+                    LineId = x.Current.Id.Value,
+                    GenerationLineId = x.Current.CurrentGenerationLineId.Value,
+                    x.Current.State,
+                    EffectiveMovementId = x.Current.EffectiveMovementId,
+                    x.Current.TerminalReversalMovementId,
+                    LastEffective = AuditBusinessState(x.LastEffective),
+                    TerminalReversal = x.TerminalReversal is null
+                        ? null
+                        : AuditBusinessState(x.TerminalReversal)
+                }).ToArray()
+            },
+            new
+            {
+                ResultGeneration = pending.ResultGeneration.Value,
+                pending.PhysicalOutputBatchId,
+                Lines = pending.Lines.Select(x => new
+                {
+                    LineId = x.LineId.Value,
+                    x.Action,
+                    x.State,
+                    x.AppliedFieldMask,
+                    x.EffectiveMovementId,
+                    x.TerminalReversalMovementId,
+                    LastEffective = ResultAuditBusinessState(
+                        x.LineId, x.EffectiveMovementId, snapshot, plan, pending),
+                    TerminalReversal = x.TerminalReversalMovementId is null
+                        ? null
+                        : ResultAuditBusinessState(x.LineId, x.TerminalReversalMovementId.Value,
+                            snapshot, plan, pending),
+                    NewMovements = pending.Movements.Where(m => m.LineId == x.LineId)
+                        .Select(m => new { m.MovementId, m.Purpose }).ToArray()
+                }).ToArray()
+            });
+    }
+
+    private static object AuditBusinessState(MovementBusinessState state) => AuditBusinessState(
+        state.MovementId, state.MovementDate, state.Direction, state.Source, state.CustomerId,
+        state.ContainerTypeId, state.Quantity, state.Reference, state.Notes, state.MovementBatchId,
+        state.ImportRunId, state.ReversesMovementId);
+
+    private static object ResultAuditBusinessState(LogicalMovementLineId lineId, long movementId,
+        TrustedMovementPlanningSnapshot snapshot, MovementMutationPlan plan,
+        PendingMovementMutation pending)
+    {
+        var current = snapshot.Lines.Single(x => x.Current.Id == lineId);
+        if (current.LastEffective.MovementId == movementId)
+            return AuditBusinessState(current.LastEffective);
+        if (current.TerminalReversal?.MovementId == movementId)
+            return AuditBusinessState(current.TerminalReversal);
+
+        var persisted = pending.Movements.Single(x => x.LineId == lineId && x.MovementId == movementId);
+        var specification = plan.Lines.Single(x => x.LineId == lineId).Movements
+            .Single(x => x.Purpose == persisted.Purpose);
+        var outputMember = plan.PhysicalOutput?.Members.Any(
+            x => x.LineId == lineId && x.Purpose == persisted.Purpose) == true;
+        return AuditBusinessState(
+            persisted.MovementId, specification.MovementDate, specification.Direction,
+            specification.Source, specification.CustomerId, specification.ContainerTypeId,
+            specification.Quantity, specification.Reference, specification.Notes,
+            outputMember ? pending.PhysicalOutputBatchId : null, null,
+            specification.ReversesMovementId);
+    }
+
+    private static object AuditBusinessState(long movementId, DateOnly movementDate,
+        MovementType direction, MovementSource source, int customerId, int containerTypeId,
+        int quantity, string? reference, string? notes, int? movementBatchId,
+        long? importRunId, long? reversesMovementId) => new
+        {
+            MovementId = movementId,
+            MovementDate = movementDate,
+            Direction = direction,
+            Source = source,
+            CustomerId = customerId,
+            ContainerTypeId = containerTypeId,
+            Quantity = quantity,
+            Reference = reference,
+            Notes = notes,
+            MovementBatchId = movementBatchId,
+            ImportRunId = importRunId,
+            ReversesMovementId = reversesMovementId
+        };
+
+    private static LogicalMovementMutationResult ReplayResult(MovementMutationReplay replay) =>
+        new(LogicalMovementMutationResultKind.Replayed, replay.RootId, replay.ResultGeneration,
+            replay.OperationId, replay.PhysicalOutputBatchId);
+
+    private static MovementCorrectionKind OperationKind(MovementMutationRequest request) => request.Kind switch
+    {
+        MovementMutationKind.Correct when request.Scope == MovementMutationScope.Individual => MovementCorrectionKind.Single,
+        MovementMutationKind.Correct => MovementCorrectionKind.WholeBatch,
+        MovementMutationKind.Reverse => MovementCorrectionKind.Reverse,
+        MovementMutationKind.Restore => MovementCorrectionKind.Restore,
+        _ => throw new ArgumentOutOfRangeException(nameof(request))
+    };
+
+    private static LogicalMovementGenerationAction GenerationKind(MovementMutationKind kind) => kind switch
+    {
+        MovementMutationKind.Correct => LogicalMovementGenerationAction.Corrected,
+        MovementMutationKind.Reverse => LogicalMovementGenerationAction.Reversed,
+        MovementMutationKind.Restore => LogicalMovementGenerationAction.Restored,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
+
+    private static async Task RollbackIfActiveAsync(Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction)
+    {
+        try { await transaction.RollbackAsync(CancellationToken.None); }
+        catch (InvalidOperationException) { }
+    }
+
+    private static string CanonicalLogicalRequest(LogicalMovementMutationCommand command)
+    {
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = false }))
+        {
+            writer.WriteStartObject();
+            writer.WriteNumber("schemaVersion", 1);
+            writer.WriteNumber("logicalMovementBatchId", command.LogicalMovementBatchId.Value);
+            writer.WriteNumber("expectedGeneration", command.ExpectedGeneration.Value);
+            writer.WriteNumber("mutationKind", (int)command.Mutation.Kind);
+            writer.WriteNumber("scope", (int)command.Mutation.Scope);
+            writer.WritePropertyName("targetLineIds");
+            writer.WriteStartArray();
+            foreach (var id in command.Mutation.TargetLineIds.OrderBy(x => x.Value))
+                writer.WriteNumberValue(id.Value);
+            writer.WriteEndArray();
+            writer.WriteString("reason", command.Mutation.Reason);
+            writer.WritePropertyName("fields");
+            WriteFields(writer, command.Mutation.MovementDate, command.Mutation.Direction,
+                command.Mutation.Customer, command.Mutation.ContainerType, command.Mutation.Quantity,
+                command.Mutation.Reference, command.Mutation.Notes);
+            writer.WritePropertyName("reversedLineDecisions");
+            writer.WriteStartArray();
+            foreach (var decision in command.Mutation.ReversedLineDecisions.Values.OrderBy(x => x.LineId.Value))
+            {
+                writer.WriteStartObject();
+                writer.WriteNumber("logicalMovementLineId", decision.LineId.Value);
+                writer.WriteNumber("disposition", (int)decision.Disposition);
+                writer.WritePropertyName("fields");
+                WriteFields(writer, decision.MovementDate, decision.Direction, decision.Customer,
+                    decision.ContainerType, decision.Quantity, decision.Reference, decision.Notes);
+                writer.WriteEndObject();
+            }
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+        }
+        return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static void WriteFields(Utf8JsonWriter writer,
+        MovementFieldIntent<DateOnly> date, MovementFieldIntent<MovementType> direction,
+        MovementFieldIntent<int> customer, MovementFieldIntent<int> container,
+        MovementFieldIntent<int> quantity, MovementFieldIntent<string> reference,
+        MovementFieldIntent<string> notes)
+    {
+        writer.WriteStartObject();
+        WriteIntent(writer, "movementDate", date, x => x.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        WriteIntent(writer, "direction", direction, x => (int)x);
+        WriteIntent(writer, "customerId", customer, x => x);
+        WriteIntent(writer, "containerTypeId", container, x => x);
+        WriteIntent(writer, "quantity", quantity, x => x);
+        WriteTextIntent(writer, "reference", reference);
+        WriteTextIntent(writer, "notes", notes);
+        writer.WriteEndObject();
+    }
+
+    private static void WriteIntent<T, TValue>(Utf8JsonWriter writer, string name,
+        MovementFieldIntent<T> intent, Func<T, TValue> value) where T : struct
+    {
+        writer.WritePropertyName(name);
+        writer.WriteStartObject();
+        if (!intent.IsSelected)
+            writer.WriteString("selection", "unselected");
+        else
+        {
+            writer.WriteString("selection", "value");
+            writer.WritePropertyName("value");
+            JsonSerializer.Serialize(writer, value(intent.Value));
+        }
+        writer.WriteEndObject();
+    }
+
+    private static void WriteTextIntent(Utf8JsonWriter writer, string name,
+        MovementFieldIntent<string> intent)
+    {
+        writer.WritePropertyName(name);
+        writer.WriteStartObject();
+        if (!intent.IsSelected)
+            writer.WriteString("selection", "unselected");
+        else if (intent.Value is null)
+            writer.WriteString("selection", "clear");
+        else
+        {
+            writer.WriteString("selection", "value");
+            writer.WriteString("value", intent.Value);
+        }
+        writer.WriteEndObject();
     }
 
     private async Task<MovementCorrectionResult> CorrectCore(Guid id, MovementCorrectionKind kind,
@@ -358,6 +820,8 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
     private static object Snap(BinMovement x) => new { x.Id, x.MovementDate, x.MovementType, x.CustomerId, x.ContainerTypeId, x.Quantity, x.ReferenceNumber, x.Notes, x.MovementBatchId };
     private static string? Clean(string? x) => string.IsNullOrWhiteSpace(x) ? null : x.Trim();
     private static string Hash(object x) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(x))));
+    private static string HashUtf8(string value) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     private static async Task<bool> Consumed(BinTrackerDbContext db, long id, CancellationToken token) =>
         await db.BinMovements.AnyAsync(x => x.Id == id && x.CorrectedByMovementId != null, token) || await db.BinMovements.AnyAsync(x => x.ReversesMovementId == id, token);
     private static async Task<ReverseMovementResult?> ReversalRetry(BinTrackerDbContext db, ReverseMovementRequest r, string reason, CancellationToken token)

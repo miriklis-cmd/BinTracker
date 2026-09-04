@@ -206,5 +206,317 @@ internal static class LogicalMovementInitialConstructionValidator
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.DoesNotReturn]
     private static void Fail() => throw new InvalidOperationException(InvalidConstruction);
+}
+
+/// <summary>
+/// Provider-neutral immutable identity and canonical-intent envelope supplied
+/// by the business service to a provider persistence implementation.
+/// </summary>
+public sealed record MovementMutationOperationIntent(
+    Guid ClientOperationId,
+    LogicalMovementBatchId RootId,
+    LogicalMovementGenerationNumber ExpectedGeneration,
+    MovementCorrectionKind OperationKind,
+    LogicalMovementGenerationAction GenerationKind,
+    int RequestSchemaVersion,
+    string RequestJson,
+    string RequestFingerprint);
+
+internal sealed record PersistedMovementMutationOperation(
+    long Id, Guid ClientOperationId, string RequestFingerprint, MovementCorrectionKind Kind,
+    int? OriginalBatchId, int? ReplacementBatchId, string Reason,
+    int ActorUserId, string ActorUsername, DateTime CreatedUtc,
+    string? RequestJson, int? RequestSchemaVersion, long? RootId,
+    int? ExpectedGenerationNumber, int? ResultGenerationNumber);
+
+internal sealed record PersistedMovementMutationGeneration(
+    long Id, long RootId, int GenerationNumber, int? PreviousGenerationNumber,
+    long? OperationId, LogicalMovementGenerationAction Kind, int LineCount);
+
+internal sealed record PersistedMovementMutationLine(
+    long Id, long RootId, long GenerationId, long LineId, LogicalMovementLineState State,
+    LogicalMovementGenerationAction Action, MovementChangeField AppliedFieldMask,
+    long? PreviousGenerationLineId, long? ResultEffectiveMovementId,
+    long? LastEffectiveMovementId, long? TerminalReversalMovementId);
+
+internal sealed record PersistedPlannedMovement(
+    long Id, LogicalMovementLineId LineId, PlannedMovementPurpose Purpose,
+    DateOnly MovementDate, MovementType Direction, MovementSource Source,
+    int CustomerId, int ContainerTypeId, int Quantity, string? Reference,
+    string? Notes, string? Reason, long? ReversesMovementId, int? MovementBatchId,
+    long? ImportRunId, Guid? ClientOperationId);
+
+internal sealed record PersistedMovementMutationLedgerLink(
+    long MovementId, long RootId, long LineId, LogicalMovementTransformationRole Role,
+    long? IntroducedByGenerationLineId, long? LegacyMovementCorrectionLineId);
+
+internal sealed record PersistedMovementMutationPhysicalOutput(
+    int MovementBatchId, long RootId, long? GenerationId, long? LegacyOperationId,
+    DateOnly MovementDate, MovementType Direction, MovementSource Source,
+    IReadOnlySet<long> MemberMovementIds);
+
+internal sealed record LogicalMovementMutationConstruction(
+    PersistedMovementMutationOperation Operation,
+    PersistedMovementMutationGeneration Generation,
+    IReadOnlyList<PersistedMovementMutationLine> Lines,
+    IReadOnlyList<PersistedPlannedMovement> Movements,
+    IReadOnlyList<PersistedMovementMutationLedgerLink> NewLedgerLinks,
+    PersistedMovementMutationPhysicalOutput? PhysicalOutput);
+
+internal static class LogicalMovementMutationConstructionValidator
+{
+    private const string InvalidConstruction = "MOVEMENT_MUTATION_CONSTRUCTION_INVALID";
+
+    internal static void Validate(
+        MovementMutationOperationIntent intent,
+        TrustedMovementPlanningSnapshot snapshot,
+        MovementMutationPlan plan,
+        LogicalMovementMutationConstruction construction)
+    {
+        ArgumentNullException.ThrowIfNull(intent);
+        ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(construction);
+
+        if (intent.ClientOperationId == Guid.Empty || intent.RootId != snapshot.Root.Id ||
+            intent.RootId != plan.RootId || intent.ExpectedGeneration != snapshot.Root.CurrentGenerationNumber ||
+            intent.ExpectedGeneration != plan.PlannedFromGeneration || intent.RequestSchemaVersion != 1 ||
+            string.IsNullOrEmpty(intent.RequestJson) || intent.RequestFingerprint.Length != 64 ||
+            plan.Kind != MovementMutationPlanKind.Substantive)
+        {
+            Fail();
+        }
+
+        var operation = construction.Operation;
+        var resultGeneration = checked(intent.ExpectedGeneration.Value + 1);
+        if (operation.Id <= 0 || operation.ClientOperationId != intent.ClientOperationId ||
+            operation.RequestFingerprint != intent.RequestFingerprint || operation.Kind != intent.OperationKind ||
+            operation.OriginalBatchId is not null || operation.ReplacementBatchId is not null ||
+            operation.RequestJson != intent.RequestJson || operation.RequestSchemaVersion != intent.RequestSchemaVersion ||
+            operation.RootId != intent.RootId.Value || operation.ExpectedGenerationNumber != intent.ExpectedGeneration.Value ||
+            operation.ResultGenerationNumber != resultGeneration || operation.Reason != plan.Lines.SelectMany(x => x.Movements)
+                .Select(x => x.Reason).DefaultIfEmpty(operation.Reason).First())
+        {
+            Fail();
+        }
+
+        var generation = construction.Generation;
+        if (generation.Id <= 0 || generation.RootId != intent.RootId.Value ||
+            generation.GenerationNumber != resultGeneration ||
+            generation.PreviousGenerationNumber != intent.ExpectedGeneration.Value ||
+            generation.OperationId != operation.Id || generation.Kind != intent.GenerationKind ||
+            generation.LineCount != snapshot.Root.Lines.Count)
+        {
+            Fail();
+        }
+
+        var plannedByLine = plan.Lines.ToDictionary(x => x.LineId);
+        var currentByLine = snapshot.Lines.ToDictionary(x => x.Current.Id);
+        if (construction.Lines.Count != snapshot.Root.Lines.Count ||
+            construction.Lines.Select(x => x.LineId).Distinct().Count() != construction.Lines.Count ||
+            !construction.Lines.Select(x => new LogicalMovementLineId(x.LineId)).ToHashSet()
+                .SetEquals(plannedByLine.Keys))
+        {
+            Fail();
+        }
+
+        var movements = construction.Movements.ToDictionary(x => (x.LineId, x.Purpose));
+        var plannedSpecs = plan.Lines.SelectMany(x => x.Movements).ToArray();
+        if (movements.Count != plannedSpecs.Length ||
+            !movements.Keys.ToHashSet().SetEquals(plannedSpecs.Select(x => (x.LineId, x.Purpose))))
+        {
+            Fail();
+        }
+
+        foreach (var spec in plannedSpecs)
+        {
+            var movement = movements[(spec.LineId, spec.Purpose)];
+            if (movement.Id <= 0 || movement.MovementDate != spec.MovementDate ||
+                movement.Direction != spec.Direction || movement.Source != spec.Source ||
+                movement.CustomerId != spec.CustomerId || movement.ContainerTypeId != spec.ContainerTypeId ||
+                movement.Quantity != spec.Quantity || movement.Reference != spec.Reference ||
+                movement.Notes != spec.Notes || movement.Reason != spec.Reason ||
+                movement.ReversesMovementId != spec.ReversesMovementId || movement.ImportRunId is not null ||
+                movement.ClientOperationId is not null)
+            {
+                Fail();
+            }
+        }
+
+        foreach (var line in construction.Lines)
+        {
+            if (line.Id <= 0 || line.RootId != intent.RootId.Value || line.GenerationId != generation.Id)
+                Fail();
+            var lineId = new LogicalMovementLineId(line.LineId);
+            var planned = plannedByLine[lineId];
+            var current = currentByLine[lineId].Current;
+            if (line.State != planned.State || line.Action != planned.Action ||
+                line.AppliedFieldMask != planned.AppliedFieldMask ||
+                line.PreviousGenerationLineId != current.CurrentGenerationLineId.Value)
+            {
+                Fail();
+            }
+
+            var effective = Resolve(planned.EffectiveMovement, lineId, movements);
+            var terminal = planned.TerminalReversalMovement is null
+                ? (long?)null
+                : Resolve(planned.TerminalReversalMovement, lineId, movements);
+            if (line.State == LogicalMovementLineState.Active)
+            {
+                if (line.ResultEffectiveMovementId != effective || line.LastEffectiveMovementId is not null ||
+                    line.TerminalReversalMovementId is not null)
+                    Fail();
+            }
+            else if (line.ResultEffectiveMovementId is not null || line.LastEffectiveMovementId != effective ||
+                     line.TerminalReversalMovementId != terminal)
+            {
+                Fail();
+            }
+        }
+
+        if (construction.NewLedgerLinks.Count != movements.Count ||
+            !construction.NewLedgerLinks.Select(x => x.MovementId).ToHashSet()
+                .SetEquals(movements.Values.Select(x => x.Id)))
+        {
+            Fail();
+        }
+        foreach (var movement in movements.Values)
+        {
+            var line = construction.Lines.Single(x => x.LineId == movement.LineId.Value);
+            var expectedRole = movement.Purpose switch
+            {
+                PlannedMovementPurpose.CorrectionNeutraliser => LogicalMovementTransformationRole.CorrectionNeutraliser,
+                PlannedMovementPurpose.CorrectionReplacement => LogicalMovementTransformationRole.CorrectionReplacement,
+                PlannedMovementPurpose.OrdinaryReversal => LogicalMovementTransformationRole.OrdinaryReversal,
+                PlannedMovementPurpose.Restoration => LogicalMovementTransformationRole.Restoration,
+                _ => throw new InvalidOperationException(InvalidConstruction)
+            };
+            if (construction.NewLedgerLinks.Count(x => x.MovementId == movement.Id &&
+                    x.RootId == intent.RootId.Value && x.LineId == movement.LineId.Value &&
+                    x.Role == expectedRole && x.IntroducedByGenerationLineId == line.Id &&
+                    x.LegacyMovementCorrectionLineId is null) != 1)
+            {
+                Fail();
+            }
+        }
+
+        ValidateOutput(plan, construction, movements);
+    }
+
+    private static long Resolve(PlannedMovementReference reference, LogicalMovementLineId lineId,
+        IReadOnlyDictionary<(LogicalMovementLineId, PlannedMovementPurpose), PersistedPlannedMovement> movements) =>
+        reference.ExistingMovementId ?? movements[(lineId,
+            reference.PlannedPurpose ?? throw new InvalidOperationException(InvalidConstruction))].Id;
+
+    private static void ValidateOutput(MovementMutationPlan plan,
+        LogicalMovementMutationConstruction construction,
+        IReadOnlyDictionary<(LogicalMovementLineId, PlannedMovementPurpose), PersistedPlannedMovement> movements)
+    {
+        if (plan.PhysicalOutput is null)
+        {
+            if (construction.PhysicalOutput is not null || movements.Values.Any(x => x.MovementBatchId is not null))
+                Fail();
+            return;
+        }
+
+        var output = construction.PhysicalOutput;
+        if (output is null || output.MovementBatchId <= 0 || output.RootId != plan.RootId.Value ||
+            output.GenerationId != construction.Generation.Id || output.LegacyOperationId is not null ||
+            output.MovementDate != plan.PhysicalOutput.MovementDate ||
+            output.Direction != plan.PhysicalOutput.Direction || output.Source != plan.PhysicalOutput.Source)
+        {
+            Fail();
+        }
+        var expectedMembers = plan.PhysicalOutput.Members
+            .Select(x => movements[(x.LineId, x.Purpose)].Id).ToHashSet();
+        if (!output.MemberMovementIds.SetEquals(expectedMembers) ||
+            movements.Values.Any(x => expectedMembers.Contains(x.Id)
+                ? x.MovementBatchId != output.MovementBatchId
+                : x.MovementBatchId is not null))
+        {
+            Fail();
+        }
+    }
+
+    [System.Diagnostics.CodeAnalysis.DoesNotReturn]
+    private static void Fail() => throw new InvalidOperationException(InvalidConstruction);
+}
+
+internal sealed record NativeMovementGenerationAuditFact(
+    long GenerationId, long RootId, int GenerationNumber, int? PreviousGenerationNumber,
+    long? OperationId, LogicalMovementGenerationAction Kind);
+
+internal sealed record NativeMovementOperationAuditFact(
+    long OperationId, long? RootId, int? ExpectedGenerationNumber, int? ResultGenerationNumber,
+    int? RequestSchemaVersion, MovementCorrectionKind Kind);
+
+internal sealed record PrimaryMovementAuditFact(long AuditEventId, long OperationId,
+    string Action, string EntityType, string? EntityId, bool Succeeded);
+
+internal static class LogicalMovementOperationAuditHealthValidator
+{
+    internal static void Validate(
+        IReadOnlyList<NativeMovementGenerationAuditFact> generations,
+        IReadOnlyList<NativeMovementOperationAuditFact> operations,
+        IReadOnlyList<PrimaryMovementAuditFact> audits)
+    {
+        ArgumentNullException.ThrowIfNull(generations);
+        ArgumentNullException.ThrowIfNull(operations);
+        ArgumentNullException.ThrowIfNull(audits);
+        if (operations.Select(x => x.OperationId).Distinct().Count() != operations.Count ||
+            audits.Select(x => x.AuditEventId).Distinct().Count() != audits.Count)
+            Fail();
+
+        foreach (var generation in generations.Where(x => x.GenerationNumber > 0))
+        {
+            if (generation.PreviousGenerationNumber != generation.GenerationNumber - 1 ||
+                generation.OperationId is null)
+                Fail();
+            var matches = operations.Where(x => x.OperationId == generation.OperationId).ToArray();
+            if (matches.Length != 1)
+                Fail();
+            var operation = matches[0];
+            if (operation.RequestSchemaVersion != 1 || operation.RootId != generation.RootId ||
+                operation.ExpectedGenerationNumber != generation.PreviousGenerationNumber ||
+                operation.ResultGenerationNumber != generation.GenerationNumber ||
+                GenerationKind(operation.Kind) != generation.Kind ||
+                audits.Count(x => x.OperationId == operation.OperationId) != 1)
+                Fail();
+            var audit = audits.Single(x => x.OperationId == operation.OperationId);
+            if (!audit.Succeeded || audit.Action != AuditAction(operation.Kind) ||
+                audit.EntityType != "LogicalMovementBatch" ||
+                audit.EntityId != operation.RootId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                Fail();
+        }
+
+        foreach (var operation in operations.Where(x => x.RequestSchemaVersion is not null))
+        {
+            if (generations.Count(x => x.GenerationNumber > 0 && x.OperationId == operation.OperationId) != 1 ||
+                audits.Count(x => x.OperationId == operation.OperationId) != 1)
+                Fail();
+        }
+    }
+
+    private static LogicalMovementGenerationAction GenerationKind(MovementCorrectionKind kind) => kind switch
+    {
+        MovementCorrectionKind.Single or MovementCorrectionKind.WholeBatch => LogicalMovementGenerationAction.Corrected,
+        MovementCorrectionKind.Reverse => LogicalMovementGenerationAction.Reversed,
+        MovementCorrectionKind.Restore => LogicalMovementGenerationAction.Restored,
+        _ => throw new InvalidOperationException("MOVEMENT_MUTATION_AUDIT_HEALTH_INVALID")
+    };
+
+    private static string AuditAction(MovementCorrectionKind kind) => kind switch
+    {
+        MovementCorrectionKind.Single => "MOVEMENT_CORRECTED",
+        MovementCorrectionKind.WholeBatch => "MOVEMENT_BATCH_CORRECTED",
+        MovementCorrectionKind.Reverse => "MOVEMENT_REVERSED",
+        MovementCorrectionKind.Restore => "MOVEMENT_RESTORED",
+        _ => throw new InvalidOperationException("MOVEMENT_MUTATION_AUDIT_HEALTH_INVALID")
+    };
+
+    [System.Diagnostics.CodeAnalysis.DoesNotReturn]
+    private static void Fail() =>
+        throw new InvalidOperationException("MOVEMENT_MUTATION_AUDIT_HEALTH_INVALID");
 }

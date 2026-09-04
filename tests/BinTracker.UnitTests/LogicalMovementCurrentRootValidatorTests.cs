@@ -12,6 +12,8 @@ public sealed class LogicalMovementCurrentRootValidatorTests
         var result = LogicalMovementCurrentRootValidator.Validate(Valid());
         Assert.Equal(LogicalMovementCurrentRootResolutionKind.Resolved, result.Kind);
         Assert.Equal(2, result.Root!.Lines.Count);
+        Assert.Equal(100, result.Root.Lines[0].CurrentGenerationLineId.Value);
+        Assert.Equal(101, result.Root.Lines[1].CurrentGenerationLineId.Value);
         Assert.Equal(LogicalMovementLineState.Reversed, result.Root.Lines[1].State);
     }
 
@@ -53,6 +55,18 @@ public sealed class LogicalMovementCurrentRootValidatorTests
     {
         var candidate = Valid();
         candidate = candidate with { CurrentLines = [candidate.CurrentLines[0], candidate.CurrentLines[1] with { LineId = 99 }] };
+        Assert.Equal(LogicalMovementCurrentRootFailure.InvalidCurrentMembership,
+            LogicalMovementCurrentRootValidator.Validate(candidate).Failure);
+    }
+
+    [Fact]
+    public void Nonpositive_current_generation_line_identity_fails_closed()
+    {
+        var candidate = Valid();
+        candidate = candidate with
+        {
+            CurrentLines = [candidate.CurrentLines[0] with { Id = 0 }, candidate.CurrentLines[1]]
+        };
         Assert.Equal(LogicalMovementCurrentRootFailure.InvalidCurrentMembership,
             LogicalMovementCurrentRootValidator.Validate(candidate).Failure);
     }

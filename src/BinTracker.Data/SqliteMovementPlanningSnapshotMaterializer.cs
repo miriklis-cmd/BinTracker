@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.Data;
 using BinTracker.Core;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace BinTracker.Data;
 
@@ -25,12 +27,41 @@ internal sealed class SqliteMovementPlanningSnapshotMaterializer
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(
             IsolationLevel.Serializable, cancellationToken);
 
+        var snapshot = await MaterializeAsync(
+            connection, transaction, logicalMovementBatchId, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return snapshot;
+    }
+
+    internal static Task<TrustedMovementPlanningSnapshot> MaterializeAsync(
+        BinTrackerDbContext db, LogicalMovementBatchId logicalMovementBatchId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(db);
+        if (db.Database.CurrentTransaction is null ||
+            db.Database.GetDbConnection() is not SqliteConnection connection ||
+            db.Database.CurrentTransaction.GetDbTransaction() is not SqliteTransaction transaction ||
+            connection.State != ConnectionState.Open)
+        {
+            throw new InvalidOperationException(
+                "The SQLite planning materializer requires the caller's active SQLite transaction.");
+        }
+
+        return MaterializeAsync(connection, transaction, logicalMovementBatchId, cancellationToken);
+    }
+
+    private static async Task<TrustedMovementPlanningSnapshot> MaterializeAsync(
+        SqliteConnection connection, SqliteTransaction transaction,
+        LogicalMovementBatchId logicalMovementBatchId, CancellationToken cancellationToken)
+    {
         var resolution = await SqliteLogicalMovementCurrentRootResolver.ResolveInSnapshotAsync(
             connection, transaction, logicalMovementBatchId, cancellationToken);
         if (resolution.Kind != LogicalMovementCurrentRootResolutionKind.Resolved || resolution.Root is null)
             throw new InvalidOperationException($"Logical movement root is not plannable: {resolution.Kind}/{resolution.Failure}.");
 
         var root = resolution.Root;
+        if (root.Status == LogicalMovementBatchStatus.ReadOnly)
+            throw new InvalidOperationException("MOVEMENT_MUTATION_ROOT_READ_ONLY");
         var ids = root.Lines.SelectMany(x => x.TerminalReversalMovementId is { } terminal
                 ? new[] { x.EffectiveMovementId!.Value, terminal }
                 : new[] { x.EffectiveMovementId!.Value })
@@ -56,7 +87,6 @@ internal sealed class SqliteMovementPlanningSnapshotMaterializer
         // A planning snapshot is exposed as trusted only after the current movement pair has
         // been cross-proven against immutable business facts, not merely lineage role labels.
         MovementMutationPlanner.ValidateTrustedSnapshotFacts(snapshot);
-        await transaction.CommitAsync(cancellationToken);
         return snapshot;
     }
 

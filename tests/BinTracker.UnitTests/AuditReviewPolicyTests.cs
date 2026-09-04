@@ -17,6 +17,7 @@ public sealed class AuditReviewPolicyTests
     [InlineData("MOVEMENT_REVERSED", true, false, true)]
     [InlineData("MOVEMENT_CORRECTED", true, false, true)]
     [InlineData("MOVEMENT_BATCH_CORRECTED", true, false, true)]
+    [InlineData("MOVEMENT_RESTORED", true, false, true)]
     [InlineData("MOVEMENT_CORRECTED", true, true, false)]
     [InlineData("LOGIN_SUCCESS", false, false, false)]
     [InlineData("LOGOUT", false, false, false)]

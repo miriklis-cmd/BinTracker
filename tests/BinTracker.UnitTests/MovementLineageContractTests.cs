@@ -87,12 +87,96 @@ public sealed class MovementLineageContractTests
         var root = new LogicalMovementBatchId(17);
         var line = new LogicalMovementLineId(23);
         var generation = new LogicalMovementGenerationId(31);
+        var generationLine = new LogicalMovementGenerationLineId(37);
         var generationNumber = new LogicalMovementGenerationNumber(4);
 
         Assert.Equal(17, root.Value);
         Assert.Equal(23, line.Value);
         Assert.Equal(31, generation.Value);
+        Assert.Equal(37, generationLine.Value);
         Assert.Equal(4, generationNumber.Value);
+    }
+
+    [Fact]
+    public void Native_later_generation_operation_and_primary_audit_health_is_provider_neutral()
+    {
+        NativeMovementGenerationAuditFact[] generations =
+        [
+            new(1, 10, 0, null, null, LogicalMovementGenerationAction.Initial),
+            new(2, 10, 1, 0, 20, LogicalMovementGenerationAction.Restored)
+        ];
+        NativeMovementOperationAuditFact[] operations =
+        [new(20, 10, 0, 1, 1, MovementCorrectionKind.Restore)];
+        PrimaryMovementAuditFact[] audits =
+        [new(30, 20, "MOVEMENT_RESTORED", "LogicalMovementBatch", "10", true)];
+
+        LogicalMovementOperationAuditHealthValidator.Validate(generations, operations, audits);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            LogicalMovementOperationAuditHealthValidator.Validate(generations, operations, []));
+        Assert.Throws<InvalidOperationException>(() =>
+            LogicalMovementOperationAuditHealthValidator.Validate(generations,
+                [operations[0] with { ResultGenerationNumber = 2 }], audits));
+        Assert.Throws<InvalidOperationException>(() =>
+            LogicalMovementOperationAuditHealthValidator.Validate(generations, operations,
+                [audits[0] with { Action = "MOVEMENT_CORRECTED" }]));
+    }
+
+    [Fact]
+    public void Later_generation_construction_proves_exact_predecessor_plan_movements_and_links()
+    {
+        var current = new ValidatedLogicalMovementCurrentLine(new(1), new(100), 10, 0,
+            LogicalMovementLineState.Active, 10, null);
+        var root = new ValidatedLogicalMovementCurrentRoot(new(5), null,
+            LogicalMovementBatchStatus.Active, null, new(0), [current]);
+        var business = new MovementBusinessState(10, new DateOnly(2026, 9, 1), MovementType.Out,
+            MovementSource.Manual, 1, 1, 1, "ref", "note", null, null, null);
+        var snapshot = new TrustedMovementPlanningSnapshot(root,
+            [new TrustedMovementPlanningLine(current, business, null)],
+            new HashSet<int> { 1 }, new HashSet<int> { 1 });
+        var request = MovementMutationRequest.Correct(MovementMutationScope.Individual,
+            [new LogicalMovementLineId(1)], "fix quantity",
+            quantity: MovementFieldIntent<int>.Selected(2));
+        var plan = MovementMutationPlanner.Plan(snapshot, request, new DateOnly(2026, 9, 2));
+        var intent = new MovementMutationOperationIntent(Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            new(5), new(0), MovementCorrectionKind.Single, LogicalMovementGenerationAction.Corrected,
+            1, "{}", new string('A', 64));
+        var operation = new PersistedMovementMutationOperation(20, intent.ClientOperationId,
+            intent.RequestFingerprint, intent.OperationKind, null, null, request.Reason, 2, "operator",
+            DateTime.UnixEpoch, intent.RequestJson, 1, 5, 0, 1);
+        var generation = new PersistedMovementMutationGeneration(30, 5, 1, 0, 20,
+            LogicalMovementGenerationAction.Corrected, 1);
+        PersistedMovementMutationLine[] lines =
+        [new(40, 5, 30, 1, LogicalMovementLineState.Active,
+            LogicalMovementGenerationAction.Corrected, MovementChangeField.Quantity,
+            100, 12, null, null)];
+        PersistedPlannedMovement[] movements =
+        [
+            new(11, new(1), PlannedMovementPurpose.CorrectionNeutraliser,
+                new DateOnly(2026, 9, 1), MovementType.In, MovementSource.Manual,
+                1, 1, 1, "REV-10 / ref", "Neutralises movement #10. Reason: fix quantity",
+                "fix quantity", 10, null, null, null),
+            new(12, new(1), PlannedMovementPurpose.CorrectionReplacement,
+                new DateOnly(2026, 9, 1), MovementType.Out, MovementSource.Manual,
+                1, 1, 2, "ref", "note", "fix quantity", null, null, null, null)
+        ];
+        PersistedMovementMutationLedgerLink[] links =
+        [
+            new(11, 5, 1, LogicalMovementTransformationRole.CorrectionNeutraliser, 40, null),
+            new(12, 5, 1, LogicalMovementTransformationRole.CorrectionReplacement, 40, null)
+        ];
+        var construction = new LogicalMovementMutationConstruction(operation, generation,
+            lines, movements, links, null);
+
+        LogicalMovementMutationConstructionValidator.Validate(intent, snapshot, plan, construction);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            LogicalMovementMutationConstructionValidator.Validate(intent, snapshot, plan,
+                construction with { Lines = [lines[0] with { PreviousGenerationLineId = 99 }] }));
+        Assert.Throws<InvalidOperationException>(() =>
+            LogicalMovementMutationConstructionValidator.Validate(intent, snapshot, plan,
+                construction with { NewLedgerLinks =
+                    [links[0], links[1] with { Role = LogicalMovementTransformationRole.Restoration }] }));
     }
 
     [Fact]

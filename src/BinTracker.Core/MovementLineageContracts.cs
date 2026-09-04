@@ -17,6 +17,12 @@ public readonly record struct LogicalMovementLineId(long Value);
 public readonly record struct LogicalMovementGenerationId(long Value);
 
 /// <summary>
+/// Persisted identity of one permanent line's state in a specific generation.
+/// Later generations use this exact identity for predecessor lineage.
+/// </summary>
+public readonly record struct LogicalMovementGenerationLineId(long Value);
+
+/// <summary>
 /// Root-scoped semantic mutation order and optimistic-concurrency value.
 /// This is independent of movement business dates and forensic timestamps.
 /// </summary>

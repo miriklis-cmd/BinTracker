@@ -1,5 +1,13 @@
 # Documentation Audit Record
 
+## 5 September 2026 — unified schema-17 mutation implementation checkpoint
+
+- Verified the entering repository baseline at `1929bfac52f937c40be759dee546fa50da78dd0c` on `codex/movement-correction`, synchronized with its upstream at 0 ahead / 0 behind, version `0.5.0-alpha.8.7`, empty staging, exactly the authorized twelve implementation/test paths and only the known unrelated untracked `.codex-evidence/` plus `BIN-LIN-IMP-03A-HANDOFF.tmp`. This is the stable entering baseline, not a prediction of the checkpoint commit SHA.
+- Reconciled the dormant unified mutation implementation: target-root native operation/audit health; exact persisted `LogicalMovementGenerationLines.Id` provenance with no cross-domain identity synthesis; atomic Correct/Reverse/Restore complete-generation execution; replay/idempotency/root CAS; rollback-before-fresh-state classification; exhausted SQLite busy/locked translation to PersistenceFailure; optional physical output; and one explanatory primary audit containing trusted before and resulting after business state.
+- Canonical `Build-BinTracker.bat` passed source/package-state audit and restore, built with 0 warnings and 0 errors, and passed 279/279 UnitTests plus 259/259 IntegrationTests, totaling 538/538 with 0 failed and 0 skipped. Focused mutation, combined schema-17, alpha.8 and adjacent regression evidence also passed before the canonical gate.
+- Evidence remains bounded: normal runtime/startup stays schema 16/alpha.8 with dormant no-op lineage writers; no retained-production-database migration rehearsal, schema-17 activation, corrected projection/current-position/report cutover, Restore UI, Windows/operator acceptance, packaging/release acceptance or post-v1 work occurred. Historical evidence classifications are unchanged.
+- Current-state reconciliation changed only `KNOWN-ISSUES.md`, `TEST-CHECKLIST.md`, `docs/Architecture.md`, `docs/AuditCoverage.md`, `docs/CONTINUATION.md`, `docs/Database.md`, `docs/DocumentationAudit.md`, `docs/Roadmap.md`, `docs/RoadmapCoverageMatrix.md`, `docs/RequirementsAcceptanceRegister.md` and `docs/Testing.md`; it did not alter executable source/tests, schema, version or release/package behavior.
+
 ## 3 September 2026 — BIN-LIN-IMP-07 documentation/governance reconciliation
 
 - Verified the entering repository baseline at `7b80e709f8b58d3176a6549d545c883eceabe39e` on `codex/movement-correction`, synchronized with its upstream at 0 ahead / 0 behind, version `0.5.0-alpha.8.7`, empty staging, the five expected modified implementation/test paths, the two expected new IMP-07 source/test paths and only the permitted unrelated untracked evidence paths. This is the stable entering baseline, not a prediction of a later checkpoint commit.

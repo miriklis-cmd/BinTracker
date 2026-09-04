@@ -83,6 +83,7 @@ public static class AuditActionDisplay
     public static string Label(string action) => action switch
     {
         "MOVEMENT_REVERSED" => "Movement reversed",
+        "MOVEMENT_RESTORED" => "Movement restored",
         "MOVEMENT_CORRECTED" => "Movement corrected",
         "MOVEMENT_BATCH_CORRECTED" => "Batch corrected",
         "MOVEMENT_CHANGE_REVIEWED" => "Movement change reviewed",
@@ -100,7 +101,7 @@ public static class AuditReviewPolicy
 {
     private static readonly HashSet<string> MovementChangeActions = new(StringComparer.Ordinal)
     {
-        "MOVEMENT_REVERSED", "MOVEMENT_CORRECTED", "MOVEMENT_BATCH_CORRECTED"
+        "MOVEMENT_REVERSED", "MOVEMENT_RESTORED", "MOVEMENT_CORRECTED", "MOVEMENT_BATCH_CORRECTED"
     };
 
     public static bool IsMovementChangeAction(string action) => MovementChangeActions.Contains(action);
@@ -1000,6 +1001,8 @@ public static class ServiceSetup
         services.TryAddScoped<
             IInitialMovementLineageWriter,
             DormantInitialMovementLineageWriter>();
+        services.TryAddScoped<IMovementMutationWriter, DormantMovementMutationWriter>();
+        services.TryAddScoped<TransactionAuditAppender>();
         services.AddScoped<IMovementService, MovementService>();
         services.AddScoped<IMovementCorrectionService, MovementCorrectionService>();
         return services;

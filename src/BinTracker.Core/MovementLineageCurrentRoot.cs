@@ -28,11 +28,13 @@ public enum LogicalMovementCurrentRootFailure
 // A successful instance can therefore originate only at the validator boundary.
 public sealed class ValidatedLogicalMovementCurrentLine
 {
-    internal ValidatedLogicalMovementCurrentLine(LogicalMovementLineId id, long rootMovementId,
+    internal ValidatedLogicalMovementCurrentLine(LogicalMovementLineId id,
+        LogicalMovementGenerationLineId currentGenerationLineId, long rootMovementId,
         int originalDisplayOrdinal, LogicalMovementLineState state, long? effectiveMovementId,
         long? terminalReversalMovementId)
     {
         Id = id;
+        CurrentGenerationLineId = currentGenerationLineId;
         RootMovementId = rootMovementId;
         OriginalDisplayOrdinal = originalDisplayOrdinal;
         State = state;
@@ -41,6 +43,7 @@ public sealed class ValidatedLogicalMovementCurrentLine
     }
 
     public LogicalMovementLineId Id { get; }
+    public LogicalMovementGenerationLineId CurrentGenerationLineId { get; }
     public long RootMovementId { get; }
     public int OriginalDisplayOrdinal { get; }
     public LogicalMovementLineState State { get; }
@@ -213,7 +216,9 @@ internal static class LogicalMovementCurrentRootValidator
             if (terminal is not null && links.Count(x => x.MovementId == terminal && x.LineId == state.LineId &&
                 x.Role == (int)LogicalMovementTransformationRole.OrdinaryReversal) != 1)
                 return Bad(LogicalMovementCurrentRootFailure.InvalidTransformationRole);
-            projected.Add(new(new(state.LineId), permanent.Single(x => x.Id == state.LineId).RootMovementId,
+            if (state.Id <= 0)
+                return Bad(LogicalMovementCurrentRootFailure.InvalidCurrentMembership);
+            projected.Add(new(new(state.LineId), new(state.Id), permanent.Single(x => x.Id == state.LineId).RootMovementId,
                 permanent.Single(x => x.Id == state.LineId).OriginalDisplayOrdinal, lineState, effective, terminal));
         }
 

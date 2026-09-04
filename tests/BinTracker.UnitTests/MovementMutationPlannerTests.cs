@@ -277,7 +277,8 @@ public sealed class MovementMutationPlannerTests
     private static TrustedMovementPlanningLine Active(long lineId, long movementId, int quantity = 5,
         MovementSource source = MovementSource.Manual, long? importRun = null, DateOnly? movementDate = null)
     {
-        var current = new ValidatedLogicalMovementCurrentLine(new(lineId), movementId, checked((int)lineId - 1), LogicalMovementLineState.Active, movementId, null);
+        var current = new ValidatedLogicalMovementCurrentLine(new(lineId), new(10_001), movementId,
+            checked((int)lineId - 1), LogicalMovementLineState.Active, movementId, null);
         return new(current, State(movementId, quantity, source, importRun,
             movementBatchId: source == MovementSource.Batch ? 30 : null, movementDate: movementDate), null);
     }
@@ -286,7 +287,8 @@ public sealed class MovementMutationPlannerTests
         ReversalPairCorruption? corruption = null, DateOnly? effectiveDate = null,
         DateOnly? terminalDate = null)
     {
-        var current = new ValidatedLogicalMovementCurrentLine(new(lineId), effectiveId, checked((int)lineId - 1), LogicalMovementLineState.Reversed, effectiveId, reversalId);
+        var current = new ValidatedLogicalMovementCurrentLine(new(lineId), new(10_002), effectiveId,
+            checked((int)lineId - 1), LogicalMovementLineState.Reversed, effectiveId, reversalId);
         var effective = State(effectiveId, 5, source, importRun,
             movementBatchId: source == MovementSource.Batch ? 30 : null, movementDate: effectiveDate);
         var reversal = State(reversalId,

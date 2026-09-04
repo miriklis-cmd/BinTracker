@@ -1,6 +1,6 @@
 # BinTracker Roadmap Coverage Matrix
 
-Audited: 3 September 2026
+Audited: 5 September 2026
 
 | Workstream | v1? | Roadmap status / gate |
 |---|---|---|
@@ -16,7 +16,7 @@ Audited: 3 September 2026
 | Customer operational analytics | Yes | Sorting, lifetime OUT/IN, statement workflow |
 | Backup/Restore | Yes | Manual + scheduled automatic + retention/recovery drill |
 | Security/Audit hardening | Yes | Authorization, audit-coverage matrix, secrets/logging |
-| Logical movement lineage | Required before v1 | Frozen roots/lines/full generations/restoration/projection/migration; dormant Core/migration-safety/schema-17 backfill, validation-gated CURRENT-root resolver, IMP-05C trusted planner and IMP-06 caller-transaction audit appender remain isolated. IMP-07 initial Single/Batch generation-zero writing is implemented and independently approved under explicit schema-17 composition; normal schema-16 startup, production activation, unified mutation/CAS/idempotency, corrected projection/UI, retained-DB rehearsal and full acceptance remain pending |
+| Logical movement lineage | Required before v1 | Frozen roots/lines/full generations/restoration/projection/migration; dormant Core/migration-safety/schema-17 backfill and validation-gated CURRENT-root resolution remain isolated. Initial Single/Batch generation zero plus unified Correct/Reverse/Restore execution, root CAS/replay/idempotency, target-root audit health, transient-contention translation and primary audit are implemented and canonically verified under explicit schema-17 composition. Normal schema-16 startup, production activation, corrected projection/UI, retained-DB rehearsal and full acceptance remain pending |
 | Whole-codebase layer audit | Protected pre-v1 gate | After lineage acceptance, remove authoritative WinForms business/persistence logic before subsequent major milestones |
 | PostgreSQL/API/Multi-computer | Post-v1 implementation | v1 preserves client/provider-neutral services, concurrency and idempotency; central host/provider/client delivery is post-v1 |
 | Installer/Upgrade | Yes | Production package and safe upgrade path |
