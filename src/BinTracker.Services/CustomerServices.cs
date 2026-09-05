@@ -87,13 +87,33 @@ internal sealed class CustomerService(
                  x.Email.ToUpper().Contains(term)));
         }
 
-        return await customers
+        var orderedCustomers = customers
             .OrderBy(x => x.CustomerCode)
-            .ThenBy(x => x.Name)
+            .ThenBy(x => x.Name);
+        if (operationalProjection is null)
+        {
+            return await orderedCustomers
+                .Select(x => new CustomerListRow(
+                    x.Id, x.Name, x.CustomerCode ?? string.Empty, x.CustomerType, x.IsActive,
+                    x.Movements.Sum(m => m.MovementType == MovementType.Out ? m.Quantity : -m.Quantity)))
+                .ToListAsync(cancellationToken);
+        }
+
+        var rows = await orderedCustomers
             .Select(x => new CustomerListRow(
-                x.Id, x.Name, x.CustomerCode ?? string.Empty, x.CustomerType, x.IsActive,
-                x.Movements.Sum(m => m.MovementType == MovementType.Out ? m.Quantity : -m.Quantity)))
+                x.Id, x.Name, x.CustomerCode ?? string.Empty, x.CustomerType, x.IsActive, 0))
             .ToListAsync(cancellationToken);
+        var projected = await operationalProjection.QueryAsync(
+            OperationalMovementProjectionScope.PositionAsOf(clock.Today),
+            cancellationToken);
+        var balances = projected.Positions
+            .GroupBy(x => x.CustomerId)
+            .ToDictionary(
+                x => x.Key,
+                x => checked((int)x.Aggregate(
+                    0L,
+                    (balance, position) => checked(balance + position.Quantity))));
+        return rows.Select(x => x with { NetBalance = balances.GetValueOrDefault(x.Id) }).ToList();
     }
 
     public async Task<CustomerEditModel?> GetAsync(int id, CancellationToken cancellationToken = default)
@@ -270,8 +290,35 @@ internal sealed class CustomerService(
     public async Task<IReadOnlyList<CustomerMovementRow>> GetRecentMovementsAsync(int customerId, int limit = 100, CancellationToken cancellationToken = default)
     {
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        return await db.EffectiveOperationalMovements().Where(x => x.CustomerId == customerId)
-            .OrderByDescending(x => x.MovementDate).ThenByDescending(x => x.Id)
+        if (operationalProjection is null)
+        {
+            return await db.EffectiveOperationalMovements().Where(x => x.CustomerId == customerId)
+                .OrderByDescending(x => x.MovementDate).ThenByDescending(x => x.Id)
+                .Take(Math.Clamp(limit, 1, 1000))
+                .Select(x => new CustomerMovementRow(
+                    x.MovementDate,
+                    x.Source == MovementSource.Adjustment
+                        ? (x.MovementType == MovementType.Out
+                            ? "Opening adjustment (OUT)"
+                            : "Opening adjustment (IN)")
+                        : (x.MovementType == MovementType.In
+                            ? "IN (Returned)"
+                            : "OUT (Taken)"),
+                    x.ContainerType.Name,
+                    x.Quantity,
+                    x.ReferenceNumber,
+                    x.CreatedBy))
+                .ToListAsync(cancellationToken);
+        }
+
+        var containerNames = await db.ContainerTypes.AsNoTracking()
+            .ToDictionaryAsync(x => x.Id, x => x.Name, cancellationToken);
+        var projected = await operationalProjection.QueryAsync(
+            OperationalMovementProjectionScope.All(customerId),
+            cancellationToken);
+        return projected.Activity
+            .OrderByDescending(x => x.MovementDate)
+            .ThenByDescending(x => x.EvidenceMovementId)
             .Take(Math.Clamp(limit, 1, 1000))
             .Select(x => new CustomerMovementRow(
                 x.MovementDate,
@@ -282,11 +329,11 @@ internal sealed class CustomerService(
                     : (x.MovementType == MovementType.In
                         ? "IN (Returned)"
                         : "OUT (Taken)"),
-                x.ContainerType.Name,
+                containerNames[x.ContainerTypeId],
                 x.Quantity,
                 x.ReferenceNumber,
                 x.CreatedBy))
-            .ToListAsync(cancellationToken);
+            .ToList();
     }
 
     public async Task<CustomerStatementData> GetStatementAsync(int customerId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default)
@@ -296,31 +343,75 @@ internal sealed class CustomerService(
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         var customer = await db.Customers.AsNoTracking().SingleAsync(x => x.Id == customerId, cancellationToken);
         var containerTypes = await db.ContainerTypes.AsNoTracking().OrderBy(x => x.DisplayOrder).ThenBy(x => x.Name).ToListAsync(cancellationToken);
-        var all = await db.EffectiveOperationalMovements()
-            .Where(x => x.CustomerId == customerId && x.MovementDate <= toDate)
-            .OrderBy(x => x.MovementDate).ThenBy(x => x.Id)
-            .Select(x => new
-            {
-                x.ContainerTypeId,
-                x.MovementDate,
-                x.MovementType,
-                x.Source,
-                x.Quantity,
-                x.ReferenceNumber
-            })
-            .ToListAsync(cancellationToken);
+        if (operationalProjection is null)
+        {
+            var all = await db.EffectiveOperationalMovements()
+                .Where(x => x.CustomerId == customerId && x.MovementDate <= toDate)
+                .OrderBy(x => x.MovementDate).ThenBy(x => x.Id)
+                .Select(x => new
+                {
+                    x.ContainerTypeId,
+                    x.MovementDate,
+                    x.MovementType,
+                    x.Source,
+                    x.Quantity,
+                    x.ReferenceNumber
+                })
+                .ToListAsync(cancellationToken);
 
+            var alpha8Sections = new List<CustomerStatementContainer>();
+            foreach (var type in containerTypes)
+            {
+                var typed = all.Where(x => x.ContainerTypeId == type.Id).ToList();
+                var opening = typed.Where(x => x.MovementDate < fromDate)
+                    .Sum(x => x.MovementType == MovementType.Out ? x.Quantity : -x.Quantity);
+                var running = opening;
+                var movements = new List<CustomerStatementMovement>();
+                foreach (var movement in typed.Where(x => x.MovementDate >= fromDate))
+                {
+                    running += movement.MovementType == MovementType.Out ? movement.Quantity : -movement.Quantity;
+                    var direction = movement.Source == MovementSource.Adjustment
+                        ? (movement.MovementType == MovementType.Out
+                            ? "Opening adjustment (OUT)"
+                            : "Opening adjustment (IN)")
+                        : (movement.MovementType == MovementType.Out
+                            ? "OUT (Taken)"
+                            : "IN (Returned)");
+
+                    movements.Add(new CustomerStatementMovement(
+                        movement.MovementDate,
+                        direction,
+                        movement.Quantity,
+                        running,
+                        movement.ReferenceNumber));
+                }
+
+                if (opening != 0 || running != 0 || movements.Count > 0)
+                    alpha8Sections.Add(new CustomerStatementContainer(type.Name, opening, running, movements));
+            }
+
+            return new CustomerStatementData(customer.Id, customer.CustomerCode ?? string.Empty, customer.Name, fromDate, toDate, alpha8Sections);
+        }
+
+        var projected = await operationalProjection.QueryAsync(
+            OperationalMovementProjectionScope.PositionAsOf(toDate, customerId),
+            cancellationToken);
+        var closingPositions = projected.Positions.ToDictionary(
+            x => x.ContainerTypeId,
+            x => checked((int)x.Quantity));
         var sections = new List<CustomerStatementContainer>();
         foreach (var type in containerTypes)
         {
-            var typed = all.Where(x => x.ContainerTypeId == type.Id).ToList();
-            var opening = typed.Where(x => x.MovementDate < fromDate)
-                .Sum(x => x.MovementType == MovementType.Out ? x.Quantity : -x.Quantity);
+            var typed = projected.Activity.Where(x => x.ContainerTypeId == type.Id).ToList();
+            var opening = checked((int)typed
+                .Where(x => x.MovementDate < fromDate)
+                .Aggregate(0L, (balance, movement) =>
+                    checked(balance + movement.SignedQuantity)));
             var running = opening;
             var movements = new List<CustomerStatementMovement>();
             foreach (var movement in typed.Where(x => x.MovementDate >= fromDate))
             {
-                running += movement.MovementType == MovementType.Out ? movement.Quantity : -movement.Quantity;
+                running = checked(running + checked((int)movement.SignedQuantity));
                 var direction = movement.Source == MovementSource.Adjustment
                     ? (movement.MovementType == MovementType.Out
                         ? "Opening adjustment (OUT)"
@@ -337,8 +428,9 @@ internal sealed class CustomerService(
                     movement.ReferenceNumber));
             }
 
-            if (opening != 0 || running != 0 || movements.Count > 0)
-                sections.Add(new CustomerStatementContainer(type.Name, opening, running, movements));
+            var closing = closingPositions.GetValueOrDefault(type.Id);
+            if (opening != 0 || closing != 0 || movements.Count > 0)
+                sections.Add(new CustomerStatementContainer(type.Name, opening, closing, movements));
         }
 
         return new CustomerStatementData(customer.Id, customer.CustomerCode ?? string.Empty, customer.Name, fromDate, toDate, sections);

@@ -278,6 +278,128 @@ public sealed class OperationalMovementProjectionSchema17Tests
     }
 
     [Fact]
+    public async Task Projection_backed_customer_reads_map_corrected_coordinates_without_superseded_activity()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        var statementStart = new DateOnly(2026, 9, 3);
+        var statementEnd = new DateOnly(2026, 9, 4);
+
+        await h.CreateSingleAsync(new(2026, 9, 1), h.CustomerId, 1, 2);
+        var crossing = await h.CreateSingleAsync(new(2026, 9, 2), h.CustomerId, 1, 3);
+        var crossingLineId = Assert.Single(await h.LineIdsAsync(crossing.RootId));
+        await h.MutateAsync(crossing.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(crossingLineId)],
+                "move activity across the statement boundary and container",
+                movementDate: MovementFieldIntent<DateOnly>.Selected(statementStart),
+                containerType: MovementFieldIntent<int>.Selected(2),
+                quantity: MovementFieldIntent<int>.Selected(4)));
+
+        var movedCustomer = await h.CreateSingleAsync(
+            new(2026, 9, 2), h.CustomerId, 1, 5);
+        var movedCustomerLineId = Assert.Single(await h.LineIdsAsync(movedCustomer.RootId));
+        await h.MutateAsync(movedCustomer.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(movedCustomerLineId)],
+                "move activity to the correct customer and container",
+                movementDate: MovementFieldIntent<DateOnly>.Selected(statementStart),
+                customer: MovementFieldIntent<int>.Selected(h.OtherCustomerId),
+                containerType: MovementFieldIntent<int>.Selected(3),
+                quantity: MovementFieldIntent<int>.Selected(6)));
+
+        var laterEvidence = await h.CreateSingleAsync(
+            statementStart, h.CustomerId, 2, 7);
+        var projected = await h.Authority.QueryAsync(
+            OperationalMovementProjectionScope.All(h.CustomerId));
+        var correctedEvidenceId = Assert.Single(projected.Activity, x => x.Quantity == 4)
+            .EvidenceMovementId;
+        Assert.True(laterEvidence.MovementId > correctedEvidenceId);
+        Assert.Equal(3, projected.Activity.Count);
+
+        var statement = await h.Customers.GetStatementAsync(
+            h.CustomerId, statementStart, statementEnd);
+        var statementCall = Assert.Single(h.ProjectionServiceCalls);
+        Assert.True(statementCall.IsPositionAsOf);
+        Assert.Equal((statementEnd, h.CustomerId),
+            (statementCall.ThroughDateInclusive, statementCall.CustomerId));
+        Assert.Collection(
+            statement.Containers,
+            blue =>
+            {
+                Assert.Equal(("Blue Bin", 2, 2),
+                    (blue.ContainerType, blue.OpeningBalance, blue.ClosingBalance));
+                Assert.Empty(blue.Movements);
+            },
+            small =>
+            {
+                Assert.Equal(("Small Bin", 0, 11),
+                    (small.ContainerType, small.OpeningBalance, small.ClosingBalance));
+                Assert.Equal(
+                    new[]
+                    {
+                        (statementStart, 4, 4),
+                        (statementStart, 7, 11)
+                    },
+                    small.Movements.Select(x => (x.Date, x.Quantity, x.RunningBalance)));
+            });
+
+        var search = await h.Customers.SearchAsync(null, includeInactive: true);
+        Assert.Equal(13, Assert.Single(search, x => x.Id == h.CustomerId).NetBalance);
+        Assert.Equal(6, Assert.Single(search, x => x.Id == h.OtherCustomerId).NetBalance);
+
+        var recent = await h.Customers.GetRecentMovementsAsync(h.CustomerId);
+        Assert.Equal(
+            new[]
+            {
+                (statementStart, "Small Bin", 7),
+                (statementStart, "Small Bin", 4),
+                (new DateOnly(2026, 9, 1), "Blue Bin", 2)
+            },
+            recent.Select(x => (x.Date, x.ContainerType, x.Quantity)));
+        var otherRecent = Assert.Single(
+            await h.Customers.GetRecentMovementsAsync(h.OtherCustomerId));
+        Assert.Equal((statementStart, "Yellow Bin", 6),
+            (otherRecent.Date, otherRecent.ContainerType, otherRecent.Quantity));
+    }
+
+    [Fact]
+    public async Task Projection_backed_customer_reads_preserve_reversed_current_truth()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        var originalDate = new DateOnly(2026, 9, 2);
+        var root = await h.CreateSingleAsync(originalDate, h.CustomerId, 1, 5);
+        var lineId = Assert.Single(await h.LineIdsAsync(root.RootId));
+        await h.MutateAsync(root.RootId, 0,
+            MovementMutationRequest.Reverse(
+                MovementMutationScope.Individual,
+                [new(lineId)],
+                "the dispatch did not occur"));
+
+        var search = await h.Customers.SearchAsync(null, includeInactive: true);
+        Assert.Equal(0, Assert.Single(search, x => x.Id == h.CustomerId).NetBalance);
+
+        var recent = await h.Customers.GetRecentMovementsAsync(h.CustomerId);
+        Assert.Equal(
+            new[]
+            {
+                (Harness.Today, "IN (Returned)", 5),
+                (originalDate, "OUT (Taken)", 5)
+            },
+            recent.Select(x => (x.Date, x.Direction, x.Quantity)));
+
+        var statement = await h.Customers.GetStatementAsync(
+            h.CustomerId, new(2026, 9, 3), Harness.Today);
+        var blue = Assert.Single(statement.Containers);
+        Assert.Equal(("Blue Bin", 5, 0),
+            (blue.ContainerType, blue.OpeningBalance, blue.ClosingBalance));
+        var reversal = Assert.Single(blue.Movements);
+        Assert.Equal((Harness.Today, "IN (Returned)", 5, 0),
+            (reversal.Date, reversal.Direction, reversal.Quantity, reversal.RunningBalance));
+    }
+
+    [Fact]
     public async Task Projection_backed_int_position_mappings_fail_closed_on_overflow()
     {
         await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
@@ -295,7 +417,11 @@ public sealed class OperationalMovementProjectionSchema17Tests
 
         await Assert.ThrowsAsync<OverflowException>(() => h.Balances.GetBalancesAsync());
         await Assert.ThrowsAsync<OverflowException>(() =>
+            h.Customers.SearchAsync(null, includeInactive: true));
+        await Assert.ThrowsAsync<OverflowException>(() =>
             h.Customers.GetBalancesAsync(h.CustomerId));
+        await Assert.ThrowsAsync<OverflowException>(() =>
+            h.Customers.GetStatementAsync(h.CustomerId, new(2026, 9, 1), Harness.Today));
         await Assert.ThrowsAsync<OverflowException>(() =>
             h.Movements.GetCustomerSummaryByCodeAsync("PROJ-A"));
     }
@@ -357,6 +483,10 @@ public sealed class OperationalMovementProjectionSchema17Tests
         public ICustomerService Customers { get; }
         public IContainerTypeService ContainerTypes { get; }
         public IOperationalMovementProjectionAuthority Authority { get; }
+        public IReadOnlyList<OperationalMovementProjectionScope> ProjectionServiceCalls =>
+            services.GetService<IOperationalMovementProjectionAuthority>() is RecordingProjectionAuthority recording
+                ? recording.Calls
+                : [];
         public bool ProjectionAuthorityIsRegistered =>
             services.GetService<IOperationalMovementProjectionAuthority>() is not null;
 
@@ -535,7 +665,8 @@ public sealed class OperationalMovementProjectionSchema17Tests
             if (enableProjectionBackedServices)
             {
                 collection.AddScoped<IOperationalMovementProjectionAuthority>(_ =>
-                    new SqliteOperationalMovementProjectionAuthority(connectionString));
+                    new RecordingProjectionAuthority(
+                        new SqliteOperationalMovementProjectionAuthority(connectionString)));
             }
             collection.AddBinTrackerBusinessServices();
             return collection.BuildServiceProvider();
@@ -580,6 +711,23 @@ public sealed class OperationalMovementProjectionSchema17Tests
             public DateTime LocalNow => UtcNow;
             public DateOnly Today => Harness.Today;
             public string TimeZoneId => "UTC";
+        }
+
+        private sealed class RecordingProjectionAuthority(
+            IOperationalMovementProjectionAuthority inner)
+            : IOperationalMovementProjectionAuthority
+        {
+            private readonly List<OperationalMovementProjectionScope> calls = [];
+
+            public IReadOnlyList<OperationalMovementProjectionScope> Calls => calls;
+
+            public Task<OperationalMovementProjectionResult> QueryAsync(
+                OperationalMovementProjectionScope scope,
+                CancellationToken cancellationToken = default)
+            {
+                calls.Add(scope);
+                return inner.QueryAsync(scope, cancellationToken);
+            }
         }
 
         private sealed class TestUserContext : IUserContext
