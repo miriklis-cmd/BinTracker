@@ -146,6 +146,158 @@ public sealed class MovementCorrectionWorkflowTests
     }
 
     [Fact]
+    public async Task Corrected_replacement_later_reversed_has_expected_position_before_on_and_after_each_date()
+    {
+        await using var h = await Harness.Create(UserRole.Administrator);
+        var originalDate = new DateOnly(2026, 8, 18);
+        var replacementDate = new DateOnly(2026, 8, 20);
+        var original = await h.AddMovement(originalDate, MovementType.Out, 9, h.CustomerId, 1);
+        var corrected = Assert.Single((await h.Corrections.CorrectAsync(new(
+            Guid.NewGuid(), original, replacementDate, h.CustomerId, 1, MovementType.Out, 4,
+            null, null, "Correct date and quantity"))).Lines);
+
+        var outstanding = h.Provider.GetRequiredService<IOutstandingReportService>();
+        var beforeReplacement = await outstanding.QueryAsync(new(
+            replacementDate.AddDays(-1), BalanceFilter: OutstandingBalanceFilter.AllNonZero));
+        var onReplacement = await outstanding.QueryAsync(new(
+            replacementDate, BalanceFilter: OutstandingBalanceFilter.AllNonZero));
+        var afterReplacement = await outstanding.QueryAsync(new(
+            replacementDate.AddDays(5), BalanceFilter: OutstandingBalanceFilter.AllNonZero));
+
+        Assert.Empty(beforeReplacement.Rows);
+        Assert.Equal(4, Assert.Single(onReplacement.Rows).Balance);
+        Assert.Equal(4, Assert.Single(afterReplacement.Rows).Balance);
+
+        var reversed = await h.Corrections.ReverseAsync(new(
+            Guid.NewGuid(), corrected.ReplacementMovementId, "Corrected dispatch did not occur"));
+        var onReversal = await outstanding.QueryAsync(new(
+            new DateOnly(2026, 8, 26), BalanceFilter: OutstandingBalanceFilter.AllNonZero));
+        Assert.Empty(onReversal.Rows);
+
+        var daily = h.Provider.GetRequiredService<IDailyMovementsReportService>();
+        Assert.Empty((await daily.QueryAsync(new(originalDate))).Rows);
+        var replacementDay = await daily.QueryAsync(new(replacementDate));
+        Assert.Equal((4, 0), (replacementDay.OutQuantity, replacementDay.InQuantity));
+        Assert.Single(replacementDay.Rows, x => x.MovementId == corrected.ReplacementMovementId);
+        var reversalDay = await daily.QueryAsync(new(new DateOnly(2026, 8, 26)));
+        Assert.Equal((0, 4), (reversalDay.OutQuantity, reversalDay.InQuantity));
+        Assert.Single(reversalDay.Rows, x => x.MovementId == reversed.ReversalMovementId);
+
+        var balances = await h.Provider.GetRequiredService<IBalanceService>().GetBalancesAsync();
+        Assert.DoesNotContain(balances,
+            x => x.CustomerId == h.CustomerId && x.ContainerTypeId == 1 && x.Balance != 0);
+
+        await using var db = await h.Factory.CreateDbContextAsync();
+        var persisted = await db.BinMovements.AsNoTracking()
+            .Where(x => x.CustomerId == h.CustomerId && x.ContainerTypeId == 1)
+            .OrderBy(x => x.Id)
+            .ToListAsync();
+        Assert.Equal(4, persisted.Count);
+        Assert.Equal(0, persisted.Sum(x => x.MovementType == MovementType.Out ? x.Quantity : -x.Quantity));
+    }
+
+    [Fact]
+    public async Task Correction_across_week_boundary_removes_source_week_and_adds_destination_week_once()
+    {
+        await using var h = await Harness.Create(UserRole.Administrator);
+        var sourceSunday = new DateOnly(2026, 8, 9);
+        var destinationMonday = new DateOnly(2026, 8, 10);
+        var original = await h.AddMovement(sourceSunday, MovementType.Out, 6, h.CustomerId, 1);
+        var replacement = Assert.Single((await h.Corrections.CorrectAsync(new(
+            Guid.NewGuid(), original, destinationMonday, h.CustomerId, 1, MovementType.Out, 6,
+            null, null, "Move dispatch to the following week"))).Lines).ReplacementMovementId;
+
+        var weekly = h.Provider.GetRequiredService<IWeeklyMovementsReportService>();
+        var sourceWeek = await weekly.QueryAsync(new(new DateOnly(2026, 8, 3)));
+        var destinationWeek = await weekly.QueryAsync(new(destinationMonday));
+
+        Assert.Empty(sourceWeek.Rows);
+        Assert.Equal(0, sourceWeek.NetQuantity);
+        Assert.Equal(6, destinationWeek.NetQuantity);
+        Assert.Single(destinationWeek.Rows, x => x.MovementId == replacement);
+    }
+
+    [Fact]
+    public async Task Correction_across_month_boundary_removes_source_month_and_adds_destination_month_once()
+    {
+        await using var h = await Harness.Create(UserRole.Administrator);
+        var sourceMonthEnd = new DateOnly(2026, 7, 31);
+        var destinationMonthStart = new DateOnly(2026, 8, 1);
+        var original = await h.AddMovement(sourceMonthEnd, MovementType.Out, 7, h.CustomerId, 1);
+        var replacement = Assert.Single((await h.Corrections.CorrectAsync(new(
+            Guid.NewGuid(), original, destinationMonthStart, h.CustomerId, 1, MovementType.Out, 7,
+            null, null, "Move dispatch to the correct month"))).Lines).ReplacementMovementId;
+
+        var monthly = h.Provider.GetRequiredService<IMonthlySummaryReportService>();
+        var sourceMonth = await monthly.QueryAsync(new(new DateOnly(2026, 7, 1)));
+        var destinationMonth = await monthly.QueryAsync(new(destinationMonthStart));
+
+        Assert.Empty(sourceMonth.Rows);
+        Assert.Equal(0, sourceMonth.NetQuantity);
+        Assert.Equal(7, destinationMonth.NetQuantity);
+        var destinationDay = await h.Provider.GetRequiredService<IDailyMovementsReportService>()
+            .QueryAsync(new(destinationMonthStart));
+        Assert.Single(destinationDay.Rows, x => x.MovementId == replacement);
+    }
+
+    [Fact]
+    public async Task Correction_across_statement_start_recomputes_nonzero_opening_running_and_closing()
+    {
+        await using var h = await Harness.Create(UserRole.Administrator);
+        var statementStart = new DateOnly(2026, 8, 10);
+        var statementEnd = new DateOnly(2026, 8, 20);
+        await h.AddMovement(new DateOnly(2026, 8, 5), MovementType.Out, 2, h.CustomerId, 1);
+        var original = await h.AddMovement(statementStart.AddDays(-1), MovementType.Out, 3, h.CustomerId, 1);
+        var replacement = Assert.Single((await h.Corrections.CorrectAsync(new(
+            Guid.NewGuid(), original, statementStart, h.CustomerId, 1, MovementType.Out, 3,
+            null, null, "Move dispatch onto statement start"))).Lines).ReplacementMovementId;
+
+        var statement = await h.Provider.GetRequiredService<ICustomerService>()
+            .GetStatementAsync(h.CustomerId, statementStart, statementEnd);
+        var blue = Assert.Single(statement.Containers, x => x.ContainerType == "Blue Bin");
+        var movement = Assert.Single(blue.Movements);
+        Assert.Equal((2, 5), (blue.OpeningBalance, blue.ClosingBalance));
+        Assert.Equal((statementStart, 3, 5), (movement.Date, movement.Quantity, movement.RunningBalance));
+
+        var daily = h.Provider.GetRequiredService<IDailyMovementsReportService>();
+        Assert.Empty((await daily.QueryAsync(new(statementStart.AddDays(-1)))).Rows);
+        Assert.Single((await daily.QueryAsync(new(statementStart))).Rows,
+            x => x.MovementId == replacement);
+    }
+
+    [Fact]
+    public async Task Correction_across_statement_end_removes_period_activity_and_preserves_destination_activity()
+    {
+        await using var h = await Harness.Create(UserRole.Administrator);
+        var statementStart = new DateOnly(2026, 8, 10);
+        var statementEnd = new DateOnly(2026, 8, 20);
+        var destinationDate = statementEnd.AddDays(1);
+        await h.AddMovement(new DateOnly(2026, 8, 5), MovementType.Out, 2, h.CustomerId, 1);
+        var original = await h.AddMovement(statementEnd, MovementType.Out, 3, h.CustomerId, 1);
+        var replacement = Assert.Single((await h.Corrections.CorrectAsync(new(
+            Guid.NewGuid(), original, destinationDate, h.CustomerId, 1, MovementType.Out, 3,
+            null, null, "Move dispatch beyond statement end"))).Lines).ReplacementMovementId;
+
+        var customers = h.Provider.GetRequiredService<ICustomerService>();
+        var originalPeriod = await customers.GetStatementAsync(h.CustomerId, statementStart, statementEnd);
+        var originalPeriodBlue = Assert.Single(originalPeriod.Containers, x => x.ContainerType == "Blue Bin");
+        Assert.Equal((2, 2), (originalPeriodBlue.OpeningBalance, originalPeriodBlue.ClosingBalance));
+        Assert.Empty(originalPeriodBlue.Movements);
+
+        var destinationPeriod = await customers.GetStatementAsync(h.CustomerId, destinationDate, destinationDate);
+        var destinationBlue = Assert.Single(destinationPeriod.Containers, x => x.ContainerType == "Blue Bin");
+        var destinationMovement = Assert.Single(destinationBlue.Movements);
+        Assert.Equal((2, 5), (destinationBlue.OpeningBalance, destinationBlue.ClosingBalance));
+        Assert.Equal((destinationDate, 3, 5),
+            (destinationMovement.Date, destinationMovement.Quantity, destinationMovement.RunningBalance));
+
+        var daily = h.Provider.GetRequiredService<IDailyMovementsReportService>();
+        Assert.Empty((await daily.QueryAsync(new(statementEnd))).Rows);
+        Assert.Single((await daily.QueryAsync(new(destinationDate))).Rows,
+            x => x.MovementId == replacement);
+    }
+
+    [Fact]
     public async Task Quantity_correction_is_one_effective_row_but_three_distinct_immutable_history_roles()
     {
         await using var h = await Harness.Create(UserRole.Administrator);
