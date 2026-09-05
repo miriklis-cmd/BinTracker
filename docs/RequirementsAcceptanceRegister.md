@@ -20,6 +20,8 @@ BIN-LIN-IMP-07 supplies reviewed static/targeted evidence for BT-CORR-031 throug
 
 The unified schema-17 mutation candidate supplies additional source and canonical automated evidence toward BT-CORR-018..029/032..033 and BT-AUD-015..017: Correct/Reverse/Restore complete-generation persistence, exact persisted identity provenance, target-root operation/audit health, replay/idempotency/root CAS, provider-specific transient-contention translation and explanatory primary audit payloads. `Build-BinTracker.bat` passed 538/538 automated tests with 0 failed/skipped and 0 warnings/errors. These broader rows retain their existing statuses because normal runtime remains schema 16 and retained-database rehearsal, activation, corrected projections/UI, packaging and Windows/operator acceptance have not occurred.
 
+The first corrected-projection slice adds further static and canonical automated evidence toward BT-CORR-020/029/033 and BT-HIST-008/009: one provider-neutral corrected activity/PositionAsOf contract, conservative pre-filter relevance, complete current-generation contribution, signed aggregation, excluded Adjustment/ExcelImport composition and fail-closed invalid/incomplete/unrooted handling, backed by one explicit SQLite read snapshot. `Build-BinTracker.bat` passed 553/553 automated tests with 0 failed/skipped and 0 warnings/errors. These rows remain `PLANNED-V1` because the authority is dormant/unregistered and no normal schema-16 operational consumer, startup path, UI or retained database has been cut over or accepted.
+
 ## Status / provenance legend
 
 Allowed scopes: `v1`, `post-v1`, `candidate`.

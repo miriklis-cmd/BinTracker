@@ -2,7 +2,7 @@
 
 **Status:** ACTIVE
 
-**Purpose:** Give a new session enough verified state, frozen movement-lineage semantics, dependency ordering and acceptance limits to continue after the canonically verified unified schema-17 mutation checkpoint without relying on prior chat history or mistaking dormant implementation for runtime activation.
+**Purpose:** Give a new session enough verified state, frozen movement-lineage semantics, dependency ordering and acceptance limits to review the uncommitted dormant corrected-projection authority without relying on prior chat history or mistaking dormant implementation for runtime activation.
 
 **Reconciled:** 5 September 2026 (Australia/Sydney)
 
@@ -13,6 +13,7 @@ This record is governed by **Conversation Context Capacity / Continuity Hard Gat
 - Repository root: `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`.
 - Branch: `codex/movement-correction`.
 - **Verified baseline entering the unified-mutation checkpoint commit:** `1929bfac52f937c40be759dee546fa50da78dd0c`, synchronized with `origin/codex/movement-correction` at 0 ahead / 0 behind before reconciliation. This is the stable entering baseline, not a prediction of the commit SHA that contains this checkpoint; mechanically verify actual HEAD/upstream and divergence after the authorized commit/push.
+- **Verified projection-slice starting HEAD:** `0b77b7f245feed688ef0586454328ed9d142867b` (`Add temporal correction characterization`), synchronized with `origin/codex/movement-correction` at 0 ahead / 0 behind before edits. The corrected-projection source/tests/docs described below are intentionally uncommitted for external review; HEAD remains this value until a separately authorized checkpoint commit.
 - **Reviewed IMP-05 implementation checkpoint:** `c0dfc7e51cae1296fd5a5da31876e54364901405` (`Add trusted movement mutation planner`). Do not describe this older implementation commit as the current repository HEAD.
 - Version remains `0.5.0-alpha.8.7`; assembly/file version remains `0.5.0.0`.
 - This checkpoint adds the exact twelve-file unified mutation implementation/test candidate listed below to the prior lineage foundation. The unrelated `.codex-evidence/` and `BIN-LIN-IMP-03A-HANDOFF.tmp` paths are not part of this checkpoint.
@@ -21,7 +22,7 @@ This record is governed by **Conversation Context Capacity / Continuity Hard Gat
 - **BIN-LIN-IMP-07 generation-zero Single/Batch integration is implemented and independently approved at source plus targeted/adjacent automated-evidence level.** It is dormant behind explicit isolated schema-17 composition and does not authorize runtime activation or later lineage work.
 - The pre-IMP-07 schema-17 validation-lifecycle prerequisite separates strict migration-publication proof from live AlreadyComplete structural/current-health validation. It does not implement generation-zero entry writing or activate schema 17.
 
-Normal startup and runtime authority remain schema 16 and the accepted alpha.8 correction/reversal model. Schema 17 remains dormant, explicit and unregistered. Normal composition injects no-op initial-lineage and mutation writers that perform no schema probe/query/write; explicit isolated schema-17 composition supplies the SQLite implementations. There is no SQLite schema-17 writer or lineage-entity registration in normal runtime, startup migration activation, corrected-activity/report projection cutover, Restore UI or other WinForms cutover.
+Normal startup and runtime authority remain schema 16 and the accepted alpha.8 correction/reversal model. Schema 17 remains dormant, explicit and unregistered. Normal composition injects no-op initial-lineage and mutation writers that perform no schema probe/query/write and does not register the new projection authority; explicit isolated schema-17 composition supplies the SQLite implementations. There is no SQLite schema-17 writer, projection authority or lineage-entity registration in normal runtime, startup migration activation, corrected-activity/report consumer cutover, Restore UI or other WinForms cutover.
 
 ## Completed-checkpoint summary
 
@@ -39,6 +40,7 @@ Git history and `.codex-evidence/` retain the detailed development diaries, inte
 10. The bounded pre-IMP-07 prerequisite preserves strict MigrationBaseline-only publication postflight for the actual 16 -> 17 transaction, while schema-17 AlreadyComplete uses separate structural/current-health validation and the existing provider-neutral current-root validator. A valid mixed Baseline+Initial database is accepted; malformed native current lineage remains rejected.
 11. IMP-07 keeps `MovementService` as the sole Single/Batch authority and adds a default dormant no-op writer plus an explicit isolated SQLite schema-17 writer. A successful new entry creates one atomic native `Initial` root: one generation-zero line per original physical movement, Single ordinal 0 or first-successful Batch request order, RootOriginal ownership and completed introduction links before activation. Construction and schema health fail closed; exact/reordered retries never rewrite committed lineage; migrated roots stay `MigrationBaseline`; failures roll back physical movement/batch, lineage and existing audit. Generation zero creates no correction operation, no physical-output link and no new audit action. Core validation and Services workflow remain provider/client-neutral; SQLite mechanics remain in Data.
 12. The unified mutation slice composes the trusted planner with atomic Correct/Reverse/Restore persistence, complete generations, root CAS, canonical replay/idempotency, optional physical output and one primary operation-linked audit. Native operation/audit health is target-root scoped while global structural/current lineage health remains intact. Every persisted generation-line identity comes from `LogicalMovementGenerationLines.Id`; none is synthesized from a logical-line, movement, ordinal or other identity. SQLite busy/locked exhaustion follows PersistenceFailure after bounded retries and rollback/fresh-state classification rather than stale or integrity diagnosis. Primary audit BeforeValues contains trusted current pointers and business state; AfterValues contains the result generation and complete per-line action/state/mask/pointer/business facts with relevant new/output movement identities.
+13. The uncommitted corrected-projection slice adds an immutable provider-neutral scope/result and Core relevance/contribution/signed-aggregation authority plus an explicit unregistered SQLite materializer. One serializable read transaction captures conservative root influence, current proof, all ownership facts, excluded-domain evidence and ImportRun identity; Active emits current effective once, Reversed emits last effective plus exact terminal reversal, Adjustment/ExcelImport union once, and relevant invalid/incomplete/unknown/unrooted evidence fails closed without raw fallback. ReadOnly projects while existing mutation guards remain. No existing operational consumer is switched.
 
 The committed IMP-06 checkpoint contains exactly these implementation-slice files relative to `e08acc9f...`:
 
@@ -184,7 +186,7 @@ The protected order is:
 -> **`IMP-07 generation-zero Single/Batch integration (complete; independently approved source + targeted evidence; dormant)`**
 -> **`unified Correct/Reverse/Restore commands (implemented; dormant)`**
 -> **`root CAS/idempotency/provider translation (implemented; dormant)`**
--> `corrected activity and PositionAsOf`
+-> **`corrected activity and PositionAsOf authority (implemented/tested; uncommitted pending review)`**
 -> `atomic cutover of every operational numeric consumer`
 -> `audit/history detail`
 -> `Restore/RemainReversed WinForms UI`
@@ -194,7 +196,7 @@ The protected order is:
 -> `protected whole-codebase layer-delineation audit`
 -> `Security Hardening`.
 
-The stages through unified mutation execution and root CAS/idempotency/provider translation are implemented and canonically verified at the dormant source/automated level. The next dependency-ordered work is corrected activity/PositionAsOf followed by atomic projection/cutover; it is not authorized by this checkpoint. Do not activate schema 17, register runtime lineage, rehearse a retained database or start report/UI/post-v1 work without separate authorization.
+The stages through unified mutation execution, root CAS/idempotency/provider translation and the corrected activity/PositionAsOf authority are implemented and canonically verified at the dormant source/automated level. The authority change is uncommitted pending external source/diff review. After review and an authorized checkpoint, the next dependency-ordered production work is the single atomic operational-consumer cutover; it is not authorized by this checkpoint. Do not activate schema 17, register runtime lineage/projection, rehearse a retained database or start report/UI/post-v1 work without separate authorization.
 
 An activated migration with incomplete entry/mutation/projection integration is not distributable. Do not ship schema-only or engine-only internal checkpoints, remove the alpha.8 guard, allow new Manual/Batch entries without lineage after activation, or leave old writers active after migration.
 
@@ -211,6 +213,7 @@ An activated migration with incomplete entry/mutation/projection integration is 
 - Immediately before the first IMP-07 production edit, `MovementEntryCharacterizationTests` passed 17/17 with 0 failed/skipped, satisfying BT-REL-011 for this slice. This does not retroactively alter the historical IMP-05 characterization-order miss.
 - After independent review corrections, `MovementEntryLineageSchema17Tests` passed 18/18, `LineageSchema17MigrationTests` passed 55/55, `MovementLineageContractTests` plus `LogicalMovementCurrentRootValidatorTests` passed 31/31, and the adjacent integration regression filter passed 59/59, all with 0 failed/skipped. Release `dotnet build BinTracker.sln --no-restore` passed with 0 warnings/errors; the mechanical audit passed at v0.5.0-alpha.8.7 with 259 permanent IDs and 27 Markdown files, and `git diff --check` passed.
 - The unified mutation correction task passed its focused, standalone mutation, unit, combined schema-17, alpha.8 and adjacent regression gates. Canonical `Build-BinTracker.bat` then passed source audit and restore, built with 0 warnings/errors, and passed 279/279 UnitTests plus 259/259 IntegrationTests: 538/538 total with 0 failed/skipped.
+- Before the corrected-projection production edit, the accepted correction/temporal characterization passed 42/42 and current-root/lineage contract unit tests passed 34/34. The final projection suite passed 10/10, adjacent schema-17 integration passed 126/126, provider-neutral lineage/planner unit tests passed 63/63 and unchanged alpha.8 correction/balance/report tests passed 68/68, all with 0 failed/skipped. Canonical `Build-BinTracker.bat` passed mechanical audit/restore/build with 0 warnings/errors and 279/279 UnitTests plus 274/274 IntegrationTests: 553/553 total, 0 failed/skipped. The post-documentation mechanical audit also passed with 259 permanent IDs and 27 Markdown files; after a bounded result-contract clarification the complete canonical gate was repeated and passed with the same result. Final `git diff --check` remains required.
 - No current compiler warning, automated-test failure or source-gate failure is known. This is checkpoint evidence, not a promise about later changes.
 - No retained-production-database migration rehearsal, schema-17 production activation, package build, PostgreSQL equivalence proof, complete Windows UI/DPI interaction pass or operator acceptance has occurred for lineage.
 - Static implementation, focused automated tests, full automated suite, source/build gate, external code review, migration rehearsal, packaging and Windows/operator acceptance are distinct evidence levels. Never convert one into another or mark `IMPLEMENTED-ACCEPTED` without explicit human evidence.
@@ -239,6 +242,7 @@ Useful seams to inspect rather than trusting this summary alone:
 - `src/BinTracker.Core/Domain.cs` and the focused lineage contracts;
 - `src/BinTracker.Data/BinTrackerDbContext.cs`, `DatabaseSetup.cs`, `SqliteSchemaMigrations.cs`, dormant lineage migration/materialization and recovery infrastructure;
 - `src/BinTracker.Data/TransactionAuditAppender.cs`, `SqliteMovementMutationWriter.cs` and their focused integration tests;
+- `src/BinTracker.Core/OperationalMovementProjection.cs`, `src/BinTracker.Data/SqliteOperationalMovementProjectionAuthority.cs` and `tests/BinTracker.IntegrationTests/OperationalMovementProjectionSchema17Tests.cs` for the uncommitted projection authority;
 - `src/BinTracker.Data/SqliteInitialMovementLineageWriter.cs`, the initial-lineage contracts/service seam and `tests/BinTracker.IntegrationTests/MovementEntryLineageSchema17Tests.cs`;
 - `src/BinTracker.Services/MovementCorrectionService.cs`, `EffectiveMovementQuery.cs`, audit and balance services, the trusted planner and resolver;
 - correction, migration, audit, balance, report, import and lineage tests;
@@ -267,7 +271,7 @@ Before modifying application code, the next session must:
 4. Confirm from source/migration registration that schema 17 is still dormant, schema 16/alpha.8 is normal authority, normal composition still uses both no-op writers and no projection/UI cutover has appeared.
 5. Mechanically verify that the checkpoint containing unified mutation descends from the verified entering baseline `1929bfac52f937c40be759dee546fa50da78dd0c`; do not require the actual current HEAD to equal that baseline or infer it from this document. Inspect the completed mutation source/tests only as needed. Preserve unrelated evidence artifacts and stop if ancestry or repository reality is unexpected.
 6. Before the first production edit in the next slice, identify and run the precise accepted characterization applicable to the authority being changed.
-7. Corrected activity/PositionAsOf is next in dependency order, but do not begin projection/report/UI edits or activate runtime/schema authority without explicit authorization.
+7. Review the uncommitted corrected activity/PositionAsOf authority, complete any bounded review corrections and create a checkpoint only with explicit authorization. After that approval, the next safe implementation is the separately authorized atomic cutover of every operational numeric consumer; do not begin it piecemeal or activate runtime/schema authority in the review task.
 8. Keep evidence classifications truthful and run `git diff --check` before handoff. Do not stage, commit or push without explicit instruction.
 
 Useful mechanical baseline commands:

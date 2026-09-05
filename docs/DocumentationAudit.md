@@ -1,5 +1,14 @@
 # Documentation Audit Record
 
+## 5 September 2026 — dormant corrected projection authority
+
+- Started from clean tracked/staged HEAD `0b77b7f245feed688ef0586454328ed9d142867b` (`Add temporal correction characterization`) on `codex/movement-correction`, synchronized with `origin/codex/movement-correction`, version `0.5.0-alpha.8.7`; only the previously recorded evidence/text artifacts were untracked.
+- Added one provider-neutral corrected operational activity/PositionAsOf contract and Core relevance/contribution/arithmetic authority plus one explicit SQLite schema-17 consistent-read implementation. Active emits current effective evidence once; Reversed emits last effective plus exact terminal reversal; Adjustment/ExcelImport are unioned once; relevant invalid/incomplete/unknown/unrooted state fails closed; provably disjoint corrupt roots may be excluded from narrow scope.
+- Preserved normal schema-16 startup and DI, both dormant no-op writers, `EffectiveMovementQuery`, every existing operational consumer and all forensic views. No migration registration, consumer/UI cutover, retained-database rehearsal, package or manual/operator acceptance occurred.
+- Pre-edit accepted characterization passed 42/42 correction/temporal integration and 34/34 current-root/lineage contract unit tests. Final focused projection passed 10/10; adjacent schema-17 integration passed 126/126; lineage/planner unit passed 63/63; alpha.8 correction/balance/report regression passed 68/68, all with 0 failed/skipped.
+- Canonical `Build-BinTracker.bat` passed mechanical audit, restore and Debug build with 0 warnings/errors; 279/279 UnitTests and 274/274 IntegrationTests passed, totaling 553/553 with 0 failed/skipped. The post-reconciliation mechanical audit also passed with 259 permanent requirement IDs, 27 Markdown files and configured contradiction guards. After the bounded result-contract clarification, the complete canonical gate was repeated and passed with the same audit/build/test result; final `git diff --check` remains required before handoff.
+- Reconciled only current lineage implementation/evidence claims in Roadmap, coverage, requirements context, Architecture, Database, Testing, Known Issues, active checklist and continuation. Permanent IDs/statuses, version and release/package state are unchanged.
+
 ## 5 September 2026 — unified schema-17 mutation implementation checkpoint
 
 - Verified the entering repository baseline at `1929bfac52f937c40be759dee546fa50da78dd0c` on `codex/movement-correction`, synchronized with its upstream at 0 ahead / 0 behind, version `0.5.0-alpha.8.7`, empty staging, exactly the authorized twelve implementation/test paths and only the known unrelated untracked `.codex-evidence/` plus `BIN-LIN-IMP-03A-HANDOFF.tmp`. This is the stable entering baseline, not a prediction of the checkpoint commit SHA.

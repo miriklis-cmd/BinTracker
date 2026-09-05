@@ -493,11 +493,20 @@ public static class MovementMutationPlanner
 
     internal static void ValidateTrustedSnapshotFacts(TrustedMovementPlanningSnapshot s)
     {
-        if (s.Root.Status != LogicalMovementBatchStatus.Active || s.Lines.Count != s.Root.Lines.Count ||
-            s.Lines.Select(x => x.Current.Id).Distinct().Count() != s.Lines.Count ||
-            !s.Lines.Select(x => x.Current.Id).ToHashSet().SetEquals(s.Root.Lines.Select(x => x.Id)))
+        if (s.Root.Status != LogicalMovementBatchStatus.Active)
             throw new InvalidOperationException("Trusted planning snapshot is incomplete or not mutable.");
-        foreach (var line in s.Lines)
+        ValidateCurrentProjectionFacts(s.Root, s.Lines);
+    }
+
+    internal static void ValidateCurrentProjectionFacts(ValidatedLogicalMovementCurrentRoot root,
+        IReadOnlyList<TrustedMovementPlanningLine> lines)
+    {
+        if (root.Status is not (LogicalMovementBatchStatus.Active or LogicalMovementBatchStatus.ReadOnly) ||
+            lines.Count != root.Lines.Count ||
+            lines.Select(x => x.Current.Id).Distinct().Count() != lines.Count ||
+            !lines.Select(x => x.Current.Id).ToHashSet().SetEquals(root.Lines.Select(x => x.Id)))
+            throw new InvalidOperationException("Trusted current projection snapshot is incomplete or unhealthy.");
+        foreach (var line in lines)
         {
             var reversal = line.TerminalReversal;
             if (line.LastEffective.MovementId != line.Current.EffectiveMovementId ||
