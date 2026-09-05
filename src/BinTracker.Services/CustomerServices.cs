@@ -58,7 +58,8 @@ internal sealed class CustomerService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IUserContext session,
     IAuditService audit,
-    IBusinessClock clock) : ICustomerService
+    IBusinessClock clock,
+    IOperationalMovementProjectionAuthority? operationalProjection = null) : ICustomerService
 {
     public async Task<IReadOnlyList<CustomerListRow>> SearchAsync(string? query, bool includeInactive, CancellationToken cancellationToken = default)
     {
@@ -246,10 +247,23 @@ internal sealed class CustomerService(
     {
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         var types = await db.ContainerTypes.AsNoTracking().OrderBy(x => x.DisplayOrder).ThenBy(x => x.Name).ToListAsync(cancellationToken);
-        var sums = await db.BinMovements.AsNoTracking().Where(x => x.CustomerId == customerId)
-            .GroupBy(x => x.ContainerTypeId)
-            .Select(g => new { ContainerTypeId=g.Key, Balance=g.Sum(x => x.MovementType == MovementType.Out ? x.Quantity : -x.Quantity) })
-            .ToDictionaryAsync(x => x.ContainerTypeId, x => x.Balance, cancellationToken);
+        Dictionary<int, int> sums;
+        if (operationalProjection is null)
+        {
+            sums = await db.BinMovements.AsNoTracking().Where(x => x.CustomerId == customerId)
+                .GroupBy(x => x.ContainerTypeId)
+                .Select(g => new { ContainerTypeId=g.Key, Balance=g.Sum(x => x.MovementType == MovementType.Out ? x.Quantity : -x.Quantity) })
+                .ToDictionaryAsync(x => x.ContainerTypeId, x => x.Balance, cancellationToken);
+        }
+        else
+        {
+            var projected = await operationalProjection.QueryAsync(
+                OperationalMovementProjectionScope.PositionAsOf(clock.Today, customerId),
+                cancellationToken);
+            sums = projected.Positions.ToDictionary(
+                x => x.ContainerTypeId,
+                x => checked((int)x.Quantity));
+        }
         return types.Select(t => new CustomerBalanceRow(t.Name, sums.GetValueOrDefault(t.Id))).ToList();
     }
 

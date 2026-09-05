@@ -897,30 +897,46 @@ public interface IBalanceService
     Task<IReadOnlyList<BalanceRow>> GetBalancesAsync(CancellationToken cancellationToken = default);
 }
 
-internal sealed class BalanceService(IDbContextFactory<BinTrackerDbContext> factory) : IBalanceService
+internal sealed class BalanceService(
+    IDbContextFactory<BinTrackerDbContext> factory,
+    IBusinessClock clock,
+    IOperationalMovementProjectionAuthority? operationalProjection = null) : IBalanceService
 {
     public async Task<IReadOnlyList<BalanceRow>> GetBalancesAsync(CancellationToken cancellationToken = default)
     {
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
-        // Keep the SQL-translatable aggregation entirely in the database:
-        // group by scalar foreign keys and calculate the signed balance.
-        //
-        // Do not group by navigation-property names here. Some EF Core providers
-        // cannot reliably translate the previous join + navigation GroupBy +
-        // BalanceRow constructor projection used by the Import Review path.
-        var totals = await db.BinMovements.AsNoTracking()
-            .GroupBy(x => new { x.CustomerId, x.ContainerTypeId })
-            .Select(g => new
-            {
-                g.Key.CustomerId,
-                g.Key.ContainerTypeId,
-                Balance = g.Sum(x =>
-                    x.MovementType == MovementType.Out
-                        ? x.Quantity
-                        : -x.Quantity)
-            })
-            .ToListAsync(cancellationToken);
+        List<(int CustomerId, int ContainerTypeId, int Balance)> totals;
+        if (operationalProjection is null)
+        {
+            // Normal schema-16 composition retains the accepted alpha.8 authority.
+            // Keep this provider-compatible query grouped by scalar foreign keys;
+            // navigation-property grouping failed translation in the Import Review path.
+            var rawTotals = await db.BinMovements.AsNoTracking()
+                .GroupBy(x => new { x.CustomerId, x.ContainerTypeId })
+                .Select(g => new
+                {
+                    g.Key.CustomerId,
+                    g.Key.ContainerTypeId,
+                    Balance = g.Sum(x =>
+                        x.MovementType == MovementType.Out
+                            ? x.Quantity
+                            : -x.Quantity)
+                })
+                .ToListAsync(cancellationToken);
+            totals = rawTotals
+                .Select(x => (x.CustomerId, x.ContainerTypeId, x.Balance))
+                .ToList();
+        }
+        else
+        {
+            var projected = await operationalProjection.QueryAsync(
+                OperationalMovementProjectionScope.PositionAsOf(clock.Today),
+                cancellationToken);
+            totals = projected.Positions
+                .Select(x => (x.CustomerId, x.ContainerTypeId, checked((int)x.Quantity)))
+                .ToList();
+        }
 
         if (totals.Count == 0)
             return [];

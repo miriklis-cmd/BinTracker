@@ -45,7 +45,8 @@ internal sealed class ContainerTypeService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IUserContext session,
     IAuditService audit,
-    IBusinessClock clock) : IContainerTypeService
+    IBusinessClock clock,
+    IOperationalMovementProjectionAuthority? operationalProjection = null) : IContainerTypeService
 {
     public async Task<IReadOnlyList<ContainerTypeListRow>> SearchAsync(
         string? search,
@@ -87,16 +88,30 @@ internal sealed class ContainerTypeService(
         var first = await movements.OrderBy(x => x.MovementDate).Select(x => (DateOnly?)x.MovementDate).FirstOrDefaultAsync(cancellationToken);
         var last = await movements.OrderByDescending(x => x.MovementDate).Select(x => (DateOnly?)x.MovementDate).FirstOrDefaultAsync(cancellationToken);
 
-        var customerBalances = await movements
-            .GroupBy(x => x.CustomerId)
-            .Select(g => g.Sum(x => x.MovementType == MovementType.Out ? x.Quantity : -x.Quantity))
-            .ToListAsync(cancellationToken);
+        int customersWithBalance;
+        if (operationalProjection is null)
+        {
+            var customerBalances = await movements
+                .GroupBy(x => x.CustomerId)
+                .Select(g => g.Sum(x => x.MovementType == MovementType.Out ? x.Quantity : -x.Quantity))
+                .ToListAsync(cancellationToken);
+            customersWithBalance = customerBalances.Count(x => x != 0);
+        }
+        else
+        {
+            var projected = await operationalProjection.QueryAsync(
+                OperationalMovementProjectionScope.PositionAsOf(
+                    clock.Today,
+                    containerTypeId: id),
+                cancellationToken);
+            customersWithBalance = projected.Positions.Count(x => x.Quantity != 0);
+        }
 
         return new ContainerTypeEditModel(
             item.Id, item.Name, item.ShortCode, item.SystemCode,
             item.Description, item.Notes, item.DisplayOrder, item.IsActive,
             item.IsSpecialFloorReportContainer, item.DashboardColour,
-            new ContainerTypeUsage(movementCount, customerBalances.Count(x => x != 0), first, last),
+            new ContainerTypeUsage(movementCount, customersWithBalance, first, last),
             item.Revision);
     }
 

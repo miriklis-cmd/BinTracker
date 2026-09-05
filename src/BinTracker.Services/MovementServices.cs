@@ -223,7 +223,8 @@ internal sealed class MovementService(
     IUserContext session,
     IBusinessClock clock,
     IClientContext client,
-    IInitialMovementLineageWriter initialLineageWriter) : IMovementService
+    IInitialMovementLineageWriter initialLineageWriter,
+    IOperationalMovementProjectionAuthority? operationalProjection = null) : IMovementService
 {
     public async Task<IReadOnlyList<MovementCustomerOption>> GetActiveCustomersAsync(
         CancellationToken cancellationToken = default)
@@ -293,22 +294,35 @@ internal sealed class MovementService(
             .Select(x => new { x.Id, x.Name })
             .ToListAsync(cancellationToken);
 
-        var balances = await db.BinMovements
-            .AsNoTracking()
-            .Where(x => x.CustomerId == customer.Id)
-            .GroupBy(x => x.ContainerTypeId)
-            .Select(g => new
-            {
-                ContainerTypeId = g.Key,
-                Balance = g.Sum(x =>
-                    x.MovementType == MovementType.Out
-                        ? x.Quantity
-                        : -x.Quantity)
-            })
-            .ToDictionaryAsync(
-                x => x.ContainerTypeId,
-                x => x.Balance,
+        Dictionary<int, int> balances;
+        if (operationalProjection is null)
+        {
+            balances = await db.BinMovements
+                .AsNoTracking()
+                .Where(x => x.CustomerId == customer.Id)
+                .GroupBy(x => x.ContainerTypeId)
+                .Select(g => new
+                {
+                    ContainerTypeId = g.Key,
+                    Balance = g.Sum(x =>
+                        x.MovementType == MovementType.Out
+                            ? x.Quantity
+                            : -x.Quantity)
+                })
+                .ToDictionaryAsync(
+                    x => x.ContainerTypeId,
+                    x => x.Balance,
+                    cancellationToken);
+        }
+        else
+        {
+            var projected = await operationalProjection.QueryAsync(
+                OperationalMovementProjectionScope.PositionAsOf(clock.Today, customer.Id),
                 cancellationToken);
+            balances = projected.Positions.ToDictionary(
+                x => x.ContainerTypeId,
+                x => checked((int)x.Quantity));
+        }
 
         return new MovementCustomerSummary(
             customer.Id,

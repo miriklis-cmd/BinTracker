@@ -198,6 +198,109 @@ public sealed class OperationalMovementProjectionSchema17Tests
     }
 
     [Fact]
+    public async Task Projection_backed_position_services_map_corrected_reversed_and_current_lineage()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+
+        var corrected = await h.CreateSingleAsync(
+            new(2026, 9, 1), h.CustomerId, 1, 7);
+        var correctedLineId = Assert.Single(await h.LineIdsAsync(corrected.RootId));
+        await h.MutateAsync(corrected.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(correctedLineId)],
+                "correct projected position",
+                quantity: MovementFieldIntent<int>.Selected(9)));
+
+        await h.CreateSingleAsync(
+            new(2026, 9, 2), h.CustomerId, 2, 3, MovementType.In);
+
+        var reversed = await h.CreateSingleAsync(
+            new(2026, 9, 1), h.OtherCustomerId, 1, 4);
+        var reversedLineId = Assert.Single(await h.LineIdsAsync(reversed.RootId));
+        await h.MutateAsync(reversed.RootId, 0,
+            MovementMutationRequest.Reverse(
+                MovementMutationScope.Individual,
+                [new(reversedLineId)],
+                "reverse projected position"));
+
+        var allBalances = await h.Balances.GetBalancesAsync();
+        Assert.Collection(
+            allBalances,
+            row => Assert.Equal(
+                (h.CustomerId, "Projection A", 1, "Blue Bin", 9, true, false),
+                (row.CustomerId, row.CustomerName, row.ContainerTypeId,
+                    row.ContainerTypeName, row.Balance, row.IsOutstanding, row.IsCredit)),
+            row => Assert.Equal(
+                (h.CustomerId, "Projection A", 2, "Small Bin", -3, false, true),
+                (row.CustomerId, row.CustomerName, row.ContainerTypeId,
+                    row.ContainerTypeName, row.Balance, row.IsOutstanding, row.IsCredit)),
+            row => Assert.Equal(
+                (h.OtherCustomerId, "Projection B", 1, "Blue Bin", 0, false, false),
+                (row.CustomerId, row.CustomerName, row.ContainerTypeId,
+                    row.ContainerTypeName, row.Balance, row.IsOutstanding, row.IsCredit)));
+
+        var customerBalances = await h.Customers.GetBalancesAsync(h.CustomerId);
+        Assert.Equal(
+            new[]
+            {
+                ("Blue Bin", 9, "9 OUT"),
+                ("Small Bin", -3, "3 CREDIT"),
+                ("Yellow Bin", 0, "Even"),
+                ("Bulk Bin", 0, "Even"),
+                ("CHEP Pallet", 0, "Even")
+            },
+            customerBalances.Select(x => (x.ContainerType, x.Balance, x.Position)));
+
+        var summary = await h.Movements.GetCustomerSummaryByCodeAsync("  proj-a  ");
+        Assert.NotNull(summary);
+        Assert.Equal((h.CustomerId, "PROJ-A", "Projection A"),
+            (summary.CustomerId, summary.Code, summary.Name));
+        Assert.Equal(
+            new[]
+            {
+                (1, "Blue Bin", 9, "9 OUT"),
+                (2, "Small Bin", -3, "3 CREDIT"),
+                (3, "Yellow Bin", 0, "Even"),
+                (4, "Bulk Bin", 0, "Even"),
+                (5, "CHEP Pallet", 0, "Even")
+            },
+            summary.Balances.Select(x =>
+                (x.ContainerTypeId, x.ContainerType, x.Balance, x.Position)));
+
+        var container = await h.ContainerTypes.GetAsync(1);
+        Assert.NotNull(container);
+        Assert.Equal(5L, container.Usage.MovementCount);
+        Assert.Equal(1, container.Usage.CustomersWithBalance);
+        Assert.Equal(new DateOnly(2026, 9, 1), container.Usage.FirstUsed);
+        Assert.Equal(Harness.Today, container.Usage.LastUsed);
+        Assert.True(h.ProjectionAuthorityIsRegistered);
+    }
+
+    [Fact]
+    public async Task Projection_backed_int_position_mappings_fail_closed_on_overflow()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        await h.CreateSingleAsync(
+            new(2026, 9, 1), h.CustomerId, 1, int.MaxValue);
+        var moved = await h.CreateSingleAsync(
+            new(2026, 9, 1), h.OtherCustomerId, 1, 1);
+        var movedLineId = Assert.Single(await h.LineIdsAsync(moved.RootId));
+        await h.MutateAsync(moved.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(movedLineId)],
+                "move projected position across int boundary",
+                customer: MovementFieldIntent<int>.Selected(h.CustomerId)));
+
+        await Assert.ThrowsAsync<OverflowException>(() => h.Balances.GetBalancesAsync());
+        await Assert.ThrowsAsync<OverflowException>(() =>
+            h.Customers.GetBalancesAsync(h.CustomerId));
+        await Assert.ThrowsAsync<OverflowException>(() =>
+            h.Movements.GetCustomerSummaryByCodeAsync("PROJ-A"));
+    }
+
+    [Fact]
     public async Task Schema17_projection_is_explicit_and_normal_composition_remains_schema16()
     {
         await using var h = await Harness.CreateAsync(migrateToSchema17: false,
@@ -239,6 +342,9 @@ public sealed class OperationalMovementProjectionSchema17Tests
             OtherCustomerId = otherCustomerId;
             Movements = services.GetRequiredService<IMovementService>();
             Mutations = services.GetRequiredService<IMovementCorrectionService>();
+            Balances = services.GetRequiredService<IBalanceService>();
+            Customers = services.GetRequiredService<ICustomerService>();
+            ContainerTypes = services.GetRequiredService<IContainerTypeService>();
             Authority = new SqliteOperationalMovementProjectionAuthority(connectionString);
         }
 
@@ -247,12 +353,16 @@ public sealed class OperationalMovementProjectionSchema17Tests
         public int OtherCustomerId { get; }
         public IMovementService Movements { get; }
         public IMovementCorrectionService Mutations { get; }
+        public IBalanceService Balances { get; }
+        public ICustomerService Customers { get; }
+        public IContainerTypeService ContainerTypes { get; }
         public IOperationalMovementProjectionAuthority Authority { get; }
         public bool ProjectionAuthorityIsRegistered =>
             services.GetService<IOperationalMovementProjectionAuthority>() is not null;
 
         public static async Task<Harness> CreateAsync(bool migrateToSchema17 = true,
-            bool enableSchema17Writers = true)
+            bool enableSchema17Writers = true,
+            bool enableProjectionBackedServices = false)
         {
             var root = Path.Combine(Path.GetTempPath(), $"BinTracker-projection-v17-{Guid.NewGuid():N}");
             Directory.CreateDirectory(root);
@@ -277,15 +387,19 @@ public sealed class OperationalMovementProjectionSchema17Tests
             LineageSchema17MigrationPrerequisites? prerequisites = null;
             if (migrateToSchema17)
                 prerequisites = await MigrateAsync(root, databasePath);
-            var services = BuildServices(connectionString, enableSchema17Writers);
+            var services = BuildServices(
+                connectionString,
+                enableSchema17Writers,
+                enableProjectionBackedServices);
             return new(root, connectionString, services, prerequisites, customerId, otherCustomerId);
         }
 
         public async Task<(long RootId, long MovementId)> CreateSingleAsync(DateOnly date,
-            int customerId, int containerTypeId, int quantity)
+            int customerId, int containerTypeId, int quantity,
+            MovementType direction = MovementType.Out)
         {
             var result = await Movements.SaveSingleAsync(new(Guid.NewGuid(), date,
-                MovementType.Out, customerId, containerTypeId, quantity, "projection", null));
+                direction, customerId, containerTypeId, quantity, "projection", null));
             return (await RootForMovementAsync(result.MovementId), result.MovementId);
         }
 
@@ -401,8 +515,10 @@ public sealed class OperationalMovementProjectionSchema17Tests
             await command.ExecuteNonQueryAsync();
         }
 
-        private static ServiceProvider BuildServices(string connectionString,
-            bool enableSchema17Writers)
+        private static ServiceProvider BuildServices(
+            string connectionString,
+            bool enableSchema17Writers,
+            bool enableProjectionBackedServices)
         {
             var collection = new ServiceCollection();
             collection.AddSingleton<IBusinessClock>(new FixedClock());
@@ -415,6 +531,11 @@ public sealed class OperationalMovementProjectionSchema17Tests
                     new SqliteInitialMovementLineageWriter(NoInitialMovementLineageFailureInjector.Instance));
                 collection.AddScoped<IMovementMutationWriter>(_ =>
                     new SqliteMovementMutationWriter(NoMovementMutationFailureInjector.Instance));
+            }
+            if (enableProjectionBackedServices)
+            {
+                collection.AddScoped<IOperationalMovementProjectionAuthority>(_ =>
+                    new SqliteOperationalMovementProjectionAuthority(connectionString));
             }
             collection.AddBinTrackerBusinessServices();
             return collection.BuildServiceProvider();
