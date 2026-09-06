@@ -143,6 +143,45 @@ public sealed class OperationalMovementProjectionSchema17Tests
     }
 
     [Fact]
+    public async Task Adjustment_provenance_allows_standalone_and_import_owned_rows()
+    {
+        await using var h = await Harness.CreateAsync();
+        await h.AddExcludedAsync(
+            MovementSource.Adjustment, MovementType.Out, 2, importOwned: false);
+        await h.AddExcludedAsync(
+            MovementSource.Adjustment, MovementType.In, 1, importOwned: true);
+
+        var projected = await h.Authority.QueryAsync(
+            OperationalMovementProjectionScope.PositionAsOf(Harness.Today));
+
+        Assert.Equal(2, projected.Activity.Count);
+        Assert.All(projected.Activity,
+            movement => Assert.Equal(OperationalMovementDomain.Adjustment, movement.Domain));
+        Assert.Equal(1, Assert.Single(projected.Positions).Quantity);
+    }
+
+    [Theory]
+    [InlineData(MovementSource.ExcelImport, false)]
+    [InlineData(MovementSource.ExcelImport, true)]
+    [InlineData(MovementSource.Adjustment, true)]
+    public async Task Excluded_domain_rows_with_missing_or_dangling_required_provenance_fail_closed(
+        MovementSource source,
+        bool danglingImportRun)
+    {
+        await using var h = await Harness.CreateAsync();
+        if (danglingImportRun)
+            await h.AddExcludedWithDanglingImportRunAsync(source);
+        else
+            await h.AddExcludedAsync(source, MovementType.Out, 1, importOwned: false);
+
+        var exception = await Assert.ThrowsAsync<OperationalMovementProjectionException>(() =>
+            h.Authority.QueryAsync(OperationalMovementProjectionScope.All()));
+
+        Assert.Equal(OperationalMovementProjectionFailure.InvalidExcludedDomain,
+            exception.Failure);
+    }
+
+    [Fact]
     public async Task Invalid_root_fails_relevant_queries_but_not_a_provably_disjoint_customer_query()
     {
         await using var h = await Harness.CreateAsync();
@@ -665,6 +704,26 @@ public sealed class OperationalMovementProjectionSchema17Tests
                 CreatedBy = "projection", CreatedUtc = UtcNow
             });
             await db.SaveChangesAsync();
+        }
+
+        public async Task AddExcludedWithDanglingImportRunAsync(MovementSource source)
+        {
+            var databasePath = new SqliteConnectionStringBuilder(ConnectionString).DataSource;
+            await using var connection = new SqliteConnection(
+                $"Data Source={databasePath};Foreign Keys=False;Pooling=False");
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                INSERT INTO BinMovements
+                    (ClientOperationId,MovementDate,MovementType,Source,CustomerId,
+                     ContainerTypeId,ImportRunId,Quantity,CreatedBy,CreatedUtc)
+                VALUES ($operation,'2026-09-01',1,$source,$customer,1,999999,1,
+                        'projection','2026-09-05T01:02:03.0000000Z');
+                """;
+            command.Parameters.AddWithValue("$operation", Guid.NewGuid().ToString());
+            command.Parameters.AddWithValue("$source", (int)source);
+            command.Parameters.AddWithValue("$customer", CustomerId);
+            await command.ExecuteNonQueryAsync();
         }
 
         public async Task InsertUnrootedOrdinaryAsync(int customerId)

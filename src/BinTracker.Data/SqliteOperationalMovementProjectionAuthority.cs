@@ -96,6 +96,7 @@ public sealed class SqliteOperationalMovementProjectionAuthority(string connecti
 
             if (fact.Source is not (MovementSource.Adjustment or MovementSource.ExcelImport) ||
                 ownershipCount != 0 || fact.ReversesMovementId is not null ||
+                (fact.Source == MovementSource.ExcelImport && fact.ImportRunId is null) ||
                 fact.ImportRunId is { } importRunId && !importRuns.Contains(importRunId))
                 throw Failure(OperationalMovementProjectionFailure.InvalidExcludedDomain,
                     $"Excluded-domain movement {raw.Id} has invalid provenance or lineage ownership.");
