@@ -400,6 +400,67 @@ public sealed class OperationalMovementProjectionSchema17Tests
     }
 
     [Fact]
+    public async Task Projection_backed_dashboard_uses_one_result_for_corrected_and_reversed_truth()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        await h.SetAttentionThresholdAsync(5);
+
+        var corrected = await h.CreateSingleAsync(
+            Harness.Today, h.CustomerId, 1, 3);
+        var correctedLineId = Assert.Single(await h.LineIdsAsync(corrected.RootId));
+        await h.MutateAsync(corrected.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(correctedLineId)],
+                "correct dashboard customer container and quantity",
+                customer: MovementFieldIntent<int>.Selected(h.OtherCustomerId),
+                containerType: MovementFieldIntent<int>.Selected(2),
+                quantity: MovementFieldIntent<int>.Selected(6)));
+
+        var reversed = await h.CreateSingleAsync(
+            Harness.Today, h.CustomerId, 3, 4);
+        var reversedLineId = Assert.Single(await h.LineIdsAsync(reversed.RootId));
+        await h.MutateAsync(reversed.RootId, 0,
+            MovementMutationRequest.Reverse(
+                MovementMutationScope.Individual,
+                [new(reversedLineId)],
+                "reverse dashboard movement"));
+
+        await h.CreateSingleAsync(
+            Harness.Today, h.OtherCustomerId, 1, 7);
+        await h.AddExcludedAsync(
+            MovementSource.Adjustment, MovementType.Out, 2, importOwned: false,
+            movementDate: Harness.Today);
+        await h.AddExcludedAsync(
+            MovementSource.ExcelImport, MovementType.In, 1, importOwned: true,
+            movementDate: Harness.Today);
+
+        var summary = await h.Movements.GetDashboardSummaryAsync(Harness.Today);
+
+        Assert.Equal(
+            new OperationalDashboardSummary(
+                ReturnedToday: 5,
+                TakenToday: 19,
+                Outstanding: 14,
+                RequiresAttention: 1),
+            summary);
+        var call = Assert.Single(h.ProjectionServiceCalls);
+        Assert.True(call.IsPositionAsOf);
+        Assert.Equal(Harness.Today, call.ThroughDateInclusive);
+        Assert.Null(call.FromDateInclusive);
+        Assert.Null(call.CustomerId);
+        Assert.Null(call.ContainerTypeId);
+
+        await h.SetRootStatusAsync(
+            corrected.RootId, LogicalMovementBatchStatus.Invalid);
+        var failure = await Assert.ThrowsAsync<OperationalMovementProjectionException>(() =>
+            h.Movements.GetDashboardSummaryAsync(Harness.Today));
+        Assert.Equal(
+            OperationalMovementProjectionFailure.RelevantLineageInvalid,
+            failure.Failure);
+    }
+
+    [Fact]
     public async Task Projection_backed_int_position_mappings_fail_closed_on_overflow()
     {
         await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
@@ -424,6 +485,8 @@ public sealed class OperationalMovementProjectionSchema17Tests
             h.Customers.GetStatementAsync(h.CustomerId, new(2026, 9, 1), Harness.Today));
         await Assert.ThrowsAsync<OverflowException>(() =>
             h.Movements.GetCustomerSummaryByCodeAsync("PROJ-A"));
+        await Assert.ThrowsAsync<OverflowException>(() =>
+            h.Movements.GetDashboardSummaryAsync(Harness.Today));
     }
 
     [Fact]
@@ -565,8 +628,17 @@ public sealed class OperationalMovementProjectionSchema17Tests
         public async Task SetCurrentGenerationAsync(long rootId, int generation) =>
             await ExecuteAsync($"UPDATE LogicalMovementBatches SET CurrentGenerationNumber={generation} WHERE Id={rootId};");
 
+        public async Task SetAttentionThresholdAsync(int threshold)
+        {
+            await using var db = new BinTrackerDbContext(
+                new DbContextOptionsBuilder<BinTrackerDbContext>().UseSqlite(ConnectionString).Options);
+            var settings = await db.ApplicationSettings.SingleAsync(x => x.Id == 1);
+            settings.AttentionQuantityThreshold = threshold;
+            await db.SaveChangesAsync();
+        }
+
         public async Task AddExcludedAsync(MovementSource source, MovementType direction,
-            int quantity, bool importOwned)
+            int quantity, bool importOwned, DateOnly? movementDate = null)
         {
             await using var db = new BinTrackerDbContext(
                 new DbContextOptionsBuilder<BinTrackerDbContext>().UseSqlite(ConnectionString).Options);
@@ -586,7 +658,8 @@ public sealed class OperationalMovementProjectionSchema17Tests
             }
             db.Add(new BinMovement
             {
-                ClientOperationId = Guid.NewGuid(), MovementDate = new(2026, 9, 1),
+                ClientOperationId = Guid.NewGuid(),
+                MovementDate = movementDate ?? new(2026, 9, 1),
                 MovementType = direction, Source = source, CustomerId = CustomerId,
                 ContainerTypeId = 1, Quantity = quantity, ImportRunId = run?.Id,
                 CreatedBy = "projection", CreatedUtc = UtcNow

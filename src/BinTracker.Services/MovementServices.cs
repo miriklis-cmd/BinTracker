@@ -714,6 +714,40 @@ internal sealed class MovementService(
     {
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
+        if (operationalProjection is not null)
+        {
+            var projected = await operationalProjection.QueryAsync(
+                OperationalMovementProjectionScope.PositionAsOf(date),
+                cancellationToken);
+            var returnedProjected = checked((int)projected.Activity
+                .Where(x => x.MovementDate == date && x.MovementType == MovementType.In)
+                .Aggregate(0L, (quantity, movement) =>
+                    checked(quantity + movement.Quantity)));
+            var takenProjected = checked((int)projected.Activity
+                .Where(x => x.MovementDate == date && x.MovementType == MovementType.Out)
+                .Aggregate(0L, (quantity, movement) =>
+                    checked(quantity + movement.Quantity)));
+            var outstandingProjected = checked((int)projected.Positions
+                .Where(x => x.Quantity > 0)
+                .Aggregate(0L, (quantity, position) =>
+                    checked(quantity + position.Quantity)));
+            var projectedSettings = await db.ApplicationSettings
+                .AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
+            var projectedThreshold = projectedSettings?.AttentionQuantityThreshold ?? 20;
+            var projectedRequiresAttention = projected.Positions
+                .Where(x => x.Quantity > projectedThreshold)
+                .Select(x => x.CustomerId)
+                .Distinct()
+                .Count();
+
+            return new OperationalDashboardSummary(
+                returnedProjected,
+                takenProjected,
+                outstandingProjected,
+                projectedRequiresAttention);
+        }
+
         var today = await db.BinMovements
             .AsNoTracking()
             .Where(x => x.MovementDate == date)
