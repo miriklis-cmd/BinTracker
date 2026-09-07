@@ -500,6 +500,187 @@ public sealed class OperationalMovementProjectionSchema17Tests
     }
 
     [Fact]
+    public async Task Projection_backed_outstanding_maps_corrected_reversed_excluded_and_as_of_truth_once()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        var reportDate = new DateOnly(2026, 9, 4);
+
+        var corrected = await h.CreateSingleAsync(
+            new(2026, 9, 1), h.CustomerId, 1, 7);
+        var correctedLineId = Assert.Single(await h.LineIdsAsync(corrected.RootId));
+        await h.MutateAsync(corrected.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(correctedLineId)],
+                "correct outstanding quantity",
+                quantity: MovementFieldIntent<int>.Selected(9)));
+
+        var reversed = await h.CreateSingleAsync(
+            new(2026, 9, 1), h.CustomerId, 2, 5);
+        var reversedLineId = Assert.Single(await h.LineIdsAsync(reversed.RootId));
+        await h.MutateAsync(reversed.RootId, 0,
+            MovementMutationRequest.Reverse(
+                MovementMutationScope.Individual,
+                [new(reversedLineId)],
+                "reverse outstanding movement"));
+
+        await h.CreateSingleAsync(Harness.Today, h.CustomerId, 1, 100);
+        await h.AddExcludedAsync(
+            MovementSource.Adjustment, MovementType.Out, 2, importOwned: false,
+            movementDate: new(2026, 9, 3));
+        await h.AddExcludedAsync(
+            MovementSource.ExcelImport, MovementType.In, 1, importOwned: true,
+            movementDate: reportDate);
+
+        var historical = await h.Outstanding.QueryAsync(new OutstandingReportQuery(
+            reportDate,
+            BalanceFilter: OutstandingBalanceFilter.AllNonZero));
+
+        Assert.Collection(
+            historical.Rows,
+            row => Assert.Equal(
+                (1, 10, reportDate),
+                (row.ContainerTypeId, row.Balance, row.LastMovementDate)),
+            row => Assert.Equal(
+                (2, 5, new DateOnly(2026, 9, 1)),
+                (row.ContainerTypeId, row.Balance, row.LastMovementDate)));
+        Assert.Equal(
+            new[]
+            {
+                (1, 10, 0, 1),
+                (2, 5, 0, 1)
+            },
+            historical.ContainerTotals.Select(x =>
+                (x.ContainerTypeId, x.OutstandingQuantity, x.CreditQuantity,
+                    x.PositionCount)));
+
+        var current = await h.Outstanding.QueryAsync(new OutstandingReportQuery(
+            Harness.Today,
+            BalanceFilter: OutstandingBalanceFilter.AllNonZero));
+        var currentRow = Assert.Single(current.Rows);
+        Assert.Equal((1, 110, Harness.Today),
+            (currentRow.ContainerTypeId, currentRow.Balance, currentRow.LastMovementDate));
+
+        Assert.Equal(2, h.ProjectionServiceCalls.Count);
+        Assert.All(h.ProjectionServiceCalls, call =>
+        {
+            Assert.True(call.IsPositionAsOf);
+            Assert.Null(call.FromDateInclusive);
+            Assert.Null(call.CustomerId);
+            Assert.Null(call.ContainerTypeId);
+        });
+        Assert.Equal(reportDate, h.ProjectionServiceCalls[0].ThroughDateInclusive);
+        Assert.Equal(Harness.Today, h.ProjectionServiceCalls[1].ThroughDateInclusive);
+    }
+
+    [Fact]
+    public async Task Projection_backed_outstanding_preserves_filters_metadata_order_and_visible_totals()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+
+        await h.CreateSingleAsync(new(2026, 9, 1), h.CustomerId, 1, 3);
+        await h.CreateSingleAsync(
+            new(2026, 9, 2), h.CustomerId, 2, 2, MovementType.In);
+        await h.CreateSingleAsync(new(2026, 9, 2), h.CustomerId, 3, 4);
+        await h.CreateSingleAsync(
+            new(2026, 9, 3), h.CustomerId, 3, 4, MovementType.In);
+        await h.CreateSingleAsync(new(2026, 9, 1), h.OtherCustomerId, 1, 1);
+
+        await using (var db = new BinTrackerDbContext(
+                         new DbContextOptionsBuilder<BinTrackerDbContext>()
+                             .UseSqlite(h.ConnectionString).Options))
+        {
+            (await db.Customers.SingleAsync(x => x.Id == h.CustomerId)).IsActive = false;
+            (await db.ContainerTypes.SingleAsync(x => x.Id == 2)).IsActive = false;
+            await db.SaveChangesAsync();
+        }
+
+        var all = await h.Outstanding.QueryAsync(new OutstandingReportQuery(
+            Harness.Today,
+            BalanceFilter: OutstandingBalanceFilter.AllNonZero));
+        Assert.Collection(
+            all.Rows,
+            row => Assert.Equal(
+                ("PROJ-A", "Projection A", false, 1, "Blue Bin", 1, 3),
+                (row.CustomerCode, row.CustomerName, row.IsActive,
+                    row.ContainerTypeId, row.ContainerType,
+                    row.ContainerDisplayOrder, row.Balance)),
+            row => Assert.Equal(
+                ("PROJ-A", "Projection A", false, 2, "Small Bin", 2, -2),
+                (row.CustomerCode, row.CustomerName, row.IsActive,
+                    row.ContainerTypeId, row.ContainerType,
+                    row.ContainerDisplayOrder, row.Balance)),
+            row => Assert.Equal(
+                ("PROJ-B", "Projection B", true, 1, "Blue Bin", 1, 1),
+                (row.CustomerCode, row.CustomerName, row.IsActive,
+                    row.ContainerTypeId, row.ContainerType,
+                    row.ContainerDisplayOrder, row.Balance)));
+        Assert.DoesNotContain(all.Rows, row => row.ContainerTypeId == 3);
+        Assert.Equal(
+            new[]
+            {
+                (1, 4, 0, 2),
+                (2, 0, 2, 1)
+            },
+            all.ContainerTotals.Select(x =>
+                (x.ContainerTypeId, x.OutstandingQuantity, x.CreditQuantity,
+                    x.PositionCount)));
+
+        var customerFiltered = await h.Outstanding.QueryAsync(new OutstandingReportQuery(
+            Harness.Today,
+            CustomerSearch: "  projection a  ",
+            BalanceFilter: OutstandingBalanceFilter.AllNonZero));
+        Assert.Equal(2, customerFiltered.Rows.Count);
+        Assert.All(customerFiltered.Rows,
+            row => Assert.Equal(h.CustomerId, row.CustomerId));
+
+        var containerFiltered = await h.Outstanding.QueryAsync(new OutstandingReportQuery(
+            Harness.Today,
+            ContainerTypeId: 2,
+            BalanceFilter: OutstandingBalanceFilter.CreditsOnly));
+        var credit = Assert.Single(containerFiltered.Rows);
+        Assert.Equal((h.CustomerId, 2, -2),
+            (credit.CustomerId, credit.ContainerTypeId, credit.Balance));
+
+        var outstandingOnly = await h.Outstanding.QueryAsync(new OutstandingReportQuery(
+            Harness.Today,
+            BalanceFilter: OutstandingBalanceFilter.OutstandingOnly));
+        Assert.Equal(new[] { 3, 1 }, outstandingOnly.Rows.Select(x => x.Balance));
+
+        var activeOnly = await h.Outstanding.QueryAsync(new OutstandingReportQuery(
+            Harness.Today,
+            BalanceFilter: OutstandingBalanceFilter.AllNonZero,
+            IncludeInactiveCustomers: false));
+        Assert.Equal(h.OtherCustomerId, Assert.Single(activeOnly.Rows).CustomerId);
+
+        Assert.Equal(5, h.ProjectionServiceCalls.Count);
+        Assert.Equal(2, h.ProjectionServiceCalls[2].ContainerTypeId);
+        Assert.All(h.ProjectionServiceCalls, call =>
+        {
+            Assert.True(call.IsPositionAsOf);
+            Assert.Equal(Harness.Today, call.ThroughDateInclusive);
+            Assert.Null(call.CustomerId);
+        });
+    }
+
+    [Fact]
+    public async Task Projection_backed_outstanding_propagates_integrity_failure_without_raw_fallback()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        var root = await h.CreateSingleAsync(
+            new(2026, 9, 1), h.CustomerId, 1, 6);
+        await h.SetRootStatusAsync(root.RootId, LogicalMovementBatchStatus.Invalid);
+
+        var failure = await Assert.ThrowsAsync<OperationalMovementProjectionException>(() =>
+            h.Outstanding.QueryAsync(new OutstandingReportQuery(Harness.Today)));
+
+        Assert.Equal(
+            OperationalMovementProjectionFailure.RelevantLineageInvalid,
+            failure.Failure);
+        Assert.Single(h.ProjectionServiceCalls);
+    }
+
+    [Fact]
     public async Task Projection_backed_int_position_mappings_fail_closed_on_overflow()
     {
         await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
@@ -526,6 +707,10 @@ public sealed class OperationalMovementProjectionSchema17Tests
             h.Movements.GetCustomerSummaryByCodeAsync("PROJ-A"));
         await Assert.ThrowsAsync<OverflowException>(() =>
             h.Movements.GetDashboardSummaryAsync(Harness.Today));
+        await Assert.ThrowsAsync<OverflowException>(() =>
+            h.Outstanding.QueryAsync(new OutstandingReportQuery(
+                Harness.Today,
+                BalanceFilter: OutstandingBalanceFilter.AllNonZero)));
     }
 
     [Fact]
@@ -573,6 +758,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
             Balances = services.GetRequiredService<IBalanceService>();
             Customers = services.GetRequiredService<ICustomerService>();
             ContainerTypes = services.GetRequiredService<IContainerTypeService>();
+            Outstanding = services.GetRequiredService<IOutstandingReportService>();
             Authority = new SqliteOperationalMovementProjectionAuthority(connectionString);
         }
 
@@ -584,6 +770,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
         public IBalanceService Balances { get; }
         public ICustomerService Customers { get; }
         public IContainerTypeService ContainerTypes { get; }
+        public IOutstandingReportService Outstanding { get; }
         public IOperationalMovementProjectionAuthority Authority { get; }
         public IReadOnlyList<OperationalMovementProjectionScope> ProjectionServiceCalls =>
             services.GetService<IOperationalMovementProjectionAuthority>() is RecordingProjectionAuthority recording

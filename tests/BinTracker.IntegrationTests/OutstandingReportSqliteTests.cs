@@ -256,6 +256,190 @@ public sealed class OutstandingReportSqliteTests
         Assert.Equal(2, row.Balance);
     }
 
+    [Fact]
+    public async Task Metadata_order_totals_inactive_and_zero_semantics_are_preserved()
+    {
+        await using var scope = await CreateScopeAsync();
+        var factory = scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
+        var asOfDate = new DateOnly(2026, 8, 10);
+
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            var inactiveContainer = await db.ContainerTypes.SingleAsync(x => x.Id == 2);
+            inactiveContainer.IsActive = false;
+
+            var alpha = new Customer
+            {
+                CustomerCode = "ALPHA-01",
+                Name = "Alpha Customer",
+                CustomerType = CustomerType.CashCod,
+                IsActive = false
+            };
+            var zulu = new Customer
+            {
+                CustomerCode = "ZULU-01",
+                Name = "Zulu Customer",
+                CustomerType = CustomerType.Account,
+                IsActive = true
+            };
+            db.Customers.AddRange(alpha, zulu);
+            await db.SaveChangesAsync();
+
+            db.BinMovements.AddRange(
+                new BinMovement
+                {
+                    MovementDate = new DateOnly(2026, 8, 8),
+                    MovementType = MovementType.Out,
+                    Source = MovementSource.Manual,
+                    CustomerId = alpha.Id,
+                    ContainerTypeId = 2,
+                    Quantity = 2
+                },
+                new BinMovement
+                {
+                    MovementDate = new DateOnly(2026, 8, 9),
+                    MovementType = MovementType.In,
+                    Source = MovementSource.Manual,
+                    CustomerId = alpha.Id,
+                    ContainerTypeId = 2,
+                    Quantity = 4
+                },
+                new BinMovement
+                {
+                    MovementDate = new DateOnly(2026, 8, 7),
+                    MovementType = MovementType.Out,
+                    Source = MovementSource.Manual,
+                    CustomerId = alpha.Id,
+                    ContainerTypeId = 1,
+                    Quantity = 4
+                },
+                new BinMovement
+                {
+                    MovementDate = new DateOnly(2026, 8, 6),
+                    MovementType = MovementType.Out,
+                    Source = MovementSource.Manual,
+                    CustomerId = alpha.Id,
+                    ContainerTypeId = 3,
+                    Quantity = 3
+                },
+                new BinMovement
+                {
+                    MovementDate = new DateOnly(2026, 8, 10),
+                    MovementType = MovementType.In,
+                    Source = MovementSource.Manual,
+                    CustomerId = alpha.Id,
+                    ContainerTypeId = 3,
+                    Quantity = 3
+                },
+                new BinMovement
+                {
+                    MovementDate = new DateOnly(2026, 8, 5),
+                    MovementType = MovementType.Out,
+                    Source = MovementSource.Manual,
+                    CustomerId = zulu.Id,
+                    ContainerTypeId = 1,
+                    Quantity = 1
+                });
+            await db.SaveChangesAsync();
+        }
+
+        var service = scope.ServiceProvider.GetRequiredService<IOutstandingReportService>();
+        var result = await service.QueryAsync(new OutstandingReportQuery(
+            asOfDate,
+            BalanceFilter: OutstandingBalanceFilter.AllNonZero));
+
+        Assert.Equal(asOfDate, result.AsOfDate);
+        Assert.Equal(OutstandingBalanceFilter.AllNonZero, result.BalanceFilter);
+        Assert.Equal(2, result.OutstandingPositionCount);
+        Assert.Equal(1, result.CreditPositionCount);
+        Assert.Collection(
+            result.Rows,
+            row => Assert.Equal(
+                ("ALPHA-01", "Alpha Customer", CustomerType.CashCod, false,
+                    1, "Blue Bin", 1, 4, new DateOnly(2026, 8, 7)),
+                (row.CustomerCode, row.CustomerName, row.CustomerType, row.IsActive,
+                    row.ContainerTypeId, row.ContainerType, row.ContainerDisplayOrder,
+                    row.Balance, row.LastMovementDate)),
+            row => Assert.Equal(
+                ("ALPHA-01", "Alpha Customer", CustomerType.CashCod, false,
+                    2, "Small Bin", 2, -2, new DateOnly(2026, 8, 9)),
+                (row.CustomerCode, row.CustomerName, row.CustomerType, row.IsActive,
+                    row.ContainerTypeId, row.ContainerType, row.ContainerDisplayOrder,
+                    row.Balance, row.LastMovementDate)),
+            row => Assert.Equal(
+                ("ZULU-01", "Zulu Customer", CustomerType.Account, true,
+                    1, "Blue Bin", 1, 1, new DateOnly(2026, 8, 5)),
+                (row.CustomerCode, row.CustomerName, row.CustomerType, row.IsActive,
+                    row.ContainerTypeId, row.ContainerType, row.ContainerDisplayOrder,
+                    row.Balance, row.LastMovementDate)));
+        Assert.DoesNotContain(result.Rows, row => row.ContainerTypeId == 3);
+
+        Assert.Collection(
+            result.ContainerTotals,
+            total => Assert.Equal(
+                (1, "Blue Bin", 1, 5, 0, 2),
+                (total.ContainerTypeId, total.ContainerType, total.DisplayOrder,
+                    total.OutstandingQuantity, total.CreditQuantity, total.PositionCount)),
+            total => Assert.Equal(
+                (2, "Small Bin", 2, 0, 2, 1),
+                (total.ContainerTypeId, total.ContainerType, total.DisplayOrder,
+                    total.OutstandingQuantity, total.CreditQuantity, total.PositionCount)));
+
+        var activeOnly = await service.QueryAsync(new OutstandingReportQuery(
+            asOfDate,
+            BalanceFilter: OutstandingBalanceFilter.AllNonZero,
+            IncludeInactiveCustomers: false));
+        Assert.Equal("ZULU-01", Assert.Single(activeOnly.Rows).CustomerCode);
+    }
+
+    [Fact]
+    public async Task Balance_narrowing_overflow_fails_closed()
+    {
+        await using var scope = await CreateScopeAsync();
+        var factory = scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
+
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            var customer = new Customer
+            {
+                CustomerCode = "OVERFLOW",
+                Name = "Overflow Customer",
+                IsActive = true
+            };
+            db.Customers.Add(customer);
+            await db.SaveChangesAsync();
+
+            db.BinMovements.AddRange(
+                new BinMovement
+                {
+                    MovementDate = new DateOnly(2026, 8, 10),
+                    MovementType = MovementType.Out,
+                    Source = MovementSource.Manual,
+                    CustomerId = customer.Id,
+                    ContainerTypeId = 1,
+                    Quantity = int.MaxValue
+                },
+                new BinMovement
+                {
+                    MovementDate = new DateOnly(2026, 8, 10),
+                    MovementType = MovementType.Out,
+                    Source = MovementSource.Manual,
+                    CustomerId = customer.Id,
+                    ContainerTypeId = 1,
+                    Quantity = 1
+                });
+            await db.SaveChangesAsync();
+        }
+
+        var service = scope.ServiceProvider.GetRequiredService<IOutstandingReportService>();
+        await Assert.ThrowsAsync<OverflowException>(() => service.QueryAsync(
+            new OutstandingReportQuery(
+                new DateOnly(2026, 8, 10),
+                BalanceFilter: OutstandingBalanceFilter.AllNonZero)));
+    }
+
     private static async Task<AsyncServiceScope> CreateScopeAsync()
     {
         var connection =

@@ -67,7 +67,8 @@ public interface IOutstandingReportService
 }
 
 internal sealed class OutstandingReportService(
-    IDbContextFactory<BinTrackerDbContext> factory)
+    IDbContextFactory<BinTrackerDbContext> factory,
+    IOperationalMovementProjectionAuthority? operationalProjection = null)
     : IOutstandingReportService
 {
     public async Task<OutstandingReportResult> QueryAsync(
@@ -77,35 +78,73 @@ internal sealed class OutstandingReportService(
         await using var db =
             await factory.CreateDbContextAsync(cancellationToken);
 
-        // Historical position is derived directly from the immutable movement
-        // ledger. A movement dated after AsOfDate must never affect the result.
-        var movementQuery = db.BinMovements
-            .AsNoTracking()
-            .Where(x => x.MovementDate <= query.AsOfDate);
-
-        if (query.ContainerTypeId.HasValue)
+        List<(int CustomerId, int ContainerTypeId, int Balance, DateOnly LastMovementDate)> totals;
+        if (operationalProjection is null)
         {
-            movementQuery = movementQuery.Where(
-                x => x.ContainerTypeId == query.ContainerTypeId.Value);
-        }
+            // Normal schema-16 composition retains the accepted alpha.8 authority.
+            // A movement dated after AsOfDate must never affect the result.
+            var movementQuery = db.BinMovements
+                .AsNoTracking()
+                .Where(x => x.MovementDate <= query.AsOfDate);
 
-        var totals = await movementQuery
-            .GroupBy(x => new
+            if (query.ContainerTypeId.HasValue)
             {
-                x.CustomerId,
-                x.ContainerTypeId
-            })
-            .Select(g => new
-            {
-                g.Key.CustomerId,
-                g.Key.ContainerTypeId,
-                Balance = g.Sum(x =>
-                    x.MovementType == MovementType.Out
-                        ? x.Quantity
-                        : -x.Quantity),
-                LastMovementDate = g.Max(x => x.MovementDate)
-            })
-            .ToListAsync(cancellationToken);
+                movementQuery = movementQuery.Where(
+                    x => x.ContainerTypeId == query.ContainerTypeId.Value);
+            }
+
+            var rawTotals = await movementQuery
+                .GroupBy(x => new
+                {
+                    x.CustomerId,
+                    x.ContainerTypeId
+                })
+                .Select(g => new
+                {
+                    g.Key.CustomerId,
+                    g.Key.ContainerTypeId,
+                    Balance = g.Sum(x =>
+                        x.MovementType == MovementType.Out
+                            ? x.Quantity
+                            : -x.Quantity),
+                    LastMovementDate = g.Max(x => x.MovementDate)
+                })
+                .ToListAsync(cancellationToken);
+            totals = rawTotals
+                .Select(x => (x.CustomerId, x.ContainerTypeId, x.Balance, x.LastMovementDate))
+                .ToList();
+        }
+        else
+        {
+            var projected = await operationalProjection.QueryAsync(
+                OperationalMovementProjectionScope.PositionAsOf(
+                    query.AsOfDate,
+                    containerTypeId: query.ContainerTypeId),
+                cancellationToken);
+            var lastMovementDates = projected.Activity
+                .GroupBy(x => (x.CustomerId, x.ContainerTypeId))
+                .ToDictionary(
+                    x => x.Key,
+                    x => x.Max(movement => movement.MovementDate));
+            totals = projected.Positions
+                .Select(x =>
+                {
+                    if (!lastMovementDates.TryGetValue(
+                            (x.CustomerId, x.ContainerTypeId),
+                            out var lastMovementDate))
+                    {
+                        throw new InvalidOperationException(
+                            "An operational position has no projected activity evidence.");
+                    }
+
+                    return (
+                        x.CustomerId,
+                        x.ContainerTypeId,
+                        Balance: checked((int)x.Quantity),
+                        LastMovementDate: lastMovementDate);
+                })
+                .ToList();
+        }
 
         if (totals.Count == 0)
         {
