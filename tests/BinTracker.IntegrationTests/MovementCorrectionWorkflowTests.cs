@@ -183,6 +183,19 @@ public sealed class MovementCorrectionWorkflowTests
         Assert.Equal((0, 4), (reversalDay.OutQuantity, reversalDay.InQuantity));
         Assert.Single(reversalDay.Rows, x => x.MovementId == reversed.ReversalMovementId);
 
+        var weekly = h.Provider.GetRequiredService<IWeeklyMovementsReportService>();
+        var replacementWeek = await weekly.QueryAsync(new(replacementDate));
+        Assert.Equal((4, 0), (replacementWeek.OutQuantity, replacementWeek.InQuantity));
+        Assert.Single(replacementWeek.Rows,
+            x => x.MovementId == corrected.ReplacementMovementId);
+        Assert.DoesNotContain(replacementWeek.Rows, x => x.MovementId == original);
+        Assert.DoesNotContain(replacementWeek.Rows,
+            x => x.MovementId == corrected.NeutralisingMovementId);
+        var reversalWeek = await weekly.QueryAsync(new(new DateOnly(2026, 8, 26)));
+        Assert.Equal((0, 4), (reversalWeek.OutQuantity, reversalWeek.InQuantity));
+        Assert.Single(reversalWeek.Rows,
+            x => x.MovementId == reversed.ReversalMovementId);
+
         var balances = await h.Provider.GetRequiredService<IBalanceService>().GetBalancesAsync();
         Assert.DoesNotContain(balances,
             x => x.CustomerId == h.CustomerId && x.ContainerTypeId == 1 && x.Balance != 0);

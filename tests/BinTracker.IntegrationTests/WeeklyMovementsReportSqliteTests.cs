@@ -151,10 +151,175 @@ public sealed class WeeklyMovementsReportSqliteTests
         Assert.DoesNotContain(result.Rows, x => x.MovementDate > today);
     }
 
+    [Fact]
+    public async Task Weekly_query_preserves_historical_metadata_order_summary_and_source_distinctions()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<BinTrackerDbContext>(
+            options => options.UseSqlite(connection));
+        services.AddBinTrackerServices();
+
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var factory = scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
+        var monday = new DateOnly(2026, 8, 10);
+
+        int inactiveCustomerId;
+        int activeCustomerId;
+        long firstInactiveMovementId;
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            await db.Database.EnsureCreatedAsync();
+            await DatabaseSetup.InitializeSqliteAsync(db);
+
+            var inactive = new Customer
+            {
+                CustomerCode = "ALPHA",
+                Name = "Inactive Alpha",
+                CustomerType = CustomerType.CashCod,
+                IsActive = false
+            };
+            var active = new Customer
+            {
+                CustomerCode = "BETA",
+                Name = "Active Beta",
+                CustomerType = CustomerType.Account
+            };
+            db.Customers.AddRange(inactive, active);
+            (await db.ContainerTypes.SingleAsync(x => x.Id == 2)).IsActive = false;
+            await db.SaveChangesAsync();
+            inactiveCustomerId = inactive.Id;
+            activeCustomerId = active.Id;
+
+            var firstInactive = Movement(inactive.Id, 2, monday,
+                MovementType.In, MovementSource.ExcelImport, 2);
+            firstInactive.ReferenceNumber = "excel-ref";
+            firstInactive.Notes = "excel-notes";
+            firstInactive.CreatedBy = "import-user";
+            db.BinMovements.AddRange(
+                firstInactive,
+                Movement(inactive.Id, 2, monday.AddDays(1),
+                    MovementType.Out, MovementSource.Adjustment, 4),
+                Movement(inactive.Id, 2, monday.AddDays(6),
+                    MovementType.Out, MovementSource.Batch, 3),
+                Movement(active.Id, 3, monday.AddDays(1),
+                    MovementType.Out, MovementSource.Manual, 5));
+            await db.SaveChangesAsync();
+            firstInactiveMovementId = firstInactive.Id;
+        }
+
+        var service = scope.ServiceProvider
+            .GetRequiredService<IWeeklyMovementsReportService>();
+
+        var physical = await service.QueryAsync(new(monday));
+        Assert.Equal(
+            new[]
+            {
+                (inactiveCustomerId, MovementSource.ExcelImport),
+                (activeCustomerId, MovementSource.Manual),
+                (inactiveCustomerId, MovementSource.Batch)
+            },
+            physical.Rows.Select(x => (x.CustomerId, x.Source)));
+        var imported = Assert.Single(physical.Rows,
+            x => x.MovementId == firstInactiveMovementId);
+        Assert.Equal(
+            (monday, inactiveCustomerId, "ALPHA", "Inactive Alpha",
+                CustomerType.CashCod, 2, "Small Bin", 2, MovementType.In,
+                2, MovementSource.ExcelImport, "excel-ref", "excel-notes", "import-user"),
+            (imported.MovementDate, imported.CustomerId, imported.CustomerCode,
+                imported.CustomerName, imported.CustomerType, imported.ContainerTypeId,
+                imported.ContainerType, imported.ContainerDisplayOrder, imported.Direction,
+                imported.Quantity, imported.Source, imported.Reference, imported.Notes,
+                imported.EnteredBy));
+
+        var withAdjustments = await service.QueryAsync(new(monday,
+            IncludeAdjustments: true));
+        Assert.Equal((12, 2, 10),
+            (withAdjustments.OutQuantity, withAdjustments.InQuantity,
+                withAdjustments.NetQuantity));
+        Assert.Equal(
+            new[]
+            {
+                (inactiveCustomerId, "ALPHA", 2, "Small Bin", 2, 7, 2, 5),
+                (activeCustomerId, "BETA", 3, "Yellow Bin", 3, 5, 0, 5)
+            },
+            withAdjustments.Summary.Select(x =>
+                (x.CustomerId, x.CustomerCode, x.ContainerTypeId, x.ContainerType,
+                    x.ContainerDisplayOrder, x.OutQuantity, x.InQuantity, x.NetQuantity)));
+
+        Assert.Empty((await service.QueryAsync(new(monday,
+            Source: MovementSource.Adjustment))).Rows);
+        Assert.Single((await service.QueryAsync(new(monday,
+            Source: MovementSource.Adjustment,
+            IncludeAdjustments: true))).Rows);
+        Assert.Single((await service.QueryAsync(new(monday,
+            Source: MovementSource.ExcelImport))).Rows);
+        Assert.Equal(2, (await service.QueryAsync(new(monday,
+            CustomerSearch: "  inactive alpha  ",
+            ContainerTypeId: 2,
+            Source: MovementSource.ExcelImport))).InQuantity);
+    }
+
+    [Fact]
+    public async Task Weekly_query_fails_closed_when_integer_summary_totals_overflow()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var services = new ServiceCollection();
+        services.AddDbContextFactory<BinTrackerDbContext>(
+            options => options.UseSqlite(connection));
+        services.AddBinTrackerServices();
+
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var factory = scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
+        var monday = new DateOnly(2026, 8, 10);
+
+        await using (var db = await factory.CreateDbContextAsync())
+        {
+            await db.Database.EnsureCreatedAsync();
+            await DatabaseSetup.InitializeSqliteAsync(db);
+            var customer = new Customer
+            {
+                CustomerCode = "OVERFLOW",
+                Name = "Overflow Customer"
+            };
+            db.Customers.Add(customer);
+            await db.SaveChangesAsync();
+            db.BinMovements.AddRange(
+                Movement(customer.Id, 1, monday, MovementType.Out,
+                    MovementSource.Manual, int.MaxValue),
+                Movement(customer.Id, 1, monday.AddDays(1), MovementType.Out,
+                    MovementSource.Manual, 1));
+            await db.SaveChangesAsync();
+        }
+
+        var service = scope.ServiceProvider
+            .GetRequiredService<IWeeklyMovementsReportService>();
+
+        await Assert.ThrowsAsync<OverflowException>(() =>
+            service.QueryAsync(new(monday)));
+    }
+
     private static BinMovement M(int customerId,int containerId,DateOnly date,
         MovementType type,MovementSource source,int qty)=>new()
     {
         CustomerId=customerId,ContainerTypeId=containerId,MovementDate=date,
         MovementType=type,Source=source,Quantity=qty,CreatedBy="test",CreatedUtc=DateTime.UtcNow
     };
+
+    private static BinMovement Movement(
+        int customerId,
+        int containerTypeId,
+        DateOnly date,
+        MovementType type,
+        MovementSource source,
+        int quantity) =>
+        M(customerId, containerTypeId, date, type, source, quantity);
 }

@@ -850,6 +850,220 @@ public sealed class OperationalMovementProjectionSchema17Tests
     }
 
     [Fact]
+    public async Task Projection_backed_weekly_maps_corrected_reversed_and_excluded_activity_once()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        var currentWeekDate = new DateOnly(2026, 9, 2);
+
+        var corrected = await h.CreateSingleAsync(
+            new(2026, 8, 30), h.CustomerId, 1, 7);
+        var correctedLineId = Assert.Single(await h.LineIdsAsync(corrected.RootId));
+        await h.MutateAsync(corrected.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(correctedLineId)],
+                "move weekly activity into the authoritative week",
+                movementDate: MovementFieldIntent<DateOnly>.Selected(currentWeekDate),
+                direction: MovementFieldIntent<MovementType>.Selected(MovementType.In),
+                customer: MovementFieldIntent<int>.Selected(h.OtherCustomerId),
+                containerType: MovementFieldIntent<int>.Selected(2),
+                quantity: MovementFieldIntent<int>.Selected(9),
+                reference: MovementFieldIntent<string>.Selected("weekly-ref"),
+                notes: MovementFieldIntent<string>.Selected("weekly-notes")));
+        var firstRoles = await h.MovementIdsByRoleAsync(corrected.RootId);
+        var firstReplacementId = firstRoles[
+            LogicalMovementTransformationRole.CorrectionReplacement];
+        var firstNeutraliserId = firstRoles[
+            LogicalMovementTransformationRole.CorrectionNeutraliser];
+
+        await h.MutateAsync(corrected.RootId, 1,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(correctedLineId)],
+                "move weekly activity to its final authoritative day",
+                movementDate: MovementFieldIntent<DateOnly>.Selected(new(2026, 9, 3)),
+                notes: MovementFieldIntent<string>.Selected("weekly-final-notes")));
+        var currentRoles = await h.MovementIdsByRoleAsync(corrected.RootId);
+        var finalReplacementId = currentRoles[
+            LogicalMovementTransformationRole.CorrectionReplacement];
+        var finalNeutraliserId = currentRoles[
+            LogicalMovementTransformationRole.CorrectionNeutraliser];
+
+        var reversed = await h.CreateSingleAsync(
+            new(2026, 9, 4), h.CustomerId, 1, 5);
+        var reversedLineId = Assert.Single(await h.LineIdsAsync(reversed.RootId));
+        await h.MutateAsync(reversed.RootId, 0,
+            MovementMutationRequest.Reverse(
+                MovementMutationScope.Individual,
+                [new(reversedLineId)],
+                "reverse weekly movement"));
+        var reversalId = (await h.MovementIdsByRoleAsync(reversed.RootId))[
+            LogicalMovementTransformationRole.OrdinaryReversal];
+
+        var outside = await h.CreateSingleAsync(
+            new(2026, 8, 20), h.CustomerId, 3, 100);
+        await h.AddExcludedAsync(
+            MovementSource.Adjustment, MovementType.Out, 2, importOwned: false,
+            movementDate: new(2026, 9, 1));
+        await h.AddExcludedAsync(
+            MovementSource.ExcelImport, MovementType.In, 1, importOwned: true,
+            movementDate: new(2026, 9, 1));
+        await h.AddExcludedAsync(
+            MovementSource.ExcelImport, MovementType.Out, 99, importOwned: true,
+            movementDate: Harness.Today.AddDays(1));
+
+        await using (var db = new BinTrackerDbContext(
+                         new DbContextOptionsBuilder<BinTrackerDbContext>()
+                             .UseSqlite(h.ConnectionString).Options))
+        {
+            (await db.Customers.SingleAsync(x => x.Id == h.OtherCustomerId)).IsActive = false;
+            (await db.ContainerTypes.SingleAsync(x => x.Id == 2)).IsActive = false;
+            await db.SaveChangesAsync();
+        }
+
+        var weekly = await h.Weekly.QueryAsync(new(currentWeekDate));
+
+        Assert.Equal((new DateOnly(2026, 8, 31), new DateOnly(2026, 9, 6),
+            Harness.Today), (weekly.WeekStart, weekly.WeekEnd, weekly.DataThroughDate));
+        Assert.Equal(4, weekly.Rows.Count);
+        Assert.DoesNotContain(weekly.Rows, x => x.MovementId == corrected.MovementId);
+        Assert.DoesNotContain(weekly.Rows, x => x.MovementId == firstNeutraliserId);
+        Assert.DoesNotContain(weekly.Rows, x => x.MovementId == firstReplacementId);
+        Assert.DoesNotContain(weekly.Rows, x => x.MovementId == finalNeutraliserId);
+        Assert.DoesNotContain(weekly.Rows, x => x.MovementId == outside.MovementId);
+        Assert.Single(weekly.Rows, x => x.MovementId == finalReplacementId);
+        Assert.Single(weekly.Rows, x => x.MovementId == reversed.MovementId);
+        Assert.Single(weekly.Rows, x => x.MovementId == reversalId);
+        Assert.Single(weekly.Rows, x => x.Source == MovementSource.ExcelImport);
+        Assert.DoesNotContain(weekly.Rows, x => x.MovementDate > Harness.Today);
+        Assert.DoesNotContain(weekly.Rows,
+            x => x.Source == MovementSource.Adjustment);
+        Assert.Equal(
+            new[]
+            {
+                (new DateOnly(2026, 9, 1), "PROJ-A", MovementType.In,
+                    MovementSource.ExcelImport),
+                (new DateOnly(2026, 9, 3), "PROJ-B", MovementType.In,
+                    MovementSource.Manual),
+                (new DateOnly(2026, 9, 4), "PROJ-A", MovementType.Out,
+                    MovementSource.Manual),
+                (Harness.Today, "PROJ-A", MovementType.In,
+                    MovementSource.Manual)
+            },
+            weekly.Rows.Select(x =>
+                (x.MovementDate, x.CustomerCode, x.Direction, x.Source)));
+
+        var replacement = Assert.Single(weekly.Rows,
+            x => x.MovementId == finalReplacementId);
+        Assert.Equal(
+            (new DateOnly(2026, 9, 3), h.OtherCustomerId, "PROJ-B", "Projection B",
+                2, "Small Bin", 2, MovementType.In, 9, MovementSource.Manual,
+                "weekly-ref", "weekly-final-notes", "projection-operator"),
+            (replacement.MovementDate, replacement.CustomerId, replacement.CustomerCode,
+                replacement.CustomerName, replacement.ContainerTypeId,
+                replacement.ContainerType, replacement.ContainerDisplayOrder,
+                replacement.Direction, replacement.Quantity, replacement.Source,
+                replacement.Reference, replacement.Notes, replacement.EnteredBy));
+        Assert.Equal((5, 15, -10),
+            (weekly.OutQuantity, weekly.InQuantity, weekly.NetQuantity));
+        Assert.Equal(
+            new[]
+            {
+                (h.CustomerId, "PROJ-A", 1, "Blue Bin", 1, 5, 6, -1),
+                (h.OtherCustomerId, "PROJ-B", 2, "Small Bin", 2, 0, 9, -9)
+            },
+            weekly.Summary.Select(x =>
+                (x.CustomerId, x.CustomerCode, x.ContainerTypeId, x.ContainerType,
+                    x.ContainerDisplayOrder, x.OutQuantity, x.InQuantity, x.NetQuantity)));
+
+        Assert.Single(h.ProjectionServiceCalls);
+        var currentWeekCall = h.ProjectionServiceCalls[0];
+        Assert.False(currentWeekCall.IsPositionAsOf);
+        Assert.Equal(new DateOnly(2026, 8, 31), currentWeekCall.FromDateInclusive);
+        Assert.Equal(Harness.Today, currentWeekCall.ThroughDateInclusive);
+        Assert.Null(currentWeekCall.CustomerId);
+        Assert.Null(currentWeekCall.ContainerTypeId);
+
+        var sourceWeek = await h.Weekly.QueryAsync(new(new DateOnly(2026, 8, 30)));
+        Assert.Empty(sourceWeek.Rows);
+        Assert.Equal(2, h.ProjectionServiceCalls.Count);
+
+        var excel = await h.Weekly.QueryAsync(new(currentWeekDate,
+            Source: MovementSource.ExcelImport));
+        Assert.Equal(MovementSource.ExcelImport, Assert.Single(excel.Rows).Source);
+
+        Assert.Empty((await h.Weekly.QueryAsync(new(currentWeekDate,
+            Source: MovementSource.Adjustment))).Rows);
+        var adjustment = await h.Weekly.QueryAsync(new(currentWeekDate,
+            Source: MovementSource.Adjustment,
+            IncludeAdjustments: true));
+        Assert.Equal(MovementSource.Adjustment, Assert.Single(adjustment.Rows).Source);
+
+        var filtered = await h.Weekly.QueryAsync(new(currentWeekDate,
+            CustomerSearch: "  projection b  ",
+            ContainerTypeId: 2,
+            Source: MovementSource.Manual));
+        Assert.Equal(finalReplacementId, Assert.Single(filtered.Rows).MovementId);
+        Assert.Equal(2, h.ProjectionServiceCalls[^1].ContainerTypeId);
+
+        var clamped = await h.Weekly.QueryAsync(new(Harness.Today.AddDays(14)));
+        Assert.Equal((new DateOnly(2026, 8, 31), Harness.Today),
+            (clamped.WeekStart, clamped.DataThroughDate));
+        Assert.Equal(weekly.Rows.Select(x => x.MovementId),
+            clamped.Rows.Select(x => x.MovementId));
+
+        Assert.Equal(7, h.ProjectionServiceCalls.Count);
+        Assert.All(h.ProjectionServiceCalls, call =>
+        {
+            Assert.False(call.IsPositionAsOf);
+            Assert.NotNull(call.FromDateInclusive);
+            Assert.NotNull(call.ThroughDateInclusive);
+            Assert.Null(call.CustomerId);
+        });
+        Assert.Equal(Harness.Today,
+            h.ProjectionServiceCalls[^1].ThroughDateInclusive);
+    }
+
+    [Fact]
+    public async Task Projection_backed_weekly_propagates_integrity_failure_without_raw_fallback()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        var root = await h.CreateSingleAsync(
+            new(2026, 9, 3), h.CustomerId, 1, 6);
+        await h.SetRootStatusAsync(root.RootId, LogicalMovementBatchStatus.Invalid);
+
+        var failure = await Assert.ThrowsAsync<OperationalMovementProjectionException>(() =>
+            h.Weekly.QueryAsync(new(new DateOnly(2026, 9, 3))));
+
+        Assert.Equal(
+            OperationalMovementProjectionFailure.RelevantLineageInvalid,
+            failure.Failure);
+        Assert.Single(h.ProjectionServiceCalls);
+    }
+
+    [Fact]
+    public async Task Projection_backed_weekly_fails_closed_when_integer_totals_overflow()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        var reportDate = new DateOnly(2026, 9, 3);
+        await h.CreateSingleAsync(reportDate, h.CustomerId, 1, int.MaxValue);
+        var moved = await h.CreateSingleAsync(
+            reportDate, h.OtherCustomerId, 1, 1);
+        var movedLineId = Assert.Single(await h.LineIdsAsync(moved.RootId));
+        await h.MutateAsync(moved.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(movedLineId)],
+                "move weekly activity across int boundary",
+                customer: MovementFieldIntent<int>.Selected(h.CustomerId)));
+
+        await Assert.ThrowsAsync<OverflowException>(() =>
+            h.Weekly.QueryAsync(new(reportDate)));
+
+        Assert.Single(h.ProjectionServiceCalls);
+    }
+
+    [Fact]
     public async Task Projection_backed_int_position_mappings_fail_closed_on_overflow()
     {
         await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
@@ -929,6 +1143,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
             ContainerTypes = services.GetRequiredService<IContainerTypeService>();
             Outstanding = services.GetRequiredService<IOutstandingReportService>();
             Daily = services.GetRequiredService<IDailyMovementsReportService>();
+            Weekly = services.GetRequiredService<IWeeklyMovementsReportService>();
             Authority = new SqliteOperationalMovementProjectionAuthority(connectionString);
         }
 
@@ -942,6 +1157,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
         public IContainerTypeService ContainerTypes { get; }
         public IOutstandingReportService Outstanding { get; }
         public IDailyMovementsReportService Daily { get; }
+        public IWeeklyMovementsReportService Weekly { get; }
         public IOperationalMovementProjectionAuthority Authority { get; }
         public IReadOnlyList<OperationalMovementProjectionScope> ProjectionServiceCalls =>
             services.GetService<IOperationalMovementProjectionAuthority>() is RecordingProjectionAuthority recording
@@ -1063,7 +1279,8 @@ public sealed class OperationalMovementProjectionSchema17Tests
                 run = new ImportRun
                 {
                     SourceFileName = "projection.xlsx", SourceClientPath = "projection.xlsx",
-                    SourceSha256 = new string('a', 64), SourceLength = 1,
+                    SourceSha256 = Guid.NewGuid().ToString("N") +
+                        Guid.NewGuid().ToString("N"), SourceLength = 1,
                     SourceLastWriteUtc = UtcNow, CutoverDate = new(2026, 9, 1),
                     StartedUtc = UtcNow, CompletedUtc = UtcNow, Status = "Completed",
                     Username = "projection", SessionId = "projection"
