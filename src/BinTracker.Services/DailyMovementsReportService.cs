@@ -73,7 +73,8 @@ public interface IDailyMovementsReportService
 
 internal sealed class DailyMovementsReportService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    IBusinessClock clock)
+    IBusinessClock clock,
+    IOperationalMovementProjectionAuthority? operationalProjection = null)
     : IDailyMovementsReportService
 {
     public async Task<DailyMovementsReportResult> QueryAsync(
@@ -88,71 +89,110 @@ internal sealed class DailyMovementsReportService(
         await using var db =
             await factory.CreateDbContextAsync(cancellationToken);
 
-        var movements = db.EffectiveOperationalMovements()
-            .Where(x => x.MovementDate == reportDate);
+        List<DailyMovementActivity> movements;
+        if (operationalProjection is null)
+        {
+            movements = await db.EffectiveOperationalMovements()
+                .Where(x => x.MovementDate == reportDate)
+                .Select(x => new DailyMovementActivity(
+                    x.Id,
+                    x.MovementDate,
+                    x.CreatedUtc,
+                    x.CustomerId,
+                    x.ContainerTypeId,
+                    x.MovementType,
+                    x.Quantity,
+                    x.Source,
+                    x.ReferenceNumber,
+                    x.Notes,
+                    x.CreatedBy))
+                .ToListAsync(cancellationToken);
+        }
+        else
+        {
+            var projected = await operationalProjection.QueryAsync(
+                OperationalMovementProjectionScope.Activity(
+                    reportDate,
+                    reportDate,
+                    containerTypeId: query.ContainerTypeId),
+                cancellationToken);
+            movements = projected.Activity
+                .Select(x => new DailyMovementActivity(
+                    x.EvidenceMovementId,
+                    x.MovementDate,
+                    x.CreatedUtc,
+                    x.CustomerId,
+                    x.ContainerTypeId,
+                    x.MovementType,
+                    x.Quantity,
+                    x.Source,
+                    x.ReferenceNumber,
+                    x.Notes,
+                    x.CreatedBy))
+                .ToList();
+        }
 
         if (!query.IncludeAdjustments)
-            movements = movements.Where(
-                x => x.Source != MovementSource.Adjustment);
+            movements = movements
+                .Where(x => x.Source != MovementSource.Adjustment)
+                .ToList();
 
         if (query.ContainerTypeId.HasValue)
-            movements = movements.Where(
-                x => x.ContainerTypeId == query.ContainerTypeId.Value);
+            movements = movements
+                .Where(x => x.ContainerTypeId == query.ContainerTypeId.Value)
+                .ToList();
 
         if (query.Direction.HasValue)
-            movements = movements.Where(
-                x => x.MovementType == query.Direction.Value);
+            movements = movements
+                .Where(x => x.Direction == query.Direction.Value)
+                .ToList();
 
         if (query.Source.HasValue)
-            movements = movements.Where(
-                x => x.Source == query.Source.Value);
+            movements = movements
+                .Where(x => x.Source == query.Source.Value)
+                .ToList();
 
-        var raw = await movements
-            .Select(x => new
-            {
-                x.Id,
-                x.MovementDate,
-                x.CreatedUtc,
-                x.CustomerId,
-                CustomerCode = x.Customer.CustomerCode ?? "",
-                CustomerName = x.Customer.Name,
-                x.Customer.CustomerType,
-                x.ContainerTypeId,
-                ContainerType = x.ContainerType.Name,
-                ContainerDisplayOrder = x.ContainerType.DisplayOrder,
-                Direction = x.MovementType,
-                x.Quantity,
-                x.Source,
-                Reference = x.ReferenceNumber ?? "",
-                Notes = x.Notes ?? "",
-                EnteredBy = x.CreatedBy ?? ""
-            })
-            .ToListAsync(cancellationToken);
+        if (movements.Count == 0)
+            return new DailyMovementsReportResult(reportDate, [], []);
+
+        var customers = await db.Customers
+            .AsNoTracking()
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+        var containers = await db.ContainerTypes
+            .AsNoTracking()
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
 
         var search = query.CustomerSearch?.Trim();
 
-        var rows = raw
+        var rows = movements
+            .Where(x => customers.ContainsKey(x.CustomerId) &&
+                        containers.ContainsKey(x.ContainerTypeId))
             .Where(x =>
                 string.IsNullOrWhiteSpace(search) ||
-                Contains(x.CustomerCode, search) ||
-                Contains(x.CustomerName, search))
-            .Select(x => new DailyMovementReportRow(
-                x.Id,
-                x.MovementDate,
-                x.CreatedUtc,
-                x.CustomerId,
-                x.CustomerCode,
-                x.CustomerName,
-                x.CustomerType,
-                x.ContainerTypeId,
-                x.ContainerType,
-                x.ContainerDisplayOrder,
-                x.Direction,
-                x.Quantity,
-                x.Source,
-                x.Reference,
-                x.Notes,
-                x.EnteredBy))
+                Contains(customers[x.CustomerId].CustomerCode, search) ||
+                Contains(customers[x.CustomerId].Name, search))
+            .Select(x =>
+            {
+                var customer = customers[x.CustomerId];
+                var container = containers[x.ContainerTypeId];
+                return new DailyMovementReportRow(
+                    x.MovementId,
+                    x.MovementDate,
+                    x.RecordedUtc,
+                    x.CustomerId,
+                    customer.CustomerCode ?? "",
+                    customer.Name,
+                    customer.CustomerType,
+                    x.ContainerTypeId,
+                    container.Name,
+                    container.DisplayOrder,
+                    x.Direction,
+                    x.Quantity,
+                    x.Source,
+                    x.Reference ?? "",
+                    x.Notes ?? "",
+                    x.EnteredBy ?? "");
+            })
             .OrderBy(x => x.CustomerCode, StringComparer.OrdinalIgnoreCase)
             .ThenBy(x => x.CustomerName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(x => x.ContainerDisplayOrder)
@@ -188,4 +228,17 @@ internal sealed class DailyMovementsReportService(
     private static bool Contains(string? value, string term) =>
         !string.IsNullOrWhiteSpace(value) &&
         value.Contains(term, StringComparison.OrdinalIgnoreCase);
+
+    private sealed record DailyMovementActivity(
+        long MovementId,
+        DateOnly MovementDate,
+        DateTime RecordedUtc,
+        int CustomerId,
+        int ContainerTypeId,
+        MovementType Direction,
+        int Quantity,
+        MovementSource Source,
+        string? Reference,
+        string? Notes,
+        string? EnteredBy);
 }
