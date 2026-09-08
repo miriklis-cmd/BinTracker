@@ -1239,6 +1239,173 @@ public sealed class OperationalMovementProjectionSchema17Tests
     }
 
     [Fact]
+    public async Task Projection_backed_market_floor_uses_one_as_of_result_for_corrected_reversed_and_excluded_truth()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+
+        var corrected = await h.CreateSingleAsync(
+            new(2026, 8, 30), h.CustomerId, 1, 7);
+        var correctedLineId = Assert.Single(await h.LineIdsAsync(corrected.RootId));
+        await h.MutateAsync(corrected.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(correctedLineId)],
+                "move every market-floor coordinate",
+                movementDate: MovementFieldIntent<DateOnly>.Selected(new(2026, 9, 2)),
+                direction: MovementFieldIntent<MovementType>.Selected(MovementType.In),
+                customer: MovementFieldIntent<int>.Selected(h.OtherCustomerId),
+                containerType: MovementFieldIntent<int>.Selected(3),
+                quantity: MovementFieldIntent<int>.Selected(9)));
+        await h.MutateAsync(corrected.RootId, 1,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(correctedLineId)],
+                "retain only the current corrected market-floor generation",
+                movementDate: MovementFieldIntent<DateOnly>.Selected(new(2026, 9, 3)),
+                quantity: MovementFieldIntent<int>.Selected(6)));
+
+        var reversed = await h.CreateSingleAsync(
+            new(2026, 9, 4), h.CustomerId, 1, 5);
+        var reversedLineId = Assert.Single(await h.LineIdsAsync(reversed.RootId));
+        await h.MutateAsync(reversed.RootId, 0,
+            MovementMutationRequest.Reverse(
+                MovementMutationScope.Individual,
+                [new(reversedLineId)],
+                "reverse market-floor movement"));
+
+        await h.AddExcludedAsync(
+            MovementSource.Adjustment, MovementType.Out, 2, importOwned: false,
+            movementDate: Harness.Today);
+        await h.AddExcludedAsync(
+            MovementSource.ExcelImport, MovementType.In, 1, importOwned: true,
+            movementDate: Harness.Today);
+        await h.SetCustomerTypeAsync(h.OtherCustomerId, CustomerType.CashCod);
+
+        var supersededDate = await h.MarketFloor.GetAsync(new(2026, 9, 2));
+        Assert.All(supersededDate.AccountDaily, x => Assert.Equal(0, x.Total));
+        Assert.All(supersededDate.CashDaily, x => Assert.Equal(0, x.Total));
+
+        var current = await h.MarketFloor.GetAsync(Harness.Today);
+
+        Assert.Equal(
+            new[]
+            {
+                (h.CustomerId, "PROJ-A", "Blue", 0, 6, 7, 1)
+            },
+            current.AccountDaily.Select(x =>
+                (x.CustomerId, x.Buyer, x.Container,
+                    x.Out, x.In, x.BroughtForward, x.Total)));
+        Assert.Equal(
+            new[]
+            {
+                (h.OtherCustomerId, "PROJ-B", "Yellow", 0, 0, -6, -6)
+            },
+            current.CashDaily.Select(x =>
+                (x.CustomerId, x.Buyer, x.Container,
+                    x.Out, x.In, x.BroughtForward, x.Total)));
+        Assert.Equal(
+            new[] { (h.CustomerId, "Blue", 1) },
+            current.AccountOwing.Select(x =>
+                (x.CustomerId, x.Container, x.Total)));
+        Assert.Equal(
+            new[] { (h.OtherCustomerId, "Yellow", -6) },
+            current.CashOwing.Select(x =>
+                (x.CustomerId, x.Container, x.Total)));
+        Assert.Empty(current.Credits);
+        Assert.Empty(current.SpecialContainers);
+
+        Assert.Equal(2, h.ProjectionServiceCalls.Count);
+        Assert.All(h.ProjectionServiceCalls, call =>
+        {
+            Assert.True(call.IsPositionAsOf);
+            Assert.Null(call.FromDateInclusive);
+            Assert.Null(call.CustomerId);
+            Assert.Null(call.ContainerTypeId);
+        });
+        Assert.Equal(new DateOnly(2026, 9, 2),
+            h.ProjectionServiceCalls[0].ThroughDateInclusive);
+        Assert.Equal(Harness.Today,
+            h.ProjectionServiceCalls[1].ThroughDateInclusive);
+    }
+
+    [Fact]
+    public async Task Projection_backed_market_floor_preserves_metadata_eligibility_zero_rows_and_order()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        var emptyCustomerId = await h.AddCustomerAsync(
+            "EMPTY", "No History", CustomerType.Account);
+        var specialCustomerId = await h.AddCustomerAsync(
+            "SPECIAL", "Special Only", CustomerType.CashCod);
+
+        await h.CreateSingleAsync(Harness.Today, h.CustomerId, 2, 4);
+        await h.CreateSingleAsync(Harness.Today, h.OtherCustomerId, 1, 9);
+        await h.CreateSingleAsync(Harness.Today, specialCustomerId, 5, 6);
+        await h.SetContainerActiveAsync(2, false);
+        await h.SetCustomerActiveAsync(h.OtherCustomerId, false);
+
+        var result = await h.MarketFloor.GetAsync(Harness.Today);
+
+        Assert.Equal(
+            new[]
+            {
+                (emptyCustomerId, "EMPTY", "Blue", 0),
+                (h.CustomerId, "PROJ-A", "Unknown", 4)
+            },
+            result.AccountDaily.Select(x =>
+                (x.CustomerId, x.Buyer, x.Container, x.Total)));
+        Assert.Equal(
+            new[] { (specialCustomerId, "SPECIAL", "Blue", 0) },
+            result.CashDaily.Select(x =>
+                (x.CustomerId, x.Buyer, x.Container, x.Total)));
+        Assert.Equal(
+            new[] { ("SPECIAL", "CHEP Pallet", 6) },
+            result.SpecialContainers.Select(x =>
+                (x.Buyer, x.Container, x.Balance)));
+        Assert.DoesNotContain(result.AccountDaily,
+            x => x.CustomerId == h.OtherCustomerId);
+        Assert.Single(h.ProjectionServiceCalls);
+    }
+
+    [Fact]
+    public async Task Projection_backed_market_floor_propagates_integrity_failure_without_raw_fallback()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        var root = await h.CreateSingleAsync(
+            new(2026, 9, 3), h.CustomerId, 1, 6);
+        await h.SetRootStatusAsync(root.RootId, LogicalMovementBatchStatus.Invalid);
+
+        var failure = await Assert.ThrowsAsync<OperationalMovementProjectionException>(() =>
+            h.MarketFloor.GetAsync(Harness.Today));
+
+        Assert.Equal(
+            OperationalMovementProjectionFailure.RelevantLineageInvalid,
+            failure.Failure);
+        Assert.Single(h.ProjectionServiceCalls);
+    }
+
+    [Fact]
+    public async Task Projection_backed_market_floor_fails_closed_when_position_narrowing_overflows()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        await h.CreateSingleAsync(
+            new(2026, 9, 1), h.CustomerId, 1, int.MaxValue);
+        var moved = await h.CreateSingleAsync(
+            new(2026, 9, 2), h.OtherCustomerId, 1, 1);
+        var movedLineId = Assert.Single(await h.LineIdsAsync(moved.RootId));
+        await h.MutateAsync(moved.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(movedLineId)],
+                "move market-floor position across int boundary",
+                customer: MovementFieldIntent<int>.Selected(h.CustomerId)));
+
+        await Assert.ThrowsAsync<OverflowException>(() =>
+            h.MarketFloor.GetAsync(Harness.Today));
+
+        Assert.Single(h.ProjectionServiceCalls);
+    }
+
+    [Fact]
     public async Task Projection_backed_int_position_mappings_fail_closed_on_overflow()
     {
         await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
@@ -1320,6 +1487,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
             Daily = services.GetRequiredService<IDailyMovementsReportService>();
             Weekly = services.GetRequiredService<IWeeklyMovementsReportService>();
             Monthly = services.GetRequiredService<IMonthlySummaryReportService>();
+            MarketFloor = services.GetRequiredService<IMarketFloorReportService>();
             Authority = new SqliteOperationalMovementProjectionAuthority(connectionString);
         }
 
@@ -1335,6 +1503,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
         public IDailyMovementsReportService Daily { get; }
         public IWeeklyMovementsReportService Weekly { get; }
         public IMonthlySummaryReportService Monthly { get; }
+        public IMarketFloorReportService MarketFloor { get; }
         public IOperationalMovementProjectionAuthority Authority { get; }
         public IReadOnlyList<OperationalMovementProjectionScope> ProjectionServiceCalls =>
             services.GetService<IOperationalMovementProjectionAuthority>() is RecordingProjectionAuthority recording
@@ -1442,6 +1611,49 @@ public sealed class OperationalMovementProjectionSchema17Tests
                 new DbContextOptionsBuilder<BinTrackerDbContext>().UseSqlite(ConnectionString).Options);
             var settings = await db.ApplicationSettings.SingleAsync(x => x.Id == 1);
             settings.AttentionQuantityThreshold = threshold;
+            await db.SaveChangesAsync();
+        }
+
+        public async Task<int> AddCustomerAsync(
+            string code,
+            string name,
+            CustomerType customerType)
+        {
+            await using var db = new BinTrackerDbContext(
+                new DbContextOptionsBuilder<BinTrackerDbContext>().UseSqlite(ConnectionString).Options);
+            var customer = new Customer
+            {
+                CustomerCode = code,
+                Name = name,
+                CustomerType = customerType,
+                IsActive = true
+            };
+            db.Add(customer);
+            await db.SaveChangesAsync();
+            return customer.Id;
+        }
+
+        public async Task SetCustomerTypeAsync(int customerId, CustomerType customerType)
+        {
+            await using var db = new BinTrackerDbContext(
+                new DbContextOptionsBuilder<BinTrackerDbContext>().UseSqlite(ConnectionString).Options);
+            (await db.Customers.SingleAsync(x => x.Id == customerId)).CustomerType = customerType;
+            await db.SaveChangesAsync();
+        }
+
+        public async Task SetCustomerActiveAsync(int customerId, bool isActive)
+        {
+            await using var db = new BinTrackerDbContext(
+                new DbContextOptionsBuilder<BinTrackerDbContext>().UseSqlite(ConnectionString).Options);
+            (await db.Customers.SingleAsync(x => x.Id == customerId)).IsActive = isActive;
+            await db.SaveChangesAsync();
+        }
+
+        public async Task SetContainerActiveAsync(int containerTypeId, bool isActive)
+        {
+            await using var db = new BinTrackerDbContext(
+                new DbContextOptionsBuilder<BinTrackerDbContext>().UseSqlite(ConnectionString).Options);
+            (await db.ContainerTypes.SingleAsync(x => x.Id == containerTypeId)).IsActive = isActive;
             await db.SaveChangesAsync();
         }
 

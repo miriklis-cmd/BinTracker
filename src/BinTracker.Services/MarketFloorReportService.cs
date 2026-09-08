@@ -65,7 +65,9 @@ internal sealed class MarketFloorReportService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IAuditService audit,
     IBusinessInformationService businessInformation,
-    IBusinessClock clock) : IMarketFloorReportService
+    IBusinessClock clock,
+    IOperationalMovementProjectionAuthority? operationalProjection = null)
+    : IMarketFloorReportService
 {
     public async Task<MarketFloorReportData> GetAsync(
         DateOnly date,
@@ -104,21 +106,52 @@ internal sealed class MarketFloorReportService(
             .Select(x => x.Id)
             .ToHashSet();
 
-        var movements = await db.EffectiveOperationalMovements()
-            .Where(x => x.MovementDate <= date)
-            .Select(x => new
-            {
-                x.CustomerId,
-                x.ContainerTypeId,
-                x.MovementDate,
-                x.MovementType,
-                x.Source,
-                x.Quantity
-            })
-            .ToListAsync(cancellationToken);
+        List<MarketFloorMovement> movements;
+        IReadOnlyList<OperationalMovementPosition> projectedPositions = [];
+        if (operationalProjection is null)
+        {
+            // Normal schema-16 composition retains the accepted alpha.8 authority.
+            movements = await db.EffectiveOperationalMovements()
+                .Where(x => x.MovementDate <= date)
+                .Select(x => new MarketFloorMovement(
+                    x.CustomerId,
+                    x.ContainerTypeId,
+                    x.MovementDate,
+                    x.MovementType,
+                    x.Source,
+                    x.Quantity))
+                .ToListAsync(cancellationToken);
+        }
+        else
+        {
+            // Market Floor is an as-of position with a same-day activity breakdown.
+            // PositionAsOf supplies both views from one validated projection snapshot.
+            var projected = await operationalProjection.QueryAsync(
+                OperationalMovementProjectionScope.PositionAsOf(date),
+                cancellationToken);
+            movements = projected.Activity
+                .Select(x => new MarketFloorMovement(
+                    x.CustomerId,
+                    x.ContainerTypeId,
+                    x.MovementDate,
+                    x.MovementType,
+                    x.Source,
+                    x.Quantity))
+                .ToList();
+            projectedPositions = projected.Positions;
+        }
 
         var customerById = customers.ToDictionary(x => x.Id);
         var containerById = containerTypes.ToDictionary(x => x.Id, x => x.Name);
+
+        // Output quantities are int-valued. Validate authoritative positions for
+        // customers eligible for this report before the shared alpha.8 pipeline
+        // can narrow or wrap a projection total.
+        foreach (var position in projectedPositions.Where(x =>
+                     customerById.ContainsKey(x.CustomerId)))
+        {
+            _ = checked((int)position.Quantity);
+        }
 
         var regular = movements
             .Where(x => !specialContainerIds.Contains(x.ContainerTypeId))
@@ -291,6 +324,14 @@ internal sealed class MarketFloorReportService(
             reverse.Where(x => x.CustomerType == CustomerType.Account).ToList(),
             reverse.Where(x => x.CustomerType == CustomerType.CashCod).ToList());
     }
+
+    private sealed record MarketFloorMovement(
+        int CustomerId,
+        int ContainerTypeId,
+        DateOnly MovementDate,
+        MovementType MovementType,
+        MovementSource Source,
+        int Quantity);
 
     public async Task<byte[]> BuildPdfAsync(
         DateOnly date,
