@@ -1406,6 +1406,154 @@ public sealed class OperationalMovementProjectionSchema17Tests
     }
 
     [Fact]
+    public async Task Projection_backed_daily_print_pack_uses_delegated_corrected_position_and_activity_truth()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+
+        var corrected = await h.CreateSingleAsync(
+            new(2026, 9, 1), h.CustomerId, 1, 7);
+        var correctedLineId = Assert.Single(await h.LineIdsAsync(corrected.RootId));
+        await h.MutateAsync(corrected.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(correctedLineId)],
+                "move daily print-pack coordinates",
+                movementDate: MovementFieldIntent<DateOnly>.Selected(new(2026, 9, 2)),
+                direction: MovementFieldIntent<MovementType>.Selected(MovementType.In),
+                customer: MovementFieldIntent<int>.Selected(h.OtherCustomerId),
+                containerType: MovementFieldIntent<int>.Selected(3),
+                quantity: MovementFieldIntent<int>.Selected(9)));
+        await h.MutateAsync(corrected.RootId, 1,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(correctedLineId)],
+                "retain only the current print-pack generation",
+                movementDate: MovementFieldIntent<DateOnly>.Selected(Harness.Today),
+                direction: MovementFieldIntent<MovementType>.Selected(MovementType.Out),
+                quantity: MovementFieldIntent<int>.Selected(4)));
+        var replacementId = (await h.MovementIdsByRoleAsync(corrected.RootId))
+            [LogicalMovementTransformationRole.CorrectionReplacement];
+
+        var reversed = await h.CreateSingleAsync(
+            Harness.Today.AddDays(-1), h.CustomerId, 1, 5);
+        var reversedLineId = Assert.Single(await h.LineIdsAsync(reversed.RootId));
+        await h.MutateAsync(reversed.RootId, 0,
+            MovementMutationRequest.Reverse(
+                MovementMutationScope.Individual,
+                [new(reversedLineId)],
+                "reverse daily print-pack movement"));
+        var reversalId = (await h.MovementIdsByRoleAsync(reversed.RootId))
+            [LogicalMovementTransformationRole.OrdinaryReversal];
+
+        await h.AddExcludedAsync(
+            MovementSource.Adjustment, MovementType.Out, 2, importOwned: false,
+            movementDate: Harness.Today);
+        await h.AddExcludedAsync(
+            MovementSource.ExcelImport, MovementType.In, 1, importOwned: true,
+            movementDate: Harness.Today);
+        await h.AddExcludedAsync(
+            MovementSource.ExcelImport, MovementType.Out, 99, importOwned: true,
+            movementDate: Harness.Today.AddDays(1));
+
+        var outstanding = await h.Outstanding.QueryAsync(new(
+            Harness.Today,
+            BalanceFilter: OutstandingBalanceFilter.OutstandingOnly,
+            IncludeInactiveCustomers: false));
+        Assert.Equal(
+            new[]
+            {
+                (h.CustomerId, "PROJ-A", 1, "Blue Bin", 1),
+                (h.OtherCustomerId, "PROJ-B", 3, "Yellow Bin", 4)
+            },
+            outstanding.Rows.Select(x =>
+                (x.CustomerId, x.CustomerCode, x.ContainerTypeId,
+                    x.ContainerType, x.Balance)));
+        Assert.Equal((1, 4),
+            (outstanding.ContainerTotals[0].OutstandingQuantity,
+                outstanding.ContainerTotals[1].OutstandingQuantity));
+
+        var daily = await h.Daily.QueryAsync(new(
+            Harness.Today,
+            IncludeAdjustments: false));
+        Assert.Equal(3, daily.Rows.Count);
+        Assert.DoesNotContain(daily.Rows, x => x.MovementId == corrected.MovementId);
+        Assert.DoesNotContain(daily.Rows, x => x.Source == MovementSource.Adjustment);
+        Assert.DoesNotContain(daily.Rows, x => x.Quantity == 99);
+        Assert.Single(daily.Rows, x => x.MovementId == replacementId);
+        Assert.Single(daily.Rows, x => x.MovementId == reversalId);
+        Assert.Single(daily.Rows, x => x.Source == MovementSource.ExcelImport);
+        var replacement = Assert.Single(daily.Rows, x => x.MovementId == replacementId);
+        Assert.Equal(
+            (Harness.Today, h.OtherCustomerId, "PROJ-B", 3, "Yellow Bin",
+                MovementType.Out, 4, MovementSource.Manual, "projection",
+                "projection-operator"),
+            (replacement.MovementDate, replacement.CustomerId,
+                replacement.CustomerCode, replacement.ContainerTypeId,
+                replacement.ContainerType, replacement.Direction,
+                replacement.Quantity, replacement.Source, replacement.Reference,
+                replacement.EnteredBy));
+        Assert.Equal((4, 6), (daily.OutQuantity, daily.InQuantity));
+        Assert.Equal(
+            new[]
+            {
+                (1, "Blue Bin", 0, 6),
+                (3, "Yellow Bin", 4, 0)
+            },
+            daily.ContainerTotals.Select(x =>
+                (x.ContainerTypeId, x.ContainerType, x.OutQuantity, x.InQuantity)));
+
+        h.ClearProjectionServiceCalls();
+        var pdf = await h.DailyPrintPack.BuildPdfAsync(Harness.Today.AddDays(2));
+
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+        Assert.Equal(2, h.ProjectionServiceCalls.Count);
+        var positionCall = Assert.Single(h.ProjectionServiceCalls, x => x.IsPositionAsOf);
+        Assert.Equal(Harness.Today, positionCall.ThroughDateInclusive);
+        Assert.Null(positionCall.FromDateInclusive);
+        var activityCall = Assert.Single(h.ProjectionServiceCalls, x => !x.IsPositionAsOf);
+        Assert.Equal(Harness.Today, activityCall.FromDateInclusive);
+        Assert.Equal(Harness.Today, activityCall.ThroughDateInclusive);
+        Assert.All(h.ProjectionServiceCalls, call =>
+        {
+            Assert.Null(call.CustomerId);
+            Assert.Null(call.ContainerTypeId);
+        });
+
+        await using var db = new BinTrackerDbContext(
+            new DbContextOptionsBuilder<BinTrackerDbContext>()
+                .UseSqlite(h.ConnectionString).Options);
+        var audit = Assert.Single(await db.AuditEvents.AsNoTracking()
+            .Where(x => x.Action == "DAILY_PRINT_PACK_GENERATED")
+            .ToListAsync());
+        Assert.Equal(Harness.Today.ToString("yyyy-MM-dd"), audit.EntityId);
+        Assert.Contains("2 outstanding row(s)", audit.Description);
+        Assert.Contains("3 movement row(s)", audit.Description);
+        Assert.Contains("4 OUT, 6 IN", audit.Description);
+    }
+
+    [Fact]
+    public async Task Projection_backed_daily_print_pack_propagates_integrity_failure_without_raw_fallback()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        var root = await h.CreateSingleAsync(
+            new(2026, 9, 3), h.CustomerId, 1, 6);
+        await h.SetRootStatusAsync(root.RootId, LogicalMovementBatchStatus.Invalid);
+
+        var failure = await Assert.ThrowsAsync<OperationalMovementProjectionException>(() =>
+            h.DailyPrintPack.BuildPdfAsync(Harness.Today));
+
+        Assert.Equal(
+            OperationalMovementProjectionFailure.RelevantLineageInvalid,
+            failure.Failure);
+        Assert.Equal(2, h.ProjectionServiceCalls.Count);
+        await using var db = new BinTrackerDbContext(
+            new DbContextOptionsBuilder<BinTrackerDbContext>()
+                .UseSqlite(h.ConnectionString).Options);
+        Assert.False(await db.AuditEvents.AsNoTracking()
+            .AnyAsync(x => x.Action == "DAILY_PRINT_PACK_GENERATED"));
+    }
+
+    [Fact]
     public async Task Projection_backed_int_position_mappings_fail_closed_on_overflow()
     {
         await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
@@ -1488,6 +1636,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
             Weekly = services.GetRequiredService<IWeeklyMovementsReportService>();
             Monthly = services.GetRequiredService<IMonthlySummaryReportService>();
             MarketFloor = services.GetRequiredService<IMarketFloorReportService>();
+            DailyPrintPack = services.GetRequiredService<IDailyPrintPackService>();
             Authority = new SqliteOperationalMovementProjectionAuthority(connectionString);
         }
 
@@ -1504,6 +1653,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
         public IWeeklyMovementsReportService Weekly { get; }
         public IMonthlySummaryReportService Monthly { get; }
         public IMarketFloorReportService MarketFloor { get; }
+        public IDailyPrintPackService DailyPrintPack { get; }
         public IOperationalMovementProjectionAuthority Authority { get; }
         public IReadOnlyList<OperationalMovementProjectionScope> ProjectionServiceCalls =>
             services.GetService<IOperationalMovementProjectionAuthority>() is RecordingProjectionAuthority recording
@@ -1511,6 +1661,15 @@ public sealed class OperationalMovementProjectionSchema17Tests
                 : [];
         public bool ProjectionAuthorityIsRegistered =>
             services.GetService<IOperationalMovementProjectionAuthority>() is not null;
+
+        public void ClearProjectionServiceCalls()
+        {
+            if (services.GetService<IOperationalMovementProjectionAuthority>() is
+                RecordingProjectionAuthority recording)
+            {
+                recording.Clear();
+            }
+        }
 
         public static async Task<Harness> CreateAsync(bool migrateToSchema17 = true,
             bool enableSchema17Writers = true,
@@ -1834,6 +1993,8 @@ public sealed class OperationalMovementProjectionSchema17Tests
             private readonly List<OperationalMovementProjectionScope> calls = [];
 
             public IReadOnlyList<OperationalMovementProjectionScope> Calls => calls;
+
+            public void Clear() => calls.Clear();
 
             public Task<OperationalMovementProjectionResult> QueryAsync(
                 OperationalMovementProjectionScope scope,
