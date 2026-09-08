@@ -2,9 +2,9 @@
 
 **Status:** ACTIVE
 
-**Purpose:** Give a new session enough verified state, frozen movement-lineage semantics, dependency ordering and acceptance limits to continue from the reviewed and committed dormant corrected-projection authority without relying on prior chat history or mistaking dormant implementation for runtime activation.
+**Purpose:** Give a new session enough verified state, frozen movement-lineage semantics, dependency ordering and acceptance limits to continue from the reviewed and pushed dormant read-side projection-consumer sequence without relying on prior chat history or mistaking dormant preparation for runtime activation.
 
-**Reconciled:** 6 September 2026 (Australia/Sydney)
+**Reconciled:** 9 September 2026 (Australia/Sydney)
 
 This record is governed by **Conversation Context Capacity / Continuity Hard Gate** in `docs/DevelopmentWorkflow.md`. It supplements the authoritative requirements and architecture; it does not replace them. Repository reality always wins, and any conflict must be investigated before application-code changes.
 
@@ -12,17 +12,20 @@ This record is governed by **Conversation Context Capacity / Continuity Hard Gat
 
 - Repository root: `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`.
 - Branch: `codex/movement-correction`.
-- **Verified baseline entering the unified-mutation checkpoint commit:** `1929bfac52f937c40be759dee546fa50da78dd0c`, synchronized with `origin/codex/movement-correction` at 0 ahead / 0 behind before reconciliation. This is the stable entering baseline, not a prediction of the commit SHA that contains this checkpoint; mechanically verify actual HEAD/upstream and divergence after the authorized commit/push.
-- **Reviewed projection-authority checkpoint:** `24f6fe381a0c94ba57425128cf8cb45b093c2250` (`Add dormant operational movement projection authority`), synchronized with `origin/codex/movement-correction` at 0 ahead / 0 behind after its authorized commit and push. This is the dormant implementation checkpoint immediately preceding this continuation-only reconciliation; mechanically verify actual HEAD/upstream and divergence rather than treating it as a prediction of the reconciliation commit SHA.
+- **Current reviewed and pushed checkpoint:** `fbcf20f3c94011909637c103b8de596f83f7ee8c` (`Prove Daily Print Pack projection composition`), synchronized with `origin/codex/movement-correction` at 0 ahead / 0 behind before this continuation-only reconciliation.
+- **Parent checkpoint:** `0c2aeac2f31626544bf6862f8d7ffb14d7add21a` (`Prepare dormant Market Floor projection read`).
+- **Reviewed projection-authority checkpoint:** `24f6fe381a0c94ba57425128cf8cb45b093c2250` (`Add dormant operational movement projection authority`). This is an older completed foundation checkpoint, not the current repository HEAD.
+- **Verified baseline entering the unified-mutation checkpoint commit:** `1929bfac52f937c40be759dee546fa50da78dd0c`. This remains historical ancestry evidence, not an operative checkpoint.
 - **Reviewed IMP-05 implementation checkpoint:** `c0dfc7e51cae1296fd5a5da31876e54364901405` (`Add trusted movement mutation planner`). Do not describe this older implementation commit as the current repository HEAD.
 - Version remains `0.5.0-alpha.8.7`; assembly/file version remains `0.5.0.0`.
-- This checkpoint adds the exact twelve-file unified mutation implementation/test candidate listed below to the prior lineage foundation. The unrelated `.codex-evidence/` and `BIN-LIN-IMP-03A-HANDOFF.tmp` paths are not part of this checkpoint.
+- The unrelated `.codex-evidence/`, `BIN-LIN-IMP-03A-HANDOFF.tmp`, `BinTracker-MarketFloor-Checkpoint-R4.ps1` and `github claude.ps1` paths are not part of the current checkpoint.
 - BIN-LIN-IMP-01 through IMP-07 and the unified schema-17 mutation implementation are complete at their recorded source/automated evidence levels.
+- Dormant read-side projection-consumer preparation is complete through Daily Print Pack at its recorded source/automated evidence level. This is not runtime activation or operator acceptance.
 - **BIN-LIN-IMP-06 is committed, independently reviewed and source-gate verified.** It adds only the caller-owned transaction audit primitive described below and makes no runtime registration or authority change.
 - **BIN-LIN-IMP-07 generation-zero Single/Batch integration is implemented and independently approved at source plus targeted/adjacent automated-evidence level.** It is dormant behind explicit isolated schema-17 composition and does not authorize runtime activation or later lineage work.
 - The pre-IMP-07 schema-17 validation-lifecycle prerequisite separates strict migration-publication proof from live AlreadyComplete structural/current-health validation. It does not implement generation-zero entry writing or activate schema 17.
 
-Normal startup and runtime authority remain schema 16 and the accepted alpha.8 correction/reversal model. Schema 17 remains dormant, explicit and unregistered. Normal composition injects no-op initial-lineage and mutation writers that perform no schema probe/query/write and does not register the new projection authority; explicit isolated schema-17 composition supplies the SQLite implementations. There is no SQLite schema-17 writer, projection authority or lineage-entity registration in normal runtime, startup migration activation, corrected-activity/report consumer cutover, Restore UI or other WinForms cutover.
+Normal startup and runtime authority remain schema 16 and the accepted alpha.8 correction/reversal model. Schema 17 remains dormant, explicit and unregistered. Normal composition injects no-op initial-lineage and mutation writers that perform no schema probe/query/write and does not register the projection authority; explicit isolated schema-17 composition supplies the SQLite implementations and exercises the optional prepared read-consumer paths. There is no SQLite schema-17 writer, projection authority or lineage-entity registration in normal runtime, startup migration activation, activated corrected-activity/report cutover, Restore UI or other WinForms cutover. No runtime activation is authorized.
 
 ## Completed-checkpoint summary
 
@@ -41,6 +44,9 @@ Git history and `.codex-evidence/` retain the detailed development diaries, inte
 11. IMP-07 keeps `MovementService` as the sole Single/Batch authority and adds a default dormant no-op writer plus an explicit isolated SQLite schema-17 writer. A successful new entry creates one atomic native `Initial` root: one generation-zero line per original physical movement, Single ordinal 0 or first-successful Batch request order, RootOriginal ownership and completed introduction links before activation. Construction and schema health fail closed; exact/reordered retries never rewrite committed lineage; migrated roots stay `MigrationBaseline`; failures roll back physical movement/batch, lineage and existing audit. Generation zero creates no correction operation, no physical-output link and no new audit action. Core validation and Services workflow remain provider/client-neutral; SQLite mechanics remain in Data.
 12. The unified mutation slice composes the trusted planner with atomic Correct/Reverse/Restore persistence, complete generations, root CAS, canonical replay/idempotency, optional physical output and one primary operation-linked audit. Native operation/audit health is target-root scoped while global structural/current lineage health remains intact. Every persisted generation-line identity comes from `LogicalMovementGenerationLines.Id`; none is synthesized from a logical-line, movement, ordinal or other identity. SQLite busy/locked exhaustion follows PersistenceFailure after bounded retries and rollback/fresh-state classification rather than stale or integrity diagnosis. Primary audit BeforeValues contains trusted current pointers and business state; AfterValues contains the result generation and complete per-line action/state/mask/pointer/business facts with relevant new/output movement identities.
 13. The reviewed and committed corrected-projection slice adds an immutable provider-neutral scope/result and Core relevance/contribution/signed-aggregation authority plus an explicit unregistered SQLite materializer. One serializable read transaction captures conservative root influence, current proof, all ownership facts, excluded-domain evidence and ImportRun identity; Active emits current effective once, Reversed emits last effective plus exact terminal reversal, Adjustment/ExcelImport union once, and relevant invalid/incomplete/unknown/unrooted evidence fails closed without raw fallback. ReadOnly projects while existing mutation guards remain. No existing operational consumer is switched.
+14. The reviewed dormant read-side consumer sequence then prepared the existing numeric/read consumers without registering the authority or changing normal schema-16 behavior: `432b79e` characterization, `8db2159` slice-one position reads, `41809d6` customer reads, `3cfe468` Dashboard, `3507deb` excluded-import provenance hardening, `bf4425b` Outstanding, `c88c41c` Daily, `8985db0` Weekly, `1f6afd9` Monthly, `0c2aeac` Market Floor and `fbcf20f` Daily Print Pack composition proof. These are reviewed source/automated preparation checkpoints, not an activated piecemeal runtime cutover.
+
+Daily Print Pack required no production change. `DailyPrintPackService` deliberately remains composed through the existing projection-capable `IOutstandingReportService` and `IDailyMovementsReportService`; adding `IOperationalMovementProjectionAuthority` directly was rejected as redundant architecture drift. Explicit isolated schema-17 composition proves transitive `PositionAsOf` plus exact-date `Activity`, with correction, reversal, consumed-original and superseded-generation semantics still owned by those underlying consumers. Relevant projection failure propagates without raw/schema-16 fallback. After independent review, the canonical BAT passed source/package-state audit and all 605/605 tests with 0 failed, 0 skipped, 0 warnings and 0 errors. This remains source/build/automated evidence: real preview/print operator acceptance is pending. The two delegated Print Pack reads are separate reads, so a single cross-section snapshot under concurrency is not proven.
 
 The committed IMP-06 checkpoint contains exactly these implementation-slice files relative to `e08acc9f...`:
 
@@ -137,7 +143,7 @@ The detailed authority is in `docs/BusinessRules.md`, `docs/FunctionalSpecificat
 
 - `PositionAsOf(D)` aggregates corrected authoritative activity where `MovementDate <= D`; `CurrentPosition` equals `PositionAsOf(authoritative business today)`.
 - An inclusive statement `StartDate..EndDate` uses opening `PositionAsOf(StartDate - 1 day)`, activity within the inclusive range and closing `PositionAsOf(EndDate)`.
-- Each numerical result validates and projects all relevant complete snapshots in one consistent read transaction/snapshot. Daily Print Pack Outstanding and Detail share one snapshot; Dashboard headline and attention/outstanding figures share one refresh snapshot.
+- Each numerical result validates and projects all relevant complete snapshots in one consistent read transaction/snapshot. The frozen activated-state requirement is that Daily Print Pack Outstanding and Detail share one snapshot and Dashboard headline and attention/outstanding figures share one refresh snapshot. Current dormant Print Pack composition starts two separately delegated reads, so the single cross-section snapshot requirement remains unproven and must be resolved or proven before atomic runtime cutover.
 - Coherently cut over Daily, Weekly, Monthly, Market Floor, Outstanding/AsOf, Statements, Daily Print Pack, Dashboard, customer balances, `BalanceService`, current-position and relevant entry/import/reconciliation previews plus PDF/CSV DTO outputs.
 - Movement History, Audit, physical Batch Detail and Import History remain immutable/forensic views with added lineage navigation/context; they do not become corrected-only activity.
 - `EffectiveMovementQuery` remains runtime authority until every operational consumer has moved together, alpha.8 equivalence and new restoration cases pass, and hidden consumers are excluded. Never switch reports piecemeal.
@@ -187,16 +193,20 @@ The protected order is:
 -> **`unified Correct/Reverse/Restore commands (implemented; dormant)`**
 -> **`root CAS/idempotency/provider translation (implemented; dormant)`**
 -> **`corrected activity and PositionAsOf authority (implemented/tested/reviewed/committed; dormant)`**
--> `atomic cutover of every operational numeric consumer`
+-> **`dormant read-side projection-consumer preparation through Daily Print Pack (complete at source/automated level; unactivated)`**
+-> `MovementService.SaveSingleAsync transaction participation`
+-> `Import replacement comparison`
+-> `Import execution operational reconciliation`
+-> `atomic schema-17/runtime cutover`
 -> `audit/history detail`
 -> `Restore/RemainReversed WinForms UI`
 -> `failure/concurrency/full automated gates`
--> `representative retained-database migration rehearsal`
--> `Batch #30 Windows acceptance`
+-> `retained-database migration/backup/recovery rehearsal`
+-> `Windows/operator acceptance, including Batch #30 and real report preview/print`
 -> `protected whole-codebase layer-delineation audit`
 -> `Security Hardening`.
 
-The stages through unified mutation execution, root CAS/idempotency/provider translation and the corrected activity/PositionAsOf authority are implemented and canonically verified at the dormant source/automated level. The projection authority was externally reviewed and committed at `24f6fe381a0c94ba57425128cf8cb45b093c2250`; it remains unregistered and unactivated. The next dependency-ordered production work is the separately gated single atomic operational-consumer cutover; it is not authorized by this checkpoint. Do not activate schema 17, register runtime lineage/projection, rehearse a retained database or start report/UI/post-v1 work without separate authorization.
+The stages through unified mutation execution, root CAS/idempotency/provider translation, corrected activity/PositionAsOf authority and dormant read-side consumer preparation are implemented and canonically verified at their recorded dormant source/automated levels. The projection authority remains unregistered and unactivated. The next dependency-ordered production work is the separately gated `MovementService.SaveSingleAsync` transaction-participation slice; it does not authorize import work, schema-17/runtime cutover or any later stage. Do not activate schema 17, register runtime lineage/projection, rehearse a retained database or start UI/post-v1 work without separate authorization.
 
 An activated migration with incomplete entry/mutation/projection integration is not distributable. Do not ship schema-only or engine-only internal checkpoints, remove the alpha.8 guard, allow new Manual/Batch entries without lineage after activation, or leave old writers active after migration.
 
@@ -214,6 +224,7 @@ An activated migration with incomplete entry/mutation/projection integration is 
 - After independent review corrections, `MovementEntryLineageSchema17Tests` passed 18/18, `LineageSchema17MigrationTests` passed 55/55, `MovementLineageContractTests` plus `LogicalMovementCurrentRootValidatorTests` passed 31/31, and the adjacent integration regression filter passed 59/59, all with 0 failed/skipped. Release `dotnet build BinTracker.sln --no-restore` passed with 0 warnings/errors; the mechanical audit passed at v0.5.0-alpha.8.7 with 259 permanent IDs and 27 Markdown files, and `git diff --check` passed.
 - The unified mutation correction task passed its focused, standalone mutation, unit, combined schema-17, alpha.8 and adjacent regression gates. Canonical `Build-BinTracker.bat` then passed source audit and restore, built with 0 warnings/errors, and passed 279/279 UnitTests plus 259/259 IntegrationTests: 538/538 total with 0 failed/skipped.
 - Before the corrected-projection production edit, the accepted correction/temporal characterization passed 42/42 and current-root/lineage contract unit tests passed 34/34. The final projection suite passed 10/10, adjacent schema-17 integration passed 126/126, provider-neutral lineage/planner unit tests passed 63/63 and unchanged alpha.8 correction/balance/report tests passed 68/68, all with 0 failed/skipped. Canonical `Build-BinTracker.bat` passed mechanical audit/restore/build with 0 warnings/errors and 279/279 UnitTests plus 274/274 IntegrationTests: 553/553 total, 0 failed/skipped. The post-documentation mechanical audit also passed with 259 permanent IDs and 27 Markdown files; after a bounded result-contract clarification the complete canonical gate was repeated and passed with the same result. External source/diff review passed, final `git diff --check` was clean, and the reviewed authority was committed and pushed as `24f6fe381a0c94ba57425128cf8cb45b093c2250`.
+- Dormant read-side projection-consumer preparation progressed through the reviewed checkpoints listed above. The final Daily Print Pack slice made no production change and proved composition through the already prepared Outstanding and Daily consumers. After independent source/evidence review, canonical `Build-BinTracker.bat` passed source/package-state audit and build with 0 warnings/errors and all 605/605 automated tests with 0 failed and 0 skipped. This does not prove schema-17 runtime activation, cross-section snapshot concurrency, retained-database behavior or real preview/print/operator acceptance.
 - No current compiler warning, automated-test failure or source-gate failure is known. This is checkpoint evidence, not a promise about later changes.
 - No retained-production-database migration rehearsal, schema-17 production activation, package build, PostgreSQL equivalence proof, complete Windows UI/DPI interaction pass or operator acceptance has occurred for lineage.
 - Static implementation, focused automated tests, full automated suite, source/build gate, external code review, migration rehearsal, packaging and Windows/operator acceptance are distinct evidence levels. Never convert one into another or mark `IMPLEMENTED-ACCEPTED` without explicit human evidence.
@@ -243,6 +254,7 @@ Useful seams to inspect rather than trusting this summary alone:
 - `src/BinTracker.Data/BinTrackerDbContext.cs`, `DatabaseSetup.cs`, `SqliteSchemaMigrations.cs`, dormant lineage migration/materialization and recovery infrastructure;
 - `src/BinTracker.Data/TransactionAuditAppender.cs`, `SqliteMovementMutationWriter.cs` and their focused integration tests;
 - `src/BinTracker.Core/OperationalMovementProjection.cs`, `src/BinTracker.Data/SqliteOperationalMovementProjectionAuthority.cs` and `tests/BinTracker.IntegrationTests/OperationalMovementProjectionSchema17Tests.cs` for the reviewed and committed dormant projection authority;
+- the prepared read-side consumer services and their focused tests, especially `OutstandingReportService`, `DailyMovementsReportService`, `MarketFloorReportService`, `DailyPrintPackService` and `DailyPrintPackServiceTests`, when assessing the completed dormant consumer sequence or planning activation;
 - `src/BinTracker.Data/SqliteInitialMovementLineageWriter.cs`, the initial-lineage contracts/service seam and `tests/BinTracker.IntegrationTests/MovementEntryLineageSchema17Tests.cs`;
 - `src/BinTracker.Services/MovementCorrectionService.cs`, `EffectiveMovementQuery.cs`, audit and balance services, the trusted planner and resolver;
 - correction, migration, audit, balance, report, import and lineage tests;
@@ -268,11 +280,31 @@ Before modifying application code, the next session must:
 1. Read repository-root `AGENTS.md`, the full **Conversation Context Capacity / Continuity Hard Gate** and this continuation completely.
 2. Read the current authoritative documents applicable to the next authorized lineage slice, including the protected Roadmap/coverage and permanent requirements.
 3. Mechanically verify repository root, branch, actual HEAD/upstream and divergence, staged/tracked/untracked worktree state and `Directory.Build.props` version. Reconcile those facts against this continuation and stop on any unexpected difference.
-4. Confirm from source/migration registration that schema 17 is still dormant, schema 16/alpha.8 is normal authority, normal composition still uses both no-op writers and no projection/UI cutover has appeared.
-5. Mechanically verify that the checkpoint containing unified mutation descends from the verified entering baseline `1929bfac52f937c40be759dee546fa50da78dd0c`; do not require the actual current HEAD to equal that baseline or infer it from this document. Inspect the completed mutation source/tests only as needed. Preserve unrelated evidence artifacts and stop if ancestry or repository reality is unexpected.
+4. Confirm from source/migration registration that schema 17 is still dormant, schema 16/alpha.8 is normal authority, normal composition still uses both no-op writers and does not register the projection authority, and no hidden runtime/UI cutover has appeared.
+5. Confirm the current reviewed/pushed checkpoint is `fbcf20f3c94011909637c103b8de596f83f7ee8c` and that it descends from the historical lineage checkpoints recorded above. Preserve unrelated evidence artifacts and stop if ancestry or repository reality is unexpected.
 6. Before the first production edit in the next slice, identify and run the precise accepted characterization applicable to the authority being changed.
-7. Confirm the reviewed projection-authority checkpoint remains in history and synchronized. The next safe implementation is the separately authorized atomic cutover of every operational numeric consumer; do not begin it piecemeal or activate runtime/schema authority without that separate authorization.
-8. Keep evidence classifications truthful and run `git diff --check` before handoff. Do not stage, commit or push without explicit instruction.
+7. Obtain independent ChatGPT source/diff review before requesting the canonical BAT. Treat static review, targeted tests, focused builds, canonical BAT, migration/recovery rehearsal, concurrency evidence and Windows/operator acceptance as distinct evidence levels.
+8. Perform semantic documentation reconciliation for each meaningful pass. Before any staging/checkpoint request, mechanically classify every tracked, staged and untracked path. Do not stage, commit or push without explicit authorization.
+9. Preserve the frozen architecture: no second authority, local lineage reconstruction, raw fallback after projection failure, provider leakage into Services/Core, hidden schema/runtime activation, speculative architecture or post-v1 scope creep.
+10. Reapply this continuity hard gate before future context rollover; repository reality always wins over continuation prose or historical evidence.
+
+The next bounded production sequence is operative and must not be skipped or merged without separate authorization:
+
+1. `MovementService.SaveSingleAsync` transaction participation.
+2. Import replacement comparison.
+3. Import execution operational reconciliation.
+4. Atomic schema-17/runtime cutover.
+5. Audit/history detail.
+6. Restore/RemainReversed WinForms UI.
+7. Failure/concurrency/full automated gates.
+8. Retained-database migration/backup/recovery rehearsal.
+9. Windows/operator acceptance, including Batch #30 and real report preview/print.
+10. Whole-codebase layer-delineation audit.
+11. Security Hardening.
+
+Step 4 does not authorize enabling runtime while the Daily Print Pack shared-snapshot requirement is unresolved. That specific concurrency prerequisite must be resolved and proven within or before the atomic cutover; step 7 retains the broader failure/concurrency/full automated gates before retained-database and Windows/operator acceptance.
+
+For the next `MovementService.SaveSingleAsync` slice, physical movement persistence and initial lineage must participate in one authoritative transaction when dormant lineage writing is explicitly enabled. The schema-16/no-writer path must remain unchanged, and any failure must roll back both physical and lineage state. Do not add post-commit best-effort lineage, provider-specific transaction semantics to Services/Core, or hidden runtime/schema activation. Existing idempotency and client-operation behavior must remain correct. This slice does not authorize import replacement comparison or any later stage.
 
 Useful mechanical baseline commands:
 
@@ -293,4 +325,4 @@ git diff --check
 
 **Question:** Could a new session that cannot see this conversation safely continue this exact work using only the repository and this handoff?
 
-**Answer:** YES. It records the canonically verified dormant unified-mutation implementation and exact evidence limits, identifies corrected activity/PositionAsOf as next without authorizing it, and retains frozen semantics, architecture and safety boundaries, Batch #30, dependency ordering and the startup hard gate.
+**Answer:** YES. It records the current reviewed/pushed Daily Print Pack checkpoint and completed dormant read-side consumer sequence, preserves the exact source/build/automated evidence limits and frozen semantics, identifies `MovementService.SaveSingleAsync` transaction participation as the next bounded action, and retains architecture, migration, Batch #30, Git and startup hard gates without authorizing runtime activation.
