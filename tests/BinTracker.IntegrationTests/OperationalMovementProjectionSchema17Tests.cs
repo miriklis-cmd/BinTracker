@@ -1064,6 +1064,181 @@ public sealed class OperationalMovementProjectionSchema17Tests
     }
 
     [Fact]
+    public async Task Projection_backed_monthly_preserves_corrected_reversed_filtered_and_grouped_truth_once()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+
+        var corrected = await h.CreateSingleAsync(
+            new(2026, 8, 30), h.CustomerId, 1, 7);
+        var correctedLineId = Assert.Single(await h.LineIdsAsync(corrected.RootId));
+        await h.MutateAsync(corrected.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(correctedLineId)],
+                "move monthly activity into the authoritative month",
+                movementDate: MovementFieldIntent<DateOnly>.Selected(new(2026, 9, 2)),
+                direction: MovementFieldIntent<MovementType>.Selected(MovementType.In),
+                customer: MovementFieldIntent<int>.Selected(h.OtherCustomerId),
+                containerType: MovementFieldIntent<int>.Selected(2),
+                quantity: MovementFieldIntent<int>.Selected(9)));
+        await h.MutateAsync(corrected.RootId, 1,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(correctedLineId)],
+                "keep only the final monthly replacement",
+                movementDate: MovementFieldIntent<DateOnly>.Selected(new(2026, 9, 3)),
+                quantity: MovementFieldIntent<int>.Selected(6)));
+
+        var reversed = await h.CreateSingleAsync(
+            new(2026, 9, 4), h.CustomerId, 1, 5);
+        var reversedLineId = Assert.Single(await h.LineIdsAsync(reversed.RootId));
+        await h.MutateAsync(reversed.RootId, 0,
+            MovementMutationRequest.Reverse(
+                MovementMutationScope.Individual,
+                [new(reversedLineId)],
+                "reverse monthly movement"));
+
+        await h.AddExcludedAsync(
+            MovementSource.Adjustment, MovementType.Out, 2, importOwned: false,
+            movementDate: new(2026, 9, 1));
+        await h.AddExcludedAsync(
+            MovementSource.ExcelImport, MovementType.In, 1, importOwned: true,
+            movementDate: new(2026, 9, 1));
+        await h.AddExcludedAsync(
+            MovementSource.ExcelImport, MovementType.Out, 99, importOwned: true,
+            movementDate: Harness.Today.AddDays(1));
+
+        await using (var db = new BinTrackerDbContext(
+                         new DbContextOptionsBuilder<BinTrackerDbContext>()
+                             .UseSqlite(h.ConnectionString).Options))
+        {
+            (await db.Customers.SingleAsync(x => x.Id == h.OtherCustomerId)).IsActive = false;
+            (await db.ContainerTypes.SingleAsync(x => x.Id == 2)).IsActive = false;
+            await db.SaveChangesAsync();
+        }
+
+        var monthly = await h.Monthly.QueryAsync(
+            new MonthlySummaryReportQuery(new DateOnly(2026, 9, 20)));
+
+        Assert.Equal((new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 30),
+            Harness.Today),
+            (monthly.MonthStart, monthly.MonthEnd, monthly.DataThroughDate));
+        Assert.Equal(
+            new[]
+            {
+                (h.CustomerId, "PROJ-A", "Projection A", 1, "Blue Bin", 1,
+                    5, 6, -1),
+                (h.OtherCustomerId, "PROJ-B", "Projection B", 2, "Small Bin", 2,
+                    0, 6, -6)
+            },
+            monthly.Rows.Select(x =>
+                (x.CustomerId, x.CustomerCode, x.CustomerName,
+                    x.ContainerTypeId, x.ContainerType, x.ContainerDisplayOrder,
+                    x.OutQuantity, x.InQuantity, x.NetQuantity)));
+        Assert.Equal(
+            new[]
+            {
+                (1, "Blue Bin", 1, 5, 6, -1),
+                (2, "Small Bin", 2, 0, 6, -6)
+            },
+            monthly.ContainerTotals.Select(x =>
+                (x.ContainerTypeId, x.ContainerType, x.DisplayOrder,
+                    x.OutQuantity, x.InQuantity, x.NetQuantity)));
+        Assert.Equal((5, 12, -7),
+            (monthly.OutQuantity, monthly.InQuantity, monthly.NetQuantity));
+        Assert.Single(h.ProjectionServiceCalls);
+
+        var sourceMonth = await h.Monthly.QueryAsync(
+            new MonthlySummaryReportQuery(new DateOnly(2026, 8, 1)));
+        Assert.Empty(sourceMonth.Rows);
+
+        var excel = await h.Monthly.QueryAsync(new MonthlySummaryReportQuery(
+            new DateOnly(2026, 9, 1), Source: MovementSource.ExcelImport));
+        Assert.Equal((0, 1), (excel.OutQuantity, excel.InQuantity));
+
+        Assert.Empty((await h.Monthly.QueryAsync(new MonthlySummaryReportQuery(
+            new DateOnly(2026, 9, 1),
+            Source: MovementSource.Adjustment))).Rows);
+        var adjustment = await h.Monthly.QueryAsync(new MonthlySummaryReportQuery(
+            new DateOnly(2026, 9, 1),
+            Source: MovementSource.Adjustment,
+            IncludeAdjustments: true));
+        Assert.Equal((2, 0), (adjustment.OutQuantity, adjustment.InQuantity));
+
+        var filtered = await h.Monthly.QueryAsync(new MonthlySummaryReportQuery(
+            new DateOnly(2026, 9, 1),
+            CustomerSearch: "  projection b  ",
+            ContainerTypeId: 2,
+            Source: MovementSource.Manual));
+        Assert.Equal((h.OtherCustomerId, 2, 0, 6),
+            (Assert.Single(filtered.Rows).CustomerId,
+                Assert.Single(filtered.Rows).ContainerTypeId,
+                filtered.OutQuantity, filtered.InQuantity));
+
+        var clamped = await h.Monthly.QueryAsync(new MonthlySummaryReportQuery(
+            new DateOnly(2026, 10, 1)));
+        Assert.Equal((new DateOnly(2026, 9, 1), Harness.Today),
+            (clamped.MonthStart, clamped.DataThroughDate));
+        Assert.Equal(monthly.Rows, clamped.Rows);
+
+        Assert.Equal(7, h.ProjectionServiceCalls.Count);
+        Assert.All(h.ProjectionServiceCalls, call =>
+        {
+            Assert.False(call.IsPositionAsOf);
+            Assert.NotNull(call.FromDateInclusive);
+            Assert.NotNull(call.ThroughDateInclusive);
+            Assert.Null(call.CustomerId);
+        });
+        Assert.Equal(new DateOnly(2026, 8, 1),
+            h.ProjectionServiceCalls[1].FromDateInclusive);
+        Assert.Equal(new DateOnly(2026, 8, 31),
+            h.ProjectionServiceCalls[1].ThroughDateInclusive);
+        Assert.Equal(2, h.ProjectionServiceCalls[5].ContainerTypeId);
+        Assert.Equal(Harness.Today,
+            h.ProjectionServiceCalls[^1].ThroughDateInclusive);
+    }
+
+    [Fact]
+    public async Task Projection_backed_monthly_propagates_integrity_failure_without_raw_fallback()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        var root = await h.CreateSingleAsync(
+            new(2026, 9, 3), h.CustomerId, 1, 6);
+        await h.SetRootStatusAsync(root.RootId, LogicalMovementBatchStatus.Invalid);
+
+        var failure = await Assert.ThrowsAsync<OperationalMovementProjectionException>(() =>
+            h.Monthly.QueryAsync(new MonthlySummaryReportQuery(
+                new DateOnly(2026, 9, 1))));
+
+        Assert.Equal(
+            OperationalMovementProjectionFailure.RelevantLineageInvalid,
+            failure.Failure);
+        Assert.Single(h.ProjectionServiceCalls);
+    }
+
+    [Fact]
+    public async Task Projection_backed_monthly_fails_closed_when_integer_totals_overflow()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        var reportMonth = new DateOnly(2026, 9, 1);
+        await h.CreateSingleAsync(reportMonth, h.CustomerId, 1, int.MaxValue);
+        var moved = await h.CreateSingleAsync(
+            reportMonth, h.OtherCustomerId, 1, 1);
+        var movedLineId = Assert.Single(await h.LineIdsAsync(moved.RootId));
+        await h.MutateAsync(moved.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(movedLineId)],
+                "move monthly activity across int boundary",
+                customer: MovementFieldIntent<int>.Selected(h.CustomerId)));
+
+        await Assert.ThrowsAsync<OverflowException>(() =>
+            h.Monthly.QueryAsync(new MonthlySummaryReportQuery(reportMonth)));
+
+        Assert.Single(h.ProjectionServiceCalls);
+    }
+
+    [Fact]
     public async Task Projection_backed_int_position_mappings_fail_closed_on_overflow()
     {
         await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
@@ -1144,6 +1319,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
             Outstanding = services.GetRequiredService<IOutstandingReportService>();
             Daily = services.GetRequiredService<IDailyMovementsReportService>();
             Weekly = services.GetRequiredService<IWeeklyMovementsReportService>();
+            Monthly = services.GetRequiredService<IMonthlySummaryReportService>();
             Authority = new SqliteOperationalMovementProjectionAuthority(connectionString);
         }
 
@@ -1158,6 +1334,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
         public IOutstandingReportService Outstanding { get; }
         public IDailyMovementsReportService Daily { get; }
         public IWeeklyMovementsReportService Weekly { get; }
+        public IMonthlySummaryReportService Monthly { get; }
         public IOperationalMovementProjectionAuthority Authority { get; }
         public IReadOnlyList<OperationalMovementProjectionScope> ProjectionServiceCalls =>
             services.GetService<IOperationalMovementProjectionAuthority>() is RecordingProjectionAuthority recording

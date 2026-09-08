@@ -55,7 +55,8 @@ public interface IMonthlySummaryReportService
 
 internal sealed class MonthlySummaryReportService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    IBusinessClock clock)
+    IBusinessClock clock,
+    IOperationalMovementProjectionAuthority? operationalProjection = null)
     : IMonthlySummaryReportService
 {
     public async Task<MonthlySummaryReportResult> QueryAsync(
@@ -72,55 +73,81 @@ internal sealed class MonthlySummaryReportService(
         await using var db =
             await factory.CreateDbContextAsync(cancellationToken);
 
-        var movements = db.EffectiveOperationalMovements()
-            .Where(x =>
-                x.MovementDate >= start &&
-                x.MovementDate <= dataThrough);
+        List<MonthlyMovementActivity> movements;
+        if (operationalProjection is null)
+        {
+            movements = await db.EffectiveOperationalMovements()
+                .Where(x =>
+                    x.MovementDate >= start &&
+                    x.MovementDate <= dataThrough)
+                .Select(x => new MonthlyMovementActivity(
+                    x.CustomerId,
+                    x.ContainerTypeId,
+                    x.MovementType,
+                    x.Quantity,
+                    x.Source))
+                .ToListAsync(cancellationToken);
+        }
+        else
+        {
+            var projected = await operationalProjection.QueryAsync(
+                OperationalMovementProjectionScope.Activity(
+                    start,
+                    dataThrough,
+                    containerTypeId: query.ContainerTypeId),
+                cancellationToken);
+            movements = projected.Activity
+                .Select(x => new MonthlyMovementActivity(
+                    x.CustomerId,
+                    x.ContainerTypeId,
+                    x.MovementType,
+                    x.Quantity,
+                    x.Source))
+                .ToList();
+        }
 
         if (!query.IncludeAdjustments)
-            movements = movements.Where(
-                x => x.Source != MovementSource.Adjustment);
+            movements = movements
+                .Where(x => x.Source != MovementSource.Adjustment)
+                .ToList();
 
         if (query.ContainerTypeId.HasValue)
-            movements = movements.Where(
-                x => x.ContainerTypeId == query.ContainerTypeId.Value);
+            movements = movements
+                .Where(x => x.ContainerTypeId == query.ContainerTypeId.Value)
+                .ToList();
 
         if (query.Source.HasValue)
-            movements = movements.Where(
-                x => x.Source == query.Source.Value);
+            movements = movements
+                .Where(x => x.Source == query.Source.Value)
+                .ToList();
 
-        var raw = await movements
-            .Select(x => new
-            {
-                x.CustomerId,
-                CustomerCode = x.Customer.CustomerCode ?? "",
-                CustomerName = x.Customer.Name,
-                x.ContainerTypeId,
-                ContainerType = x.ContainerType.Name,
-                ContainerDisplayOrder = x.ContainerType.DisplayOrder,
-                Direction = x.MovementType,
-                x.Quantity
-            })
-            .ToListAsync(cancellationToken);
+        var customers = await db.Customers
+            .AsNoTracking()
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+        var containers = await db.ContainerTypes
+            .AsNoTracking()
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
 
         var search = query.CustomerSearch?.Trim();
 
-        var matching = raw
+        var matching = movements
+            .Where(x => customers.ContainsKey(x.CustomerId) &&
+                        containers.ContainsKey(x.ContainerTypeId))
             .Where(x =>
                 string.IsNullOrWhiteSpace(search) ||
-                Contains(x.CustomerCode, search) ||
-                Contains(x.CustomerName, search))
+                Contains(customers[x.CustomerId].CustomerCode, search) ||
+                Contains(customers[x.CustomerId].Name, search))
             .ToList();
 
         var rows = matching
             .GroupBy(x => new
             {
                 x.CustomerId,
-                x.CustomerCode,
-                x.CustomerName,
+                CustomerCode = customers[x.CustomerId].CustomerCode ?? "",
+                CustomerName = customers[x.CustomerId].Name,
                 x.ContainerTypeId,
-                x.ContainerType,
-                x.ContainerDisplayOrder
+                ContainerType = containers[x.ContainerTypeId].Name,
+                ContainerDisplayOrder = containers[x.ContainerTypeId].DisplayOrder
             })
             .Select(g => new MonthlySummaryReportRow(
                 g.Key.CustomerId,
@@ -165,4 +192,11 @@ internal sealed class MonthlySummaryReportService(
     private static bool Contains(string? value, string term) =>
         !string.IsNullOrWhiteSpace(value) &&
         value.Contains(term, StringComparison.OrdinalIgnoreCase);
+
+    private sealed record MonthlyMovementActivity(
+        int CustomerId,
+        int ContainerTypeId,
+        MovementType Direction,
+        int Quantity,
+        MovementSource Source);
 }
