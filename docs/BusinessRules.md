@@ -79,6 +79,7 @@ Important security, master-data and movement changes create audit events.
 
 
 - Correction differences are immutable provenance. Store the resolved Customer + Container Type change snapshot on the corrected ImportRun before removing the previous run's generated rows.
+- Under explicit dormant corrected-projection composition, execution calculates that baseline in its caller-owned serializable transaction. Replacement uses corrected truth strictly before cutover and excludes the selected previous ImportRun once; ordinary new import retains its all-representable-dates whole-ledger baseline. Projection failure or cancellation cannot fall back to raw history or leave an Import write.
 
 
 - Unsaved Container Type edits must never be silently discarded when the operator selects another type, starts a new type, or closes the editor.

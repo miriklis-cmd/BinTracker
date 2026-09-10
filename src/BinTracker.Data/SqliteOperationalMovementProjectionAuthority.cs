@@ -2,15 +2,30 @@ using System.Data;
 using System.Globalization;
 using BinTracker.Core;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace BinTracker.Data;
+
+/// <summary>
+/// Allows a write workflow to obtain the same corrected projection through its caller-owned
+/// database transaction. Implementations must not create, commit or replace that transaction.
+/// </summary>
+public interface ITransactionalOperationalMovementProjectionAuthority
+    : IOperationalMovementProjectionAuthority
+{
+    Task<OperationalMovementProjectionResult> QueryInTransactionAsync(
+        BinTrackerDbContext db,
+        OperationalMovementProjectionScope scope,
+        CancellationToken cancellationToken = default);
+}
 
 /// <summary>
 /// Explicit dormant schema-17 projection implementation. Normal application composition does
 /// not register it; callers must opt into this SQLite adapter deliberately.
 /// </summary>
 public sealed class SqliteOperationalMovementProjectionAuthority(string connectionString)
-    : IOperationalMovementProjectionAuthority
+    : ITransactionalOperationalMovementProjectionAuthority
 {
     private readonly string connectionString = string.IsNullOrWhiteSpace(connectionString)
         ? throw new ArgumentException("A SQLite connection string is required.", nameof(connectionString))
@@ -26,6 +41,40 @@ public sealed class SqliteOperationalMovementProjectionAuthority(string connecti
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(
             IsolationLevel.Serializable, cancellationToken);
 
+        var result = await QueryInSnapshotAsync(
+            connection,
+            transaction,
+            scope,
+            cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return result;
+    }
+
+    public Task<OperationalMovementProjectionResult> QueryInTransactionAsync(
+        BinTrackerDbContext db,
+        OperationalMovementProjectionScope scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(db);
+        ArgumentNullException.ThrowIfNull(scope);
+
+        if (db.Database.GetDbConnection() is not SqliteConnection connection ||
+            db.Database.CurrentTransaction?.GetDbTransaction() is not SqliteTransaction transaction ||
+            !ReferenceEquals(transaction.Connection, connection))
+        {
+            throw new InvalidOperationException(
+                "The SQLite operational projection requires the caller-owned active database transaction.");
+        }
+
+        return QueryInSnapshotAsync(connection, transaction, scope, cancellationToken);
+    }
+
+    private static async Task<OperationalMovementProjectionResult> QueryInSnapshotAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        OperationalMovementProjectionScope scope,
+        CancellationToken cancellationToken)
+    {
         if (await ScalarInt64Async(connection, transaction,
                 "SELECT Version FROM SchemaVersion WHERE Id=1;", cancellationToken) !=
             SqliteLineageSchema17Migrator.TargetSchemaVersion)
@@ -103,9 +152,7 @@ public sealed class SqliteOperationalMovementProjectionAuthority(string connecti
             projected.Add(OperationalMovementProjectionSemantics.ProjectExcluded(fact));
         }
 
-        var result = OperationalMovementProjectionSemantics.Complete(scope, projected);
-        await transaction.CommitAsync(cancellationToken);
-        return result;
+        return OperationalMovementProjectionSemantics.Complete(scope, projected);
     }
 
     private static void ValidateRelevantRootEvidence(long rootId, IReadOnlyCollection<long> influenceIds,

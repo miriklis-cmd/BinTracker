@@ -12,7 +12,7 @@ Step 4 shows the previous run, previous/proposed movement counts and changed cus
 
 ## Replacement safety boundary
 
-When explicit dormant schema-17 composition supplies the corrected operational projection authority, comparison derives the strictly pre-cutover BinTracker position from one corrected `PositionAsOf` result. It retains the previous ImportRun's movement count and net effect from persisted ImportRun-owned rows, excludes that prior effect from the proposed baseline, and propagates projection failure without raw fallback. Normal schema-16 comparison remains unchanged; replacement execution reconciliation has not yet moved to projection.
+When explicit dormant schema-17 composition supplies the corrected operational projection authority, comparison and execution derive the strictly pre-cutover BinTracker position from one corrected `PositionAsOf` result. They retain the previous ImportRun's movement count and net effect from persisted ImportRun-owned rows and exclude that prior effect exactly once. Execution obtains the projection through its caller-owned serializable transaction, so eligibility, baseline, deliberate deletion, replacement state and new writes cannot commit from different snapshots. Projection failure/cancellation propagates without raw fallback or surviving writes. Normal schema-16 comparison/execution remains unchanged.
 
 `BinMovement.ImportRunId` is the authoritative boundary.
 

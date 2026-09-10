@@ -109,6 +109,7 @@
 - BT-IMPORT-013: Correction comparisons must use resolved configured container identity, not legacy/display container strings.
 - BT-IMPORT-014: Administrators must be able to inspect Import Run provenance, replacement relationships and generated movement records through a read-only history UI.
 - BT-IMPORT-015: A corrected ImportRun must persist the exact resolved customer/container difference snapshot before the prior generated rows are removed, so replacement intent remains auditable later.
+- Explicit dormant schema-17 composition now reconciles Import execution from the corrected operational projection inside the caller-owned serializable transaction. Replacement uses corrected activity strictly before cutover and excludes the selected previous ImportRun exactly once; ordinary new import uses all representable movement dates, matching its accepted whole-ledger baseline. Projection failure/cancellation leaves no import write and never falls back to raw arithmetic. Normal schema-16 execution and runtime registration remain unchanged.
 
 ## Backup / Recovery
 

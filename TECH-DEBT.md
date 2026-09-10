@@ -33,7 +33,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 - Replacement comparison currently summarizes changed net customer/container positions and movement counts. A future Import Run details UI can add line/source-row differences without widening the replacement safety boundary.
 - Historical alpha.19.x provenance backfill intentionally links only `Adjustment`/`ExcelImport` rows with a strict `IMPORT-<numeric id>` reference that resolves to an existing ImportRun; do not broaden inference to Manual/Batch rows.
 - Keep Review/reconciliation planning pure/read-only and reusable.
-- Transaction execution must always rebuild/validate against the live database immediately before writes.
+- Transaction execution must always rebuild/validate against the live database immediately before writes. Under explicit schema-17 composition, corrected projection, eligibility, replacement deletion and import writes share the caller-owned serializable transaction; do not regress to a separate projection snapshot.
 - Exact re-import identity uses SHA-256; future Import Profiles should add profile/parser version to provenance.
 - Changed-workbook same-cutover correction must operate only on records linked to the prior ImportRun and must never touch legitimate operator movements.
 - Manual legacy token aliases are session-scoped today; future Import Profiles should persist reusable aliases per profile.

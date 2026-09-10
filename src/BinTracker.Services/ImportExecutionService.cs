@@ -1,3 +1,4 @@
+using System.Data;
 using System.Security.Cryptography;
 using System.Text.Json;
 using BinTracker.Core;
@@ -447,7 +448,9 @@ internal sealed class ImportExecutionService(
         await using var db =
             await factory.CreateDbContextAsync(cancellationToken);
         await using var transaction =
-            await db.Database.BeginTransactionAsync(cancellationToken);
+            await db.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable,
+                cancellationToken);
 
         // Re-check inside the write transaction so a second process cannot
         // silently apply the exact same source after preflight.
@@ -510,6 +513,12 @@ internal sealed class ImportExecutionService(
             }
         }
 
+        var previousMovements = previousRun is null
+            ? []
+            : await db.BinMovements
+                .Where(x => x.ImportRunId == previousRun.Id)
+                .ToListAsync(cancellationToken);
+
         var existingCustomers = await db.Customers
             .AsNoTracking()
             .OrderBy(x => x.CustomerCode)
@@ -536,50 +545,97 @@ internal sealed class ImportExecutionService(
                 0))
             .ToListAsync(cancellationToken);
 
-        var balanceQuery = db.BinMovements
-            .AsNoTracking()
-            .AsQueryable();
-
-        if (previousRun is not null)
+        IReadOnlyList<BalanceRow> currentBalances;
+        if (operationalProjection is null)
         {
-            var previousId = previousRun.Id;
+            var balanceQuery = db.BinMovements
+                .AsNoTracking()
+                .AsQueryable();
 
-            // Same-cutover correction must reconstruct the workbook position
-            // from history that existed before the cutover. Legitimate
-            // operator activity on/after the cutover stays in the database
-            // but must not be absorbed into the corrected Excel adjustment.
-            balanceQuery = balanceQuery.Where(
-                x =>
-                    x.MovementDate < request.CutoverDate &&
-                    (x.ImportRunId == null ||
-                     x.ImportRunId != previousId));
+            if (previousRun is not null)
+            {
+                var previousId = previousRun.Id;
+
+                // Same-cutover correction must reconstruct the workbook position
+                // from history that existed before the cutover. Legitimate
+                // operator activity on/after the cutover stays in the database
+                // but must not be absorbed into the corrected Excel adjustment.
+                balanceQuery = balanceQuery.Where(
+                    x =>
+                        x.MovementDate < request.CutoverDate &&
+                        (x.ImportRunId == null ||
+                         x.ImportRunId != previousId));
+            }
+
+            var totals = await balanceQuery
+                .GroupBy(x => new
+                {
+                    x.CustomerId,
+                    x.ContainerTypeId
+                })
+                .Select(g => new
+                {
+                    g.Key.CustomerId,
+                    g.Key.ContainerTypeId,
+                    Balance = g.Sum(x =>
+                        x.MovementType == MovementType.Out
+                            ? x.Quantity
+                            : -x.Quantity)
+                })
+                .ToListAsync(cancellationToken);
+
+            currentBalances = totals
+                .Select(x => new BalanceRow(
+                    x.CustomerId,
+                    string.Empty,
+                    x.ContainerTypeId,
+                    string.Empty,
+                    x.Balance))
+                .ToList();
         }
-
-        var totals = await balanceQuery
-            .GroupBy(x => new
+        else
+        {
+            if (operationalProjection is not
+                ITransactionalOperationalMovementProjectionAuthority transactionalProjection)
             {
-                x.CustomerId,
-                x.ContainerTypeId
-            })
-            .Select(g => new
-            {
-                g.Key.CustomerId,
-                g.Key.ContainerTypeId,
-                Balance = g.Sum(x =>
-                    x.MovementType == MovementType.Out
-                        ? x.Quantity
-                        : -x.Quantity)
-            })
-            .ToListAsync(cancellationToken);
+                throw new InvalidOperationException(
+                    "Corrected Import execution requires a projection authority that participates in the caller-owned transaction.");
+            }
 
-        var currentBalances = totals
-            .Select(x => new BalanceRow(
-                x.CustomerId,
-                string.Empty,
-                x.ContainerTypeId,
-                string.Empty,
-                x.Balance))
-            .ToList();
+            OperationalMovementProjectionResult? projected = null;
+            if (previousRun is null)
+            {
+                // DateOnly.MaxValue includes every representable movement date and therefore
+                // preserves the accepted whole-ledger baseline for an ordinary new import.
+                projected = await transactionalProjection.QueryInTransactionAsync(
+                    db,
+                    OperationalMovementProjectionScope.PositionAsOf(DateOnly.MaxValue),
+                    cancellationToken);
+            }
+            else if (request.CutoverDate != DateOnly.MinValue)
+            {
+                projected = await transactionalProjection.QueryInTransactionAsync(
+                    db,
+                    OperationalMovementProjectionScope.PositionAsOf(
+                        request.CutoverDate.AddDays(-1)),
+                    cancellationToken);
+            }
+
+            var previousPreCutoverEffects = previousRun is null
+                ? new Dictionary<(int CustomerId, int ContainerTypeId), long>()
+                : previousMovements
+                    .Where(x => x.MovementDate < request.CutoverDate)
+                    .GroupBy(x => (x.CustomerId, x.ContainerTypeId))
+                    .ToDictionary(
+                        x => x.Key,
+                        x => x.Sum(movement => movement.MovementType == MovementType.Out
+                            ? (long)movement.Quantity
+                            : -movement.Quantity));
+
+            currentBalances = ProjectedBalancesExcluding(
+                projected?.Positions ?? [],
+                previousPreCutoverEffects);
+        }
 
         var review = ExcelImportReviewPlanner.Build(
             request.Analysis,
@@ -832,10 +888,6 @@ internal sealed class ImportExecutionService(
 
         if (previousRun is not null)
         {
-            var previousMovements = await db.BinMovements
-                .Where(x => x.ImportRunId == previousRun.Id)
-                .ToListAsync(cancellationToken);
-
             // Persist the exact approved correction difference before the old
             // generated rows are removed from the live ledger. Use resolved
             // database identities, never legacy/display strings.
@@ -1328,20 +1380,9 @@ internal sealed class ImportExecutionService(
                         ? (long)movement.Quantity
                         : -movement.Quantity));
 
-            balances = projected.Positions
-                .Select(position =>
-                {
-                    previousPreCutoverEffects.TryGetValue(
-                        (position.CustomerId, position.ContainerTypeId),
-                        out var previousEffect);
-                    return new BalanceRow(
-                        position.CustomerId,
-                        string.Empty,
-                        position.ContainerTypeId,
-                        string.Empty,
-                        checked((int)(position.Quantity - previousEffect)));
-                })
-                .ToList();
+            balances = ProjectedBalancesExcluding(
+                projected.Positions,
+                previousPreCutoverEffects);
         }
 
         var review = ExcelImportReviewPlanner.Build(
@@ -1366,6 +1407,24 @@ internal sealed class ImportExecutionService(
 
         return new ReplacementPlan(reconciliation);
     }
+
+    private static IReadOnlyList<BalanceRow> ProjectedBalancesExcluding(
+        IReadOnlyList<OperationalMovementPosition> positions,
+        IReadOnlyDictionary<(int CustomerId, int ContainerTypeId), long> excludedEffects) =>
+        positions
+            .Select(position =>
+            {
+                excludedEffects.TryGetValue(
+                    (position.CustomerId, position.ContainerTypeId),
+                    out var excludedEffect);
+                return new BalanceRow(
+                    position.CustomerId,
+                    string.Empty,
+                    position.ContainerTypeId,
+                    string.Empty,
+                    checked((int)(position.Quantity - excludedEffect)));
+            })
+            .ToList();
 
     private static string ReplacementKey(
         string customerCode,

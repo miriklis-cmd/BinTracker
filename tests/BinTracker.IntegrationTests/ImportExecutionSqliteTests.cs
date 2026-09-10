@@ -180,6 +180,12 @@ public sealed class ImportExecutionSqliteTests
             Assert.Contains(
                 "\"OpeningAdjustment\":10",
                 reconciliationJson);
+
+            var audit = await verify.AuditEvents.SingleAsync(
+                x => x.Action == "EXCEL_IMPORT_COMPLETED");
+            Assert.Equal("ImportRun", audit.EntityType);
+            Assert.Equal(result.ImportRunId.ToString(), audit.EntityId);
+            Assert.True(audit.Succeeded);
         }
         finally
         {
@@ -553,6 +559,16 @@ public sealed class ImportExecutionSqliteTests
                 firstResult.ImportRunId,
                 Guid.NewGuid());
 
+            var sameCutoverNewImport = correctedRequest with
+            {
+                Mode = ImportExecutionMode.NewImport,
+                PreviousImportRunId = null,
+                ClientOperationId = Guid.NewGuid()
+            };
+            var sameCutoverFailure = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.ExecuteAsync(sameCutoverNewImport));
+            Assert.Contains("Replace/Correct", sameCutoverFailure.Message);
+
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 service.CompareReplacementAsync(correctedRequest with
                 {
@@ -583,6 +599,8 @@ public sealed class ImportExecutionSqliteTests
 
             await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
                 service.CompareReplacementAsync(correctedRequest));
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                service.ExecuteAsync(correctedRequest));
 
             await using (var db = await factory.CreateDbContextAsync())
             {
@@ -633,6 +651,8 @@ public sealed class ImportExecutionSqliteTests
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 service.CompareReplacementAsync(correctedRequest));
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.ExecuteAsync(correctedRequest));
 
             await using (var db = await factory.CreateDbContextAsync())
             {
@@ -690,11 +710,123 @@ public sealed class ImportExecutionSqliteTests
             // Corrected workbook position 12 + same-day Manual 2 +
             // next-day Manual 4.
             Assert.Equal(18, finalBalance);
+
+            await using var schemaCommand = connection.CreateCommand();
+            schemaCommand.CommandText =
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='LogicalMovementBatches';";
+            Assert.Equal(0L, Convert.ToInt64(await schemaCommand.ExecuteScalarAsync()));
         }
         finally
         {
             if (File.Exists(firstFile)) File.Delete(firstFile);
             if (File.Exists(correctedFile)) File.Delete(correctedFile);
+        }
+    }
+
+    [Fact]
+    public async Task New_import_reconciliation_uses_the_whole_raw_ledger_without_a_cutover_boundary()
+    {
+        var temp = Path.Combine(
+            Path.GetTempPath(),
+            $"bintracker-import-all-dates-{Guid.NewGuid():N}.xlsx");
+
+        await File.WriteAllBytesAsync(temp, "all-dates-source"u8.ToArray());
+
+        try
+        {
+            await using var connection = new SqliteConnection("Data Source=:memory:");
+            await connection.OpenAsync();
+
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<BinTrackerDbContext>(
+                options => options.UseSqlite(connection));
+            services.AddBinTrackerServices();
+
+            await using var provider = services.BuildServiceProvider();
+            await using var scope = provider.CreateAsyncScope();
+            var factory = scope.ServiceProvider
+                .GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
+
+            int customerId;
+            await using (var db = await factory.CreateDbContextAsync())
+            {
+                await db.Database.EnsureCreatedAsync();
+                await DatabaseSetup.InitializeSqliteAsync(db);
+
+                var admin = new UserAccount
+                {
+                    Username = "admin",
+                    DisplayName = "Administrator",
+                    PasswordHash = "x",
+                    PasswordSalt = "x",
+                    Role = UserRole.Administrator,
+                    IsActive = true
+                };
+                var customer = new Customer
+                {
+                    CustomerCode = "EXISTING",
+                    Name = "Existing Customer",
+                    CustomerType = CustomerType.Account,
+                    IsActive = true
+                };
+                db.AddRange(admin, customer);
+                await db.SaveChangesAsync();
+                customerId = customer.Id;
+
+                db.BinMovements.Add(new BinMovement
+                {
+                    MovementDate = new DateOnly(2026, 8, 20),
+                    MovementType = MovementType.Out,
+                    Source = MovementSource.Manual,
+                    CustomerId = customerId,
+                    ContainerTypeId = 1,
+                    Quantity = 3,
+                    CreatedBy = "admin"
+                });
+                await db.SaveChangesAsync();
+                scope.ServiceProvider.GetRequiredService<UserSession>().SignIn(admin);
+            }
+
+            var service = scope.ServiceProvider.GetRequiredService<IImportExecutionService>();
+            var source = await SourceAsync(temp);
+            var preflight = await service.PreflightAsync(source);
+            var result = await service.ExecuteAsync(new ImportExecutionRequest(
+                source,
+                preflight.Source.Sha256,
+                Analysis(new ImportSnapshotCandidate(
+                    "Update Account", "Existing", CustomerType.Account, null,
+                    Out: 2, In: 0, BroughtForward: 10, ExcelTotal: 12, SourceRow: "12")),
+                [new ImportWorksheetMapping("Update Account", ImportWorksheetRole.Source, "")],
+                new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
+                new Dictionary<string, ImportCustomerDecision>(StringComparer.OrdinalIgnoreCase),
+                new Dictionary<string, ImportExistingCustomerDecision>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["Existing"] = new(
+                        "Existing",
+                        ImportExistingCustomerDecisionAction.AcceptMatch,
+                        customerId,
+                        "EXISTING",
+                        "Existing Customer")
+                },
+                new DateOnly(2026, 8, 14),
+                ClientOperationId: Guid.NewGuid()));
+
+            Assert.Equal(1, result.OpeningAdjustmentMovements);
+            await using var verify = await factory.CreateDbContextAsync();
+            var adjustment = await verify.BinMovements.SingleAsync(
+                x => x.ImportRunId == result.ImportRunId &&
+                     x.Source == MovementSource.Adjustment);
+            Assert.Equal(7, adjustment.Quantity);
+            Assert.Equal(MovementType.Out, adjustment.MovementType);
+
+            var run = await verify.ImportRuns.SingleAsync(x => x.Id == result.ImportRunId);
+            Assert.Contains(
+                "\"PreviousBinTrackerBalance\":3",
+                Assert.IsType<string>(run.OpeningReconciliationChangesJson));
+        }
+        finally
+        {
+            if (File.Exists(temp)) File.Delete(temp);
         }
     }
 

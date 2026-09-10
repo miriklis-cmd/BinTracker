@@ -3,6 +3,7 @@ using BinTracker.Data;
 using BinTracker.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -452,6 +453,236 @@ public sealed class OperationalMovementProjectionSchema17Tests
         Assert.Equal(2, comparison.PreviousMovementCount);
         Assert.Equal(2, comparison.ProposedMovementCount);
         Assert.Empty(h.ProjectionServiceCalls);
+    }
+
+    [Fact]
+    public async Task Projection_backed_import_replacement_executes_from_the_corrected_transaction_snapshot()
+    {
+        await using var h = await Harness.CreateAsync(
+            enableProjectionBackedServices: true,
+            userRole: UserRole.Administrator);
+        var cutover = new DateOnly(2026, 9, 4);
+
+        var corrected = await h.CreateSingleAsync(
+            new(2026, 9, 1), h.CustomerId, 1, 7);
+        var correctedLine = Assert.Single(await h.LineIdsAsync(corrected.RootId));
+        await h.MutateAsync(corrected.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(correctedLine)],
+                "correct pre-cutover quantity",
+                quantity: MovementFieldIntent<int>.Selected(9)));
+
+        var restored = await h.CreateSingleAsync(
+            new(2026, 9, 2), h.CustomerId, 1, 4);
+        var restoredLine = Assert.Single(await h.LineIdsAsync(restored.RootId));
+        await h.MutateAsync(restored.RootId, 0,
+            MovementMutationRequest.Reverse(
+                MovementMutationScope.Individual,
+                [new(restoredLine)],
+                "reverse entry"));
+        await h.MutateAsync(restored.RootId, 1,
+            MovementMutationRequest.Restore(
+                MovementMutationScope.Individual,
+                [new(restoredLine)],
+                "restore entry"));
+
+        await h.CreateSingleAsync(cutover, h.CustomerId, 1, 100);
+        await h.CreateSingleAsync(Harness.Today, h.CustomerId, 1, 200);
+        await h.AddExcludedAsync(
+            MovementSource.Adjustment, MovementType.Out, 2, importOwned: false,
+            movementDate: new(2026, 9, 2));
+        await h.AddExcludedAsync(
+            MovementSource.ExcelImport, MovementType.In, 1, importOwned: true,
+            movementDate: new(2026, 9, 3));
+        var previousRunId = await h.CreatePreviousImportRunAsync(
+            cutover,
+            cutover.AddDays(-1));
+
+        await using (var db = new BinTrackerDbContext(
+                         new DbContextOptionsBuilder<BinTrackerDbContext>()
+                             .UseSqlite(h.ConnectionString).Options))
+        {
+            var rawPreCutover = await db.BinMovements
+                .Where(x => x.MovementDate < cutover && x.ImportRunId != previousRunId)
+                .SumAsync(x => x.MovementType == MovementType.Out
+                    ? x.Quantity
+                    : -x.Quantity);
+            Assert.Equal(18, rawPreCutover);
+        }
+
+        h.ClearProjectionServiceCalls();
+        var result = await h.ImportExecution.ExecuteAsync(
+            await ExecutableReplacementRequestAsync(h, previousRunId, cutover));
+
+        var call = Assert.Single(h.ProjectionServiceCalls);
+        Assert.Equal(1, h.ProjectionTransactionCallCount);
+        Assert.True(call.IsPositionAsOf);
+        Assert.Equal(cutover.AddDays(-1), call.ThroughDateInclusive);
+
+        await using var verify = new BinTrackerDbContext(
+            new DbContextOptionsBuilder<BinTrackerDbContext>()
+                .UseSqlite(h.ConnectionString).Options);
+        var oldRun = await verify.ImportRuns.SingleAsync(x => x.Id == previousRunId);
+        var newRun = await verify.ImportRuns.SingleAsync(x => x.Id == result.ImportRunId);
+        Assert.Equal("Replaced", oldRun.Status);
+        Assert.Null(oldRun.CurrentCutoverDate);
+        Assert.Equal(previousRunId, newRun.ReplacesImportRunId);
+        Assert.Equal(0, await verify.BinMovements.CountAsync(x => x.ImportRunId == previousRunId));
+
+        var generated = await verify.BinMovements
+            .Where(x => x.ImportRunId == result.ImportRunId)
+            .ToListAsync();
+        Assert.Equal(2, generated.Count);
+        Assert.Contains(generated, x =>
+            x.Source == MovementSource.Adjustment &&
+            x.MovementType == MovementType.Out && x.Quantity == 6);
+        Assert.Contains(generated, x =>
+            x.Source == MovementSource.ExcelImport &&
+            x.MovementType == MovementType.Out && x.Quantity == 2);
+        Assert.Contains("\"PreviousBinTrackerBalance\":14",
+            Assert.IsType<string>(newRun.OpeningReconciliationChangesJson));
+        Assert.Contains("\"Difference\":-3",
+            Assert.IsType<string>(newRun.CorrectionChangesJson));
+
+        Assert.Equal(2, await verify.BinMovements.CountAsync(x =>
+            x.Source == MovementSource.Manual && x.MovementDate >= cutover &&
+            (x.Quantity == 100 || x.Quantity == 200)));
+        var finalPosition = await h.Authority.QueryAsync(
+            OperationalMovementProjectionScope.PositionAsOf(DateOnly.MaxValue));
+        Assert.Equal(322, Assert.Single(finalPosition.Positions).Quantity);
+    }
+
+    [Fact]
+    public async Task Projection_backed_new_import_preserves_the_whole_ledger_temporal_scope()
+    {
+        await using var h = await Harness.CreateAsync(
+            enableProjectionBackedServices: true,
+            userRole: UserRole.Administrator);
+        var cutover = new DateOnly(2026, 9, 4);
+        await h.CreateSingleAsync(new(2026, 9, 1), h.CustomerId, 1, 9);
+        await h.CreateSingleAsync(Harness.Today, h.CustomerId, 1, 4);
+        await h.AddExcludedAsync(
+            MovementSource.Adjustment, MovementType.Out, 2, importOwned: false,
+            movementDate: new(2026, 9, 2));
+        await h.AddExcludedAsync(
+            MovementSource.ExcelImport, MovementType.In, 1, importOwned: true,
+            movementDate: new(2026, 9, 3));
+
+        h.ClearProjectionServiceCalls();
+        var result = await h.ImportExecution.ExecuteAsync(
+            await NewImportRequestAsync(h, cutover, "new import source"));
+
+        var call = Assert.Single(h.ProjectionServiceCalls);
+        Assert.Equal(1, h.ProjectionTransactionCallCount);
+        Assert.True(call.IsPositionAsOf);
+        Assert.Equal(DateOnly.MaxValue, call.ThroughDateInclusive);
+
+        await using var verify = new BinTrackerDbContext(
+            new DbContextOptionsBuilder<BinTrackerDbContext>()
+                .UseSqlite(h.ConnectionString).Options);
+        var adjustment = await verify.BinMovements.SingleAsync(x =>
+            x.ImportRunId == result.ImportRunId && x.Source == MovementSource.Adjustment);
+        Assert.Equal(6, adjustment.Quantity);
+        var run = await verify.ImportRuns.SingleAsync(x => x.Id == result.ImportRunId);
+        Assert.Contains("\"PreviousBinTrackerBalance\":14",
+            Assert.IsType<string>(run.OpeningReconciliationChangesJson));
+    }
+
+    [Fact]
+    public async Task Projection_backed_replacement_execution_failure_preserves_every_prior_artifact()
+    {
+        await using var h = await Harness.CreateAsync(
+            enableProjectionBackedServices: true,
+            userRole: UserRole.Administrator);
+        var root = await h.CreateSingleAsync(
+            new(2026, 9, 1), h.CustomerId, 1, 6);
+        await h.SetRootStatusAsync(root.RootId, LogicalMovementBatchStatus.Invalid);
+        var cutover = new DateOnly(2026, 9, 4);
+        var previousRunId = await h.CreatePreviousImportRunAsync(
+            cutover,
+            cutover.AddDays(-1));
+
+        long customerCount;
+        long movementCount;
+        long importRunCount;
+        long auditCount;
+        await using (var connection = await h.OpenAsync())
+        {
+            customerCount = await ScalarAsync(connection, "SELECT COUNT(*) FROM Customers;");
+            movementCount = await ScalarAsync(connection, "SELECT COUNT(*) FROM BinMovements;");
+            importRunCount = await ScalarAsync(connection, "SELECT COUNT(*) FROM ImportRuns;");
+            auditCount = await ScalarAsync(connection, "SELECT COUNT(*) FROM AuditEvents;");
+        }
+
+        h.ClearProjectionServiceCalls();
+        var request = await ExecutableReplacementRequestAsync(
+            h,
+            previousRunId,
+            cutover);
+        var failure = await Assert.ThrowsAsync<OperationalMovementProjectionException>(() =>
+            h.ImportExecution.ExecuteAsync(request));
+
+        Assert.Equal(
+            OperationalMovementProjectionFailure.RelevantLineageInvalid,
+            failure.Failure);
+        Assert.Single(h.ProjectionServiceCalls);
+        Assert.Equal(1, h.ProjectionTransactionCallCount);
+        await using var verify = await h.OpenAsync();
+        Assert.Equal(customerCount,
+            await ScalarAsync(verify, "SELECT COUNT(*) FROM Customers;"));
+        Assert.Equal(movementCount,
+            await ScalarAsync(verify, "SELECT COUNT(*) FROM BinMovements;"));
+        Assert.Equal(importRunCount,
+            await ScalarAsync(verify, "SELECT COUNT(*) FROM ImportRuns;"));
+        Assert.Equal(auditCount,
+            await ScalarAsync(verify, "SELECT COUNT(*) FROM AuditEvents;"));
+        await using var command = verify.CreateCommand();
+        command.CommandText =
+            "SELECT COUNT(*) FROM ImportRuns WHERE Id=$id AND Status='Completed' AND CurrentCutoverDate='2026-09-04';";
+        command.Parameters.AddWithValue("$id", previousRunId);
+        Assert.Equal(1L, Convert.ToInt64(await command.ExecuteScalarAsync()));
+        Assert.Equal(2L, await ScalarAsync(verify,
+            $"SELECT COUNT(*) FROM BinMovements WHERE ImportRunId={previousRunId};"));
+    }
+
+    [Fact]
+    public async Task Projection_cancellation_propagates_and_rolls_back_import_execution()
+    {
+        await using var h = await Harness.CreateAsync(
+            enableProjectionBackedServices: true,
+            userRole: UserRole.Administrator);
+        await h.CreateSingleAsync(new(2026, 9, 1), h.CustomerId, 1, 6);
+        var request = await NewImportRequestAsync(h, new(2026, 9, 4), "cancel source");
+
+        long customerCount;
+        long importRunCount;
+        long movementCount;
+        long auditCount;
+        await using (var connection = await h.OpenAsync())
+        {
+            customerCount = await ScalarAsync(connection, "SELECT COUNT(*) FROM Customers;");
+            importRunCount = await ScalarAsync(connection, "SELECT COUNT(*) FROM ImportRuns;");
+            movementCount = await ScalarAsync(connection, "SELECT COUNT(*) FROM BinMovements;");
+            auditCount = await ScalarAsync(connection, "SELECT COUNT(*) FROM AuditEvents;");
+        }
+
+        h.ClearProjectionServiceCalls();
+        h.CancelNextProjectionTransaction();
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            h.ImportExecution.ExecuteAsync(request));
+
+        Assert.Single(h.ProjectionServiceCalls);
+        Assert.Equal(1, h.ProjectionTransactionCallCount);
+        await using var verify = await h.OpenAsync();
+        Assert.Equal(customerCount,
+            await ScalarAsync(verify, "SELECT COUNT(*) FROM Customers;"));
+        Assert.Equal(importRunCount,
+            await ScalarAsync(verify, "SELECT COUNT(*) FROM ImportRuns;"));
+        Assert.Equal(movementCount,
+            await ScalarAsync(verify, "SELECT COUNT(*) FROM BinMovements;"));
+        Assert.Equal(auditCount,
+            await ScalarAsync(verify, "SELECT COUNT(*) FROM AuditEvents;"));
     }
 
     [Fact]
@@ -1798,6 +2029,68 @@ public sealed class OperationalMovementProjectionSchema17Tests
             Guid.NewGuid());
     }
 
+    private static async Task<ImportExecutionRequest> ExecutableReplacementRequestAsync(
+        Harness harness,
+        long previousImportRunId,
+        DateOnly cutoverDate)
+    {
+        var request = ReplacementRequest(harness, previousImportRunId, cutoverDate);
+        var preflight = await harness.ImportExecution.PreflightAsync(
+            request.Source,
+            cutoverDate);
+        return request with { ExpectedSourceSha256 = preflight.Source.Sha256 };
+    }
+
+    private static async Task<ImportExecutionRequest> NewImportRequestAsync(
+        Harness harness,
+        DateOnly cutoverDate,
+        string sourceContent)
+    {
+        var source = new ImportSourceDocument(
+            "new.xlsx",
+            System.Text.Encoding.UTF8.GetBytes(sourceContent),
+            "new.xlsx",
+            new DateTime(2026, 9, 5, 1, 2, 3, DateTimeKind.Utc));
+        var preflight = await harness.ImportExecution.PreflightAsync(source, cutoverDate);
+        var analysis = new ExcelImportAnalysis(
+            source,
+            [new ImportWorksheetAnalysis(
+                "Update Account", 12, 7, 1, 1, "Detected")],
+            [new ImportCustomerCandidate(
+                "Update Account", "PROJ-A", CustomerType.Account, "A1")],
+            [new ImportSnapshotCandidate(
+                "Update Account",
+                "PROJ-A",
+                CustomerType.Account,
+                null,
+                Out: 2,
+                In: 0,
+                BroughtForward: 20,
+                ExcelTotal: 22,
+                SourceRow: "12")],
+            []);
+
+        return new ImportExecutionRequest(
+            source,
+            preflight.Source.Sha256,
+            analysis,
+            [new ImportWorksheetMapping(
+                "Update Account", ImportWorksheetRole.Source, string.Empty)],
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
+            new Dictionary<string, ImportCustomerDecision>(StringComparer.OrdinalIgnoreCase),
+            new Dictionary<string, ImportExistingCustomerDecision>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["PROJ-A"] = new(
+                    "PROJ-A",
+                    ImportExistingCustomerDecisionAction.AcceptMatch,
+                    harness.CustomerId,
+                    "PROJ-A",
+                    "Projection A")
+            },
+            cutoverDate,
+            ClientOperationId: Guid.NewGuid());
+    }
+
     private sealed class Harness : IAsyncDisposable
     {
         internal static readonly DateOnly Today = new(2026, 9, 5);
@@ -1851,6 +2144,10 @@ public sealed class OperationalMovementProjectionSchema17Tests
             services.GetService<IOperationalMovementProjectionAuthority>() is RecordingProjectionAuthority recording
                 ? recording.Calls
                 : [];
+        public int ProjectionTransactionCallCount =>
+            services.GetService<IOperationalMovementProjectionAuthority>() is RecordingProjectionAuthority recording
+                ? recording.TransactionCallCount
+                : 0;
         public bool ProjectionAuthorityIsRegistered =>
             services.GetService<IOperationalMovementProjectionAuthority>() is not null;
 
@@ -1860,6 +2157,15 @@ public sealed class OperationalMovementProjectionSchema17Tests
                 RecordingProjectionAuthority recording)
             {
                 recording.Clear();
+            }
+        }
+
+        public void CancelNextProjectionTransaction()
+        {
+            if (services.GetService<IOperationalMovementProjectionAuthority>() is
+                RecordingProjectionAuthority recording)
+            {
+                recording.CancelNextTransaction();
             }
         }
 
@@ -2238,13 +2544,21 @@ public sealed class OperationalMovementProjectionSchema17Tests
 
         private sealed class RecordingProjectionAuthority(
             IOperationalMovementProjectionAuthority inner)
-            : IOperationalMovementProjectionAuthority
+            : ITransactionalOperationalMovementProjectionAuthority
         {
             private readonly List<OperationalMovementProjectionScope> calls = [];
+            private bool cancelNextTransaction;
 
             public IReadOnlyList<OperationalMovementProjectionScope> Calls => calls;
+            public int TransactionCallCount { get; private set; }
 
-            public void Clear() => calls.Clear();
+            public void Clear()
+            {
+                calls.Clear();
+                TransactionCallCount = 0;
+            }
+
+            public void CancelNextTransaction() => cancelNextTransaction = true;
 
             public Task<OperationalMovementProjectionResult> QueryAsync(
                 OperationalMovementProjectionScope scope,
@@ -2252,6 +2566,27 @@ public sealed class OperationalMovementProjectionSchema17Tests
             {
                 calls.Add(scope);
                 return inner.QueryAsync(scope, cancellationToken);
+            }
+
+            public Task<OperationalMovementProjectionResult> QueryInTransactionAsync(
+                BinTrackerDbContext db,
+                OperationalMovementProjectionScope scope,
+                CancellationToken cancellationToken = default)
+            {
+                calls.Add(scope);
+                TransactionCallCount++;
+                Assert.NotNull(db.Database.CurrentTransaction);
+                Assert.Equal(
+                    System.Data.IsolationLevel.Serializable,
+                    db.Database.CurrentTransaction.GetDbTransaction().IsolationLevel);
+                if (cancelNextTransaction)
+                {
+                    cancelNextTransaction = false;
+                    throw new OperationCanceledException("Injected projection cancellation.");
+                }
+
+                return ((ITransactionalOperationalMovementProjectionAuthority)inner)
+                    .QueryInTransactionAsync(db, scope, cancellationToken);
             }
         }
 
