@@ -58,7 +58,7 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 - [R] Analyse/Map/Review are read-only; unknown tokens and create/skip/match decisions remain explicit and stable through navigation.
 - [R] Exact source cannot import twice; post-preflight file change is rejected.
 - [A] Changed workbook/same cutover exposes Replace/Correct before execution.
-- [S] Replace/Correct preserves legitimate same-day/later Manual/Batch activity outside replaced import-generated movements.
+- [S] Replace/Correct comparison preserves legitimate same-day/later activity outside the pre-cutover baseline; explicit dormant schema-17 composition uses corrected projection while retaining physical previous-run evidence. Execution reconciliation remains pending.
 - [R] Import History exposes source/SHA/cutover/user/count/status/replacement/linked movement and separate opening-reconciliation/correction evidence truthfully.
 - [R] Forced post-SaveChanges failure rolls back and allows exact-source retry; non-Administrator history access is denied.
 - [P] Before v1, execution failures identify useful row/customer/container context.

@@ -1,5 +1,14 @@
 # Documentation Audit Record
 
+## 9 September 2026 — Import replacement comparison projection participation
+
+- Started from clean tracked/staged HEAD/upstream `c33c7b6e78e51dd7c7e5b14df8c82e05067ab96b` on `codex/movement-correction`, 0 ahead / 0 behind, version `0.5.0-alpha.8.7`; the existing `.codex-evidence/` and three helper/text files remained unrelated untracked evidence.
+- Confirmed the continuation's repeated `MovementService.SaveSingleAsync transaction participation` next-step wording was stale: reviewed IMP-07 already owns one physical/lineage/audit transaction and its focused tests cover native generation zero, retry/idempotency and rollback. No SaveSingle source/test behavior changed.
+- Import replacement comparison now optionally obtains the strict pre-cutover position from the single dormant corrected projection authority, excludes the selected previous ImportRun by persisted physical ownership, retains previous run count/net as forensic evidence, propagates controlled projection failure without raw fallback, handles `DateOnly.MinValue` without underflow and preserves the no-authority schema-16 path. Import `ExecuteAsync` remains unchanged.
+- Before production editing, existing import execution characterization passed 5/5 and planner/contracts passed 19/19; strengthened replacement characterization then passed 5/5. Post-edit, the focused replacement filter passed 4/4, all projection/consumer tests passed 40/40, Import execution/history passed 9/9 and adjacent import planner/decision contracts passed 23/23, all with 0 failed/skipped.
+- Release `dotnet build BinTracker.sln -c Release --no-restore` passed with 0 warnings and 0 errors. `Audit-BinTracker.ps1` passed with 259 permanent requirement IDs, 27 Markdown files and configured contradiction guards. The canonical BAT was explicitly not run.
+- Applicable current-state Architecture, Database, Import, Roadmap/coverage, requirements context, Testing/checklist and continuation claims were semantically reconciled. Requirement IDs/statuses, version, release/package state, schema catalogue/DbContext, runtime composition and later acceptance classifications are unchanged. Import execution operational reconciliation is the next production slice; runtime activation, Daily Print Pack shared-snapshot proof, audit/history integration, Restore UI, retained-database rehearsal and Windows/operator acceptance remain pending.
+
 ## 5 September 2026 — dormant corrected projection authority
 
 - Started from clean tracked/staged HEAD `0b77b7f245feed688ef0586454328ed9d142867b` (`Add temporal correction characterization`) on `codex/movement-correction`, synchronized with `origin/codex/movement-correction`, version `0.5.0-alpha.8.7`; only the previously recorded evidence/text artifacts were untracked.

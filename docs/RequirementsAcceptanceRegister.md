@@ -22,6 +22,8 @@ The unified schema-17 mutation candidate supplies additional source and canonica
 
 The first corrected-projection slice adds further static and canonical automated evidence toward BT-CORR-020/029/033 and BT-HIST-008/009: one provider-neutral corrected activity/PositionAsOf contract, conservative pre-filter relevance, complete current-generation contribution, signed aggregation, excluded Adjustment/ExcelImport composition and fail-closed invalid/incomplete/unrooted handling, backed by one explicit SQLite read snapshot. `Build-BinTracker.bat` passed 553/553 automated tests with 0 failed/skipped and 0 warnings/errors. These rows remain `PLANNED-V1` because the authority is dormant/unregistered and no normal schema-16 operational consumer, startup path, UI or retained database has been cut over or accepted.
 
+The Import replacement-comparison slice adds focused static/automated evidence toward BT-IMP-010/011 and the lineage projection requirements: explicit dormant composition uses corrected pre-cutover operational truth, preserves prior ImportRun-owned physical count/net evidence, includes Adjustment/ExcelImport once, fails closed without raw fallback and preserves schema-16 comparison behavior. Import `ExecuteAsync` reconciliation, runtime schema activation and operator acceptance remain pending, so no requirement status is promoted by this slice.
+
 ## Status / provenance legend
 
 Allowed scopes: `v1`, `post-v1`, `candidate`.

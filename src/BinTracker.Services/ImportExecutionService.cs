@@ -148,7 +148,8 @@ internal sealed class ImportExecutionService(
     IUserContext session,
     IImportExecutionFailureInjector failureInjector,
     IBusinessClock clock,
-    IClientContext client)
+    IClientContext client,
+    IOperationalMovementProjectionAuthority? operationalProjection = null)
     : IImportExecutionService
 {
     public async Task<ImportPreflightResult> PreflightAsync(
@@ -242,24 +243,25 @@ internal sealed class ImportExecutionService(
             ?? throw new InvalidOperationException(
                 "The previous completed Import Run is no longer available.");
 
+        var previousRows = await db.BinMovements
+            .AsNoTracking()
+            .Where(x => x.ImportRunId == previous.ImportRunId)
+            .Select(x => new PreviousImportMovement(
+                x.CustomerId,
+                x.Customer.CustomerCode ?? string.Empty,
+                x.MovementDate,
+                x.ContainerTypeId,
+                x.ContainerType.Name,
+                x.MovementType,
+                x.Quantity))
+            .ToListAsync(cancellationToken);
+
         var plan = await BuildReplacementPlanAsync(
             db,
             request,
             previous.ImportRunId,
+            previousRows,
             cancellationToken);
-
-        var previousRows = await db.BinMovements
-            .AsNoTracking()
-            .Where(x => x.ImportRunId == previous.ImportRunId)
-            .Select(x => new
-            {
-                CustomerCode = x.Customer.CustomerCode ?? string.Empty,
-                x.ContainerTypeId,
-                Container = x.ContainerType.Name,
-                x.MovementType,
-                x.Quantity
-            })
-            .ToListAsync(cancellationToken);
 
         var previousEffects = previousRows
             .GroupBy(x => ReplacementKey(
@@ -1225,10 +1227,20 @@ internal sealed class ImportExecutionService(
     private sealed record ReplacementPlan(
         ImportBalanceReconciliationPlan Reconciliation);
 
+    private sealed record PreviousImportMovement(
+        int CustomerId,
+        string CustomerCode,
+        DateOnly MovementDate,
+        int ContainerTypeId,
+        string Container,
+        MovementType MovementType,
+        int Quantity);
+
     private async Task<ReplacementPlan> BuildReplacementPlanAsync(
         BinTrackerDbContext db,
         ImportExecutionRequest request,
         long previousImportRunId,
+        IReadOnlyList<PreviousImportMovement> previousRows,
         CancellationToken cancellationToken)
     {
         var existingCustomers = await db.Customers
@@ -1257,36 +1269,80 @@ internal sealed class ImportExecutionService(
                 0))
             .ToListAsync(cancellationToken);
 
-        var totals = await db.BinMovements
-            .AsNoTracking()
-            .Where(x =>
-                x.MovementDate < request.CutoverDate &&
-                (x.ImportRunId == null ||
-                 x.ImportRunId != previousImportRunId))
-            .GroupBy(x => new
-            {
-                x.CustomerId,
-                x.ContainerTypeId
-            })
-            .Select(g => new
-            {
-                g.Key.CustomerId,
-                g.Key.ContainerTypeId,
-                Balance = g.Sum(x =>
-                    x.MovementType == MovementType.Out
-                        ? x.Quantity
-                        : -x.Quantity)
-            })
-            .ToListAsync(cancellationToken);
+        IReadOnlyList<BalanceRow> balances;
+        if (operationalProjection is null)
+        {
+            var totals = await db.BinMovements
+                .AsNoTracking()
+                .Where(x =>
+                    x.MovementDate < request.CutoverDate &&
+                    (x.ImportRunId == null ||
+                     x.ImportRunId != previousImportRunId))
+                .GroupBy(x => new
+                {
+                    x.CustomerId,
+                    x.ContainerTypeId
+                })
+                .Select(g => new
+                {
+                    g.Key.CustomerId,
+                    g.Key.ContainerTypeId,
+                    Balance = g.Sum(x =>
+                        x.MovementType == MovementType.Out
+                            ? x.Quantity
+                            : -x.Quantity)
+                })
+                .ToListAsync(cancellationToken);
 
-        var balances = totals
-            .Select(x => new BalanceRow(
-                x.CustomerId,
-                string.Empty,
-                x.ContainerTypeId,
-                string.Empty,
-                x.Balance))
-            .ToList();
+            balances = totals
+                .Select(x => new BalanceRow(
+                    x.CustomerId,
+                    string.Empty,
+                    x.ContainerTypeId,
+                    string.Empty,
+                    x.Balance))
+                .ToList();
+        }
+        else if (request.CutoverDate == DateOnly.MinValue)
+        {
+            // No DateOnly value can be strictly earlier, so the authoritative
+            // pre-cutover position is empty without subtracting one day.
+            balances = [];
+        }
+        else
+        {
+            var projected = await operationalProjection.QueryAsync(
+                OperationalMovementProjectionScope.PositionAsOf(
+                    request.CutoverDate.AddDays(-1)),
+                cancellationToken);
+
+            // The operational projection deliberately includes legitimate import domains.
+            // Replacement comparison removes only the selected prior run by persisted
+            // ImportRun ownership; its physical rows remain the forensic comparison side.
+            var previousPreCutoverEffects = previousRows
+                .Where(x => x.MovementDate < request.CutoverDate)
+                .GroupBy(x => new { x.CustomerId, x.ContainerTypeId })
+                .ToDictionary(
+                    x => (x.Key.CustomerId, x.Key.ContainerTypeId),
+                    x => x.Sum(movement => movement.MovementType == MovementType.Out
+                        ? (long)movement.Quantity
+                        : -movement.Quantity));
+
+            balances = projected.Positions
+                .Select(position =>
+                {
+                    previousPreCutoverEffects.TryGetValue(
+                        (position.CustomerId, position.ContainerTypeId),
+                        out var previousEffect);
+                    return new BalanceRow(
+                        position.CustomerId,
+                        string.Empty,
+                        position.ContainerTypeId,
+                        string.Empty,
+                        checked((int)(position.Quantity - previousEffect)));
+                })
+                .ToList();
+        }
 
         var review = ExcelImportReviewPlanner.Build(
             request.Analysis,

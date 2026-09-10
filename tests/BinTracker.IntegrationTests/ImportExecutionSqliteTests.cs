@@ -553,15 +553,93 @@ public sealed class ImportExecutionSqliteTests
                 firstResult.ImportRunId,
                 Guid.NewGuid());
 
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.CompareReplacementAsync(correctedRequest with
+                {
+                    Mode = ImportExecutionMode.NewImport
+                }));
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.CompareReplacementAsync(correctedRequest with
+                {
+                    PreviousImportRunId = null
+                }));
+
+            var session = scope.ServiceProvider.GetRequiredService<UserSession>();
+            await using (var db = await factory.CreateDbContextAsync())
+            {
+                var user = new UserAccount
+                {
+                    Username = "operator",
+                    DisplayName = "Operator",
+                    PasswordHash = "x",
+                    PasswordSalt = "x",
+                    Role = UserRole.Operator,
+                    IsActive = true
+                };
+                db.UserAccounts.Add(user);
+                await db.SaveChangesAsync();
+                session.SignIn(user);
+            }
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                service.CompareReplacementAsync(correctedRequest));
+
+            await using (var db = await factory.CreateDbContextAsync())
+            {
+                session.SignIn(await db.UserAccounts.SingleAsync(x => x.Username == "admin"));
+            }
+
+            int runCountBeforeComparison;
+            int movementCountBeforeComparison;
+            int auditCountBeforeComparison;
+            await using (var db = await factory.CreateDbContextAsync())
+            {
+                runCountBeforeComparison = await db.ImportRuns.CountAsync();
+                movementCountBeforeComparison = await db.BinMovements.CountAsync();
+                auditCountBeforeComparison = await db.AuditEvents.CountAsync();
+            }
+
             var comparison = await service.CompareReplacementAsync(correctedRequest);
 
             var difference = Assert.Single(comparison.Differences);
             Assert.Equal(1, comparison.ChangedPositionCount);
+            Assert.Equal(firstResult.ImportRunId, comparison.PreviousRun.ImportRunId);
+            Assert.Equal(cutover, comparison.PreviousRun.CutoverDate);
+            Assert.Equal(2, comparison.PreviousMovementCount);
+            Assert.Equal(2, comparison.ProposedMovementCount);
             Assert.Equal("REPLACECO", difference.CustomerCode);
             Assert.Equal("Blue Bin", difference.Container);
             Assert.Equal(11, difference.PreviousNetEffect);
             Assert.Equal(12, difference.ProposedNetEffect);
             Assert.Equal(1, difference.Difference);
+            Assert.Null(scope.ServiceProvider.GetService<IOperationalMovementProjectionAuthority>());
+            await using (var command = connection.CreateCommand())
+            {
+                command.CommandText =
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='LogicalMovementBatches';";
+                Assert.Equal(0L, Convert.ToInt64(await command.ExecuteScalarAsync()));
+            }
+
+            await using (var db = await factory.CreateDbContextAsync())
+            {
+                Assert.Equal(runCountBeforeComparison, await db.ImportRuns.CountAsync());
+                Assert.Equal(movementCountBeforeComparison, await db.BinMovements.CountAsync());
+                Assert.Equal(auditCountBeforeComparison, await db.AuditEvents.CountAsync());
+
+                var previousRun = await db.ImportRuns.SingleAsync(x => x.Id == firstResult.ImportRunId);
+                previousRun.Status = "Replaced";
+                await db.SaveChangesAsync();
+            }
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.CompareReplacementAsync(correctedRequest));
+
+            await using (var db = await factory.CreateDbContextAsync())
+            {
+                var previousRun = await db.ImportRuns.SingleAsync(x => x.Id == firstResult.ImportRunId);
+                previousRun.Status = "Completed";
+                await db.SaveChangesAsync();
+            }
 
             var correctedResult = await service.ExecuteAsync(correctedRequest);
 

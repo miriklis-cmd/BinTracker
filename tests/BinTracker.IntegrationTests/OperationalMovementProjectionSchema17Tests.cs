@@ -317,6 +317,144 @@ public sealed class OperationalMovementProjectionSchema17Tests
     }
 
     [Fact]
+    public async Task Projection_backed_import_replacement_uses_corrected_pre_cutover_position()
+    {
+        await using var h = await Harness.CreateAsync(
+            enableProjectionBackedServices: true,
+            userRole: UserRole.Administrator);
+        var cutover = new DateOnly(2026, 9, 4);
+
+        var corrected = await h.CreateSingleAsync(
+            new(2026, 9, 1), h.CustomerId, 1, 7);
+        var correctedLine = Assert.Single(await h.LineIdsAsync(corrected.RootId));
+        await h.MutateAsync(corrected.RootId, 0,
+            MovementMutationRequest.Correct(
+                MovementMutationScope.Individual,
+                [new(correctedLine)],
+                "correct pre-cutover quantity",
+                quantity: MovementFieldIntent<int>.Selected(9)));
+
+        var restored = await h.CreateSingleAsync(
+            new(2026, 9, 2), h.CustomerId, 1, 4);
+        var restoredLine = Assert.Single(await h.LineIdsAsync(restored.RootId));
+        await h.MutateAsync(restored.RootId, 0,
+            MovementMutationRequest.Reverse(
+                MovementMutationScope.Individual,
+                [new(restoredLine)],
+                "reverse entry"));
+        await h.MutateAsync(restored.RootId, 1,
+            MovementMutationRequest.Restore(
+                MovementMutationScope.Individual,
+                [new(restoredLine)],
+                "restore entry"));
+
+        await h.CreateSingleAsync(cutover, h.CustomerId, 1, 100);
+        await h.CreateSingleAsync(Harness.Today, h.CustomerId, 1, 200);
+        await h.AddExcludedAsync(
+            MovementSource.Adjustment, MovementType.Out, 2, importOwned: false,
+            movementDate: new(2026, 9, 2));
+        await h.AddExcludedAsync(
+            MovementSource.ExcelImport, MovementType.In, 1, importOwned: true,
+            movementDate: new(2026, 9, 3));
+        var previousRunId = await h.CreatePreviousImportRunAsync(
+            cutover,
+            cutover.AddDays(-1));
+
+        await using (var db = new BinTrackerDbContext(
+                         new DbContextOptionsBuilder<BinTrackerDbContext>()
+                             .UseSqlite(h.ConnectionString).Options))
+        {
+            var rawPreCutover = await db.BinMovements
+                .Where(x => x.MovementDate < cutover && x.ImportRunId != previousRunId)
+                .SumAsync(x => x.MovementType == MovementType.Out
+                    ? x.Quantity
+                    : -x.Quantity);
+            Assert.Equal(18, rawPreCutover);
+        }
+
+        var projected = await h.Authority.QueryAsync(
+            OperationalMovementProjectionScope.PositionAsOf(cutover.AddDays(-1)));
+        Assert.Equal(25, Assert.Single(projected.Positions).Quantity);
+        Assert.Equal(6, projected.Activity.Count);
+
+        h.ClearProjectionServiceCalls();
+        var comparison = await h.ImportExecution.CompareReplacementAsync(
+            ReplacementRequest(h, previousRunId, cutover));
+
+        var difference = Assert.Single(comparison.Differences);
+        Assert.Equal(2, comparison.PreviousMovementCount);
+        Assert.Equal(2, comparison.PreviousRun.MovementCount);
+        Assert.Equal(2, comparison.ProposedMovementCount);
+        Assert.Equal(11, difference.PreviousNetEffect);
+        Assert.Equal(8, difference.ProposedNetEffect);
+        Assert.Equal(-3, difference.Difference);
+
+        var call = Assert.Single(h.ProjectionServiceCalls);
+        Assert.True(call.IsPositionAsOf);
+        Assert.Equal(cutover.AddDays(-1), call.ThroughDateInclusive);
+        Assert.Null(call.FromDateInclusive);
+        Assert.Null(call.CustomerId);
+        Assert.Null(call.ContainerTypeId);
+    }
+
+    [Fact]
+    public async Task Projection_backed_import_replacement_fails_closed_without_persistence_or_raw_fallback()
+    {
+        await using var h = await Harness.CreateAsync(
+            enableProjectionBackedServices: true,
+            userRole: UserRole.Administrator);
+        var cutover = new DateOnly(2026, 9, 4);
+        var root = await h.CreateSingleAsync(
+            new(2026, 9, 1), h.CustomerId, 1, 6);
+        await h.SetRootStatusAsync(root.RootId, LogicalMovementBatchStatus.Invalid);
+        var previousRunId = await h.CreatePreviousImportRunAsync(cutover);
+
+        long movementCount;
+        long importRunCount;
+        long auditCount;
+        await using (var connection = await h.OpenAsync())
+        {
+            movementCount = await ScalarAsync(connection, "SELECT COUNT(*) FROM BinMovements;");
+            importRunCount = await ScalarAsync(connection, "SELECT COUNT(*) FROM ImportRuns;");
+            auditCount = await ScalarAsync(connection, "SELECT COUNT(*) FROM AuditEvents;");
+        }
+
+        h.ClearProjectionServiceCalls();
+        var failure = await Assert.ThrowsAsync<OperationalMovementProjectionException>(() =>
+            h.ImportExecution.CompareReplacementAsync(
+                ReplacementRequest(h, previousRunId, cutover)));
+
+        Assert.Equal(
+            OperationalMovementProjectionFailure.RelevantLineageInvalid,
+            failure.Failure);
+        Assert.Single(h.ProjectionServiceCalls);
+        await using var verify = await h.OpenAsync();
+        Assert.Equal(movementCount,
+            await ScalarAsync(verify, "SELECT COUNT(*) FROM BinMovements;"));
+        Assert.Equal(importRunCount,
+            await ScalarAsync(verify, "SELECT COUNT(*) FROM ImportRuns;"));
+        Assert.Equal(auditCount,
+            await ScalarAsync(verify, "SELECT COUNT(*) FROM AuditEvents;"));
+    }
+
+    [Fact]
+    public async Task Projection_backed_import_replacement_handles_minimum_cutover_without_underflow()
+    {
+        await using var h = await Harness.CreateAsync(
+            enableProjectionBackedServices: true,
+            userRole: UserRole.Administrator);
+        var previousRunId = await h.CreatePreviousImportRunAsync(DateOnly.MinValue);
+
+        h.ClearProjectionServiceCalls();
+        var comparison = await h.ImportExecution.CompareReplacementAsync(
+            ReplacementRequest(h, previousRunId, DateOnly.MinValue));
+
+        Assert.Equal(2, comparison.PreviousMovementCount);
+        Assert.Equal(2, comparison.ProposedMovementCount);
+        Assert.Empty(h.ProjectionServiceCalls);
+    }
+
+    [Fact]
     public async Task Projection_backed_customer_reads_map_corrected_coordinates_without_superseded_activity()
     {
         await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
@@ -1608,6 +1746,58 @@ public sealed class OperationalMovementProjectionSchema17Tests
         return Convert.ToInt64(await command.ExecuteScalarAsync());
     }
 
+    private static ImportExecutionRequest ReplacementRequest(
+        Harness harness,
+        long previousImportRunId,
+        DateOnly cutoverDate)
+    {
+        var source = new ImportSourceDocument(
+            "corrected.xlsx",
+            "corrected replacement source"u8.ToArray(),
+            "corrected.xlsx",
+            new DateTime(2026, 9, 5, 1, 2, 3, DateTimeKind.Utc));
+        var snapshot = new ImportSnapshotCandidate(
+            "Update Account",
+            "PROJ-A",
+            CustomerType.Account,
+            null,
+            Out: 2,
+            In: 0,
+            BroughtForward: 20,
+            ExcelTotal: 22,
+            SourceRow: "12");
+        var analysis = new ExcelImportAnalysis(
+            source,
+            [new ImportWorksheetAnalysis(
+                "Update Account", 12, 7, 1, 1, "Detected")],
+            [new ImportCustomerCandidate(
+                "Update Account", "PROJ-A", CustomerType.Account, "A1")],
+            [snapshot],
+            []);
+
+        return new ImportExecutionRequest(
+            source,
+            "comparison-does-not-fingerprint",
+            analysis,
+            [new ImportWorksheetMapping(
+                "Update Account", ImportWorksheetRole.Source, string.Empty)],
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
+            new Dictionary<string, ImportCustomerDecision>(StringComparer.OrdinalIgnoreCase),
+            new Dictionary<string, ImportExistingCustomerDecision>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["PROJ-A"] = new(
+                    "PROJ-A",
+                    ImportExistingCustomerDecisionAction.AcceptMatch,
+                    harness.CustomerId,
+                    "PROJ-A",
+                    "Projection A")
+            },
+            cutoverDate,
+            ImportExecutionMode.ReplacePreviousCutover,
+            previousImportRunId,
+            Guid.NewGuid());
+    }
+
     private sealed class Harness : IAsyncDisposable
     {
         internal static readonly DateOnly Today = new(2026, 9, 5);
@@ -1637,6 +1827,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
             Monthly = services.GetRequiredService<IMonthlySummaryReportService>();
             MarketFloor = services.GetRequiredService<IMarketFloorReportService>();
             DailyPrintPack = services.GetRequiredService<IDailyPrintPackService>();
+            ImportExecution = services.GetRequiredService<IImportExecutionService>();
             Authority = new SqliteOperationalMovementProjectionAuthority(connectionString);
         }
 
@@ -1654,6 +1845,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
         public IMonthlySummaryReportService Monthly { get; }
         public IMarketFloorReportService MarketFloor { get; }
         public IDailyPrintPackService DailyPrintPack { get; }
+        public IImportExecutionService ImportExecution { get; }
         public IOperationalMovementProjectionAuthority Authority { get; }
         public IReadOnlyList<OperationalMovementProjectionScope> ProjectionServiceCalls =>
             services.GetService<IOperationalMovementProjectionAuthority>() is RecordingProjectionAuthority recording
@@ -1673,7 +1865,8 @@ public sealed class OperationalMovementProjectionSchema17Tests
 
         public static async Task<Harness> CreateAsync(bool migrateToSchema17 = true,
             bool enableSchema17Writers = true,
-            bool enableProjectionBackedServices = false)
+            bool enableProjectionBackedServices = false,
+            UserRole userRole = UserRole.Operator)
         {
             var root = Path.Combine(Path.GetTempPath(), $"BinTracker-projection-v17-{Guid.NewGuid():N}");
             Directory.CreateDirectory(root);
@@ -1701,7 +1894,8 @@ public sealed class OperationalMovementProjectionSchema17Tests
             var services = BuildServices(
                 connectionString,
                 enableSchema17Writers,
-                enableProjectionBackedServices);
+                enableProjectionBackedServices,
+                userRole);
             return new(root, connectionString, services, prerequisites, customerId, otherCustomerId);
         }
 
@@ -1847,6 +2041,61 @@ public sealed class OperationalMovementProjectionSchema17Tests
             await db.SaveChangesAsync();
         }
 
+        public async Task<long> CreatePreviousImportRunAsync(
+            DateOnly cutover,
+            DateOnly? movementDate = null)
+        {
+            await using var db = new BinTrackerDbContext(
+                new DbContextOptionsBuilder<BinTrackerDbContext>().UseSqlite(ConnectionString).Options);
+            var run = new ImportRun
+            {
+                SourceFileName = "previous.xlsx",
+                SourceClientPath = "previous.xlsx",
+                SourceSha256 = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
+                SourceLength = 1,
+                SourceLastWriteUtc = UtcNow,
+                CutoverDate = cutover,
+                CurrentCutoverDate = cutover,
+                StartedUtc = UtcNow,
+                CompletedUtc = UtcNow,
+                Status = "Completed",
+                Username = "projection-operator",
+                SessionId = "projection-session",
+                MovementCount = 2
+            };
+            db.Add(run);
+            await db.SaveChangesAsync();
+            db.AddRange(
+                new BinMovement
+                {
+                    ClientOperationId = Guid.NewGuid(),
+                    MovementDate = movementDate ?? cutover,
+                    MovementType = MovementType.Out,
+                    Source = MovementSource.Adjustment,
+                    CustomerId = CustomerId,
+                    ContainerTypeId = 1,
+                    Quantity = 10,
+                    ImportRunId = run.Id,
+                    CreatedBy = "projection-operator",
+                    CreatedUtc = UtcNow
+                },
+                new BinMovement
+                {
+                    ClientOperationId = Guid.NewGuid(),
+                    MovementDate = movementDate ?? cutover,
+                    MovementType = MovementType.Out,
+                    Source = MovementSource.ExcelImport,
+                    CustomerId = CustomerId,
+                    ContainerTypeId = 1,
+                    Quantity = 1,
+                    ImportRunId = run.Id,
+                    CreatedBy = "projection-operator",
+                    CreatedUtc = UtcNow
+                });
+            await db.SaveChangesAsync();
+            return run.Id;
+        }
+
         public async Task AddExcludedWithDanglingImportRunAsync(MovementSource source)
         {
             var databasePath = new SqliteConnectionStringBuilder(ConnectionString).DataSource;
@@ -1921,11 +2170,12 @@ public sealed class OperationalMovementProjectionSchema17Tests
         private static ServiceProvider BuildServices(
             string connectionString,
             bool enableSchema17Writers,
-            bool enableProjectionBackedServices)
+            bool enableProjectionBackedServices,
+            UserRole userRole)
         {
             var collection = new ServiceCollection();
             collection.AddSingleton<IBusinessClock>(new FixedClock());
-            collection.AddSingleton<IUserContext>(new TestUserContext());
+            collection.AddSingleton<IUserContext>(new TestUserContext(userRole));
             collection.AddSingleton<IClientContext>(new TestClientContext());
             collection.AddDbContextFactory<BinTrackerDbContext>(builder => builder.UseSqlite(connectionString));
             if (enableSchema17Writers)
@@ -2005,13 +2255,13 @@ public sealed class OperationalMovementProjectionSchema17Tests
             }
         }
 
-        private sealed class TestUserContext : IUserContext
+        private sealed class TestUserContext(UserRole role) : IUserContext
         {
             public string SessionId => "projection-session";
             public int? UserId => 61;
             public string Username => "projection-operator";
             public string DisplayName => "Projection Operator";
-            public UserRole Role => UserRole.Operator;
+            public UserRole Role => role;
             public bool MustChangePassword => false;
             public bool IsAuthenticated => true;
         }

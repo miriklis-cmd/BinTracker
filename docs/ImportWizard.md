@@ -150,6 +150,8 @@ Import Run history/details UI is implemented and is no longer a remaining item.
 
 A changed fingerprint for an already-completed cutover date enters correction mode. Step 4 reviews the net differences and requires explicit Replace/Correct confirmation. The previous import is removed from the reconciliation baseline. The correction baseline uses legitimate history strictly before the cutover date, so same-day/later Manual/Batch activity remains on top rather than being absorbed into the corrected Excel opening position.
 
+The comparison path is prepared for the dormant lineage runtime: explicit schema-17 composition obtains that pre-cutover baseline from the single corrected operational projection authority and fails closed on relevant projection corruption. Previous ImportRun movement count/net remain persisted forensic evidence. Normal schema-16 composition retains the existing raw comparison, and Import execution operational reconciliation is a separate pending slice.
+
 
 ## Correction UI
 
