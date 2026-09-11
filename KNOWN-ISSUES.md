@@ -1,5 +1,7 @@
 # Known Issues
 
+Task 19 is complete at implementation, independent-review and canonical-build evidence levels at pushed commit `930f2c77b1df7cd4629be2faff662750431854fe`; the canonical BAT passed 632/632 tests with 0 failed/skipped. Its shared snapshot remains dormant preparation only. Schema 17 is unregistered/inactive and runtime activation has not begun. Real preview/print, retained-database rehearsal, packaging/deployment and alternative-provider acceptance remain separate and unproven.
+
 ## Whole-batch correction after partial lineage
 
 Alpha.8 safely rejects whole-batch correction when any persisted physical member has already been corrected/reversed. This leaves the Batch #30 runtime workflow unresolved. BT-CORR-018..033 is architecture-frozen; dormant Core/migration-safety/schema-17 foundations, generation-zero entry, unified Correct/Reverse/Restore mutation execution, a reusable corrected activity/PositionAsOf authority and Import comparison/execution reconciliation now exist under explicit isolated schema-17 composition. Activation and runtime consumer cutover are still not complete or accepted. Do not remove the alpha.8 guard. Closure still requires retained-database rehearsal, activation, atomic report/service/UI integration and Windows acceptance of explicit RemainReversed/Restore.
@@ -15,7 +17,7 @@ This file contains current defects/limitations that affect testing or production
 
 Market Floor, Customer Statement, Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Monthly Summary and Daily Print Pack are implemented. Monthly Summary and Daily Print Pack still require final operator acceptance/real-world print validation before the Reporting milestone closes.
 
-The Daily Print Pack cross-section snapshot gap is addressed in dormant schema-17 source with deterministic automated concurrency evidence (task 19). Both delegated numerical sections and their customer/container metadata share one read transaction. This prerequisite still awaits independent review and Jack's canonical BAT; normal schema-16 runtime remains unchanged and schema-17 activation/real-print acceptance are not implied.
+The Daily Print Pack cross-section snapshot gap is addressed in dormant schema-17 source with deterministic automated concurrency evidence (task 19). Both delegated numerical sections and their customer/container metadata share one read transaction. Task 19 implementation/review and Jack's canonical BAT are complete at pushed commit `930f2c77b1df7cd4629be2faff662750431854fe`; the canonical result passed 632/632 tests with 0 failed/skipped. Normal schema-16 runtime remains unchanged; schema-17 activation and real-print acceptance are not implied.
 
 ### Dashboard is still the first-pass operational dashboard
 **Area:** Dashboard

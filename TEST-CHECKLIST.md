@@ -1,5 +1,7 @@
 # BinTracker Active Test Checklist
 
+Task 19 completion evidence: pushed commit `930f2c77b1df7cd4629be2faff662750431854fe` passed Jack's canonical `Build-BinTracker.bat` at v0.5.0-alpha.8.7 with audit/restore/build PASS and 632/632 automated tests PASS (0 failed, 0 skipped). The implementation remains dormant; schema 17 is unregistered/inactive and runtime activation, Windows/operator real preview/print and retained-database acceptance remain separate.
+
 Current baseline: **v0.5.0-alpha.8.7**
 
 This is the practical operator/release checklist. `docs/RequirementsAcceptanceRegister.md` remains the authoritative implementation/status ledger; historical candidate detail belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`.
@@ -78,7 +80,7 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 - [S] Existing Customer Statement running balances reconcile opening, movement and closing positions by container.
 - [P] The future lineage numerical cutover must implement and prove Opening = `PositionAsOf(StartDate - 1)`, inclusive StartDate..EndDate corrected activity and Closing = `PositionAsOf(EndDate)` without StartDate double counting.
 - [R] Daily Print Pack contains Outstanding Summary plus physical Movement Detail in one audited, readable PDF.
-- [S] Task 19 dormant shared-snapshot preparation: deterministic committed correction/reversal/restoration and metadata interleavings preserve one Print Pack state; projection failure/cancellation fails the pack. Schema 17 remains unregistered; independent review and Jack's canonical BAT remain pending for this change. TEST REQUIRED: Targeted, including real preview/print after separately authorized activation; no Windows/operator acceptance is implied.
+- [S] Task 19 completed dormant shared-snapshot preparation: deterministic committed correction/reversal/restoration and metadata interleavings preserve one Print Pack state; projection failure/cancellation fails the pack. Independent review and Jack's canonical BAT are complete at pushed commit `930f2c77b1df7cd4629be2faff662750431854fe`; canonical evidence is 632/632 automated tests passed, 0 failed and 0 skipped. Schema 17 remains unregistered/inactive; real preview/print and Windows/operator acceptance remain separate and unproven.
 - [P] Decide whether native Excel report export adds enough value beyond CSV.
 
 ## Alpha.8 correction, reversal and Administrator review authority
