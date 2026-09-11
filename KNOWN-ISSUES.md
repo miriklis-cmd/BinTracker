@@ -15,6 +15,8 @@ This file contains current defects/limitations that affect testing or production
 
 Market Floor, Customer Statement, Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Monthly Summary and Daily Print Pack are implemented. Monthly Summary and Daily Print Pack still require final operator acceptance/real-world print validation before the Reporting milestone closes.
 
+The Daily Print Pack cross-section snapshot gap is addressed in dormant schema-17 source with deterministic automated concurrency evidence (task 19). Both delegated numerical sections and their customer/container metadata share one read transaction. This prerequisite still awaits independent review and Jack's canonical BAT; normal schema-16 runtime remains unchanged and schema-17 activation/real-print acceptance are not implied.
+
 ### Dashboard is still the first-pass operational dashboard
 **Area:** Dashboard
 

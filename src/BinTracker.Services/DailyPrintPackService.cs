@@ -1,3 +1,6 @@
+using BinTracker.Core;
+using BinTracker.Data;
+using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -16,7 +19,9 @@ internal sealed class DailyPrintPackService(
     IDailyMovementsReportService dailyMovementsReports,
     IAuditService audit,
     IBusinessInformationService businessInformation,
-    IBusinessClock clock) : IDailyPrintPackService
+    IBusinessClock clock,
+    IDbContextFactory<BinTrackerDbContext>? factory = null,
+    IOperationalMovementProjectionAuthority? operationalProjection = null) : IDailyPrintPackService
 {
     public async Task<byte[]> BuildPdfAsync(
         DateOnly date,
@@ -25,23 +30,41 @@ internal sealed class DailyPrintPackService(
         var today = clock.Today;
         var reportDate = date > today ? today : date;
 
-        var outstandingTask = outstandingReports.QueryAsync(
-            new OutstandingReportQuery(
-                reportDate,
-                BalanceFilter: OutstandingBalanceFilter.OutstandingOnly,
-                IncludeInactiveCustomers: false),
-            cancellationToken);
+        var outstandingQuery = new OutstandingReportQuery(reportDate,
+            BalanceFilter: OutstandingBalanceFilter.OutstandingOnly,
+            IncludeInactiveCustomers: false);
+        var dailyQuery = new DailyMovementsReportQuery(reportDate, IncludeAdjustments: false);
+        OutstandingReportResult outstanding;
+        DailyMovementsReportResult movements;
+        if (operationalProjection is null)
+        {
+            // Preserve normal schema-16 composition, including independent delegated reads.
+            var outstandingTask = outstandingReports.QueryAsync(outstandingQuery, cancellationToken);
+            var movementsTask = dailyMovementsReports.QueryAsync(dailyQuery, cancellationToken);
+            await Task.WhenAll(outstandingTask, movementsTask);
+            outstanding = await outstandingTask;
+            movements = await movementsTask;
+        }
+        else
+        {
+            if (factory is null ||
+                operationalProjection is not ITransactionalOperationalMovementProjectionAuthority snapshots)
+                throw new InvalidOperationException("Daily Print Pack requires shared projection snapshot support.");
 
-        var movementsTask = dailyMovementsReports.QueryAsync(
-            new DailyMovementsReportQuery(
-                reportDate,
-                IncludeAdjustments: false),
-            cancellationToken);
+            if (outstandingReports is not IOutstandingReportSnapshotParticipant outstandingParticipant ||
+                dailyMovementsReports is not IDailyMovementsReportSnapshotParticipant dailyParticipant)
+                throw new NotSupportedException("Daily Print Pack requires internal report snapshot participation.");
 
-        await Task.WhenAll(outstandingTask, movementsTask);
-
-        var outstanding = await outstandingTask;
-        var movements = await movementsTask;
+            await using var db = await factory.CreateDbContextAsync(cancellationToken);
+            (outstanding, movements) = await snapshots.ReadSnapshotAsync(db, async token =>
+            {
+                // One context cannot run parallel queries. Metadata and both numerical sections
+                // must finish in this snapshot; the reports retain all filter/order/total policy.
+                var position = await outstandingParticipant.QueryInTransactionAsync(outstandingQuery, db, token);
+                var detail = await dailyParticipant.QueryInTransactionAsync(dailyQuery, db, token);
+                return (position, detail);
+            }, cancellationToken);
+        }
         var business = await businessInformation.GetAsync(cancellationToken);
 
         QuestPDF.Settings.License = LicenseType.Community;

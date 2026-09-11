@@ -12,6 +12,22 @@ namespace BinTracker.IntegrationTests;
 
 public sealed class DailyPrintPackServiceTests
 {
+    [Theory]
+    [InlineData(typeof(IOutstandingReportService), typeof(OutstandingReportQuery), typeof(OutstandingReportResult))]
+    [InlineData(typeof(IDailyMovementsReportService), typeof(DailyMovementsReportQuery), typeof(DailyMovementsReportResult))]
+    public void Public_report_contract_exposes_only_the_client_neutral_query(
+        Type contract, Type query, Type result)
+    {
+        Assert.True(contract.IsVisible);
+        Assert.Empty(contract.GetInterfaces());
+        var method = Assert.Single(contract.GetMethods());
+        Assert.Equal("QueryAsync", method.Name);
+        Assert.Equal(typeof(Task<>).MakeGenericType(result), method.ReturnType);
+        var parameters = method.GetParameters();
+        Assert.Equal(new[] { query, typeof(CancellationToken) }, parameters.Select(x => x.ParameterType));
+        Assert.True(parameters[1].HasDefaultValue);
+    }
+
     [Fact]
     public async Task Future_date_is_clamped_for_both_sections_and_one_success_audit()
     {
@@ -65,6 +81,17 @@ public sealed class DailyPrintPackServiceTests
         Assert.Equal(new[] { "outstanding", "daily", "business", "audit" }, calls);
     }
 
+    [Theory]
+    [InlineData(typeof(OutstandingReportService), typeof(IOutstandingReportSnapshotParticipant))]
+    [InlineData(typeof(DailyMovementsReportService), typeof(IDailyMovementsReportSnapshotParticipant))]
+    public void Snapshot_participation_is_internal_and_explicit(Type implementation, Type participant)
+    {
+        Assert.False(implementation.IsVisible);
+        Assert.False(participant.IsVisible);
+        Assert.All(implementation.GetInterfaceMap(participant).TargetMethods,
+            method => Assert.True(method.IsPrivate));
+    }
+
     [Fact]
     public async Task Delegated_failure_propagates_without_business_lookup_or_audit()
     {
@@ -113,6 +140,40 @@ public sealed class DailyPrintPackServiceTests
         Assert.Equal(cancellation.Token, Assert.Single(daily.Queries).Token);
         Assert.Empty(business.Tokens);
         Assert.Empty(audit.Writes);
+    }
+
+    [Fact]
+    public async Task Projection_without_snapshot_support_fails_before_delegated_reads_or_output()
+    {
+        var today = new DateOnly(2026, 9, 8);
+        var calls = new List<string>();
+        var outstanding = new RecordingOutstandingService(calls, OutstandingResult(today));
+        var daily = new RecordingDailyService(calls, DailyResult(today));
+        var audit = new RecordingAuditService(calls);
+        var business = new RecordingBusinessInformationService(calls);
+        await using var provider = BuildProvider(new FixedClock(today), outstanding, daily,
+            audit, business, new NonParticipatingProjection());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            provider.GetRequiredService<IDailyPrintPackService>().BuildPdfAsync(today));
+        Assert.Empty(calls);
+    }
+
+    [Fact]
+    public async Task Report_without_snapshot_support_fails_instead_of_using_independent_query()
+    {
+        var today = new DateOnly(2026, 9, 8);
+        var calls = new List<string>();
+        var outstanding = new RecordingOutstandingService(calls, OutstandingResult(today));
+        var daily = new RecordingDailyService(calls, DailyResult(today));
+        var audit = new RecordingAuditService(calls);
+        var business = new RecordingBusinessInformationService(calls);
+        await using var provider = BuildProvider(new FixedClock(today), outstanding, daily,
+            audit, business, new SqliteOperationalMovementProjectionAuthority("Data Source=:memory:"));
+
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            provider.GetRequiredService<IDailyPrintPackService>().BuildPdfAsync(today));
+        Assert.Empty(calls);
     }
 
     [Fact]
@@ -175,7 +236,8 @@ public sealed class DailyPrintPackServiceTests
         IOutstandingReportService outstanding,
         IDailyMovementsReportService daily,
         IAuditService audit,
-        IBusinessInformationService business)
+        IBusinessInformationService business,
+        IOperationalMovementProjectionAuthority? projection = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton(clock);
@@ -184,7 +246,19 @@ public sealed class DailyPrintPackServiceTests
         services.AddSingleton(daily);
         services.AddSingleton(audit);
         services.AddSingleton(business);
+        if (projection is not null)
+        {
+            services.AddSingleton(projection);
+            services.AddDbContextFactory<BinTrackerDbContext>(options => options.UseSqlite("Data Source=:memory:"));
+        }
         return services.BuildServiceProvider();
+    }
+
+    private sealed class NonParticipatingProjection : IOperationalMovementProjectionAuthority
+    {
+        public Task<OperationalMovementProjectionResult> QueryAsync(
+            OperationalMovementProjectionScope scope, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Independent projection must not be queried.");
     }
 
     private static OutstandingReportResult OutstandingResult(DateOnly date) =>

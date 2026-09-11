@@ -403,6 +403,12 @@ For build-tooling changes, verify both success and failure paths:
 
 ## Daily Print Pack acceptance
 
+Task 19 review correction retains the deterministic behavior tests and adds reflection tests against the compiled contracts: both public report interfaces expose only their normal `QueryAsync(query, CancellationToken)` returning typed results, while snapshot participants and implementations are internal with explicit private method implementations. Integration wrappers participate through test-only friend access; ordinary report fakes implement only the public query contract. These architecture checks supplement, not replace, the snapshot/interleaving/ownership behavioral tests.
+
+Task BT-CODEX-20260910-19 satisfied characterization-before-change: the existing pack, Outstanding, Daily, complete projection/consumer and alpha.8 correction workflow filter passed 100/100 before production editing; strengthened pack-section/PDF/audit characterization passed 6/6. A separate deterministic expected-behavior regression then failed against unchanged production code with Outstanding 7 / Detail 11 after a committed correction between reads.
+
+Dormant schema-17 tests now capture the actual delegated results supplied to PDF generation. They interleave committed correction, reversal and restoration on separate connections while the pack's read transaction stays open, verify both sections retain the before-state, then verify a fresh pack sees the after-state. Customer code/name/type/activity and container name/order updates exercise the same metadata boundary; active-only Outstanding and historical Daily inclusion remain distinct accepted filters. No sleeps or timing-dependent scheduling are used. Relevant corruption, second-projection failure, pre/mid-read cancellation, unsupported participants and transaction/connection ownership are covered. Schema-16 compatibility, accepted filters/order/totals/date clamping and PDF/audit tests remain required. These tests do not constitute real preview/print or Windows acceptance.
+
 - Reports inline Market Floor and Daily Print Pack date pickers cannot select a future date.
 - Daily Print Pack Outstanding Summary is calculated as at the selected date.
 - Movement Detail contains physical movements only; Opening Adjustments are excluded.

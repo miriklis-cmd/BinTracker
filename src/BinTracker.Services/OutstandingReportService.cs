@@ -66,10 +66,19 @@ public interface IOutstandingReportService
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>Internal report composition only; the caller owns the shared read context.</summary>
+internal interface IOutstandingReportSnapshotParticipant
+{
+    Task<OutstandingReportResult> QueryInTransactionAsync(
+        OutstandingReportQuery query,
+        BinTrackerDbContext db,
+        CancellationToken cancellationToken);
+}
+
 internal sealed class OutstandingReportService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IOperationalMovementProjectionAuthority? operationalProjection = null)
-    : IOutstandingReportService
+    : IOutstandingReportService, IOutstandingReportSnapshotParticipant
 {
     public async Task<OutstandingReportResult> QueryAsync(
         OutstandingReportQuery query,
@@ -78,6 +87,25 @@ internal sealed class OutstandingReportService(
         await using var db =
             await factory.CreateDbContextAsync(cancellationToken);
 
+        return await QueryCoreAsync(query, db, false, cancellationToken);
+    }
+
+    Task<OutstandingReportResult> IOutstandingReportSnapshotParticipant.QueryInTransactionAsync(
+        OutstandingReportQuery query,
+        BinTrackerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(db);
+        if (db.Database.CurrentTransaction is null ||
+            operationalProjection is not ITransactionalOperationalMovementProjectionAuthority)
+            throw new InvalidOperationException("A transaction-participating projection is required.");
+        return QueryCoreAsync(query, db, true, cancellationToken);
+    }
+
+    private async Task<OutstandingReportResult> QueryCoreAsync(
+        OutstandingReportQuery query, BinTrackerDbContext db, bool inTransaction,
+        CancellationToken cancellationToken)
+    {
         List<(int CustomerId, int ContainerTypeId, int Balance, DateOnly LastMovementDate)> totals;
         if (operationalProjection is null)
         {
@@ -116,11 +144,12 @@ internal sealed class OutstandingReportService(
         }
         else
         {
-            var projected = await operationalProjection.QueryAsync(
-                OperationalMovementProjectionScope.PositionAsOf(
-                    query.AsOfDate,
-                    containerTypeId: query.ContainerTypeId),
-                cancellationToken);
+            var scope = OperationalMovementProjectionScope.PositionAsOf(
+                query.AsOfDate, containerTypeId: query.ContainerTypeId);
+            var projected = inTransaction
+                ? await ((ITransactionalOperationalMovementProjectionAuthority)operationalProjection)
+                    .QueryInTransactionAsync(db, scope, cancellationToken)
+                : await operationalProjection.QueryAsync(scope, cancellationToken);
             var lastMovementDates = projected.Activity
                 .GroupBy(x => (x.CustomerId, x.ContainerTypeId))
                 .ToDictionary(

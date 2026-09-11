@@ -1875,7 +1875,12 @@ public sealed class OperationalMovementProjectionSchema17Tests
         var pdf = await h.DailyPrintPack.BuildPdfAsync(Harness.Today.AddDays(2));
 
         Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+        Assert.Equal(outstanding.Rows, h.PackOutstanding.Rows);
+        Assert.Equal(outstanding.ContainerTotals, h.PackOutstanding.ContainerTotals);
+        Assert.Equal(daily.Rows, h.PackDaily.Rows);
+        Assert.Equal(daily.ContainerTotals, h.PackDaily.ContainerTotals);
         Assert.Equal(2, h.ProjectionServiceCalls.Count);
+        Assert.Equal(2, h.ProjectionTransactionCallCount);
         var positionCall = Assert.Single(h.ProjectionServiceCalls, x => x.IsPositionAsOf);
         Assert.Equal(Harness.Today, positionCall.ThroughDateInclusive);
         Assert.Null(positionCall.FromDateInclusive);
@@ -1900,6 +1905,213 @@ public sealed class OperationalMovementProjectionSchema17Tests
         Assert.Contains("4 OUT, 6 IN", audit.Description);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Daily_print_pack_keeps_both_sections_in_one_snapshot_across_committed_correction(
+        bool deactivateCustomer)
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        await using (var connection = await h.OpenAsync())
+        await using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "PRAGMA journal_mode=WAL;";
+            Assert.Equal("wal", await command.ExecuteScalarAsync());
+        }
+        var root = await h.CreateSingleAsync(Harness.Today, h.CustomerId, 1, 7);
+        var line = Assert.Single(await h.LineIdsAsync(root.RootId));
+        var committed = false;
+        h.AfterOutstanding = async () =>
+        {
+            await h.MutateAsync(root.RootId, 0, MovementMutationRequest.Correct(
+                MovementMutationScope.Individual, [new(line)], "interleaved pack correction",
+                quantity: MovementFieldIntent<int>.Selected(11)));
+            await using var db = h.CreateDbContext();
+            var customer = await db.Customers.SingleAsync(x => x.Id == h.CustomerId);
+            customer.Name = "Renamed after outstanding";
+            customer.CustomerCode = "CHANGED";
+            customer.CustomerType = CustomerType.CashCod;
+            customer.IsActive = !deactivateCustomer;
+            var container = await db.ContainerTypes.SingleAsync(x => x.Id == 1);
+            container.Name = "Renamed container";
+            container.DisplayOrder = 99;
+            await db.SaveChangesAsync();
+            committed = true;
+        };
+
+        var pdf = await h.DailyPrintPack.BuildPdfAsync(Harness.Today);
+
+        Assert.True(committed);
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(pdf, 0, 4));
+        var outstanding = Assert.Single(h.PackOutstanding.Rows);
+        var daily = Assert.Single(h.PackDaily.Rows);
+        Assert.Equal(7, outstanding.Balance);
+        Assert.Equal(outstanding.Balance, daily.Quantity);
+        Assert.Equal(outstanding.CustomerName, daily.CustomerName);
+        Assert.Equal(outstanding.CustomerCode, daily.CustomerCode);
+        Assert.Equal(outstanding.CustomerType, daily.CustomerType);
+        Assert.Equal(outstanding.ContainerType, daily.ContainerType);
+        Assert.Equal(outstanding.ContainerDisplayOrder, daily.ContainerDisplayOrder);
+        Assert.Equal("Projection A", daily.CustomerName);
+        Assert.Equal("Blue Bin", daily.ContainerType);
+
+        h.AfterOutstanding = null;
+        await h.DailyPrintPack.BuildPdfAsync(Harness.Today);
+        if (deactivateCustomer) Assert.Empty(h.PackOutstanding.Rows);
+        else Assert.Equal(11, Assert.Single(h.PackOutstanding.Rows).Balance);
+        Assert.Equal(11, Assert.Single(h.PackDaily.Rows).Quantity);
+        Assert.Equal("Renamed after outstanding", Assert.Single(h.PackDaily.Rows).CustomerName);
+    }
+
+    [Fact]
+    public async Task Daily_print_pack_snapshot_preserves_reversal_and_restoration_during_commits()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        var root = await h.CreateSingleAsync(Harness.Today, h.CustomerId, 1, 7);
+        var line = Assert.Single(await h.LineIdsAsync(root.RootId));
+        h.AfterOutstanding = async () =>
+        {
+            await h.MutateAsync(root.RootId, 0, MovementMutationRequest.Reverse(
+                MovementMutationScope.Individual, [new(line)], "interleaved reversal"));
+        };
+        await h.DailyPrintPack.BuildPdfAsync(Harness.Today);
+        Assert.Equal(7, Assert.Single(h.PackOutstanding.Rows).Balance);
+        Assert.Equal((7, 0), (h.PackDaily.OutQuantity, h.PackDaily.InQuantity));
+        Assert.Equal(root.MovementId, Assert.Single(h.PackDaily.Rows).MovementId);
+
+        h.AfterOutstanding = async () =>
+        {
+            await h.MutateAsync(root.RootId, 1, MovementMutationRequest.Restore(
+                MovementMutationScope.Individual, [new(line)], "interleaved restoration"));
+        };
+        await h.DailyPrintPack.BuildPdfAsync(Harness.Today);
+        Assert.Empty(h.PackOutstanding.Rows);
+        Assert.Equal((7, 7), (h.PackDaily.OutQuantity, h.PackDaily.InQuantity));
+        Assert.Equal(2, h.PackDaily.Rows.Count);
+
+        h.AfterOutstanding = null;
+        await h.DailyPrintPack.BuildPdfAsync(Harness.Today);
+        Assert.Equal(7, Assert.Single(h.PackOutstanding.Rows).Balance);
+        Assert.Equal((7, 0), (h.PackDaily.OutQuantity, h.PackDaily.InQuantity));
+        Assert.NotEqual(root.MovementId, Assert.Single(h.PackDaily.Rows).MovementId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Daily_print_pack_snapshot_cancellation_returns_no_pdf_or_success_audit(bool afterPosition)
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        await h.CreateSingleAsync(Harness.Today, h.CustomerId, 1, 7);
+        using var cancellation = new CancellationTokenSource();
+        if (afterPosition)
+            h.AfterOutstanding = () => { cancellation.Cancel(); return Task.CompletedTask; };
+        else cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            h.DailyPrintPack.BuildPdfAsync(Harness.Today, cancellation.Token));
+        await using var db = h.CreateDbContext();
+        Assert.False(await db.AuditEvents.AnyAsync(x => x.Action == "DAILY_PRINT_PACK_GENERATED"));
+        h.AfterOutstanding = null;
+        await h.DailyPrintPack.BuildPdfAsync(Harness.Today);
+        Assert.Single(await db.AuditEvents.Where(x => x.Action == "DAILY_PRINT_PACK_GENERATED").ToListAsync());
+    }
+
+    [Fact]
+    public async Task Daily_print_pack_second_projection_failure_fails_whole_pack_without_fallback()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        await h.CreateSingleAsync(Harness.Today, h.CustomerId, 1, 7);
+        h.AfterOutstanding = () =>
+        {
+            h.FailNextProjectionTransaction();
+            return Task.CompletedTask;
+        };
+        await Assert.ThrowsAsync<OperationalMovementProjectionException>(() =>
+            h.DailyPrintPack.BuildPdfAsync(Harness.Today));
+        Assert.Equal(2, h.ProjectionTransactionCallCount);
+        Assert.Equal(2, h.ProjectionServiceCalls.Count);
+        await using var db = h.CreateDbContext();
+        Assert.False(await db.AuditEvents.AnyAsync(x => x.Action == "DAILY_PRINT_PACK_GENERATED"));
+        h.AfterOutstanding = null;
+        await h.DailyPrintPack.BuildPdfAsync(Harness.Today);
+        Assert.Equal(7, h.PackDaily.OutQuantity);
+    }
+
+    [Fact]
+    public async Task Projection_read_snapshot_rejects_existing_transaction_without_taking_ownership()
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        await using var db = h.CreateDbContext();
+        var authority = (ITransactionalOperationalMovementProjectionAuthority)h.Authority;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => authority.QueryInTransactionAsync(
+            db, OperationalMovementProjectionScope.PositionAsOf(Harness.Today)));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            ((IOutstandingReportSnapshotParticipant)h.Outstanding).QueryInTransactionAsync(
+                new(Harness.Today), db, CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            ((IDailyMovementsReportSnapshotParticipant)h.Daily).QueryInTransactionAsync(
+                new(Harness.Today), db, CancellationToken.None));
+
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        var invoked = false;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => authority.ReadSnapshotAsync(db, _ =>
+        {
+            invoked = true;
+            return Task.FromResult(0);
+        }));
+        Assert.False(invoked);
+        Assert.Same(transaction, db.Database.CurrentTransaction);
+        await authority.QueryInTransactionAsync(db,
+            OperationalMovementProjectionScope.PositionAsOf(Harness.Today));
+        Assert.Same(transaction, db.Database.CurrentTransaction);
+        Assert.Equal(2, await db.Customers.CountAsync());
+        await transaction.RollbackAsync();
+    }
+
+    [Theory]
+    [InlineData("success", false)]
+    [InlineData("failure", false)]
+    [InlineData("cancellation", false)]
+    [InlineData("success", true)]
+    [InlineData("failure", true)]
+    [InlineData("cancellation", true)]
+    public async Task Projection_read_snapshot_owns_only_its_transaction_and_releases_it(
+        string outcome, bool alreadyOpen)
+    {
+        await using var h = await Harness.CreateAsync(enableProjectionBackedServices: true);
+        await using var db = h.CreateDbContext();
+        var authority = (ITransactionalOperationalMovementProjectionAuthority)h.Authority;
+        if (alreadyOpen) await db.Database.OpenConnectionAsync();
+        using var cancellation = new CancellationTokenSource();
+        async Task<int> Read(CancellationToken token)
+        {
+            Assert.Equal(cancellation.Token, token);
+            Assert.NotNull(db.Database.CurrentTransaction);
+            Assert.Equal(System.Data.IsolationLevel.Serializable,
+                db.Database.CurrentTransaction.GetDbTransaction().IsolationLevel);
+            var count = await db.Customers.AsNoTracking().CountAsync(token);
+            if (outcome == "failure") throw new InvalidOperationException("reader failure");
+            if (outcome == "cancellation") cancellation.Cancel();
+            return count;
+        }
+        if (outcome == "success")
+            Assert.Equal(2, await authority.ReadSnapshotAsync(db, Read, cancellation.Token));
+        else if (outcome == "failure")
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                authority.ReadSnapshotAsync(db, Read, cancellation.Token));
+        else
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                authority.ReadSnapshotAsync(db, Read, cancellation.Token));
+
+        Assert.Null(db.Database.CurrentTransaction);
+        Assert.Equal(alreadyOpen ? System.Data.ConnectionState.Open : System.Data.ConnectionState.Closed,
+            db.Database.GetDbConnection().State);
+        Assert.Equal(2, await db.Customers.CountAsync());
+        await using var next = await db.Database.BeginTransactionAsync();
+        await next.RollbackAsync();
+    }
+
     [Fact]
     public async Task Projection_backed_daily_print_pack_propagates_integrity_failure_without_raw_fallback()
     {
@@ -1914,7 +2126,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
         Assert.Equal(
             OperationalMovementProjectionFailure.RelevantLineageInvalid,
             failure.Failure);
-        Assert.Equal(2, h.ProjectionServiceCalls.Count);
+        Assert.Single(h.ProjectionServiceCalls);
         await using var db = new BinTrackerDbContext(
             new DbContextOptionsBuilder<BinTrackerDbContext>()
                 .UseSqlite(h.ConnectionString).Options);
@@ -2140,6 +2352,16 @@ public sealed class OperationalMovementProjectionSchema17Tests
         public IDailyPrintPackService DailyPrintPack { get; }
         public IImportExecutionService ImportExecution { get; }
         public IOperationalMovementProjectionAuthority Authority { get; }
+        public OutstandingReportResult PackOutstanding =>
+            Assert.IsType<OutstandingReportResult>(((RecordingOutstanding)Outstanding).Result);
+        public DailyMovementsReportResult PackDaily =>
+            Assert.IsType<DailyMovementsReportResult>(((RecordingDaily)Daily).Result);
+        public Func<Task>? AfterOutstanding
+        {
+            set => ((RecordingOutstanding)Outstanding).AfterQuery = value;
+        }
+        public BinTrackerDbContext CreateDbContext() => new(
+            new DbContextOptionsBuilder<BinTrackerDbContext>().UseSqlite(ConnectionString).Options);
         public IReadOnlyList<OperationalMovementProjectionScope> ProjectionServiceCalls =>
             services.GetService<IOperationalMovementProjectionAuthority>() is RecordingProjectionAuthority recording
                 ? recording.Calls
@@ -2168,6 +2390,10 @@ public sealed class OperationalMovementProjectionSchema17Tests
                 recording.CancelNextTransaction();
             }
         }
+
+        public void FailNextProjectionTransaction() =>
+            ((RecordingProjectionAuthority)services.GetRequiredService<IOperationalMovementProjectionAuthority>())
+                .FailNextTransaction = true;
 
         public static async Task<Harness> CreateAsync(bool migrateToSchema17 = true,
             bool enableSchema17Writers = true,
@@ -2498,7 +2724,62 @@ public sealed class OperationalMovementProjectionSchema17Tests
                         new SqliteOperationalMovementProjectionAuthority(connectionString)));
             }
             collection.AddBinTrackerBusinessServices();
+            var outstanding = collection.Single(x => x.ServiceType == typeof(IOutstandingReportService));
+            var daily = collection.Single(x => x.ServiceType == typeof(IDailyMovementsReportService));
+            collection.Remove(outstanding);
+            collection.Remove(daily);
+            collection.AddScoped<IOutstandingReportService>(sp => new RecordingOutstanding(
+                (IOutstandingReportService)ActivatorUtilities.CreateInstance(sp,
+                    outstanding.ImplementationType ?? throw new InvalidOperationException())));
+            collection.AddScoped<IDailyMovementsReportService>(sp => new RecordingDaily(
+                (IDailyMovementsReportService)ActivatorUtilities.CreateInstance(sp,
+                    daily.ImplementationType ?? throw new InvalidOperationException())));
             return collection.BuildServiceProvider();
+        }
+
+        private sealed class RecordingOutstanding(IOutstandingReportService inner)
+            : IOutstandingReportService, IOutstandingReportSnapshotParticipant
+        {
+            public OutstandingReportResult? Result { get; private set; }
+            public Func<Task>? AfterQuery { get; set; }
+
+            public async Task<OutstandingReportResult> QueryAsync(OutstandingReportQuery query,
+                CancellationToken cancellationToken = default)
+            {
+                Result = await inner.QueryAsync(query, cancellationToken);
+                if (AfterQuery is { } after) await after();
+                return Result;
+            }
+
+            async Task<OutstandingReportResult> IOutstandingReportSnapshotParticipant.QueryInTransactionAsync(
+                OutstandingReportQuery query, BinTrackerDbContext db, CancellationToken cancellationToken)
+            {
+                Result = await ((IOutstandingReportSnapshotParticipant)inner)
+                    .QueryInTransactionAsync(query, db, cancellationToken);
+                if (AfterQuery is { } after) await after();
+                return Result;
+            }
+        }
+
+        private sealed class RecordingDaily(IDailyMovementsReportService inner)
+            : IDailyMovementsReportService, IDailyMovementsReportSnapshotParticipant
+        {
+            public DailyMovementsReportResult? Result { get; private set; }
+
+            public async Task<DailyMovementsReportResult> QueryAsync(DailyMovementsReportQuery query,
+                CancellationToken cancellationToken = default)
+            {
+                Result = await inner.QueryAsync(query, cancellationToken);
+                return Result;
+            }
+
+            async Task<DailyMovementsReportResult> IDailyMovementsReportSnapshotParticipant.QueryInTransactionAsync(
+                DailyMovementsReportQuery query, BinTrackerDbContext db, CancellationToken cancellationToken)
+            {
+                Result = await ((IDailyMovementsReportSnapshotParticipant)inner)
+                    .QueryInTransactionAsync(query, db, cancellationToken);
+                return Result;
+            }
         }
 
         private static async Task<LineageSchema17MigrationPrerequisites> MigrateAsync(
@@ -2548,6 +2829,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
         {
             private readonly List<OperationalMovementProjectionScope> calls = [];
             private bool cancelNextTransaction;
+            public bool FailNextTransaction { get; set; }
 
             public IReadOnlyList<OperationalMovementProjectionScope> Calls => calls;
             public int TransactionCallCount { get; private set; }
@@ -2559,6 +2841,11 @@ public sealed class OperationalMovementProjectionSchema17Tests
             }
 
             public void CancelNextTransaction() => cancelNextTransaction = true;
+
+            public Task<TResult> ReadSnapshotAsync<TResult>(BinTrackerDbContext db,
+                Func<CancellationToken, Task<TResult>> read, CancellationToken cancellationToken = default) =>
+                ((ITransactionalOperationalMovementProjectionAuthority)inner)
+                    .ReadSnapshotAsync(db, read, cancellationToken);
 
             public Task<OperationalMovementProjectionResult> QueryAsync(
                 OperationalMovementProjectionScope scope,
@@ -2583,6 +2870,13 @@ public sealed class OperationalMovementProjectionSchema17Tests
                 {
                     cancelNextTransaction = false;
                     throw new OperationCanceledException("Injected projection cancellation.");
+                }
+                if (FailNextTransaction)
+                {
+                    FailNextTransaction = false;
+                    throw new OperationalMovementProjectionException(
+                        OperationalMovementProjectionFailure.RelevantLineageInvalid,
+                        "Injected projection integrity failure.");
                 }
 
                 return ((ITransactionalOperationalMovementProjectionAuthority)inner)

@@ -71,24 +71,52 @@ public interface IDailyMovementsReportService
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>Internal report composition only; the caller owns the shared read context.</summary>
+internal interface IDailyMovementsReportSnapshotParticipant
+{
+    Task<DailyMovementsReportResult> QueryInTransactionAsync(
+        DailyMovementsReportQuery query,
+        BinTrackerDbContext db,
+        CancellationToken cancellationToken);
+}
+
 internal sealed class DailyMovementsReportService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IBusinessClock clock,
     IOperationalMovementProjectionAuthority? operationalProjection = null)
-    : IDailyMovementsReportService
+    : IDailyMovementsReportService, IDailyMovementsReportSnapshotParticipant
 {
     public async Task<DailyMovementsReportResult> QueryAsync(
         DailyMovementsReportQuery query,
         CancellationToken cancellationToken = default)
     {
+        var reportDate = ClampReportDate(query.ReportDate);
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        return await QueryCoreAsync(query, reportDate, db, false, cancellationToken);
+    }
+
+    Task<DailyMovementsReportResult> IDailyMovementsReportSnapshotParticipant.QueryInTransactionAsync(
+        DailyMovementsReportQuery query,
+        BinTrackerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(db);
+        if (db.Database.CurrentTransaction is null ||
+            operationalProjection is not ITransactionalOperationalMovementProjectionAuthority)
+            throw new InvalidOperationException("A transaction-participating projection is required.");
+        return QueryCoreAsync(query, ClampReportDate(query.ReportDate), db, true, cancellationToken);
+    }
+
+    private DateOnly ClampReportDate(DateOnly date)
+    {
         var today = clock.Today;
-        var reportDate = query.ReportDate > today
-            ? today
-            : query.ReportDate;
+        return date > today ? today : date;
+    }
 
-        await using var db =
-            await factory.CreateDbContextAsync(cancellationToken);
-
+    private async Task<DailyMovementsReportResult> QueryCoreAsync(
+        DailyMovementsReportQuery query, DateOnly reportDate, BinTrackerDbContext db, bool inTransaction,
+        CancellationToken cancellationToken)
+    {
         List<DailyMovementActivity> movements;
         if (operationalProjection is null)
         {
@@ -110,12 +138,12 @@ internal sealed class DailyMovementsReportService(
         }
         else
         {
-            var projected = await operationalProjection.QueryAsync(
-                OperationalMovementProjectionScope.Activity(
-                    reportDate,
-                    reportDate,
-                    containerTypeId: query.ContainerTypeId),
-                cancellationToken);
+            var scope = OperationalMovementProjectionScope.Activity(
+                reportDate, reportDate, containerTypeId: query.ContainerTypeId);
+            var projected = inTransaction
+                ? await ((ITransactionalOperationalMovementProjectionAuthority)operationalProjection)
+                    .QueryInTransactionAsync(db, scope, cancellationToken)
+                : await operationalProjection.QueryAsync(scope, cancellationToken);
             movements = projected.Activity
                 .Select(x => new DailyMovementActivity(
                     x.EvidenceMovementId,

@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="BinTracker.IntegrationTests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\BinTracker.Core\BinTracker.Core.csproj" />
     <ProjectReference Include="..\BinTracker.Data\BinTracker.Data.csproj" />
   </ItemGroup>

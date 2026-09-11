@@ -78,6 +78,7 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 - [S] Existing Customer Statement running balances reconcile opening, movement and closing positions by container.
 - [P] The future lineage numerical cutover must implement and prove Opening = `PositionAsOf(StartDate - 1)`, inclusive StartDate..EndDate corrected activity and Closing = `PositionAsOf(EndDate)` without StartDate double counting.
 - [R] Daily Print Pack contains Outstanding Summary plus physical Movement Detail in one audited, readable PDF.
+- [S] Task 19 dormant shared-snapshot preparation: deterministic committed correction/reversal/restoration and metadata interleavings preserve one Print Pack state; projection failure/cancellation fails the pack. Schema 17 remains unregistered; independent review and Jack's canonical BAT remain pending for this change. TEST REQUIRED: Targeted, including real preview/print after separately authorized activation; no Windows/operator acceptance is implied.
 - [P] Decide whether native Excel report export adds enough value beyond CSV.
 
 ## Alpha.8 correction, reversal and Administrator review authority

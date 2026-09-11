@@ -108,11 +108,15 @@ Important security, master-data and movement changes create audit events.
 
 ## Central database
 
-- The permanent target is multiple desktop/remote clients through an authenticated BinTracker service/API to central PostgreSQL. Remote clients never connect directly to PostgreSQL.
+- The permanent boundary is multiple desktop/web/phone/other clients through authenticated BinTracker application/API contracts to a provider-specific Data implementation. SQLite is current; PostgreSQL is a likely future central provider, but another suitable SQL provider must be possible without rewriting business semantics. Remote clients never connect directly to the database or receive its credentials.
 - Production business operations assume concurrent authenticated users. Request user/client identity is scoped to the operation; it is never shared process-wide on a server.
 - Business dates use the configured business timezone and audit timestamps use an injected UTC clock, never implicit server-local time.
 - Database constraints are authoritative for concurrent invariants. A losing request receives a stable business result, and retryable remote commands require idempotency identity before the API is enabled.
-- Services + `IDbContextFactory<BinTrackerDbContext>` remain the local application boundary; database-provider-specific SQL, configuration and migrations belong in infrastructure.
+- Core owns provider-neutral domain semantics, lineage rules, immutable contracts and business invariants. Services owns provider-neutral/client-neutral application workflows and may internally use the shared provider-neutral EF model, EF/LINQ and `IDbContextFactory<BinTrackerDbContext>` under the existing BT-ARCH-004 Services/Data boundary.
+- Application-facing/public service contracts expose only intent, stable IDs, DTOs/results and appropriate cancellation/context abstractions; they must not expose EF Core, `BinTrackerDbContext`, database connections/transactions, provider selection, credentials, local-file assumptions or presentation-specific behavior.
+- Data owns provider configuration, schema/migrations, backup/recovery, provider-specific SQL and database-specific transaction/locking/storage mechanics. SQLite-specific PRAGMAs, locking assumptions, raw SQL and provider quirks remain in Data and must never define business semantics. Do not create a generic repository merely to hide EF.
+- WinForms owns presentation only. Future web/phone/other clients consume the same application semantics without knowing or caring which database provider is underneath.
+- Task-19 internal Services snapshot-participant interfaces may continue using `BinTrackerDbContext` as non-client-facing internal composition under BT-ARCH-004. This boundary clarification does not reopen the shared-snapshot implementation without a concrete defect.
 - Remote import/export contracts carry content/streams and metadata, not a client path such as `C:\\...`. The current SQLite desktop adapter may continue using local paths until central deployment exists.
 
 ## As-of-date reporting

@@ -8,12 +8,23 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace BinTracker.Data;
 
 /// <summary>
-/// Allows a write workflow to obtain the same corrected projection through its caller-owned
-/// database transaction. Implementations must not create, commit or replace that transaction.
+/// Allows workflows to obtain the same corrected projection through a shared database transaction.
 /// </summary>
 public interface ITransactionalOperationalMovementProjectionAuthority
     : IOperationalMovementProjectionAuthority
 {
+    /// <summary>
+    /// Owns a provider-consistent read transaction on the supplied context for the callback's
+    /// lifetime. Rejects an existing transaction; never saves or commits. The callback must await
+    /// all reads sequentially, use this context, and return materialized results. It must not write,
+    /// replace or dispose the transaction/context. The caller retains context ownership.
+    /// </summary>
+    Task<TResult> ReadSnapshotAsync<TResult>(
+        BinTrackerDbContext db,
+        Func<CancellationToken, Task<TResult>> read,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Participates without creating, committing or replacing the caller's transaction.</summary>
     Task<OperationalMovementProjectionResult> QueryInTransactionAsync(
         BinTrackerDbContext db,
         OperationalMovementProjectionScope scope,
@@ -30,6 +41,38 @@ public sealed class SqliteOperationalMovementProjectionAuthority(string connecti
     private readonly string connectionString = string.IsNullOrWhiteSpace(connectionString)
         ? throw new ArgumentException("A SQLite connection string is required.", nameof(connectionString))
         : connectionString;
+
+    public async Task<TResult> ReadSnapshotAsync<TResult>(
+        BinTrackerDbContext db,
+        Func<CancellationToken, Task<TResult>> read,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(db);
+        ArgumentNullException.ThrowIfNull(read);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (db.Database.CurrentTransaction is not null ||
+            db.Database.GetDbConnection() is not SqliteConnection connection)
+            throw new InvalidOperationException(
+                "The SQLite read snapshot requires a context without an active transaction.");
+
+        await db.Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            // A deferred read transaction pins the snapshot at its first read, while allowing
+            // WAL writers to commit. Both EF metadata reads and projection SQL enlist here.
+            await using var transaction = connection.BeginTransaction(
+                IsolationLevel.Serializable, deferred: true);
+            await using var participation = await db.Database.UseTransactionAsync(
+                transaction, cancellationToken);
+            var result = await read(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            return result;
+        }
+        finally
+        {
+            await db.Database.CloseConnectionAsync();
+        }
+    }
 
     public async Task<OperationalMovementProjectionResult> QueryAsync(
         OperationalMovementProjectionScope scope,
