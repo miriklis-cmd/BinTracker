@@ -17,6 +17,10 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Database / data integrity
 
+- Task20C confirms that loaded EF MovementBatch deletion nullifies tracked member IDs under SetNull while schema17 RESTRICT rolls back persisted deletion. Align the EF relationship with immutable membership in the later authorized production slice; do not change the model in the test-only pass.
+- Implement the R4 single Data startup funnel and R5 capability validation without a second lineage validator. Coordinator failure/lease/bootstrap/developer-replacement proof needs real production lifecycle seams, not fake test composition. Companion leases only coordinate participating processes.
+- R7 characterization demonstrates result-affecting snapshot gaps in Dashboard/customer/container metadata and Import replacement comparison. Restrict later fixes to these proven boundaries; preserve Task19 Daily Print Pack and provider-neutral application contracts.
+
 - Add source-row/import-profile metadata needed for changed-workbook correction tooling.
 - Review useful database-level constraints/indexes rather than relying only on service validation.
 - Activate and production-rehearse the dormant verified pre-lineage backup/exclusive-upgrade infrastructure before schema 17 may run at startup; this does not replace the later user-facing Backup/Restore workstream.

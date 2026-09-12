@@ -29,6 +29,8 @@ Audited: 5 September 2026
 
 ## Development acceptance rules
 
+Task20C is a documentation/test-only prerequisite to production cutover. Architecture contains the verbatim R1–R4 approval and R5–R7 constraints. Minimum native audit/review safety belongs in activation; full Audit/History detail and Restore/RemainReversed UI retain their later sequence. Intentional-red tests are ordinary unskipped tests in the existing projects; full-suite/BAT runs are temporarily suspended, not waived. Missing coordinator/preview contracts remain explicit proof gaps, never simulated completion.
+
 - Business-logic change: targeted smoke test.
 - UI change: full smoke test.
 - Milestone closure: automated tests + relevant smoke tests + documentation/audit reconciliation.

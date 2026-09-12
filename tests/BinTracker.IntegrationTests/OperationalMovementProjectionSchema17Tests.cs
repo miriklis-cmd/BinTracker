@@ -2189,7 +2189,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
         return Convert.ToInt64(await command.ExecuteScalarAsync());
     }
 
-    private static ImportExecutionRequest ReplacementRequest(
+    internal static ImportExecutionRequest ReplacementRequest(
         Harness harness,
         long previousImportRunId,
         DateOnly cutoverDate)
@@ -2303,7 +2303,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
             ClientOperationId: Guid.NewGuid());
     }
 
-    private sealed class Harness : IAsyncDisposable
+    internal sealed class Harness : IAsyncDisposable
     {
         internal static readonly DateOnly Today = new(2026, 9, 5);
         private static readonly DateTime UtcNow = new(2026, 9, 5, 1, 2, 3, DateTimeKind.Utc);
@@ -2398,7 +2398,8 @@ public sealed class OperationalMovementProjectionSchema17Tests
         public static async Task<Harness> CreateAsync(bool migrateToSchema17 = true,
             bool enableSchema17Writers = true,
             bool enableProjectionBackedServices = false,
-            UserRole userRole = UserRole.Operator)
+            UserRole userRole = UserRole.Operator,
+            Func<BinTrackerDbContext, Task>? beforeMigration = null)
         {
             var root = Path.Combine(Path.GetTempPath(), $"BinTracker-projection-v17-{Guid.NewGuid():N}");
             Directory.CreateDirectory(root);
@@ -2418,6 +2419,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
                 await db.SaveChangesAsync();
                 customerId = customer.Id;
                 otherCustomerId = other.Id;
+                if (beforeMigration is not null) await beforeMigration(db);
             }
 
             LineageSchema17MigrationPrerequisites? prerequisites = null;

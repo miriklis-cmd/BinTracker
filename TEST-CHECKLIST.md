@@ -18,6 +18,11 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 
 ## Release, audit and packaging
 
+- [S] Task20C R1–R4 documentation freeze records the approved activation semantics without production implementation or requirement-status promotion.
+- [P] Task20C future-behavior tests intentionally fail against unchanged production code. They are ordinary unskipped xUnit tests and must become green in the later complete canonical suite/BAT. During Task20C only, full-suite/BAT runs are suspended; focused characterization, explicit future filters, mechanical audit and diff checks remain required.
+- [P] Coordinator startup/composition/identity/bootstrap/developer replacement and full preview-bridge integration proofs remain blocked where their production contracts do not yet exist; see CONTINUATION for the exact item mapping. No retained database or Windows/operator acceptance is implied.
+- [P] Task20C-R1 strengthens full before/after R7 comparisons and truthful pre-receipt schema16 command/audit setup. Temporary diagnostic failure checks must bind to the eventual typed contracts, and transitional DatabaseSetup reds must be retargeted/complemented at the actual R4 coordinator with A2/A3/A8–A11/A13–A15 and structural rejection coverage before final Task20 acceptance. Targeted green/expected-red evidence is recorded in Testing; no activation/operator acceptance is claimed.
+
 - [G] Before accepted behaviour changes, identify precise characterization; add missing coverage, run it before the change and rerun it afterward.
 - [G] Structured input/persisted-state boundaries have relevant malformed/adversarial coverage and fully validate or fail closed without partial state.
 - [G] Perform semantic reconciliation of every governed Markdown file and record the review separately from the mechanical audit.

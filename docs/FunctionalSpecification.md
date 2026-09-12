@@ -20,6 +20,8 @@
 
 ## Movements
 
+Task20 activation follows the verbatim approved R1–R4 in `docs/Architecture.md`: Single first success publishes physical evidence, Initial lineage, validated PositionAsOf(captured business today), typed response receipt and audit in one transaction, then commits/returns. Retry replays the original receipt; identical pre-receipt legacy retry has the explicit controlled unavailable-result exception. Validated operational projection supplies the authoritative committed-snapshot position to BOTH receipt and audit; neither receipt nor audit prose/JSON is balance/projection/lineage authority, and receipt is not audit-source authority. Current position always uses validated operational projection. Correction/reversal requires stable logical root/line intent and preview-captured expected generation; activated legacy writes fail closed. All-Active whole-root date/direction correction stays representable; Reversed lines require the separately sequenced explicit-decision UI. Minimum native audit/detail/review safety precedes exposure, while full Audit/History detail and Restore/RemainReversed UI remain later milestones.
+
 - BT-MOVE-001: IN means Returned.
 - BT-MOVE-002: OUT means Taken.
 - BT-MOVE-003: A customer may have a credit balance.
