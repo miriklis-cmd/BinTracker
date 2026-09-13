@@ -28,7 +28,7 @@ public sealed class Task20StartupCharacterizationTests
             "TASK20_MISSING_TABLE", "TASK20_INVALID_HEALTH", default);
         Assert.Equal(later ? 1 : 0, await f.ScalarAsync($"SELECT CurrentGenerationNumber FROM LogicalMovementBatches WHERE Id={root.RootId}"));
         // This is component characterization only: it cannot prove composition,
-        // physical-identity reacquisition or the absent production startup funnel.
+        // physical-identity reacquisition; coordinator tests prove that lifecycle.
     }
 
     [Fact]
@@ -44,10 +44,8 @@ public sealed class Task20StartupCharacterizationTests
     }
 }
 
-// TRANSITIONAL DatabaseSetup-facing defect regressions. Final Task20 acceptance
-// must retarget/complement them at the real R4 coordinator, including structural
-// rejection plus A2/A3/A8-A11/A13-A15 lifecycle paths. Never add a second startup
-// authority in DatabaseSetup solely to satisfy this temporary seam.
+// Activation regressions now exercise the production R4 coordinator. The normal
+// DatabaseSetup defect characterization above remains until atomic runtime cutover.
 public sealed class Task20StartupActivationTests
 {
     [Theory]
@@ -87,10 +85,10 @@ public sealed class Task20StartupActivationTests
             default: throw new ArgumentOutOfRangeException(nameof(capability));
         }
         var before = await f.StateAsync();
-        var error = await Record.ExceptionAsync(f.StartExistingAsync);
+        var error = await Assert.ThrowsAsync<StartupDatabaseException>(f.StartCoordinatedAsync);
         Assert.Equal(before, await f.StateAsync());
-        Task20FailureBoundary.AssertDomainFailure(error, ["schema", "structure", "capability"],
-            ["invalid", "missing", "unsupported", "mismatch", "required"]);
+        Assert.Equal(StartupDatabaseFailure.StructuralCapabilityMissing, error.Failure);
+        Assert.Equal(17, error.PersistedState.SchemaVersion);
     }
 
     [Fact]
@@ -99,11 +97,12 @@ public sealed class Task20StartupActivationTests
         await using var f = await Task20Fixture.CreateAsync();
         await f.ExecuteAsync("UPDATE SchemaVersion SET Version=18");
         var before = await f.StateAsync();
-        var error = await Record.ExceptionAsync(f.StartExistingAsync);
+        var error = await Assert.ThrowsAsync<StartupDatabaseException>(f.StartCoordinatedAsync);
         Assert.Equal(18, await f.ScalarAsync("SELECT Version FROM SchemaVersion"));
         Assert.Equal(before, await f.StateAsync());
-        Task20FailureBoundary.AssertDomainFailure(error, ["schema", "database version"],
-            ["future", "newer", "unsupported", "not supported"]);
+        Assert.Equal(StartupDatabaseFailure.UnsupportedSchema, error.Failure);
+        Assert.Equal(StartupDatabaseState.UnsupportedFutureSchema, error.PersistedState.State);
+        Assert.False(error.SchemaMutationAttempted);
     }
 
     [Theory]
@@ -121,24 +120,24 @@ public sealed class Task20StartupActivationTests
         else
             await f.Database.InsertUnrootedOrdinaryAsync(f.CustomerId);
         var before = await f.StateAsync();
-        var error = await Record.ExceptionAsync(f.StartExistingAsync);
+        var error = await Assert.ThrowsAsync<StartupDatabaseException>(f.StartCoordinatedAsync);
         Assert.Equal(before, await f.StateAsync());
-        Task20FailureBoundary.AssertDomainFailure(error, ["lineage", "root", "generation", "unrooted"],
-            ["invalid", "missing", "health", "integrity", "unrooted"]);
+        Assert.Equal(StartupDatabaseFailure.CurrentHealthInvalid, error.Failure);
+        Assert.Equal(17, error.PersistedState.SchemaVersion);
     }
 
     [Fact]
-    public async Task Normal_schema16_startup_rejects_partial_lineage_before_upgrade_writes()
+    public async Task Coordinated_schema16_startup_rejects_partial_lineage_before_upgrade_writes()
     {
         await using var f = await Task20Fixture.CreateAsync(schema17: false, enabled: false, projection: false);
         await f.ExecuteAsync("CREATE TABLE LogicalMovementBatches (Id INTEGER PRIMARY KEY)");
         var before = await f.StateAsync();
-        var error = await Record.ExceptionAsync(f.StartExistingAsync);
+        var error = await Assert.ThrowsAsync<StartupDatabaseException>(f.StartCoordinatedAsync);
         Assert.Equal(before, await f.StateAsync());
         Assert.Equal(16, await f.ScalarAsync("SELECT Version FROM SchemaVersion"));
         Assert.Equal(0, await f.ScalarAsync("SELECT COUNT(*) FROM LogicalMovementBatches"));
-        Task20FailureBoundary.AssertDomainFailure(error, ["schema", "lineage"],
-            ["partial", "incomplete", "unexpected", "invalid"]);
+        Assert.Equal(StartupDatabaseFailure.PartialOrCorrupt, error.Failure);
+        Assert.False(error.SchemaMutationAttempted);
     }
 }
 

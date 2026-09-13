@@ -74,9 +74,19 @@ public sealed class SqliteLineageSchema17Migrator(
     private readonly ILineageSchema17FailureInjector failureInjector =
         failureInjector ?? NoLineageSchema17FailureInjector.Instance;
 
-    public async Task<LineageSchema17MigrationResult> MigrateAsync(
+    internal Func<SqliteConnection, SqliteTransaction, Task>? BeforePublicationValidation { get; init; }
+    internal Action? AfterCommit { get; init; }
+
+    public Task<LineageSchema17MigrationResult> MigrateAsync(
         LineageSchema17MigrationPrerequisites prerequisites,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        MigrateForStartupAsync(prerequisites, null, null, cancellationToken);
+
+    internal async Task<LineageSchema17MigrationResult> MigrateForStartupAsync(
+        LineageSchema17MigrationPrerequisites prerequisites,
+        Func<SqliteConnection, SqliteTransaction, CancellationToken, Task>? verifySource,
+        Action? schemaMutationStarting,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(prerequisites);
         await ValidatePrerequisitesAsync(prerequisites, cancellationToken);
@@ -111,9 +121,13 @@ public sealed class SqliteLineageSchema17Migrator(
         await NonQueryAsync(connection, null, "PRAGMA legacy_alter_table=ON;", cancellationToken);
 
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        var committed = false;
         try
         {
             failureInjector.ThrowIfRequested(LineageSchema17MigrationCheckpoint.BeforeSchemaMutation);
+            if (verifySource is not null) await verifySource(connection, transaction, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            schemaMutationStarting?.Invoke();
             await CreateSchemaAsync(connection, transaction, cancellationToken);
 
             var graph = await LegacyGraph.LoadAsync(connection, transaction, cancellationToken);
@@ -122,6 +136,8 @@ public sealed class SqliteLineageSchema17Migrator(
                 createdUtc, cancellationToken);
 
             failureInjector.ThrowIfRequested(LineageSchema17MigrationCheckpoint.BeforePostflight);
+            if (BeforePublicationValidation is not null)
+                await BeforePublicationValidation(connection, transaction);
             var postflight = await ValidatePostflightAsync(connection, transaction, cancellationToken);
             failureInjector.ThrowIfRequested(LineageSchema17MigrationCheckpoint.AfterPostflightBeforePublication);
 
@@ -129,6 +145,8 @@ public sealed class SqliteLineageSchema17Migrator(
                 "UPDATE SchemaVersion SET Version=17, UpdatedUtc=$utc WHERE Id=1;",
                 cancellationToken, ("$utc", createdUtc.ToString("O", CultureInfo.InvariantCulture)));
             await transaction.CommitAsync(cancellationToken);
+            committed = true;
+            AfterCommit?.Invoke();
 
             await NonQueryAsync(connection, null, "PRAGMA foreign_keys=ON;", cancellationToken);
             if (await ForeignKeyViolationCountAsync(connection, null, cancellationToken) != 0)
@@ -137,7 +155,10 @@ public sealed class SqliteLineageSchema17Migrator(
         }
         catch
         {
-            await transaction.RollbackAsync(CancellationToken.None);
+            // Publication cannot be undone by rolling back a completed transaction.
+            // Preserve the original post-COMMIT diagnosis for startup recovery.
+            if (!committed)
+                await transaction.RollbackAsync(CancellationToken.None);
             throw;
         }
     }
@@ -207,27 +228,9 @@ public sealed class SqliteLineageSchema17Migrator(
         SqliteConnection c, SqliteTransaction tx, CancellationToken token)
     {
         await NonQueryAsync(c, tx, "ALTER TABLE MovementCorrectionOperations RENAME TO __MovementCorrectionOperations_v16;", token);
+        await NonQueryAsync(c, tx, SqliteLineageSchema17Definition.CorrectionOperations, token);
         await NonQueryAsync(c, tx, """
-            CREATE TABLE MovementCorrectionOperations (
-                Id INTEGER NOT NULL CONSTRAINT PK_MovementCorrectionOperations PRIMARY KEY AUTOINCREMENT,
-                ClientOperationId TEXT NOT NULL,
-                RequestFingerprint TEXT NOT NULL,
-                Kind INTEGER NOT NULL CONSTRAINT CK_MovementCorrectionOperations_Kind CHECK (Kind IN (0,1,2,3)),
-                OriginalBatchId INTEGER NULL,
-                ReplacementBatchId INTEGER NULL,
-                Reason TEXT NOT NULL,
-                ActorUserId INTEGER NOT NULL,
-                ActorUsername TEXT NOT NULL,
-                CreatedUtc TEXT NOT NULL,
-                RequestJson TEXT NULL,
-                RequestSchemaVersion INTEGER NULL CONSTRAINT CK_MovementCorrectionOperations_RequestSchemaVersion CHECK (RequestSchemaVersion IS NULL OR RequestSchemaVersion > 0),
-                LogicalMovementBatchId INTEGER NULL,
-                ExpectedGenerationNumber INTEGER NULL CONSTRAINT CK_MovementCorrectionOperations_ExpectedGeneration CHECK (ExpectedGenerationNumber IS NULL OR ExpectedGenerationNumber >= 0),
-                ResultGenerationNumber INTEGER NULL CONSTRAINT CK_MovementCorrectionOperations_ResultGeneration CHECK (ResultGenerationNumber IS NULL OR ResultGenerationNumber >= 0),
-                CONSTRAINT FK_MovementCorrectionOperations_MovementBatches_OriginalBatchId FOREIGN KEY (OriginalBatchId) REFERENCES MovementBatches (Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_MovementCorrectionOperations_MovementBatches_ReplacementBatchId FOREIGN KEY (ReplacementBatchId) REFERENCES MovementBatches (Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_MovementCorrectionOperations_LogicalMovementBatches_LogicalMovementBatchId FOREIGN KEY (LogicalMovementBatchId) REFERENCES LogicalMovementBatches (Id) ON DELETE RESTRICT
-            );
+
             INSERT INTO MovementCorrectionOperations
                 (Id, ClientOperationId, RequestFingerprint, Kind, OriginalBatchId, ReplacementBatchId,
                  Reason, ActorUserId, ActorUsername, CreatedUtc)
@@ -235,131 +238,22 @@ public sealed class SqliteLineageSchema17Migrator(
                    Reason, ActorUserId, ActorUsername, CreatedUtc
             FROM __MovementCorrectionOperations_v16;
             DROP TABLE __MovementCorrectionOperations_v16;
-            CREATE UNIQUE INDEX IX_MovementCorrectionOperations_ClientOperationId ON MovementCorrectionOperations (ClientOperationId);
-            CREATE UNIQUE INDEX IX_MovementCorrectionOperations_ResultGeneration
-                ON MovementCorrectionOperations (LogicalMovementBatchId, ResultGenerationNumber)
-                WHERE ResultGenerationNumber IS NOT NULL;
-            CREATE INDEX IX_MovementCorrectionOperations_LogicalMovementBatchId ON MovementCorrectionOperations (LogicalMovementBatchId);
             """, token);
+        await NonQueryAsync(c, tx, SqliteLineageSchema17Definition.CorrectionOperationIndexes, token);
     }
 
     private static Task CreateLogicalTablesAsync(
         SqliteConnection c, SqliteTransaction tx, CancellationToken token) =>
-        NonQueryAsync(c, tx, """
-            CREATE TABLE LogicalMovementBatches (
-                Id INTEGER NOT NULL CONSTRAINT PK_LogicalMovementBatches PRIMARY KEY AUTOINCREMENT,
-                RootMovementBatchId INTEGER NULL,
-                Status INTEGER NOT NULL CONSTRAINT CK_LogicalMovementBatches_Status CHECK (Status IN (0,1,2,3)),
-                CurrentGenerationNumber INTEGER NULL CONSTRAINT CK_LogicalMovementBatches_CurrentGeneration CHECK (CurrentGenerationNumber IS NULL OR CurrentGenerationNumber >= 0),
-                LineCount INTEGER NOT NULL CONSTRAINT CK_LogicalMovementBatches_LineCount CHECK (LineCount > 0),
-                StatusReasonCode TEXT NULL,
-                CreatedUtc TEXT NOT NULL,
-                CONSTRAINT FK_LogicalMovementBatches_MovementBatches_RootMovementBatchId FOREIGN KEY (RootMovementBatchId) REFERENCES MovementBatches (Id) ON DELETE RESTRICT
-            );
-            CREATE UNIQUE INDEX IX_LogicalMovementBatches_RootMovementBatchId ON LogicalMovementBatches (RootMovementBatchId) WHERE RootMovementBatchId IS NOT NULL;
-            CREATE INDEX IX_LogicalMovementBatches_Status_CurrentGeneration ON LogicalMovementBatches (Status, CurrentGenerationNumber);
-
-            CREATE TABLE LogicalMovementLines (
-                Id INTEGER NOT NULL CONSTRAINT PK_LogicalMovementLines PRIMARY KEY AUTOINCREMENT,
-                LogicalMovementBatchId INTEGER NOT NULL,
-                RootMovementId INTEGER NOT NULL,
-                OriginalDisplayOrdinal INTEGER NOT NULL CONSTRAINT CK_LogicalMovementLines_Ordinal CHECK (OriginalDisplayOrdinal >= 0),
-                CreatedUtc TEXT NOT NULL,
-                CONSTRAINT FK_LogicalMovementLines_LogicalMovementBatches_Root FOREIGN KEY (LogicalMovementBatchId) REFERENCES LogicalMovementBatches (Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_LogicalMovementLines_BinMovements_RootMovement FOREIGN KEY (RootMovementId) REFERENCES BinMovements (Id) ON DELETE RESTRICT,
-                CONSTRAINT UQ_LogicalMovementLines_Root_Id UNIQUE (LogicalMovementBatchId, Id)
-            );
-            CREATE UNIQUE INDEX IX_LogicalMovementLines_RootMovementId ON LogicalMovementLines (RootMovementId);
-            CREATE UNIQUE INDEX IX_LogicalMovementLines_Root_Ordinal ON LogicalMovementLines (LogicalMovementBatchId, OriginalDisplayOrdinal);
-
-            CREATE TABLE LogicalMovementGenerations (
-                Id INTEGER NOT NULL CONSTRAINT PK_LogicalMovementGenerations PRIMARY KEY AUTOINCREMENT,
-                LogicalMovementBatchId INTEGER NOT NULL,
-                GenerationNumber INTEGER NOT NULL CONSTRAINT CK_LogicalMovementGenerations_Number CHECK (GenerationNumber >= 0),
-                PreviousGenerationNumber INTEGER NULL,
-                MovementCorrectionOperationId INTEGER NULL,
-                Kind INTEGER NOT NULL CONSTRAINT CK_LogicalMovementGenerations_Kind CHECK (Kind IN (0,1,2,3,4,5,6,7)),
-                LineCount INTEGER NOT NULL CONSTRAINT CK_LogicalMovementGenerations_LineCount CHECK (LineCount > 0),
-                CreatedUtc TEXT NOT NULL,
-                CONSTRAINT FK_LogicalMovementGenerations_Root FOREIGN KEY (LogicalMovementBatchId) REFERENCES LogicalMovementBatches (Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_LogicalMovementGenerations_Operation FOREIGN KEY (MovementCorrectionOperationId) REFERENCES MovementCorrectionOperations (Id) ON DELETE RESTRICT,
-                CONSTRAINT CK_LogicalMovementGenerations_Predecessor CHECK ((GenerationNumber=0 AND PreviousGenerationNumber IS NULL) OR (GenerationNumber>0 AND PreviousGenerationNumber=GenerationNumber-1)),
-                CONSTRAINT UQ_LogicalMovementGenerations_Root_Id UNIQUE (LogicalMovementBatchId, Id),
-                CONSTRAINT UQ_LogicalMovementGenerations_Root_Number UNIQUE (LogicalMovementBatchId, GenerationNumber)
-            );
-            CREATE UNIQUE INDEX IX_LogicalMovementGenerations_Operation ON LogicalMovementGenerations (MovementCorrectionOperationId) WHERE MovementCorrectionOperationId IS NOT NULL;
-
-            CREATE TABLE LogicalMovementGenerationLines (
-                Id INTEGER NOT NULL CONSTRAINT PK_LogicalMovementGenerationLines PRIMARY KEY AUTOINCREMENT,
-                LogicalMovementBatchId INTEGER NOT NULL,
-                LogicalMovementGenerationId INTEGER NOT NULL,
-                LogicalMovementLineId INTEGER NOT NULL,
-                State INTEGER NOT NULL CONSTRAINT CK_LogicalMovementGenerationLines_State CHECK (State IN (0,1)),
-                Action INTEGER NOT NULL CONSTRAINT CK_LogicalMovementGenerationLines_Action CHECK (Action IN (0,1,2,3,4,5,6,7)),
-                AppliedFieldMask INTEGER NOT NULL CONSTRAINT CK_LogicalMovementGenerationLines_FieldMask CHECK (AppliedFieldMask BETWEEN 0 AND 127),
-                PreviousGenerationLineId INTEGER NULL,
-                ResultEffectiveMovementId INTEGER NULL,
-                LastEffectiveMovementId INTEGER NULL,
-                TerminalReversalMovementId INTEGER NULL,
-                CreatedUtc TEXT NOT NULL,
-                CONSTRAINT FK_LogicalMovementGenerationLines_Root FOREIGN KEY (LogicalMovementBatchId) REFERENCES LogicalMovementBatches (Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_LogicalMovementGenerationLines_Generation FOREIGN KEY (LogicalMovementBatchId, LogicalMovementGenerationId) REFERENCES LogicalMovementGenerations (LogicalMovementBatchId, Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_LogicalMovementGenerationLines_Line FOREIGN KEY (LogicalMovementBatchId, LogicalMovementLineId) REFERENCES LogicalMovementLines (LogicalMovementBatchId, Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_LogicalMovementGenerationLines_Previous FOREIGN KEY (PreviousGenerationLineId) REFERENCES LogicalMovementGenerationLines (Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_LogicalMovementGenerationLines_Result FOREIGN KEY (ResultEffectiveMovementId) REFERENCES BinMovements (Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_LogicalMovementGenerationLines_Last FOREIGN KEY (LastEffectiveMovementId) REFERENCES BinMovements (Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_LogicalMovementGenerationLines_Reversal FOREIGN KEY (TerminalReversalMovementId) REFERENCES BinMovements (Id) ON DELETE RESTRICT,
-                CONSTRAINT CK_LogicalMovementGenerationLines_Pointers CHECK (
-                    (State=0 AND ResultEffectiveMovementId IS NOT NULL AND LastEffectiveMovementId IS NULL AND TerminalReversalMovementId IS NULL) OR
-                    (State=1 AND ResultEffectiveMovementId IS NULL AND LastEffectiveMovementId IS NOT NULL AND TerminalReversalMovementId IS NOT NULL)),
-                CONSTRAINT UQ_LogicalMovementGenerationLines_Generation_Line UNIQUE (LogicalMovementGenerationId, LogicalMovementLineId),
-                CONSTRAINT UQ_LogicalMovementGenerationLines_Root_Id UNIQUE (LogicalMovementBatchId, Id)
-            );
-            CREATE INDEX IX_LogicalMovementGenerationLines_Current ON LogicalMovementGenerationLines (LogicalMovementBatchId, LogicalMovementGenerationId);
-            CREATE INDEX IX_LogicalMovementGenerationLines_Result ON LogicalMovementGenerationLines (ResultEffectiveMovementId);
-            CREATE INDEX IX_LogicalMovementGenerationLines_Last ON LogicalMovementGenerationLines (LastEffectiveMovementId);
-            CREATE INDEX IX_LogicalMovementGenerationLines_Reversal ON LogicalMovementGenerationLines (TerminalReversalMovementId);
-
-            CREATE TABLE LogicalMovementLedgerLinks (
-                BinMovementId INTEGER NOT NULL CONSTRAINT PK_LogicalMovementLedgerLinks PRIMARY KEY,
-                LogicalMovementBatchId INTEGER NOT NULL,
-                LogicalMovementLineId INTEGER NOT NULL,
-                Role INTEGER NOT NULL CONSTRAINT CK_LogicalMovementLedgerLinks_Role CHECK (Role IN (0,1,2,3,4)),
-                IntroducedByGenerationLineId INTEGER NULL,
-                LegacyMovementCorrectionLineId INTEGER NULL,
-                CreatedUtc TEXT NOT NULL,
-                CONSTRAINT FK_LogicalMovementLedgerLinks_Movement FOREIGN KEY (BinMovementId) REFERENCES BinMovements (Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_LogicalMovementLedgerLinks_Line FOREIGN KEY (LogicalMovementBatchId, LogicalMovementLineId) REFERENCES LogicalMovementLines (LogicalMovementBatchId, Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_LogicalMovementLedgerLinks_Introduced FOREIGN KEY (LogicalMovementBatchId, IntroducedByGenerationLineId) REFERENCES LogicalMovementGenerationLines (LogicalMovementBatchId, Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_LogicalMovementLedgerLinks_LegacyLine FOREIGN KEY (LegacyMovementCorrectionLineId) REFERENCES MovementCorrectionLines (Id) ON DELETE RESTRICT
-            );
-            CREATE INDEX IX_LogicalMovementLedgerLinks_Root_Line ON LogicalMovementLedgerLinks (LogicalMovementBatchId, LogicalMovementLineId);
-            CREATE UNIQUE INDEX IX_LogicalMovementLedgerLinks_LegacyLine_Role ON LogicalMovementLedgerLinks (LegacyMovementCorrectionLineId, Role) WHERE LegacyMovementCorrectionLineId IS NOT NULL;
-
-            CREATE TABLE LogicalMovementPhysicalOutputs (
-                MovementBatchId INTEGER NOT NULL CONSTRAINT PK_LogicalMovementPhysicalOutputs PRIMARY KEY,
-                LogicalMovementBatchId INTEGER NOT NULL,
-                LogicalMovementGenerationId INTEGER NULL,
-                LegacyMovementCorrectionOperationId INTEGER NULL,
-                CreatedUtc TEXT NOT NULL,
-                CONSTRAINT FK_LogicalMovementPhysicalOutputs_Batch FOREIGN KEY (MovementBatchId) REFERENCES MovementBatches (Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_LogicalMovementPhysicalOutputs_Root FOREIGN KEY (LogicalMovementBatchId) REFERENCES LogicalMovementBatches (Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_LogicalMovementPhysicalOutputs_Generation FOREIGN KEY (LogicalMovementBatchId, LogicalMovementGenerationId) REFERENCES LogicalMovementGenerations (LogicalMovementBatchId, Id) ON DELETE RESTRICT,
-                CONSTRAINT FK_LogicalMovementPhysicalOutputs_LegacyOperation FOREIGN KEY (LegacyMovementCorrectionOperationId) REFERENCES MovementCorrectionOperations (Id) ON DELETE RESTRICT,
-                CONSTRAINT CK_LogicalMovementPhysicalOutputs_Selector CHECK ((LogicalMovementGenerationId IS NULL) <> (LegacyMovementCorrectionOperationId IS NULL))
-            );
-            CREATE UNIQUE INDEX IX_LogicalMovementPhysicalOutputs_Generation ON LogicalMovementPhysicalOutputs (LogicalMovementGenerationId) WHERE LogicalMovementGenerationId IS NOT NULL;
-            CREATE UNIQUE INDEX IX_LogicalMovementPhysicalOutputs_LegacyOperation ON LogicalMovementPhysicalOutputs (LegacyMovementCorrectionOperationId) WHERE LegacyMovementCorrectionOperationId IS NOT NULL;
-            """, token);
+        NonQueryAsync(c, tx, SqliteLineageSchema17Definition.LogicalTables, token);
 
     private static async Task AddAuditOperationColumnAsync(
         SqliteConnection c, SqliteTransaction tx, CancellationToken token)
     {
         await NonQueryAsync(c, tx,
-            "ALTER TABLE AuditEvents ADD COLUMN MovementCorrectionOperationId INTEGER NULL REFERENCES MovementCorrectionOperations(Id) ON DELETE RESTRICT;",
+            "ALTER TABLE AuditEvents ADD COLUMN " + SqliteLineageSchema17Definition.AuditOperationColumn + ";",
             token);
         await NonQueryAsync(c, tx,
-            "CREATE UNIQUE INDEX IX_AuditEvents_MovementCorrectionOperationId ON AuditEvents (MovementCorrectionOperationId) WHERE MovementCorrectionOperationId IS NOT NULL;",
+            SqliteLineageSchema17Definition.AuditOperationIndex,
             token);
     }
 
@@ -620,7 +514,8 @@ public sealed class SqliteLineageSchema17Migrator(
         SqliteTransaction? tx,
         string missingTableError,
         string invariantError,
-        CancellationToken token)
+        CancellationToken token,
+        Func<Exception>? healthFailure = null)
     {
         var required = new[] { "LogicalMovementBatches", "LogicalMovementLines", "LogicalMovementGenerations",
             "LogicalMovementGenerationLines", "LogicalMovementLedgerLinks", "LogicalMovementPhysicalOutputs" };
@@ -628,7 +523,7 @@ public sealed class SqliteLineageSchema17Migrator(
         {
             if (Convert.ToInt64(await ScalarAsync(c, tx,
                     "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=$name;", token, ("$name", table))) != 1)
-                throw new InvalidOperationException(missingTableError);
+                throw healthFailure?.Invoke() ?? new InvalidOperationException(missingTableError);
         }
 
         // Reuse the provider-neutral committed-current authority for every projectable root.
@@ -647,7 +542,7 @@ public sealed class SqliteLineageSchema17Migrator(
                     c, tx,
                     new LogicalMovementBatchId(rootId), token);
                 if (current.Kind != LogicalMovementCurrentRootResolutionKind.Resolved)
-                    throw new InvalidOperationException(invariantError);
+                    throw healthFailure?.Invoke() ?? new InvalidOperationException(invariantError);
             }
         }
 
@@ -710,7 +605,7 @@ public sealed class SqliteLineageSchema17Migrator(
             badPointers != 0 || badPointerOwnership != 0 ||
             missingIntroductions != 0 || unownedOrdinary != 0 || fkViolations != 0)
         {
-            throw new InvalidOperationException(invariantError);
+            throw healthFailure?.Invoke() ?? new InvalidOperationException(invariantError);
         }
 
         return physicalOutputs;

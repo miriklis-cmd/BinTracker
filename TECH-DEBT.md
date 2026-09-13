@@ -17,8 +17,8 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Database / data integrity
 
-- Task20C confirms that loaded EF MovementBatch deletion nullifies tracked member IDs under SetNull while schema17 RESTRICT rolls back persisted deletion. Align the EF relationship with immutable membership in the later authorized production slice; do not change the model in the test-only pass.
-- Implement the R4 single Data startup funnel and R5 capability validation without a second lineage validator. Coordinator failure/lease/bootstrap/developer-replacement proof needs real production lifecycle seams, not fake test composition. Companion leases only coordinate participating processes.
+- Task20C confirms that loaded EF MovementBatch deletion nullifies tracked member IDs under SetNull while schema17 RESTRICT rolls back persisted deletion. Align the EF relationship with immutable membership in the later authorized production slice; the Task20D coordinator foundation deliberately leaves that model change deferred.
+- Task20D implements the R4 Data coordinator/R5 capabilities and real lifecycle proof under isolated composition. The later atomic cutover must route normal startup and staged developer-marker handling through it, retain the ready session through host lifetime and close R1/R2/R3 before installing schema17 writers. Existing legacy marker application remains unactivated integration work; the explicit coordinator rejects pending markers without bypass. Companion leases coordinate participating processes only; old/nonparticipating clients must be stopped for later rehearsal/deployment.
 - R7 characterization demonstrates result-affecting snapshot gaps in Dashboard/customer/container metadata and Import replacement comparison. Restrict later fixes to these proven boundaries; preserve Task19 Daily Print Pack and provider-neutral application contracts.
 
 - Add source-row/import-profile metadata needed for changed-workbook correction tooling.

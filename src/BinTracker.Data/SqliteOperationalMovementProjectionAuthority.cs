@@ -112,7 +112,7 @@ public sealed class SqliteOperationalMovementProjectionAuthority(string connecti
         return QueryInSnapshotAsync(connection, transaction, scope, cancellationToken);
     }
 
-    private static async Task<OperationalMovementProjectionResult> QueryInSnapshotAsync(
+    internal static async Task<OperationalMovementProjectionResult> QueryInSnapshotAsync(
         SqliteConnection connection,
         SqliteTransaction transaction,
         OperationalMovementProjectionScope scope,

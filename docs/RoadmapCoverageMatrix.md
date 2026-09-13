@@ -29,7 +29,7 @@ Audited: 5 September 2026
 
 ## Development acceptance rules
 
-Task20C is a documentation/test-only prerequisite to production cutover. Architecture contains the verbatim R1–R4 approval and R5–R7 constraints. Minimum native audit/review safety belongs in activation; full Audit/History detail and Restore/RemainReversed UI retain their later sequence. Intentional-red tests are ordinary unskipped tests in the existing projects; full-suite/BAT runs are temporarily suspended, not waived. Missing coordinator/preview contracts remain explicit proof gaps, never simulated completion.
+Task20C is a documentation/test-only prerequisite to production cutover. Architecture contains the verbatim R1–R4 approval and R5–R7 constraints. Minimum native audit/review safety belongs in activation; full Audit/History detail and Restore/RemainReversed UI retain their later sequence. Intentional-red tests are ordinary unskipped tests in the existing projects; full-suite/BAT runs are temporarily suspended, not waived. Task20D now supplies the production R4/R5 Data coordinator and isolated lifecycle proof; normal schema17 cutover remains inactive. Receipt, preview/legacy-write closure, native audit/review closure, EF membership alignment and R7 remain pending, followed by the unchanged later milestones and acceptance gates.
 
 - Business-logic change: targeted smoke test.
 - UI change: full smoke test.

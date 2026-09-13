@@ -40,6 +40,8 @@ R2 requires preview-captured root generation with no latest-generation substitut
 
 ## Status / provenance legend
 
+Task20D evidence extends the existing R4/R5/R6 mapping under BT-ARCH-017, BT-CORR-030/032 and BT-OPS-011/012: one production Data coordinator now supplies startup classification, governed16-to17 orchestration, native structural/current/projection validation, runtime revalidation and coordinated replacement through explicit isolated composition. Normal runtime cutover and legacy staged-marker integration remain inactive pending R1/R2/R3; R7, retained-database rehearsal and operator acceptance are not delivered. No permanent ID, scope or acceptance status changes; these broader requirements remain PLANNED-V1.
+
 Allowed scopes: `v1`, `post-v1`, `candidate`.
 
 Allowed statuses:

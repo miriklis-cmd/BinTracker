@@ -11,7 +11,7 @@ using Xunit;
 namespace BinTracker.IntegrationTests;
 
 // Reuses the proven disposable migration fixture. This is explicit isolated schema17
-// composition, not evidence that the missing production startup coordinator exists.
+// composition. Coordinator lifecycle evidence uses Coordinator/StartCoordinatedAsync.
 internal sealed class Task20Fixture : IAsyncDisposable
 {
     private readonly ServiceProvider services;
@@ -147,6 +147,23 @@ internal sealed class Task20Fixture : IAsyncDisposable
 
     internal Task StartExistingAsync() => StartAsync(Database.ConnectionString);
 
+    internal SqliteStartupDatabaseCoordinator Coordinator(Func<StartupDatabasePhase, Task>? checkpoint = null,
+        ILineageSchema17FailureInjector? migrationFailures = null,
+        Func<SqliteConnection, SqliteTransaction, Task>? beforePublicationValidation = null, Action? afterCommit = null)
+    {
+        var path = new SqliteConnectionStringBuilder(Database.ConnectionString).DataSource;
+        var root = Directory.GetParent(Path.GetDirectoryName(path) ?? throw new InvalidOperationException())
+            ?? throw new InvalidOperationException();
+        return new(path, Path.Combine(root.FullName, "startup-backups"), Path.Combine(root.FullName, "startup-locks"),
+            Path.Combine(root.FullName, "pending.json"), checkpoint, migrationFailures, beforePublicationValidation, afterCommit);
+    }
+
+    internal async Task StartCoordinatedAsync()
+    {
+        using var session = await Coordinator().StartAsync();
+        Assert.True(session.IsReadyForActivatedHost);
+    }
+
     // Full persisted schema/data evidence detects rewrites as well as added rows.
     // This includes any future receipt table without inventing one in the fixture.
     internal async Task<string> StateAsync()
@@ -178,9 +195,8 @@ internal sealed class Task20Fixture : IAsyncDisposable
 
     internal static async Task StartAsync(string connectionString)
     {
-        // TRANSITIONAL defect seam only. Retarget/complement these reds against
-        // the real R4 Data coordinator when introduced; DatabaseSetup must never
-        // become a competing startup authority to make these temporary tests green.
+        // Retained normal-runtime defect seam only. Acceptance tests use the real
+        // Data coordinator; DatabaseSetup remains dormant until atomic cutover.
         await using var db = new BinTrackerDbContext(
             new DbContextOptionsBuilder<BinTrackerDbContext>().UseSqlite(connectionString).Options);
         await DatabaseSetup.InitializeSqliteAsync(db);
