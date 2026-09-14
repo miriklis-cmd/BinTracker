@@ -2716,6 +2716,11 @@ public sealed class OperationalMovementProjectionSchema17Tests
             {
                 collection.AddScoped<IInitialMovementLineageWriter>(_ =>
                     new SqliteInitialMovementLineageWriter(NoInitialMovementLineageFailureInjector.Instance));
+                collection.AddScoped<ISingleMovementResponseReceiptStore>(_ =>
+                    new SqliteSingleMovementResponseReceiptStore(
+                        NoSingleMovementResponseReceiptFailureInjector.Instance));
+                collection.AddScoped<ITransactionalOperationalMovementProjectionAuthority>(_ =>
+                    new SqliteOperationalMovementProjectionAuthority(connectionString));
                 collection.AddScoped<IMovementMutationWriter>(_ =>
                     new SqliteMovementMutationWriter(NoMovementMutationFailureInjector.Instance));
             }

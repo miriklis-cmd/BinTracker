@@ -64,6 +64,17 @@ public sealed class Task20SingleActivationTests
         Assert.Equal(Task20Fixture.Today, projected.Scope.ThroughDateInclusive);
         Assert.Equal(saved.NewBalance, Assert.Single(projected.Positions).Quantity);
         Assert.Contains(projected.Activity, x => x.EvidenceMovementId == saved.MovementId);
+        Assert.Equal(1, await f.ScalarAsync("SELECT COUNT(*) FROM BinMovements"));
+        Assert.Equal(1, await f.ScalarAsync("SELECT COUNT(*) FROM LogicalMovementBatches"));
+        Assert.Equal(1, await f.ScalarAsync("SELECT COUNT(*) FROM LogicalMovementGenerations WHERE Kind=0"));
+        Assert.Equal(1, await f.ScalarAsync("SELECT COUNT(*) FROM LogicalMovementLedgerLinks WHERE Role=0"));
+        Assert.Equal(1, await f.ScalarAsync("SELECT COUNT(*) FROM SingleMovementResponseReceipts"));
+        Assert.Equal(saved.MovementId, await f.ScalarAsync(
+            "SELECT MovementId FROM SingleMovementResponseReceipts"));
+        Assert.Equal(saved.NewBalance, await f.ScalarAsync(
+            "SELECT ResultingPosition FROM SingleMovementResponseReceipts"));
+        Assert.Equal(1, await f.ScalarAsync(
+            "SELECT COUNT(*) FROM SingleMovementResponseReceipts WHERE BusinessDate='2026-09-05'"));
     }
 
     [Theory]
@@ -98,6 +109,56 @@ public sealed class Task20SingleActivationTests
     }
 
     [Fact]
+    public async Task Single_receipt_persistence_failure_rolls_back_all_evidence()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var before = await f.CountsAsync();
+        var failure = new InvalidOperationException("TASK20_RECEIPT_FAILURE");
+        f.FailReceiptWith(failure);
+
+        var error = await Record.ExceptionAsync(() => f.Movements.SaveSingleAsync(f.Single()));
+
+        Assert.Same(failure, error);
+        Assert.Equal(before, await f.CountsAsync());
+    }
+
+    [Fact]
+    public async Task Single_cancellation_after_receipt_insert_rolls_back_all_evidence()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var before = await f.CountsAsync();
+        using var source = new CancellationTokenSource();
+        OperationCanceledException? cancellation = null;
+        f.FailReceiptWith(() =>
+        {
+            source.Cancel();
+            return cancellation = new OperationCanceledException(
+                "TASK20_CANCEL_BEFORE_COMMIT", source.Token);
+        });
+
+        var error = await Record.ExceptionAsync(() =>
+            f.Movements.SaveSingleAsync(f.Single(), source.Token));
+
+        Assert.Same(cancellation, error);
+        Assert.True(source.IsCancellationRequested);
+        Assert.Equal(before, await f.CountsAsync());
+    }
+
+    [Fact]
+    public async Task Single_audit_failure_rolls_back_physical_lineage_receipt_and_audit()
+    {
+        var failure = new FailSecondSaveChanges();
+        await using var f = await Task20Fixture.CreateAsync(interceptor: failure);
+        var before = await f.CountsAsync();
+
+        var error = await Record.ExceptionAsync(() => f.Movements.SaveSingleAsync(f.Single()));
+
+        Assert.Same(failure.Failure, error);
+        Assert.Equal(2, failure.Calls);
+        Assert.Equal(before, await f.CountsAsync());
+    }
+
+    [Fact]
     public async Task New_single_identical_retry_preserves_original_response_after_later_activity()
     {
         await using var f = await Task20Fixture.CreateAsync();
@@ -105,9 +166,12 @@ public sealed class Task20SingleActivationTests
         var first = await f.Movements.SaveSingleAsync(request);
         await f.Movements.SaveSingleAsync(f.Single(5));
         var before = await f.CountsAsync();
+        var transactionCalls = f.Projection.TransactionCalls;
         var retry = await f.Movements.SaveSingleAsync(request);
         Assert.Equal(before, await f.CountsAsync());
         Assert.Equal(first, retry);
+        Assert.Equal(transactionCalls, f.Projection.TransactionCalls);
+        Assert.Equal(0, f.Projection.IndependentCalls);
     }
 
     [Fact]
@@ -127,8 +191,43 @@ public sealed class Task20SingleActivationTests
         Assert.Equal(1, await f.ScalarAsync("SELECT COUNT(*) FROM BinMovements"));
         Assert.Equal(1, await f.ScalarAsync("SELECT COUNT(*) FROM AuditEvents WHERE Action='MOVEMENT_RECORDED' AND Succeeded=1"));
         Assert.Equal(1, await f.ScalarAsync("SELECT COUNT(*) FROM LogicalMovementGenerations WHERE Kind=1"));
-        Task20FailureBoundary.AssertDomainFailure(error, ["replay"], ["legacy", "receipt"], ["unavailable", "not available", "missing"]);
+        Assert.IsType<SingleMovementReplayUnavailableException>(error);
         Assert.Null(returned);
+    }
+
+    [Fact]
+    public async Task Missing_native_receipt_fails_closed_instead_of_claiming_legacy_compatibility()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var request = f.Single();
+        await f.Movements.SaveSingleAsync(request);
+        await f.ExecuteAsync("DELETE FROM SingleMovementResponseReceipts");
+        var before = await f.CountsAsync();
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            f.Movements.SaveSingleAsync(request));
+
+        Assert.IsNotType<SingleMovementReplayUnavailableException>(error);
+        Assert.Contains("native Single Entry response receipt is missing", error.Message);
+        Assert.Equal(before, await f.CountsAsync());
+        Assert.Equal(1, await f.ScalarAsync("SELECT COUNT(*) FROM BinMovements"));
+        Assert.Equal(1, await f.ScalarAsync("SELECT COUNT(*) FROM AuditEvents"));
+    }
+
+    private sealed class FailSecondSaveChanges : SaveChangesInterceptor
+    {
+        internal Exception Failure { get; } = new InvalidOperationException("TASK20_AUDIT_FAILURE");
+        internal int Calls { get; private set; }
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            if (Calls == 2) throw Failure;
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
     }
 }
 
@@ -150,8 +249,7 @@ public sealed class Task20SingleSafetyTests
         Assert.Equal(1, await f.ScalarAsync("SELECT COUNT(*) FROM LogicalMovementGenerations WHERE Kind=1 AND GenerationNumber=0"));
         Assert.Equal(0, await f.ScalarAsync("SELECT COUNT(*) FROM MovementCorrectionOperations"));
         Assert.Equal(0, await f.ScalarAsync("SELECT COUNT(*) FROM LogicalMovementPhysicalOutputs"));
-        // Receipt storage does not exist yet; when introduced, assert absence of
-        // a receipt for this command through its real typed storage seam as well.
+        Assert.Equal(0, await f.ScalarAsync("SELECT COUNT(*) FROM SingleMovementResponseReceipts"));
     }
 
     [Fact]
@@ -166,6 +264,8 @@ public sealed class Task20SingleSafetyTests
         };
         var saved = await f.Movements.SaveSingleAsync(f.Single());
         Assert.Equal(7, saved.NewBalance);
+        Assert.Equal(1, f.Projection.TransactionCalls);
+        Assert.Equal(0, f.Projection.IndependentCalls);
         Assert.Equal(12, await f.ScalarAsync("SELECT SUM(Quantity) FROM BinMovements"));
         await using var db = f.Database.CreateDbContext();
         var audit = await db.AuditEvents.SingleAsync(x => x.Action == "MOVEMENT_RECORDED" && x.EntityId == saved.MovementId.ToString());

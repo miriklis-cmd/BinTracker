@@ -108,6 +108,15 @@ internal static class SqliteLineageSchema17Definition
             );
             CREATE UNIQUE INDEX IX_LogicalMovementPhysicalOutputs_Generation ON LogicalMovementPhysicalOutputs (LogicalMovementGenerationId) WHERE LogicalMovementGenerationId IS NOT NULL;
             CREATE UNIQUE INDEX IX_LogicalMovementPhysicalOutputs_LegacyOperation ON LogicalMovementPhysicalOutputs (LegacyMovementCorrectionOperationId) WHERE LegacyMovementCorrectionOperationId IS NOT NULL;
+
+            CREATE TABLE SingleMovementResponseReceipts (
+                ClientOperationId TEXT NOT NULL CONSTRAINT PK_SingleMovementResponseReceipts PRIMARY KEY,
+                MovementId INTEGER NOT NULL,
+                BusinessDate TEXT NOT NULL,
+                ResultingPosition INTEGER NOT NULL CONSTRAINT CK_SingleMovementResponseReceipts_ResultingPosition CHECK (ResultingPosition BETWEEN -2147483648 AND 2147483647),
+                CONSTRAINT FK_SingleMovementResponseReceipts_BinMovements_MovementId FOREIGN KEY (MovementId) REFERENCES BinMovements (Id) ON DELETE RESTRICT
+            );
+            CREATE UNIQUE INDEX IX_SingleMovementResponseReceipts_MovementId ON SingleMovementResponseReceipts (MovementId);
             """;
 
     internal const string CorrectionOperations = """

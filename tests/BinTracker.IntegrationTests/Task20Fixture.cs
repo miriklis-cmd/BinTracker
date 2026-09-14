@@ -18,6 +18,7 @@ internal sealed class Task20Fixture : IAsyncDisposable
     internal OperationalMovementProjectionSchema17Tests.Harness Database { get; }
     internal static DateOnly Today => new(2026, 9, 5);
     internal Task20Projection Projection { get; }
+    private Task20ReceiptFailureInjector ReceiptFailure { get; } = new();
     internal IMovementService Movements => services.GetRequiredService<IMovementService>();
     internal IMovementCorrectionService Corrections => services.GetRequiredService<IMovementCorrectionService>();
     internal IAuditService Audit => services.GetRequiredService<IAuditService>();
@@ -43,6 +44,9 @@ internal sealed class Task20Fixture : IAsyncDisposable
         {
             collection.AddScoped<IInitialMovementLineageWriter>(_ =>
                 new SqliteInitialMovementLineageWriter(NoInitialMovementLineageFailureInjector.Instance));
+            collection.AddScoped<ISingleMovementResponseReceiptStore>(_ =>
+                new SqliteSingleMovementResponseReceiptStore(ReceiptFailure));
+            collection.AddSingleton<ITransactionalOperationalMovementProjectionAuthority>(Projection);
             collection.AddScoped<IMovementMutationWriter>(_ =>
                 new SqliteMovementMutationWriter(NoMovementMutationFailureInjector.Instance));
         }
@@ -119,6 +123,9 @@ internal sealed class Task20Fixture : IAsyncDisposable
     internal SaveSingleMovementRequest Single(int quantity = 7, DateOnly? date = null) =>
         new(Guid.NewGuid(), date ?? Today, MovementType.Out, CustomerId, 1, quantity, "task20", null);
 
+    internal void FailReceiptWith(Exception exception) => ReceiptFailure.Arm(exception);
+    internal void FailReceiptWith(Func<Exception> failure) => ReceiptFailure.Arm(failure);
+
     internal async Task ExecuteAsync(string sql)
     {
         await using var connection = await Database.OpenAsync();
@@ -140,7 +147,8 @@ internal sealed class Task20Fixture : IAsyncDisposable
         var counts = new List<long>();
         foreach (var table in new[] { "BinMovements", "MovementBatches", "AuditEvents",
             "LogicalMovementBatches", "LogicalMovementLines", "LogicalMovementGenerations",
-            "LogicalMovementGenerationLines", "LogicalMovementLedgerLinks", "MovementCorrectionOperations" })
+            "LogicalMovementGenerationLines", "LogicalMovementLedgerLinks", "MovementCorrectionOperations",
+            "SingleMovementResponseReceipts" })
             counts.Add(await ScalarAsync($"SELECT COUNT(*) FROM {table}"));
         return counts.ToArray();
     }
@@ -164,8 +172,8 @@ internal sealed class Task20Fixture : IAsyncDisposable
         Assert.True(session.IsReadyForActivatedHost);
     }
 
-    // Full persisted schema/data evidence detects rewrites as well as added rows.
-    // This includes any future receipt table without inventing one in the fixture.
+    // Full persisted schema/data evidence detects rewrites as well as added rows,
+    // including native Single response receipts.
     internal async Task<string> StateAsync()
     {
         await using var connection = await Database.OpenAsync();
@@ -231,6 +239,20 @@ internal sealed class Task20Fixture : IAsyncDisposable
     {
         public string ClientInstanceId => "task20-client";
         public string DeviceName => "task20-device";
+    }
+
+    private sealed class Task20ReceiptFailureInjector : ISingleMovementResponseReceiptFailureInjector
+    {
+        private Func<Exception>? failure;
+        internal void Arm(Exception exception) => failure = () => exception;
+        internal void Arm(Func<Exception> factory) => failure = factory;
+        public void ThrowIfRequested(SingleMovementResponseReceiptWriteCheckpoint checkpoint)
+        {
+            if (failure is null) return;
+            var selected = failure;
+            failure = null;
+            throw selected();
+        }
     }
 }
 

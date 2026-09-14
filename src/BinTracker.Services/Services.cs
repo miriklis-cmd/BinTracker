@@ -1017,6 +1017,9 @@ public static class ServiceSetup
         services.TryAddScoped<
             IInitialMovementLineageWriter,
             DormantInitialMovementLineageWriter>();
+        services.TryAddScoped<
+            ISingleMovementResponseReceiptStore,
+            DormantSingleMovementResponseReceiptStore>();
         services.TryAddScoped<IMovementMutationWriter, DormantMovementMutationWriter>();
         services.TryAddScoped<TransactionAuditAppender>();
         services.AddScoped<IMovementService, MovementService>();

@@ -842,8 +842,15 @@ public sealed class MovementMutationExecutionSchema17Tests
             collection.AddDbContextFactory<BinTrackerDbContext>(builder =>
                 builder.UseSqlite(connectionString).AddInterceptors(saveFailure));
             if (enableInitialWriter)
+            {
                 collection.AddScoped<IInitialMovementLineageWriter>(_ =>
                     new SqliteInitialMovementLineageWriter(NoInitialMovementLineageFailureInjector.Instance));
+                collection.AddScoped<ISingleMovementResponseReceiptStore>(_ =>
+                    new SqliteSingleMovementResponseReceiptStore(
+                        NoSingleMovementResponseReceiptFailureInjector.Instance));
+                collection.AddScoped<ITransactionalOperationalMovementProjectionAuthority>(_ =>
+                    new SqliteOperationalMovementProjectionAuthority(connectionString));
+            }
             if (enableMutationWriter)
                 collection.AddScoped<IMovementMutationWriter>(_ =>
                     new SqliteMovementMutationWriter(mutationFailure));

@@ -47,6 +47,11 @@ public sealed class MovementEntryLineageSchema17Tests
         Assert.Equal(0, await ScalarAsync(connection,
             $"SELECT COUNT(*) FROM LogicalMovementPhysicalOutputs WHERE LogicalMovementBatchId={rootId};"));
         Assert.Equal(1, await ScalarAsync(connection, "SELECT COUNT(*) FROM AuditEvents WHERE Action='MOVEMENT_RECORDED';"));
+        Assert.Equal(1, await ScalarAsync(connection, $"""
+            SELECT COUNT(*) FROM SingleMovementResponseReceipts
+            WHERE MovementId={result.MovementId} AND BusinessDate='2026-09-02'
+              AND ResultingPosition={result.NewBalance};
+            """));
 
         var beforeRetry = await LineageSnapshotAsync(connection);
         Assert.Equal(result, await harness.Movements.SaveSingleAsync(request));
@@ -139,7 +144,7 @@ public sealed class MovementEntryLineageSchema17Tests
     }
 
     [Fact]
-    public async Task Migrated_single_retry_returns_existing_result_without_rewriting_migration_baseline()
+    public async Task Migrated_single_retry_reports_response_unavailable_without_rewriting_migration_baseline()
     {
         await using var harness = await Harness.CreateAsync(
             migrateToSchema17:false, enableLineageWriter:false);
@@ -162,10 +167,13 @@ public sealed class MovementEntryLineageSchema17Tests
             $"SELECT COUNT(*) FROM LogicalMovementGenerationLines WHERE LogicalMovementBatchId={rootId} AND Action=1;"));
         var before = await LineageSnapshotAsync(connection);
 
-        Assert.Equal(original, await harness.Movements.SaveSingleAsync(request));
+        await Assert.ThrowsAsync<SingleMovementReplayUnavailableException>(() =>
+            harness.Movements.SaveSingleAsync(request));
 
         Assert.Equal(1, await ScalarAsync(connection, "SELECT COUNT(*) FROM BinMovements;"));
         Assert.Equal(1, await ScalarAsync(connection, "SELECT COUNT(*) FROM AuditEvents;"));
+        Assert.Equal(0, await ScalarAsync(connection,
+            "SELECT COUNT(*) FROM SingleMovementResponseReceipts;"));
         Assert.Equal(before, await LineageSnapshotAsync(connection));
         Assert.Equal(1, await ScalarAsync(connection,
             $"SELECT COUNT(*) FROM LogicalMovementGenerations WHERE LogicalMovementBatchId={rootId} AND GenerationNumber=0 AND Kind=1;"));
@@ -377,7 +385,8 @@ public sealed class MovementEntryLineageSchema17Tests
             ("LogicalMovementGenerations", "Id,LogicalMovementBatchId,GenerationNumber,PreviousGenerationNumber,MovementCorrectionOperationId,Kind,LineCount,CreatedUtc"),
             ("LogicalMovementGenerationLines", "Id,LogicalMovementBatchId,LogicalMovementGenerationId,LogicalMovementLineId,State,Action,AppliedFieldMask,PreviousGenerationLineId,ResultEffectiveMovementId,LastEffectiveMovementId,TerminalReversalMovementId,CreatedUtc"),
             ("LogicalMovementLedgerLinks", "BinMovementId,LogicalMovementBatchId,LogicalMovementLineId,Role,IntroducedByGenerationLineId,LegacyMovementCorrectionLineId,CreatedUtc"),
-            ("LogicalMovementPhysicalOutputs", "MovementBatchId,LogicalMovementBatchId,LogicalMovementGenerationId,LegacyMovementCorrectionOperationId,CreatedUtc")
+            ("LogicalMovementPhysicalOutputs", "MovementBatchId,LogicalMovementBatchId,LogicalMovementGenerationId,LegacyMovementCorrectionOperationId,CreatedUtc"),
+            ("SingleMovementResponseReceipts", "ClientOperationId,MovementId,BusinessDate,ResultingPosition")
         })
         {
             await using var command = connection.CreateCommand();
@@ -518,6 +527,11 @@ public sealed class MovementEntryLineageSchema17Tests
             {
                 serviceCollection.AddScoped<IInitialMovementLineageWriter>(_ =>
                     new SqliteInitialMovementLineageWriter(lineageFailure));
+                serviceCollection.AddScoped<ISingleMovementResponseReceiptStore>(_ =>
+                    new SqliteSingleMovementResponseReceiptStore(
+                        NoSingleMovementResponseReceiptFailureInjector.Instance));
+                serviceCollection.AddScoped<ITransactionalOperationalMovementProjectionAuthority>(_ =>
+                    new SqliteOperationalMovementProjectionAuthority(connectionString));
             }
             serviceCollection.AddBinTrackerBusinessServices();
             return serviceCollection.BuildServiceProvider();
@@ -582,6 +596,7 @@ public sealed class MovementEntryLineageSchema17Tests
                 Assert.Equal(0, await ScalarAsync(connection, "SELECT COUNT(*) FROM LogicalMovementGenerations;"));
                 Assert.Equal(0, await ScalarAsync(connection, "SELECT COUNT(*) FROM LogicalMovementGenerationLines;"));
                 Assert.Equal(0, await ScalarAsync(connection, "SELECT COUNT(*) FROM LogicalMovementLedgerLinks;"));
+                Assert.Equal(0, await ScalarAsync(connection, "SELECT COUNT(*) FROM SingleMovementResponseReceipts;"));
             }
         }
 

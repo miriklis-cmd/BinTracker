@@ -482,8 +482,10 @@ public sealed class SqliteLineageSchema17Migrator(
             WHERE RequestJson IS NOT NULL OR RequestSchemaVersion IS NOT NULL
                OR ExpectedGenerationNumber IS NOT NULL OR ResultGenerationNumber IS NOT NULL;
             """, token);
+        var inventedReceipts = await CountAsync(c, tx,
+            "SELECT COUNT(*) FROM SingleMovementResponseReceipts;", token);
         if (badBaselineShape != 0 || badLedgerRoles != 0 ||
-            legacyNewFields != 0 || physicalOutputs != 0)
+            legacyNewFields != 0 || physicalOutputs != 0 || inventedReceipts != 0)
         {
             throw new InvalidOperationException("LINEAGE_POSTFLIGHT_INVARIANT_FAILURE");
         }
@@ -518,7 +520,8 @@ public sealed class SqliteLineageSchema17Migrator(
         Func<Exception>? healthFailure = null)
     {
         var required = new[] { "LogicalMovementBatches", "LogicalMovementLines", "LogicalMovementGenerations",
-            "LogicalMovementGenerationLines", "LogicalMovementLedgerLinks", "LogicalMovementPhysicalOutputs" };
+            "LogicalMovementGenerationLines", "LogicalMovementLedgerLinks", "LogicalMovementPhysicalOutputs",
+            "SingleMovementResponseReceipts" };
         foreach (var table in required)
         {
             if (Convert.ToInt64(await ScalarAsync(c, tx,
@@ -631,7 +634,8 @@ public sealed class SqliteLineageSchema17Migrator(
             SELECT COUNT(*) FROM sqlite_master
             WHERE type='table' AND name IN ('LogicalMovementBatches','LogicalMovementLines',
                 'LogicalMovementGenerations','LogicalMovementGenerationLines',
-                'LogicalMovementLedgerLinks','LogicalMovementPhysicalOutputs');
+                'LogicalMovementLedgerLinks','LogicalMovementPhysicalOutputs',
+                'SingleMovementResponseReceipts');
             """, token);
         if (count != 0)
             throw new InvalidOperationException("LINEAGE_PARTIAL_SCHEMA_PRESENT");

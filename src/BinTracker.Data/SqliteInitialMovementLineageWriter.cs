@@ -18,7 +18,7 @@ public interface IInitialMovementLineageWriter
         BinTrackerDbContext db,
         CancellationToken cancellationToken = default);
 
-    Task ValidateExistingSingleAsync(
+    Task<LogicalMovementGenerationAction> ValidateExistingSingleAsync(
         BinTrackerDbContext db,
         long movementId,
         CancellationToken cancellationToken = default);
@@ -44,9 +44,9 @@ public sealed class DormantInitialMovementLineageWriter : IInitialMovementLineag
     public Task EnsureReadyAsync(BinTrackerDbContext db, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 
-    public Task ValidateExistingSingleAsync(
+    public Task<LogicalMovementGenerationAction> ValidateExistingSingleAsync(
         BinTrackerDbContext db, long movementId, CancellationToken cancellationToken = default) =>
-        Task.CompletedTask;
+        Task.FromResult(LogicalMovementGenerationAction.Initial);
 
     public Task ValidateExistingBatchAsync(
         BinTrackerDbContext db, int movementBatchId, CancellationToken cancellationToken = default) =>
@@ -118,7 +118,7 @@ internal sealed class SqliteInitialMovementLineageWriter(
         }
     }
 
-    public async Task ValidateExistingSingleAsync(
+    public async Task<LogicalMovementGenerationAction> ValidateExistingSingleAsync(
         BinTrackerDbContext db,
         long movementId,
         CancellationToken cancellationToken = default)
@@ -140,6 +140,20 @@ internal sealed class SqliteInitialMovementLineageWriter(
             {
                 throw new InvalidOperationException(InvalidExisting);
             }
+
+            var originKinds = await ReadInt64sAsync(connection, transaction, """
+                SELECT Kind
+                FROM LogicalMovementGenerations
+                WHERE LogicalMovementBatchId=$root AND GenerationNumber=0;
+                """, cancellationToken, ("$root", roots[0]));
+            if (originKinds.Count != 1 ||
+                originKinds[0] is not ((int)LogicalMovementGenerationAction.Initial) and
+                    not ((int)LogicalMovementGenerationAction.MigrationBaseline))
+            {
+                throw new InvalidOperationException(InvalidExisting);
+            }
+
+            return (LogicalMovementGenerationAction)originKinds[0];
         }
         catch (SqliteException ex)
         {

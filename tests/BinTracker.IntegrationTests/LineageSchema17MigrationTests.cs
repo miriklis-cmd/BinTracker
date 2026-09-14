@@ -57,6 +57,7 @@ public sealed class LineageSchema17MigrationTests
         Assert.Equal(3, result.Postflight.StrongLegacyAuditLinks);
         Assert.Equal(17L, await ScalarAsync(connection, "SELECT Version FROM SchemaVersion WHERE Id=1;"));
         Assert.Equal(0L, await ScalarAsync(connection, "SELECT COUNT(*) FROM LogicalMovementPhysicalOutputs;"));
+        Assert.Equal(0L, await ScalarAsync(connection, "SELECT COUNT(*) FROM SingleMovementResponseReceipts;"));
         Assert.Equal(2L, await ScalarAsync(connection,
             "SELECT COUNT(*) FROM LogicalMovementBatches WHERE RootMovementBatchId IS NOT NULL AND Status=1 AND CurrentGenerationNumber=0;"));
         Assert.Equal(1L, await ScalarAsync(connection,
@@ -245,6 +246,18 @@ public sealed class LineageSchema17MigrationTests
             SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN
               ('LogicalMovementBatches','LogicalMovementLines','LogicalMovementGenerations',
                'LogicalMovementGenerationLines','LogicalMovementLedgerLinks','LogicalMovementPhysicalOutputs');
+            """));
+        Assert.Equal(1L, await ScalarAsync(connection, """
+            SELECT COUNT(*) FROM sqlite_master
+            WHERE type='table' AND name='SingleMovementResponseReceipts';
+            """));
+        Assert.Equal(1L, await ScalarAsync(connection, """
+            SELECT COUNT(*) FROM pragma_foreign_key_list('SingleMovementResponseReceipts')
+            WHERE "table"='BinMovements' AND "from"='MovementId' AND on_delete='RESTRICT';
+            """));
+        Assert.Equal(1L, await ScalarAsync(connection, """
+            SELECT COUNT(*) FROM sqlite_master
+            WHERE type='index' AND name='IX_SingleMovementResponseReceipts_MovementId';
             """));
         Assert.Equal(1L, await ScalarAsync(connection, """
             SELECT COUNT(*) FROM pragma_table_info('AuditEvents')

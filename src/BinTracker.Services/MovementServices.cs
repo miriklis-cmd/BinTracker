@@ -62,6 +62,10 @@ public sealed record SaveSingleMovementResult(
     long MovementId,
     int NewBalance);
 
+public sealed class SingleMovementReplayUnavailableException()
+    : InvalidOperationException(
+        "The legacy Single Entry replay result is unavailable because no response receipt exists.");
+
 public sealed record OperationalDashboardSummary(
     int ReturnedToday,
     int TakenToday,
@@ -224,6 +228,8 @@ internal sealed class MovementService(
     IBusinessClock clock,
     IClientContext client,
     IInitialMovementLineageWriter initialLineageWriter,
+    ISingleMovementResponseReceiptStore singleResponseReceipts,
+    ITransactionalOperationalMovementProjectionAuthority? singleEntryProjection = null,
     IOperationalMovementProjectionAuthority? operationalProjection = null) : IMovementService
 {
     public async Task<IReadOnlyList<MovementCustomerOption>> GetActiveCustomersAsync(
@@ -540,7 +546,8 @@ internal sealed class MovementService(
         if (session.Role == UserRole.Viewer)
             throw new UnauthorizedAccessException("Viewer accounts cannot record movements.");
 
-        if (request.MovementDate > clock.Today)
+        var businessDate = clock.Today;
+        if (request.MovementDate > businessDate)
             throw new ArgumentException("Movement date cannot be in the future.");
 
         if (request.Quantity <= 0)
@@ -549,34 +556,44 @@ internal sealed class MovementService(
         if (request.ClientOperationId == Guid.Empty)
             throw new ArgumentException("Client operation ID is required.");
 
+        var nativeSingle = initialLineageWriter.IsEnabled || singleResponseReceipts.IsEnabled;
+        if (nativeSingle && (!initialLineageWriter.IsEnabled || !singleResponseReceipts.IsEnabled ||
+                singleEntryProjection is null))
+        {
+            throw new InvalidOperationException(
+                "Activated schema 17 Single Entry requires lineage, response receipt, and transaction-participating projection authorities.");
+        }
+
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
-        if (!initialLineageWriter.IsEnabled)
+        if (!nativeSingle)
         {
-            var existingMovement = await GetMatchingSingleRetryAsync(
+            var existingMovement = await GetMatchingSingleMovementAsync(
                 db,
                 request,
                 cancellationToken);
 
             if (existingMovement is not null)
-                return existingMovement;
+                return await GetSchema16SingleResultAsync(db, existingMovement, cancellationToken);
         }
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
-        if (initialLineageWriter.IsEnabled)
+        if (nativeSingle)
         {
             await initialLineageWriter.EnsureReadyAsync(db, cancellationToken);
-            var existingMovement = await GetMatchingSingleRetryAsync(
+            var existingMovement = await GetMatchingSingleMovementAsync(
                 db,
                 request,
                 cancellationToken);
             if (existingMovement is not null)
             {
-                await initialLineageWriter.ValidateExistingSingleAsync(
-                    db, existingMovement.MovementId, cancellationToken);
+                var originKind = await initialLineageWriter.ValidateExistingSingleAsync(
+                    db, existingMovement.Id, cancellationToken);
+                var replay = await GetNativeSingleReplayAsync(
+                    db, existingMovement, request.ClientOperationId, originKind, cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
-                return existingMovement;
+                return replay;
             }
         }
 
@@ -590,16 +607,18 @@ internal sealed class MovementService(
             .SingleOrDefaultAsync(x => x.Id == request.ContainerTypeId && x.IsActive, cancellationToken)
             ?? throw new InvalidOperationException("The container type is missing or inactive.");
 
-        var openingBalance = await db.BinMovements
-            .AsNoTracking()
-            .Where(x =>
-                x.CustomerId == request.CustomerId &&
-                x.ContainerTypeId == request.ContainerTypeId)
-            .SumAsync(
-                x => x.MovementType == MovementType.Out
-                    ? x.Quantity
-                    : -x.Quantity,
-                cancellationToken);
+        var openingBalance = nativeSingle
+            ? 0
+            : await db.BinMovements
+                .AsNoTracking()
+                .Where(x =>
+                    x.CustomerId == request.CustomerId &&
+                    x.ContainerTypeId == request.ContainerTypeId)
+                .SumAsync(
+                    x => x.MovementType == MovementType.Out
+                        ? x.Quantity
+                        : -x.Quantity,
+                    cancellationToken);
 
         var movement = new BinMovement
         {
@@ -628,37 +647,40 @@ internal sealed class MovementService(
             await using var verify =
                 await factory.CreateDbContextAsync(cancellationToken);
 
-            if (initialLineageWriter.IsEnabled)
+            if (nativeSingle)
             {
                 await using var verifyTransaction =
                     await verify.Database.BeginTransactionAsync(cancellationToken);
                 await initialLineageWriter.EnsureReadyAsync(verify, cancellationToken);
-                var duplicate = await GetMatchingSingleRetryAsync(
+                var duplicate = await GetMatchingSingleMovementAsync(
                     verify,
                     request,
                     cancellationToken);
                 if (duplicate is not null)
                 {
-                    await initialLineageWriter.ValidateExistingSingleAsync(
-                        verify, duplicate.MovementId, cancellationToken);
+                    var originKind = await initialLineageWriter.ValidateExistingSingleAsync(
+                        verify, duplicate.Id, cancellationToken);
+                    var replay = await GetNativeSingleReplayAsync(
+                        verify, duplicate, request.ClientOperationId, originKind, cancellationToken);
                     await verifyTransaction.CommitAsync(cancellationToken);
-                    return duplicate;
+                    return replay;
                 }
             }
             else
             {
-                var duplicate = await GetMatchingSingleRetryAsync(
+                var duplicate = await GetMatchingSingleMovementAsync(
                     verify,
                     request,
                     cancellationToken);
                 if (duplicate is not null)
-                    return duplicate;
+                    return await GetSchema16SingleResultAsync(
+                        verify, duplicate, cancellationToken);
             }
 
             throw;
         }
 
-        if (initialLineageWriter.IsEnabled)
+        if (nativeSingle)
         {
             await initialLineageWriter.WriteInitialAsync(
                 db,
@@ -668,10 +690,38 @@ internal sealed class MovementService(
                 cancellationToken);
         }
 
-        var newBalance = MovementPositionMath.Apply(
-            openingBalance,
-            request.MovementType,
-            request.Quantity);
+        SingleMovementResponseReceipt? receipt = null;
+        int newBalance;
+        if (nativeSingle)
+        {
+            var projected = await singleEntryProjection!.QueryInTransactionAsync(
+                    db,
+                    OperationalMovementProjectionScope.PositionAsOf(
+                        businessDate, request.CustomerId, request.ContainerTypeId),
+                    cancellationToken);
+            var positions = projected.Positions
+                .Where(x => x.CustomerId == request.CustomerId &&
+                    x.ContainerTypeId == request.ContainerTypeId)
+                .ToArray();
+            if (positions.Length != 1)
+                throw new InvalidOperationException(
+                    "The authoritative Single Entry projection did not return exactly one resulting position.");
+
+            newBalance = checked((int)positions[0].Quantity);
+            receipt = new SingleMovementResponseReceipt(
+                request.ClientOperationId,
+                movement.Id,
+                businessDate,
+                newBalance);
+            await singleResponseReceipts.WriteAsync(db, receipt, cancellationToken);
+        }
+        else
+        {
+            newBalance = MovementPositionMath.Apply(
+                openingBalance,
+                request.MovementType,
+                request.Quantity);
+        }
 
         var direction = request.MovementType == MovementType.In
             ? "IN (Returned)"
@@ -703,9 +753,12 @@ internal sealed class MovementService(
         });
 
         await db.SaveChangesAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         await transaction.CommitAsync(cancellationToken);
 
-        return new SaveSingleMovementResult(movement.Id, newBalance);
+        return receipt is null
+            ? new SaveSingleMovementResult(movement.Id, newBalance)
+            : ToResult(receipt);
     }
 
     public async Task<OperationalDashboardSummary> GetDashboardSummaryAsync(
@@ -869,7 +922,12 @@ internal sealed class MovementService(
             persistedLines.Sum(x => x.Quantity));
     }
 
-    private static async Task<SaveSingleMovementResult?> GetMatchingSingleRetryAsync(
+    private sealed record MatchingSingleMovement(
+        long Id,
+        int CustomerId,
+        int ContainerTypeId);
+
+    private static async Task<MatchingSingleMovement?> GetMatchingSingleMovementAsync(
         BinTrackerDbContext db,
         SaveSingleMovementRequest request,
         CancellationToken cancellationToken)
@@ -907,6 +965,17 @@ internal sealed class MovementService(
                 "This client operation ID was already used for a different movement request.");
         }
 
+        return new MatchingSingleMovement(
+            existing.Id,
+            existing.CustomerId,
+            existing.ContainerTypeId);
+    }
+
+    private static async Task<SaveSingleMovementResult> GetSchema16SingleResultAsync(
+        BinTrackerDbContext db,
+        MatchingSingleMovement existing,
+        CancellationToken cancellationToken)
+    {
         var balance = await db.BinMovements
             .AsNoTracking()
             .Where(x =>
@@ -920,6 +989,30 @@ internal sealed class MovementService(
 
         return new SaveSingleMovementResult(existing.Id, balance);
     }
+
+    private async Task<SaveSingleMovementResult> GetNativeSingleReplayAsync(
+        BinTrackerDbContext db,
+        MatchingSingleMovement existing,
+        Guid clientOperationId,
+        LogicalMovementGenerationAction originKind,
+        CancellationToken cancellationToken)
+    {
+        var receipt = await singleResponseReceipts.FindAsync(
+            db, clientOperationId, cancellationToken);
+        if (receipt is null)
+        {
+            if (originKind == LogicalMovementGenerationAction.MigrationBaseline)
+                throw new SingleMovementReplayUnavailableException();
+            throw new InvalidOperationException(
+                "The native Single Entry response receipt is missing.");
+        }
+        if (receipt.MovementId != existing.Id)
+            throw new InvalidOperationException("The Single Entry response receipt identity is invalid.");
+        return ToResult(receipt);
+    }
+
+    private static SaveSingleMovementResult ToResult(SingleMovementResponseReceipt receipt) =>
+        new(receipt.MovementId, receipt.ResultingPosition);
 
     private static string? Clean(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
