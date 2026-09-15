@@ -1,5 +1,6 @@
 using BinTracker.Core;
 using BinTracker.Services;
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -332,6 +333,135 @@ public sealed class Task20LogicalMutationSafetyTests
 
 public sealed class Task20AuditActivationTests
 {
+    [Fact]
+    public async Task Legitimate_migrated_alpha8_operation_with_root_association_remains_legacy_detail_and_review()
+    {
+        await using var f = await Task20Fixture.CreateAsync(
+            role: UserRole.Administrator, legacyCorrection: true);
+        var auditId = await f.ScalarAsync("""
+            SELECT a.Id
+            FROM AuditEvents a
+            JOIN MovementCorrectionOperations o ON o.Id=a.MovementCorrectionOperationId
+            WHERE a.Action='MOVEMENT_CORRECTED'
+              AND o.LogicalMovementBatchId IS NOT NULL
+              AND o.RequestJson IS NULL
+              AND o.RequestSchemaVersion IS NULL
+              AND o.ExpectedGenerationNumber IS NULL
+              AND o.ResultGenerationNumber IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM LogicalMovementGenerations g
+                  WHERE g.MovementCorrectionOperationId=o.Id);
+            """);
+
+        var detail = Assert.IsType<MovementChangeAuditDetail>(
+            await f.Audit.GetMovementChangeDetailAsync(auditId));
+        Assert.Equal(3, detail.Lines.Count);
+
+        await f.Audit.MarkMovementChangesReviewedAsync([auditId]);
+        Assert.Equal(1, await f.ScalarAsync(
+            $"SELECT COUNT(*) FROM AuditEvents WHERE Id={auditId} AND ReviewedUtc IS NOT NULL"));
+        Assert.Equal(1, await f.ScalarAsync(
+            $"SELECT COUNT(*) FROM AuditEvents WHERE Action='MOVEMENT_CHANGE_REVIEWED' AND EntityId='{auditId}'"));
+    }
+
+    [Fact]
+    public async Task Contradictory_native_generation_envelope_never_downgrades_to_alpha8_detail()
+    {
+        await using var f = await Task20Fixture.CreateAsync(role: UserRole.Administrator);
+        var root = await f.Database.CreateSingleAsync(Task20Fixture.Today, f.CustomerId, 1, 7);
+        var line = Assert.Single(await f.Database.LineIdsAsync(root.RootId));
+        var result = await f.Database.MutateAsync(root.RootId, 0,
+            MovementMutationRequest.Correct(MovementMutationScope.Individual, [new(line)], "native correction",
+                quantity: MovementFieldIntent<int>.Selected(8)));
+        var roles = await f.Database.MovementIdsByRoleAsync(root.RootId);
+        var neutral = roles[LogicalMovementTransformationRole.CorrectionNeutraliser];
+        var replacement = roles[LogicalMovementTransformationRole.CorrectionReplacement];
+        var operationId = Assert.IsType<long>(result.OperationId);
+        var auditId = await f.ScalarAsync(
+            $"SELECT Id FROM AuditEvents WHERE MovementCorrectionOperationId={operationId}");
+        await using (var db = f.Database.CreateDbContext())
+        {
+            db.MovementCorrectionLines.Add(new MovementCorrectionLine
+            {
+                CorrectionOperationId = operationId,
+                OriginalMovementId = root.MovementId,
+                NeutralisingMovementId = neutral,
+                ReplacementMovementId = replacement
+            });
+            var audit = await db.AuditEvents.SingleAsync(x => x.Id == auditId);
+            audit.EntityType = "BinMovement";
+            audit.EntityId = root.MovementId.ToString(CultureInfo.InvariantCulture);
+            audit.AfterValues = JsonSerializer.Serialize(new[] { new
+            {
+                Id = root.MovementId,
+                NeutralisingMovementId = neutral,
+                ReplacementMovementId = replacement
+            } });
+            await db.SaveChangesAsync();
+        }
+        await f.ExecuteAsync(
+            $"UPDATE MovementCorrectionOperations SET RequestSchemaVersion=NULL WHERE Id={operationId}");
+
+        Assert.Equal(root.RootId, await f.ScalarAsync(
+            $"SELECT LogicalMovementBatchId FROM MovementCorrectionOperations WHERE Id={operationId}"));
+        Assert.Equal(0, await f.ScalarAsync(
+            $"SELECT ExpectedGenerationNumber FROM MovementCorrectionOperations WHERE Id={operationId}"));
+        Assert.Equal(1, await f.ScalarAsync(
+            $"SELECT ResultGenerationNumber FROM MovementCorrectionOperations WHERE Id={operationId}"));
+        Assert.Equal(operationId, await f.ScalarAsync(
+            $"SELECT MovementCorrectionOperationId FROM AuditEvents WHERE Id={auditId}"));
+
+        var state = await f.StateAsync();
+        MovementChangeAuditDetail? detail = null;
+        var error = await Record.ExceptionAsync(async () =>
+            detail = await f.Audit.GetMovementChangeDetailAsync(auditId));
+
+        Assert.Equal(state, await f.StateAsync());
+        if (error is not null)
+            Task20FailureBoundary.AssertDomainFailure(error, ["native", "audit", "lineage"],
+                ["invalid", "integrity", "health"]);
+        Assert.Null(detail);
+    }
+
+    [Fact]
+    public async Task Contradictory_native_generation_envelope_blocks_review_without_writing()
+    {
+        await using var f = await Task20Fixture.CreateAsync(role: UserRole.Administrator,
+            nativeActorRole: UserRole.Operator);
+        var root = await f.Database.CreateSingleAsync(Task20Fixture.Today, f.CustomerId, 1, 7);
+        var line = Assert.Single(await f.Database.LineIdsAsync(root.RootId));
+        var result = await f.Database.MutateAsync(root.RootId, 0,
+            MovementMutationRequest.Reverse(MovementMutationScope.Individual, [new(line)], "native review"));
+        var operationId = Assert.IsType<long>(result.OperationId);
+        var auditId = await f.ScalarAsync(
+            $"SELECT Id FROM AuditEvents WHERE MovementCorrectionOperationId={operationId}");
+        await f.ExecuteAsync(
+            $"UPDATE MovementCorrectionOperations SET RequestSchemaVersion=NULL WHERE Id={operationId}");
+        await f.ExecuteAsync(
+            $"UPDATE AuditEvents SET EntityType='BinMovement', EntityId='{root.MovementId}' WHERE Id={auditId}");
+
+        Assert.Equal(root.RootId, await f.ScalarAsync(
+            $"SELECT LogicalMovementBatchId FROM MovementCorrectionOperations WHERE Id={operationId}"));
+        Assert.Equal(0, await f.ScalarAsync(
+            $"SELECT ExpectedGenerationNumber FROM MovementCorrectionOperations WHERE Id={operationId}"));
+        Assert.Equal(1, await f.ScalarAsync(
+            $"SELECT ResultGenerationNumber FROM MovementCorrectionOperations WHERE Id={operationId}"));
+        Assert.Equal(operationId, await f.ScalarAsync(
+            $"SELECT MovementCorrectionOperationId FROM AuditEvents WHERE Id={auditId}"));
+
+        var counts = await f.CountsAsync();
+        var state = await f.StateAsync();
+        var error = await Record.ExceptionAsync(() =>
+            f.Audit.MarkMovementChangesReviewedAsync([auditId]));
+
+        Assert.Equal(counts, await f.CountsAsync());
+        Assert.Equal(state, await f.StateAsync());
+        Assert.Equal(0, await f.ScalarAsync(
+            $"SELECT COUNT(*) FROM AuditEvents WHERE Id={auditId} AND ReviewedUtc IS NOT NULL"));
+        Task20FailureBoundary.AssertDomainFailure(error, ["audit", "operation", "association"],
+            ["invalid", "health", "integrity"]);
+    }
+
     [Fact]
     public async Task Native_operation_association_prevents_alpha8_detail_parsing_even_when_payload_matches_legacy_shape()
     {

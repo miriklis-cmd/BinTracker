@@ -225,10 +225,36 @@ internal sealed class ImportExecutionService(
         await using var db =
             await factory.CreateDbContextAsync(cancellationToken);
 
+        if (operationalProjection is null)
+            return await CompareReplacementInSnapshotAsync(
+                db, request, request.PreviousImportRunId.Value, null, cancellationToken);
+
+        if (operationalProjection is not
+            ITransactionalOperationalMovementProjectionAuthority snapshots)
+        {
+            throw new InvalidOperationException(
+                "Corrected Import replacement comparison requires one shared evidence and position snapshot.");
+        }
+
+        return await snapshots.ReadSnapshotAsync(
+            db,
+            token => CompareReplacementInSnapshotAsync(
+                db, request, request.PreviousImportRunId.Value, snapshots, token),
+            cancellationToken);
+    }
+
+    private async Task<ImportReplacementComparison> CompareReplacementInSnapshotAsync(
+        BinTrackerDbContext db,
+        ImportExecutionRequest request,
+        long previousImportRunId,
+        ITransactionalOperationalMovementProjectionAuthority? snapshots,
+        CancellationToken cancellationToken)
+    {
+
         var previous = await db.ImportRuns
             .AsNoTracking()
             .Where(x =>
-                x.Id == request.PreviousImportRunId.Value &&
+                x.Id == previousImportRunId &&
                 x.CurrentCutoverDate == request.CutoverDate &&
                 x.Status == "Completed")
             .Select(x => new ImportCutoverRunSummary(
@@ -262,6 +288,7 @@ internal sealed class ImportExecutionService(
             request,
             previous.ImportRunId,
             previousRows,
+            snapshots,
             cancellationToken);
 
         var previousEffects = previousRows
@@ -1293,6 +1320,7 @@ internal sealed class ImportExecutionService(
         ImportExecutionRequest request,
         long previousImportRunId,
         IReadOnlyList<PreviousImportMovement> previousRows,
+        ITransactionalOperationalMovementProjectionAuthority? snapshots,
         CancellationToken cancellationToken)
     {
         var existingCustomers = await db.Customers
@@ -1322,7 +1350,7 @@ internal sealed class ImportExecutionService(
             .ToListAsync(cancellationToken);
 
         IReadOnlyList<BalanceRow> balances;
-        if (operationalProjection is null)
+        if (snapshots is null)
         {
             var totals = await db.BinMovements
                 .AsNoTracking()
@@ -1363,7 +1391,8 @@ internal sealed class ImportExecutionService(
         }
         else
         {
-            var projected = await operationalProjection.QueryAsync(
+            var projected = await snapshots.QueryInTransactionAsync(
+                db,
                 OperationalMovementProjectionScope.PositionAsOf(
                     request.CutoverDate.AddDays(-1)),
                 cancellationToken);

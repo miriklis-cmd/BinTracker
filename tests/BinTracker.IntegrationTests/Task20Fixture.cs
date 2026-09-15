@@ -58,14 +58,34 @@ internal sealed class Task20Fixture : IAsyncDisposable
     internal static async Task<Task20Fixture> CreateAsync(bool schema17 = true,
         bool enabled = true, bool projection = true, UserRole role = UserRole.Operator,
         Guid? legacySingleOperation = null, IInterceptor? interceptor = null,
-        UserRole? nativeActorRole = null) =>
+        UserRole? nativeActorRole = null, bool legacyCorrection = false) =>
         new(await OperationalMovementProjectionSchema17Tests.Harness.CreateAsync(
             migrateToSchema17: schema17, enableSchema17Writers: enabled,
             enableProjectionBackedServices: projection, userRole: nativeActorRole ?? role,
-            beforeMigration: legacySingleOperation is null ? null : async db =>
+            beforeMigration: legacySingleOperation is null && !legacyCorrection ? null : async db =>
             {
-                await CreateAcceptedSchema16SingleAsync(db, legacySingleOperation.Value);
+                if (legacySingleOperation is not null)
+                    await CreateAcceptedSchema16SingleAsync(db, legacySingleOperation.Value);
+                if (legacyCorrection)
+                    await CreateAcceptedSchema16CorrectionAsync(db);
             }), enabled, projection, role, interceptor);
+
+    private static async Task CreateAcceptedSchema16CorrectionAsync(BinTrackerDbContext db)
+    {
+        var collection = new ServiceCollection();
+        collection.AddDbContextFactory<BinTrackerDbContext>(b => b.UseSqlite(db.Database.GetConnectionString()));
+        collection.AddSingleton<IBusinessClock>(new Clock());
+        collection.AddSingleton<IUserContext>(new User(UserRole.Operator));
+        collection.AddSingleton<IClientContext>(new Client());
+        collection.AddBinTrackerBusinessServices();
+        await using var legacyServices = collection.BuildServiceProvider();
+        var customer = await db.Customers.SingleAsync(x => x.CustomerCode == "PROJ-A");
+        var saved = await legacyServices.GetRequiredService<IMovementService>().SaveSingleAsync(
+            new(Guid.NewGuid(), Today, MovementType.Out, customer.Id, 1, 7, "legacy", null));
+        await legacyServices.GetRequiredService<IMovementCorrectionService>().CorrectAsync(
+            new(Guid.NewGuid(), saved.MovementId, Today, customer.Id, 1,
+                MovementType.Out, 8, "legacy-corrected", null, "legacy correction"));
+    }
 
     private static async Task CreateAcceptedSchema16SingleAsync(BinTrackerDbContext db, Guid operationId)
     {

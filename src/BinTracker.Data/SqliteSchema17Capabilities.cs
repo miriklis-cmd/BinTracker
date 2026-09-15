@@ -67,8 +67,9 @@ internal static partial class SqliteSchema17Capabilities
     private static void ValidateBase(Dictionary<string, Shape> observed, bool immutableMembership)
     {
         // The shared model remains the column authority for accepted base tables.
-        // Inspect metadata only: never EnsureCreated or apply its schema16 SetNull
-        // membership relationship to a native database.
+        // Membership delete action is catalogue-specific: schema16 preserves its
+        // accepted persisted SET NULL behavior, while schema17 requires immutable
+        // RESTRICT membership. EF's client behavior must not redefine either DDL.
         using var model = new BinTrackerDbContext(new DbContextOptionsBuilder<BinTrackerDbContext>()
             .UseSqlite("Data Source=:memory:").Options);
         foreach (var entity in model.Model.GetEntityTypes())
@@ -98,10 +99,11 @@ internal static partial class SqliteSchema17Capabilities
             {
                 var target = fk.PrincipalEntityType.GetTableName() ?? string.Empty;
                 var targetStore = StoreObjectIdentifier.Table(target, fk.PrincipalEntityType.GetSchema());
-                // Immutable membership is governed by schema17, independently of
-                // the deliberately dormant EF SetNull relationship.
-                var delete = immutableMembership && table == "BinMovements" && fk.Properties.Select(p => p.Name).SequenceEqual(["MovementBatchId"])
-                    ? "RESTRICT" : fk.DeleteBehavior switch
+                var batchMembership = table == "BinMovements" &&
+                    fk.Properties.Select(p => p.Name).SequenceEqual(["MovementBatchId"]);
+                var delete = batchMembership
+                    ? immutableMembership ? "RESTRICT" : "SET NULL"
+                    : fk.DeleteBehavior switch
                     {
                         DeleteBehavior.Restrict => "RESTRICT",
                         DeleteBehavior.Cascade => "CASCADE",

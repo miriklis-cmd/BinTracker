@@ -99,21 +99,34 @@ internal sealed class CustomerService(
                 .ToListAsync(cancellationToken);
         }
 
-        var rows = await orderedCustomers
-            .Select(x => new CustomerListRow(
-                x.Id, x.Name, x.CustomerCode ?? string.Empty, x.CustomerType, x.IsActive, 0))
-            .ToListAsync(cancellationToken);
-        var projected = await operationalProjection.QueryAsync(
-            OperationalMovementProjectionScope.PositionAsOf(clock.Today),
-            cancellationToken);
-        var balances = projected.Positions
-            .GroupBy(x => x.CustomerId)
-            .ToDictionary(
-                x => x.Key,
-                x => checked((int)x.Aggregate(
-                    0L,
-                    (balance, position) => checked(balance + position.Quantity))));
-        return rows.Select(x => x with { NetBalance = balances.GetValueOrDefault(x.Id) }).ToList();
+        if (operationalProjection is not
+            ITransactionalOperationalMovementProjectionAuthority snapshots)
+        {
+            throw new InvalidOperationException(
+                "Corrected customer search requires one shared metadata and position snapshot.");
+        }
+
+        return await snapshots.ReadSnapshotAsync(db, async token =>
+        {
+            var rows = await orderedCustomers
+                .Select(x => new CustomerListRow(
+                    x.Id, x.Name, x.CustomerCode ?? string.Empty, x.CustomerType, x.IsActive, 0))
+                .ToListAsync(token);
+            var projected = await snapshots.QueryInTransactionAsync(
+                db,
+                OperationalMovementProjectionScope.PositionAsOf(clock.Today),
+                token);
+            var balances = projected.Positions
+                .GroupBy(x => x.CustomerId)
+                .ToDictionary(
+                    x => x.Key,
+                    x => checked((int)x.Aggregate(
+                        0L,
+                        (balance, position) => checked(balance + position.Quantity))));
+            return (IReadOnlyList<CustomerListRow>)rows
+                .Select(x => x with { NetBalance = balances.GetValueOrDefault(x.Id) })
+                .ToList();
+        }, cancellationToken);
     }
 
     public async Task<CustomerEditModel?> GetAsync(int id, CancellationToken cancellationToken = default)

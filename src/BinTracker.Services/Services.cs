@@ -202,7 +202,8 @@ internal sealed class AuditService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IUserContext session,
     IBusinessClock clock,
-    IClientContext client) : IAuditService
+    IClientContext client,
+    IMovementMutationWriter mutationWriter) : IAuditService
 {
     public event EventHandler<AdministratorReviewState>? AdministratorReviewStateChanged;
     public async Task WriteAsync(string action, string entityType, string? entityId, string description,
@@ -289,6 +290,13 @@ internal sealed class AuditService(
             await tx.RollbackAsync(cancellationToken);
             throw new InvalidOperationException("One or more selected movement-change events are not eligible for review or were already reviewed.");
         }
+
+        // A native review acknowledges already-committed operation evidence. Its
+        // persisted association and affected-root audit health must be proven in
+        // this transaction before any tracked review state is changed.
+        foreach (var item in events)
+            await mutationWriter.InspectAuditAssociationAsync(db, item.Id, cancellationToken);
+
         var reviewedAt = clock.UtcNow;
         foreach (var item in events)
         {
@@ -322,6 +330,7 @@ internal sealed class AuditService(
     {
         if (session.Role != UserRole.Administrator) throw new UnauthorizedAccessException("Administrator access is required.");
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var requestedEvent = await db.AuditEvents.AsNoTracking().SingleOrDefaultAsync(x => x.Id == auditEventId, cancellationToken);
         if (requestedEvent is null) return null;
         var openedFromAcknowledgement = AuditReviewPolicy.TryGetAcknowledgedAuditEventId(
@@ -332,6 +341,16 @@ internal sealed class AuditService(
         if (auditEvent is null || !AuditReviewPolicy.IsMovementChangeAction(auditEvent.Action)) return null;
         if (openedFromAcknowledgement && (!auditEvent.ReviewedUtc.HasValue ||
             !string.Equals(auditEvent.ReviewedByUsername, requestedEvent.Username, StringComparison.Ordinal))) return null;
+
+        var association = await mutationWriter.InspectAuditAssociationAsync(
+            db, auditEvent.Id, cancellationToken);
+        if (association.Kind == MovementAuditAssociationKind.Native)
+        {
+            // Full native detail is deliberately a later milestone. A controlled
+            // no-detail result is safe; native evidence must never reach the
+            // alpha.8 physical-ID/payload parsers below.
+            return null;
+        }
 
         if (auditEvent.Action == "MOVEMENT_REVERSED")
         {

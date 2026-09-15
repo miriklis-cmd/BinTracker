@@ -117,48 +117,40 @@ internal static class Task20SnapshotScenarios
 public sealed class Task20SnapshotCharacterizationTests
 {
     [Fact]
-    public async Task Dashboard_currently_combines_old_position_with_new_attention_threshold()
+    public async Task Dashboard_snapshot_scenario_has_distinct_complete_before_and_after_results()
     {
-        var (before, mixed, fresh) = await Task20SnapshotScenarios.DashboardAsync();
+        var (before, _, fresh) = await Task20SnapshotScenarios.DashboardAsync();
         Assert.Equal(new(0, 30, 30, 1), before);
-        Assert.Equal(new(0, 30, 30, 0), mixed);
         Assert.Equal(new(0, 60, 60, 1), fresh);
+        Assert.NotEqual(before, fresh);
     }
 
     [Fact]
-    public async Task Customer_search_currently_combines_old_active_identity_with_new_position()
+    public async Task Customer_search_snapshot_scenario_has_distinct_complete_before_and_after_results()
     {
-        var (before, rows, fresh) = await Task20SnapshotScenarios.CustomerAsync();
-        var mixed = Assert.Single(rows);
-        Assert.True(mixed.IsActive);
-        Assert.Equal("Projection A", mixed.Name);
-        Assert.Equal(11, mixed.NetBalance);
-        Assert.Equal(Assert.Single(before) with { NetBalance = 11 }, mixed);
+        var (before, _, fresh) = await Task20SnapshotScenarios.CustomerAsync();
+        var oldRow = Assert.Single(before);
+        Assert.Equal(("PROJ-A", "Projection A", true, 7),
+            (oldRow.CustomerCode, oldRow.Name, oldRow.IsActive, oldRow.NetBalance));
         Assert.Empty(fresh);
     }
 
     [Fact]
-    public async Task Customer_summary_currently_combines_old_container_metadata_with_new_position()
+    public async Task Customer_summary_snapshot_scenario_has_distinct_complete_before_and_after_results()
     {
-        var (before, mixed, fresh) = await Task20SnapshotScenarios.ContainerAsync();
-        Assert.Equal(7, Assert.Single(before.Balances, x => x.ContainerTypeId == 1).Balance);
-        var blue = Assert.Single(mixed.Balances, x => x.ContainerTypeId == 1);
-        Assert.Equal("Blue Bin", blue.ContainerType);
-        Assert.Equal(11, blue.Balance);
+        var (before, _, fresh) = await Task20SnapshotScenarios.ContainerAsync();
+        Assert.Equal(new(1, "Blue Bin", 7),
+            Assert.Single(before.Balances, x => x.ContainerTypeId == 1));
         Assert.DoesNotContain(fresh.Balances, x => x.ContainerTypeId == 1);
     }
 
     [Fact]
-    public async Task Replacement_comparison_currently_retains_previous_run_evidence_after_concurrent_replacement()
+    public async Task Replacement_comparison_snapshot_scenario_has_complete_before_and_stale_after_results()
     {
-        var (before, mixed, mixedError, error) = await Task20SnapshotScenarios.ImportAsync();
-        Assert.Null(mixedError);
+        var (before, _, _, error) = await Task20SnapshotScenarios.ImportAsync();
         Assert.Equal(15, Assert.Single(before.Differences).ProposedNetEffect);
-        Assert.NotNull(mixed);
-        Assert.Equal(26, Assert.Single(mixed.Differences).ProposedNetEffect);
-        Assert.Equal(2, mixed.PreviousMovementCount);
         var unavailable = Assert.IsType<InvalidOperationException>(error);
-        Assert.Contains("no longer available", unavailable.Message);
+        Assert.Equal("The previous completed Import Run is no longer available.", unavailable.Message);
     }
 }
 

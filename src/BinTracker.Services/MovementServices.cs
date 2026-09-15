@@ -275,35 +275,13 @@ internal sealed class MovementService(
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
-        var customer = await db.Customers
-            .AsNoTracking()
-            .Where(x => x.IsActive &&
-                        x.CustomerCode != null &&
-                        x.CustomerCode.ToUpper() == code)
-            .Select(x => new
-            {
-                x.Id,
-                Code = x.CustomerCode!,
-                x.Name,
-                x.CustomerType
-            })
-            .SingleOrDefaultAsync(cancellationToken);
-
-        if (customer is null)
-            return null;
-
-        var containerTypes = await db.ContainerTypes
-            .AsNoTracking()
-            .Where(x => x.IsActive)
-            .OrderBy(x => x.DisplayOrder)
-            .ThenBy(x => x.Name)
-            .Select(x => new { x.Id, x.Name })
-            .ToListAsync(cancellationToken);
-
-        Dictionary<int, int> balances;
         if (operationalProjection is null)
         {
-            balances = await db.BinMovements
+            var customer = await FindActiveCustomerAsync(db, code, cancellationToken);
+            if (customer is null)
+                return null;
+            var containerTypes = await ActiveContainerTypesAsync(db, cancellationToken);
+            var balances = await db.BinMovements
                 .AsNoTracking()
                 .Where(x => x.CustomerId == customer.Id)
                 .GroupBy(x => x.ContainerTypeId)
@@ -319,18 +297,62 @@ internal sealed class MovementService(
                     x => x.ContainerTypeId,
                     x => x.Balance,
                     cancellationToken);
-        }
-        else
-        {
-            var projected = await operationalProjection.QueryAsync(
-                OperationalMovementProjectionScope.PositionAsOf(clock.Today, customer.Id),
-                cancellationToken);
-            balances = projected.Positions.ToDictionary(
-                x => x.ContainerTypeId,
-                x => checked((int)x.Quantity));
+
+            return CustomerSummary(customer, containerTypes, balances);
         }
 
-        return new MovementCustomerSummary(
+        if (operationalProjection is not
+            ITransactionalOperationalMovementProjectionAuthority snapshots)
+        {
+            throw new InvalidOperationException(
+                "Corrected customer summary requires one shared metadata and position snapshot.");
+        }
+
+        return await snapshots.ReadSnapshotAsync(db, async token =>
+        {
+            var customer = await FindActiveCustomerAsync(db, code, token);
+            if (customer is null)
+                return null;
+            var containerTypes = await ActiveContainerTypesAsync(db, token);
+            var projected = await snapshots.QueryInTransactionAsync(
+                db,
+                OperationalMovementProjectionScope.PositionAsOf(clock.Today, customer.Id),
+                token);
+            var balances = projected.Positions.ToDictionary(
+                x => x.ContainerTypeId,
+                x => checked((int)x.Quantity));
+            return CustomerSummary(customer, containerTypes, balances);
+        }, cancellationToken);
+    }
+
+    private sealed record ActiveCustomer(int Id, string Code, string Name, CustomerType CustomerType);
+    private sealed record ActiveContainerType(int Id, string Name);
+
+    private static Task<ActiveCustomer?> FindActiveCustomerAsync(
+        BinTrackerDbContext db, string code, CancellationToken cancellationToken) =>
+        db.Customers
+            .AsNoTracking()
+            .Where(x => x.IsActive &&
+                        x.CustomerCode != null &&
+                        x.CustomerCode.ToUpper() == code)
+            .Select(x => new ActiveCustomer(x.Id, x.CustomerCode!, x.Name, x.CustomerType))
+            .SingleOrDefaultAsync(cancellationToken);
+
+    private static Task<List<ActiveContainerType>> ActiveContainerTypesAsync(
+        BinTrackerDbContext db, CancellationToken cancellationToken) =>
+        db.ContainerTypes
+            .AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.DisplayOrder)
+            .ThenBy(x => x.Name)
+            .Select(x => new ActiveContainerType(x.Id, x.Name))
+            .ToListAsync(cancellationToken);
+
+    private static MovementCustomerSummary CustomerSummary(
+        ActiveCustomer customer,
+        IReadOnlyList<ActiveContainerType> containerTypes,
+        IReadOnlyDictionary<int, int> balances) =>
+        new(
             customer.Id,
             customer.Code,
             customer.Name,
@@ -341,7 +363,6 @@ internal sealed class MovementService(
                     x.Name,
                     balances.GetValueOrDefault(x.Id)))
                 .ToList());
-    }
 
     public async Task<SaveMovementBatchResult> SaveBatchAsync(
         SaveMovementBatchRequest request,
@@ -769,36 +790,47 @@ internal sealed class MovementService(
 
         if (operationalProjection is not null)
         {
-            var projected = await operationalProjection.QueryAsync(
-                OperationalMovementProjectionScope.PositionAsOf(date),
-                cancellationToken);
-            var returnedProjected = checked((int)projected.Activity
-                .Where(x => x.MovementDate == date && x.MovementType == MovementType.In)
-                .Aggregate(0L, (quantity, movement) =>
-                    checked(quantity + movement.Quantity)));
-            var takenProjected = checked((int)projected.Activity
-                .Where(x => x.MovementDate == date && x.MovementType == MovementType.Out)
-                .Aggregate(0L, (quantity, movement) =>
-                    checked(quantity + movement.Quantity)));
-            var outstandingProjected = checked((int)projected.Positions
-                .Where(x => x.Quantity > 0)
-                .Aggregate(0L, (quantity, position) =>
-                    checked(quantity + position.Quantity)));
-            var projectedSettings = await db.ApplicationSettings
-                .AsNoTracking()
-                .SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
-            var projectedThreshold = projectedSettings?.AttentionQuantityThreshold ?? 20;
-            var projectedRequiresAttention = projected.Positions
-                .Where(x => x.Quantity > projectedThreshold)
-                .Select(x => x.CustomerId)
-                .Distinct()
-                .Count();
+            if (operationalProjection is not
+                ITransactionalOperationalMovementProjectionAuthority snapshots)
+            {
+                throw new InvalidOperationException(
+                    "Corrected dashboard results require one shared settings and position snapshot.");
+            }
 
-            return new OperationalDashboardSummary(
-                returnedProjected,
-                takenProjected,
-                outstandingProjected,
-                projectedRequiresAttention);
+            return await snapshots.ReadSnapshotAsync(db, async token =>
+            {
+                var projected = await snapshots.QueryInTransactionAsync(
+                    db,
+                    OperationalMovementProjectionScope.PositionAsOf(date),
+                    token);
+                var returnedProjected = checked((int)projected.Activity
+                    .Where(x => x.MovementDate == date && x.MovementType == MovementType.In)
+                    .Aggregate(0L, (quantity, movement) =>
+                        checked(quantity + movement.Quantity)));
+                var takenProjected = checked((int)projected.Activity
+                    .Where(x => x.MovementDate == date && x.MovementType == MovementType.Out)
+                    .Aggregate(0L, (quantity, movement) =>
+                        checked(quantity + movement.Quantity)));
+                var outstandingProjected = checked((int)projected.Positions
+                    .Where(x => x.Quantity > 0)
+                    .Aggregate(0L, (quantity, position) =>
+                        checked(quantity + position.Quantity)));
+                var projectedSettings = await db.ApplicationSettings
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(x => x.Id == 1, token);
+                var projectedThreshold = projectedSettings?.AttentionQuantityThreshold ?? 20;
+                var projectedRequiresAttention = projected.Positions
+                    .Where(x => x.Quantity > projectedThreshold)
+                    .Select(x => x.CustomerId)
+                    .Distinct()
+                    .Count();
+
+                return new OperationalDashboardSummary(
+                    returnedProjected,
+                    takenProjected,
+                    outstandingProjected,
+                    projectedRequiresAttention);
+            }, cancellationToken);
         }
 
         var today = await db.BinMovements

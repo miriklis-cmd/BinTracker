@@ -27,6 +27,17 @@ public sealed record MovementMutationFreshState(
     MovementMutationFreshStateKind Kind,
     MovementMutationReplay? Replay = null);
 
+public enum MovementAuditAssociationKind
+{
+    Legacy = 0,
+    Native = 1
+}
+
+public sealed record MovementAuditAssociation(
+    MovementAuditAssociationKind Kind,
+    long? OperationId = null,
+    LogicalMovementBatchId? RootId = null);
+
 public sealed record PersistedMovementMutationLineResult(
     LogicalMovementLineId LineId,
     LogicalMovementGenerationAction Action,
@@ -90,6 +101,8 @@ public interface IMovementMutationWriter
         long auditEventId, CancellationToken cancellationToken = default);
     Task ValidateOperationAuditHealthAsync(BinTrackerDbContext db, LogicalMovementBatchId rootId,
         CancellationToken cancellationToken = default);
+    Task<MovementAuditAssociation> InspectAuditAssociationAsync(BinTrackerDbContext db,
+        long auditEventId, CancellationToken cancellationToken = default);
     Task<bool> TryPublishAsync(BinTrackerDbContext db, PendingMovementMutation pending,
         LogicalMovementGenerationNumber expectedGeneration,
         CancellationToken cancellationToken = default);
@@ -122,6 +135,9 @@ public sealed class DormantMovementMutationWriter : IMovementMutationWriter
         long auditEventId, CancellationToken cancellationToken = default) => Fail();
     public Task ValidateOperationAuditHealthAsync(BinTrackerDbContext db, LogicalMovementBatchId rootId,
         CancellationToken cancellationToken = default) => Fail();
+    public Task<MovementAuditAssociation> InspectAuditAssociationAsync(BinTrackerDbContext db,
+        long auditEventId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new MovementAuditAssociation(MovementAuditAssociationKind.Legacy));
     public Task<bool> TryPublishAsync(BinTrackerDbContext db, PendingMovementMutation pending,
         LogicalMovementGenerationNumber expectedGeneration,
         CancellationToken cancellationToken = default) => Fail<bool>();
@@ -188,6 +204,7 @@ internal sealed class SqliteMovementMutationWriter(
 {
     private const string SchemaRequired = "MOVEMENT_MUTATION_SCHEMA17_REQUIRED";
     private const string HealthInvalid = "MOVEMENT_MUTATION_SCHEMA17_HEALTH_INVALID";
+    private const string AuditHealthInvalid = "MOVEMENT_MUTATION_AUDIT_HEALTH_INVALID";
     private const string PersistenceFailure = "MOVEMENT_MUTATION_PERSISTENCE_FAILURE";
 
     public bool IsEnabled => true;
@@ -526,6 +543,93 @@ internal sealed class SqliteMovementMutationWriter(
                 audits.Add(new(reader.GetInt64(0), reader.GetInt64(1), reader.GetString(2),
                     reader.GetString(3), NullableString(reader, 4), reader.GetBoolean(5)));
         LogicalMovementOperationAuditHealthValidator.Validate(generations, operations, audits);
+    }
+
+    public async Task<MovementAuditAssociation> InspectAuditAssociationAsync(
+        BinTrackerDbContext db,
+        long auditEventId,
+        CancellationToken cancellationToken = default)
+    {
+        if (auditEventId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(auditEventId));
+
+        var (connection, transaction) = RequireTransaction(db);
+        await using var command = Command(connection, transaction, """
+            SELECT a.MovementCorrectionOperationId,a.EntityType,a.EntityId,
+                   o.Id,o.LogicalMovementBatchId,o.RequestJson,o.RequestSchemaVersion,
+                   o.ExpectedGenerationNumber,o.ResultGenerationNumber,o.Kind,
+                   (SELECT COUNT(*) FROM LogicalMovementGenerations g
+                    WHERE g.MovementCorrectionOperationId=o.Id)
+            FROM AuditEvents a
+            LEFT JOIN MovementCorrectionOperations o
+              ON o.Id=a.MovementCorrectionOperationId
+            WHERE a.Id=$audit;
+            """, ("$audit", auditEventId));
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+            throw new InvalidOperationException(AuditHealthInvalid);
+
+        var operationId = NullableInt64(reader, 0);
+        var entityType = reader.GetString(1);
+        var entityId = NullableString(reader, 2);
+        var joinedOperationId = NullableInt64(reader, 3);
+        var rootId = NullableInt64(reader, 4);
+        var requestJson = NullableString(reader, 5);
+        var requestSchemaVersion = NullableInt32(reader, 6);
+        var expectedGenerationNumber = NullableInt32(reader, 7);
+        var resultGenerationNumber = NullableInt32(reader, 8);
+        var operationKind = NullableInt32(reader, 9);
+        var generationAssociationCount = reader.GetInt64(10);
+        if (await reader.ReadAsync(cancellationToken))
+            throw new InvalidOperationException(AuditHealthInvalid);
+
+        if (operationId is null)
+        {
+            if (entityType == "LogicalMovementBatch")
+                throw new InvalidOperationException(AuditHealthInvalid);
+            return new(MovementAuditAssociationKind.Legacy);
+        }
+
+        if (joinedOperationId != operationId)
+            throw new InvalidOperationException(AuditHealthInvalid);
+
+        // A migrated alpha.8 operation may have a proven root association, but it
+        // has no native request/generation envelope and creates no generation.
+        // Any native-shape indicator therefore makes the complete native shape
+        // mandatory; a damaged discriminator can never downgrade into prose or
+        // physical-ID based legacy reconstruction.
+        var hasNativeShape = requestJson is not null ||
+            requestSchemaVersion is not null ||
+            expectedGenerationNumber is not null ||
+            resultGenerationNumber is not null ||
+            operationKind is (int)MovementCorrectionKind.Reverse or
+                (int)MovementCorrectionKind.Restore ||
+            generationAssociationCount != 0;
+        if (!hasNativeShape)
+        {
+            if ((operationKind != (int)MovementCorrectionKind.Single &&
+                    operationKind != (int)MovementCorrectionKind.WholeBatch) ||
+                entityType == "LogicalMovementBatch")
+                throw new InvalidOperationException(AuditHealthInvalid);
+            return new(MovementAuditAssociationKind.Legacy, operationId);
+        }
+
+        if (string.IsNullOrWhiteSpace(requestJson) || requestSchemaVersion != 1 ||
+            rootId is null || rootId <= 0 ||
+            expectedGenerationNumber is null || expectedGenerationNumber < 0 ||
+            expectedGenerationNumber == int.MaxValue ||
+            resultGenerationNumber != expectedGenerationNumber + 1 ||
+            operationKind is null ||
+            operationKind < (int)MovementCorrectionKind.Single ||
+            operationKind > (int)MovementCorrectionKind.Restore ||
+            generationAssociationCount != 1 ||
+            entityType != "LogicalMovementBatch" ||
+            entityId != rootId.Value.ToString(CultureInfo.InvariantCulture))
+            throw new InvalidOperationException(AuditHealthInvalid);
+
+        var nativeRootId = new LogicalMovementBatchId(rootId.Value);
+        await ValidateOperationAuditHealthAsync(db, nativeRootId, cancellationToken);
+        return new(MovementAuditAssociationKind.Native, operationId, nativeRootId);
     }
 
     public async Task<bool> TryPublishAsync(BinTrackerDbContext db, PendingMovementMutation pending,

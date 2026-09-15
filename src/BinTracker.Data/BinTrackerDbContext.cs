@@ -63,7 +63,7 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
             e.ToTable("MovementBatches");
             e.HasIndex(x => x.ClientOperationId).IsUnique();
             e.HasMany(x => x.Movements).WithOne(x => x.MovementBatch)
-                .HasForeignKey(x => x.MovementBatchId).OnDelete(DeleteBehavior.SetNull);
+                .HasForeignKey(x => x.MovementBatchId).OnDelete(DeleteBehavior.ClientNoAction);
         });
 
         b.Entity<BinMovement>(e =>

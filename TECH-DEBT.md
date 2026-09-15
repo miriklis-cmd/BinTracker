@@ -3,7 +3,7 @@
 ## Frozen logical-lineage delivery (pre-v1 blocking)
 
 - Alpha.8 whole-batch eligibility safely rejects partial lineage through physical MovementBatch. Deliver BT-CORR-018..033 as one coherent migration/service/projection/UI change; never bypass the guard piecemeal.
-- Task20F closes the explicit native17 R2 preview/generation/legacy-write boundary without activating normal runtime. Its service execution boundary independently enforces Active-only whole-root correction from the existing trusted snapshot; lower-planner Restore/RemainReversed support remains for the separately sequenced workflow. R3 native audit/review safety, EF membership alignment, R7 snapshots, atomic startup composition and later Restore/RemainReversed UI remain separate work; do not broaden the R2 bridge into those scopes.
+- Task20F closes the explicit native17 R2 preview/generation/legacy-write boundary without activating normal runtime. BT-20-P1 plus BT-20-FIX1 close minimum R3 audit/review safety, EF immutable-membership tracking and the four characterized R7 snapshots under explicit composition. The frozen remaining order is atomic normal startup composition, full native Audit/History detail, Restore/RemainReversed UI, broader activated-system gates, retained-database rehearsal, Windows/operator acceptance, layer audit, then Security Hardening; do not combine or reorder those scopes.
 - After lineage Windows acceptance, perform the protected whole-codebase presentation/application/domain/infrastructure audit. Move authoritative WinForms validation, data access, balance/report arithmetic, transactions and authorization below presentation before subsequent major pre-v1 work.
 - PostgreSQL/API/portal/handheld/WinUI delivery remains post-v1. v1 debt closure is clean boundaries/provider-neutral semantics, not speculative infrastructure.
 
@@ -18,9 +18,9 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Database / data integrity
 
-- Task20C confirms that loaded EF MovementBatch deletion nullifies tracked member IDs under SetNull while schema17 RESTRICT rolls back persisted deletion. Align the EF relationship with immutable membership in the later authorized production slice; the Task20D coordinator foundation deliberately leaves that model change deferred.
-- Task20D implements the R4 Data coordinator/R5 capabilities and real lifecycle proof under isolated composition; Task20E implements R1 Single receipts/replay and Task20F implements R2 preview/generation/legacy-write closure under explicit schema17 composition. The later atomic cutover must route normal startup and staged developer-marker handling through the coordinator, retain the ready session through host lifetime and close R3 before installing schema17 writers. Existing legacy marker application remains unactivated integration work; the explicit coordinator rejects pending markers without bypass. Companion leases coordinate participating processes only; old/nonparticipating clients must be stopped for later rehearsal/deployment.
-- R7 characterization demonstrates result-affecting snapshot gaps in Dashboard/customer/container metadata and Import replacement comparison. Restrict later fixes to these proven boundaries; preserve Task19 Daily Print Pack and provider-neutral application contracts.
+- BT-20-P1 corrects the EF client relationship so loaded schema17 MovementBatch deletion cannot null tracked member IDs. Data explicitly preserves schema16 persisted `SET NULL` compatibility while schema17 capability validation requires immutable `RESTRICT/NO ACTION`; later activation/rehearsal must retain both proofs.
+- Task20D implements the R4 Data coordinator/R5 capabilities and real lifecycle proof under isolated composition; Task20E implements R1, Task20F implements R2 and BT-20-P1 closes R3/EF/R7 pre-activation blockers under explicit schema17 composition. The later atomic cutover must route normal startup and staged developer-marker handling through the coordinator and retain the ready session through host lifetime. Existing legacy marker application remains unactivated integration work; the explicit coordinator rejects pending markers without bypass. Companion leases coordinate participating processes only; old/nonparticipating clients must be stopped for later rehearsal/deployment.
+- BT-20-P1 fixes exactly the characterized Dashboard/customer/container/Import snapshot gaps by reusing the existing provider-consistent transaction seam. Preserve Task19 Daily Print Pack and provider-neutral application contracts; any later snapshot change requires new result-affecting evidence rather than blanket transactions.
 
 - Add source-row/import-profile metadata needed for changed-workbook correction tooling.
 - Review useful database-level constraints/indexes rather than relying only on service validation.
@@ -88,6 +88,8 @@ Engineering improvements that are not currently user-facing defects. Product wor
 - Define installer/update signing and upgrade rollback strategy.
 
 ## Testing
+
+- `Test-BinTrackerCodexPrompt.ps1` uses a local `$error` diagnostic variable that collides case-insensitively with PowerShell's automatic `$Error` collection and can mask the intended invalid-input diagnostic. Input validation still returns the correct failing exit code; repair the diagnostic separately without broadening BT-20-FIX1.
 
 - Keep the Import failure-injection seam test-only/no-op in production; use it for deterministic transaction-boundary regression tests rather than exposing runtime failure controls.
 - Continue the regression rule: when a real defect is found, add a reproducing automated test where practical.
