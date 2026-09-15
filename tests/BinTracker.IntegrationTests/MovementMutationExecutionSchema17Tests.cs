@@ -173,7 +173,7 @@ public sealed class MovementMutationExecutionSchema17Tests
     }
 
     [Fact]
-    public async Task Mixed_complete_generation_persists_already_matches_restored_remain_reversed_and_no_output()
+    public async Task Mixed_whole_root_decisions_remain_plannable_but_activation_rejects_execution()
     {
         await using var harness = await Harness.CreateAsync();
         var root = await harness.CreateBatchRootAsync(equalQuantities: true);
@@ -191,19 +191,20 @@ public sealed class MovementMutationExecutionSchema17Tests
             lines.Select(x => new LogicalMovementLineId(x)), "mixed correction",
             quantity: MovementFieldIntent<int>.Selected(2), reversedLineDecisions: decisions);
 
-        await harness.ExecuteAsync(root.RootId, 2, request);
+        var snapshot = await harness.PlanningSnapshotAsync(root.RootId);
+        var plan = MovementMutationPlanner.Plan(snapshot, request, new DateOnly(2026, 9, 3));
+        Assert.Equal(
+            [LogicalMovementGenerationAction.AlreadyMatches,
+                LogicalMovementGenerationAction.Restored,
+                LogicalMovementGenerationAction.RemainReversed],
+            plan.Lines.Select(x => x.Action));
+        Assert.Null(plan.PhysicalOutput);
 
-        await using var connection = await harness.OpenAsync();
-        var generationId = await ScalarAsync(connection,
-            $"SELECT Id FROM LogicalMovementGenerations WHERE LogicalMovementBatchId={root.RootId} AND GenerationNumber=3;");
-        Assert.Equal(1, await ScalarAsync(connection,
-            $"SELECT COUNT(*) FROM LogicalMovementGenerationLines WHERE LogicalMovementGenerationId={generationId} AND Action=3;"));
-        Assert.Equal(1, await ScalarAsync(connection,
-            $"SELECT COUNT(*) FROM LogicalMovementGenerationLines WHERE LogicalMovementGenerationId={generationId} AND Action=6;"));
-        Assert.Equal(1, await ScalarAsync(connection,
-            $"SELECT COUNT(*) FROM LogicalMovementGenerationLines WHERE LogicalMovementGenerationId={generationId} AND Action=7;"));
-        Assert.Equal(0, await ScalarAsync(connection,
-            $"SELECT COUNT(*) FROM LogicalMovementPhysicalOutputs WHERE LogicalMovementGenerationId={generationId};"));
+        var before = await harness.SnapshotAsync();
+        var error = await Assert.ThrowsAsync<LogicalMovementMutationException>(() =>
+            harness.ExecuteAsync(root.RootId, 2, request));
+        Assert.Equal(LogicalMovementMutationFailure.WholeRootCorrectionUnavailable, error.Failure);
+        Assert.Equal(before, await harness.SnapshotAsync());
     }
 
     [Fact]
@@ -740,6 +741,10 @@ public sealed class MovementMutationExecutionSchema17Tests
         public Task<LogicalMovementMutationResult> ExecuteAsync(long rootId, int expected,
             MovementMutationRequest request, Guid? operationId = null) =>
             Service.ExecuteLogicalAsync(new(operationId ?? Guid.NewGuid(), new(rootId), new(expected), request));
+
+        public Task<TrustedMovementPlanningSnapshot> PlanningSnapshotAsync(long rootId) =>
+            new SqliteMovementPlanningSnapshotMaterializer(ConnectionString)
+                .MaterializeAsync(new(rootId));
 
         public async Task<SaveSingleMovementResult> SaveSchema16SingleAsync() =>
             await Movements.SaveSingleAsync(new(Guid.NewGuid(), new DateOnly(2026, 9, 1),

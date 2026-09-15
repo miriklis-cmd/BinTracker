@@ -72,6 +72,10 @@ public sealed class PendingMovementMutation
 public interface IMovementMutationWriter
 {
     bool IsEnabled { get; }
+    Task<LogicalMovementBatchId?> FindRootByMovementAsync(BinTrackerDbContext db, long movementId,
+        CancellationToken cancellationToken = default);
+    Task<LogicalMovementBatchId?> FindRootByBatchAsync(BinTrackerDbContext db, int movementBatchId,
+        CancellationToken cancellationToken = default);
     Task EnsureReadyAsync(BinTrackerDbContext db, LogicalMovementBatchId rootId,
         CancellationToken cancellationToken = default);
     Task<MovementMutationReplay?> FindCommittedAsync(BinTrackerDbContext db,
@@ -100,6 +104,10 @@ public sealed class DormantMovementMutationWriter : IMovementMutationWriter
 {
     private const string Dormant = "Logical movement mutation execution is not active in normal runtime composition.";
     public bool IsEnabled => false;
+    public Task<LogicalMovementBatchId?> FindRootByMovementAsync(BinTrackerDbContext db, long movementId,
+        CancellationToken cancellationToken = default) => Fail<LogicalMovementBatchId?>();
+    public Task<LogicalMovementBatchId?> FindRootByBatchAsync(BinTrackerDbContext db, int movementBatchId,
+        CancellationToken cancellationToken = default) => Fail<LogicalMovementBatchId?>();
     public Task EnsureReadyAsync(BinTrackerDbContext db, LogicalMovementBatchId rootId,
         CancellationToken cancellationToken = default) => Fail();
     public Task<MovementMutationReplay?> FindCommittedAsync(BinTrackerDbContext db,
@@ -184,6 +192,30 @@ internal sealed class SqliteMovementMutationWriter(
 
     public bool IsEnabled => true;
 
+    public Task<LogicalMovementBatchId?> FindRootByMovementAsync(BinTrackerDbContext db, long movementId,
+        CancellationToken cancellationToken = default)
+    {
+        if (movementId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(movementId));
+        return FindRootAsync(db, """
+            SELECT LogicalMovementBatchId
+            FROM LogicalMovementLedgerLinks
+            WHERE BinMovementId=$id;
+            """, movementId, cancellationToken);
+    }
+
+    public Task<LogicalMovementBatchId?> FindRootByBatchAsync(BinTrackerDbContext db, int movementBatchId,
+        CancellationToken cancellationToken = default)
+    {
+        if (movementBatchId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(movementBatchId));
+        return FindRootAsync(db, """
+            SELECT Id FROM LogicalMovementBatches WHERE RootMovementBatchId=$id
+            UNION ALL
+            SELECT LogicalMovementBatchId FROM LogicalMovementPhysicalOutputs WHERE MovementBatchId=$id;
+            """, movementBatchId, cancellationToken);
+    }
+
     public async Task EnsureReadyAsync(BinTrackerDbContext db, LogicalMovementBatchId rootId,
         CancellationToken cancellationToken = default)
     {
@@ -233,6 +265,27 @@ internal sealed class SqliteMovementMutationWriter(
     public Task<TrustedMovementPlanningSnapshot> MaterializeAsync(BinTrackerDbContext db,
         LogicalMovementBatchId rootId, CancellationToken cancellationToken = default) =>
         SqliteMovementPlanningSnapshotMaterializer.MaterializeAsync(db, rootId, cancellationToken);
+
+    private static async Task<LogicalMovementBatchId?> FindRootAsync(BinTrackerDbContext db,
+        string sql, long id, CancellationToken cancellationToken)
+    {
+        var (connection, transaction) = RequireTransaction(db);
+        try
+        {
+            await using var command = Command(connection, transaction, sql, ("$id", id));
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+                return null;
+            var rootId = reader.GetInt64(0);
+            if (rootId <= 0 || await reader.ReadAsync(cancellationToken))
+                throw new InvalidOperationException(HealthInvalid);
+            return new(rootId);
+        }
+        catch (SqliteException ex)
+        {
+            throw new InvalidOperationException(SchemaRequired, ex);
+        }
+    }
 
     public async Task<PendingMovementMutation> PersistAsync(BinTrackerDbContext db,
         MovementMutationOperationIntent intent, TrustedMovementPlanningSnapshot snapshot,

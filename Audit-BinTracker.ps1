@@ -41,7 +41,7 @@ if ($testChecklistText -notmatch [regex]::Escape('Package-BinTracker.ps1') -or
 if (Test-Path -LiteralPath 'global.json') { Fail 'Unexpected global.json is present. BinTracker currently uses the installed compatible SDK.' }
 
 $requiredDocuments = @(
- 'README.md','KNOWN-ISSUES.md','TECH-DEBT.md','TEST-CHECKLIST.md',
+ 'AGENTS.md','README.md','KNOWN-ISSUES.md','TECH-DEBT.md','TEST-CHECKLIST.md',
  'docs/Architecture.md','docs/AuditCoverage.md','docs/BusinessRules.md','docs/CHANGELOG.md','docs/Database.md',
  'docs/DevelopmentWorkflow.md','docs/DocumentationAudit.md','docs/FunctionalSpecification.md',
  'docs/ImportWizard.md','docs/LegacyContainerRules.md','docs/MasterData.md','docs/RELEASE-NOTES.md',
@@ -49,6 +49,39 @@ $requiredDocuments = @(
  'docs/Versioning.md','docs/RequirementsAcceptanceRegister.md','docs/ReconciliationReport.md','docs/SecurityHardeningRegister.md'
 )
 foreach ($doc in $requiredDocuments) { if (-not (Test-Path -LiteralPath $doc)) { Fail "Missing required audited document: $doc" } }
+
+# Codex task/handoff identity is mechanically testable; semantic authority and
+# status promotion remain mandatory reviews rather than brittle regex claims.
+if (-not (Test-Path -LiteralPath 'Test-BinTrackerCodexPrompt.ps1')) { Fail 'Codex prompt marker validator is missing.' }
+& (Join-Path $root 'Test-BinTrackerCodexPrompt.ps1') -SelfTest -Quiet
+if ($LASTEXITCODE -ne 0) { Fail 'Codex prompt marker validator self-test failed.' }
+
+$agentRules = Get-Content -Raw -LiteralPath 'AGENTS.md'
+$workflowRules = Get-Content -Raw -LiteralPath 'docs/DevelopmentWorkflow.md'
+foreach ($term in @('BT-<roadmap-id>-P<n>','BT-<roadmap-id>-FIX<n>',
+        '=== BINTRACKER CODEX WORKING: <TASK-ID> START ===',
+        '=== RETURN TO CHATGPT: <TASK-ID> START ===',
+        '=== RETURN TO CHATGPT: <TASK-ID> END ===',
+        '=== BINTRACKER CODEX WORKING: <TASK-ID> END ===',
+        'input alone never proves a valid returned handoff',
+        'PARTIAL SESSION PREFIX',
+        'authoritative requirement -> actual enforcement path -> proof/evidence -> status claim')) {
+    if (($agentRules + "`n" + $workflowRules) -notmatch [regex]::Escape($term)) {
+        Fail "Codex anti-drift governance text is missing required term: $term"
+    }
+}
+foreach ($term in @('Mandatory post-compaction repository re-anchor','Authority precedence',
+        'Status-promotion gate','Semantic-drift exit reconciliation',
+        'Independent adversarial review and JSONL evidence','Coherent major-pass sizing')) {
+    if ($workflowRules -notmatch [regex]::Escape($term)) {
+        Fail "Development workflow lost required anti-drift section: $term"
+    }
+}
+foreach ($obsoleteTerm in @('# working <canonical-task-id>','# return to chatgpt <canonical-task-id>')) {
+    if (($agentRules + "`n" + $workflowRules) -match [regex]::Escape($obsoleteTerm)) {
+        Fail "Obsolete two-marker Codex convention remains current: $obsoleteTerm"
+    }
+}
 
 # Permanent requirements register: unique IDs + approved enum values.
 $register = Get-Content -LiteralPath 'docs/RequirementsAcceptanceRegister.md'

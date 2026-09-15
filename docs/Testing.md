@@ -8,7 +8,23 @@ While these intentional failures exist, normal full-suite and `Build-BinTracker.
 
 Before changing accepted behaviour or placing new authority beside it, identify existing tests that precisely characterize the affected path. Where coverage is inadequate, add characterization coverage and run it before the change, then rerun it afterward. If the existing behaviour is intentionally defective, characterize it where useful and add a separate expected-behaviour regression test; do not preserve a known defect merely because it was characterized.
 
-## Task20E R1 Single-entry activation — 14 September 2026
+## Task20F FIX1 corrected R2 logical correction/reversal activation — 14 September 2026
+
+Task20F implements only frozen R2 under explicit native17 composition. Before its production editing, `Task20MutationActivationTests` failed all four existing R2 cases for the intended gaps: native Reversed-line physical preview returned eligible, and legacy `correct`, `reverse` and `whole-batch` commands appended alpha.8 artifacts. The accepted alpha.8/native mutation characterization filter (`Task20LogicalMutationSafetyTests`, all `MovementCorrectionWorkflowTests`, `MovementCorrectionSqliteTests`, `MovementCorrectionConcurrencyTests` and `MovementMutationExecutionSchema17Tests`) passed 100/100 with zero skips. Independent review then found that direct `ExecuteLogicalAsync` could bypass preview eligibility by embedding valid Restore/RemainReversed decisions. Before the R1 production correction, the new two-case real-service regression failed2/2 because both commands committed; no source-string or timing assertion was used.
+
+The focused R2 class now proves schema16 legacy compatibility/dormant preview; stable root and permanent-line resolution from movement, root-original/native-output batch and root anchors; validated current values/state; preview-captured expected generation; complete correction/reversal generations and physical roles; current-pointer advance once; exact committed-result replay; changed-payload reuse conflict; deterministic stale-preview rejection with byte-for-byte unchanged persisted state; Active-only whole-root preview and direct execution; typed rejection of explicit Restore and RemainReversed bypass attempts with unchanged current pointer, movements, generations, operations, audits, physical outputs, legacy correction lines and complete database state; and typed rejection of all three legacy write routes before artifacts. The existing planner/writer remains the authority for complete generations, Restore/RemainReversed, idempotency, physical output and CAS; the preserved mixed-decision integration fixture directly proves the lower planner still represents its frozen result before proving the activation boundary rejects execution. No duplicate calculator or persistence path was added.
+
+The retained future filter now discovers 37 ordinary unskipped cases: 28 pass and exactly nine remain intentional red. All original four R2 cases are green, along with the five new R2 facts including both direct-decision bypass cases; no R3, EF-membership or R7 case became green unexpectedly. Remaining failures are:
+
+- R3 audit/review: `Native_operation_association_prevents_alpha8_detail_parsing_even_when_payload_matches_legacy_shape`; `Native_review_rejects_unhealthy_operation_audit_evidence_without_writing_review` for `missing-association` and `corrupt-operation`; `Native_reversal_root_id_collision_never_returns_another_roots_physical_evidence`.
+- EF membership: `Loaded_schema17_batch_delete_does_not_nullify_tracked_immutable_member_identity`.
+- R7 snapshots: `Replacement_comparison_previous_run_evidence_and_projection_share_one_snapshot`; `Customer_summary_visible_container_and_position_share_one_snapshot`; `Dashboard_attention_and_position_share_one_snapshot`; `Customer_search_visible_active_row_and_position_share_one_snapshot`.
+
+These nine failures remain ordinary discovered tests and are not waived or filtered from the project. The canonical BAT/full-release gate remains suspended until the intentional-red boundary closes. Task20F FIX1 changes only the R2 activation-policy defect and necessary tests/docs; it includes no Task20E/R1 receipt change, R3/R7/EF implementation, normal WinForms/schema17 activation, product package, retained-database rehearsal or operator acceptance. Its external evidence retains the historical filename `BT-CODEX-20260914-20F-R1`; new run identifiers never reuse that ambiguous suffix. TEST REQUIRED: Targeted independent source/diff review, followed later by the complete canonical gate after remaining intentional reds close.
+
+Task20F FIX1 validation: affected Services build and Release solution build pass with zero warnings/errors; focused bypass2/2, complete R2 9/9, accepted correction/reversal/native mutation100/100, schema16 correction/reversal compatibility54/54 and UnitTests279/279 pass with zero skips. Full IntegrationTests runs480 ordinary tests:471 pass and only the exact9 intentional futures above fail, with zero skips. The dedicated future filter independently reports28 pass/9 expected red across37. Mechanical audit passes with259 permanent IDs/27 Markdown files. Frozen R1–R4 equality, accepted Task20E/R1 production-file non-diff, normal schema16 dormancy checks and `git diff --check` pass. Counts overlap and must not be summed. BT-20F-FIX2 re-verifies these facts without production changes and records its final evidence in the current Documentation Audit entry.
+
+## Historical Task20E R1 Single-entry activation — 14 September 2026
 
 Task20E implements only frozen R1 under explicit schema17 composition. Before production editing, the existing Single/Task20 characterization and safety filter passed 24/24, the existing schema17 entry suite passed 18/18, and all seven original `Task20SingleActivationTests` cases failed for the frozen missing behavior: zero transaction projection calls, ignored projection/cancellation/overflow failures, wrapped integer overflow, recomputed retry result after later activity, and silent pre-receipt legacy replay. No fixture, compile, skip or unrelated failure was classified as expected red.
 
@@ -23,7 +39,7 @@ Focused final results before the documentation-only reconciliation: combined R1 
 
 Those thirteen failures are neither waived nor filtered from the project. Final Release solution build passes with0 warnings/errors; the mechanical audit passes with259 permanent IDs and27 Markdown files; frozen R1–R4 equality and `git diff --check` pass. The canonical BAT/full-release gate remains suspended until the intentional reds are implemented and green. Task20E includes no normal WinForms/schema17 activation, retained-database rehearsal, application package or Windows/operator acceptance. TEST REQUIRED: Targeted independent source/diff review, followed later by the complete canonical gate after the retained future boundary closes.
 
-## Task20D-R1 independent-review concurrency corrections — 14 September 2026
+## Historical Task20D-R1 independent-review concurrency corrections — 14 September 2026
 
 Independent review found two gaps in the original20D evidence: a Load/Fresh operation could return readiness for a later competing replacement after releasing publication ownership, and A13 only proved an entirely new retry call. These were defects, not accepted semantics.
 
@@ -47,7 +63,7 @@ Final review corrected unsafe post-swap-only validation of loaded native17, deli
 
 TEST REQUIRED: Targeted for independent Task20D review. No full-suite/BAT, retained-database rehearsal, Windows/operator acceptance, application package or runtime cutover is claimed. R1/R2/R3/R7, EF membership and later preview/receipt/detail contracts remain pending. The historical Task20C evidence below records its original all-red state and unavailable seams; coordinator unavailability is superseded only by this foundation.
 
-## Task20C evidence — 12 September 2026
+## Historical Task20C evidence — 12 September 2026
 
 ### Corrective review pass — BT-CODEX-20260912-20C-R1, 13 September 2026
 
@@ -104,7 +120,7 @@ Import comparison/execution projection coverage proves corrected pre-cutover ari
 
 Normal composition still supplies no-op initial-lineage and mutation writers and remains schema 16. Explicit isolated schema-17 composition alone exercises the SQLite writers; tests must continue proving that default writers perform no schema probe/query/write. Core construction validation remains provider-neutral, Services remains client-neutral authority, and Data owns SQLite mechanics. No PostgreSQL/API/web/mobile/handheld execution evidence is implied.
 
-Windows acceptance retains Batch #30 and covers RemainReversed, Restore, mixed dates, repeated whole-root correction, selected/whole correction in both orders, later reversal/restoration, descendant navigation, optional physical output, reports/balances, Audit Detail and Administrator Review at the DPI floor and larger display. Automated success never claims this acceptance.
+Windows acceptance retains Batch #30 and covers RemainReversed, Restore, mixed dates, repeated whole-root correction, selected/whole correction in both orders, later reversal/restoration, navigation from original/reversal/correction/restoration evidence and descendants without physical output, immutable physical Batch Detail, Movement History, Audit Detail, Administrator Review, Daily/Weekly/Monthly corrected operational activity and current/Outstanding positions at the DPI floor and larger production displays. Before using approximate display IDs #1080/#1081/#1082, verify the persisted Batch #30 movement/reversal relationships read-only; those numbers are not identity authority. Automated success never claims this acceptance.
 
 ## Multi-user readiness regression
 

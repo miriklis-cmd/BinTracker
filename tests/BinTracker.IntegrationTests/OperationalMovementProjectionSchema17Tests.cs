@@ -95,7 +95,7 @@ public sealed class OperationalMovementProjectionSchema17Tests
     }
 
     [Fact]
-    public async Task Mixed_root_restore_and_remain_reversed_emit_complete_current_contributions()
+    public async Task Mixed_root_separate_restore_and_still_reversed_emit_complete_current_contributions()
     {
         await using var h = await Harness.CreateAsync();
         var root = await h.CreateBatchAsync(2, 2, 2);
@@ -107,14 +107,8 @@ public sealed class OperationalMovementProjectionSchema17Tests
             MovementMutationRequest.Reverse(MovementMutationScope.Individual,
                 [new(lines[2])], "reverse third"));
         await h.MutateAsync(root.RootId, 2,
-            MovementMutationRequest.Correct(MovementMutationScope.WholeRoot,
-                lines.Select(x => new LogicalMovementLineId(x)), "restore one and retain one",
-                quantity: MovementFieldIntent<int>.Selected(2),
-                reversedLineDecisions:
-                [
-                    ReversedLineDecision.Restore(new(lines[1])),
-                    ReversedLineDecision.RemainReversed(new(lines[2]))
-                ]));
+            MovementMutationRequest.Restore(MovementMutationScope.Individual,
+                [new(lines[1])], "restore second"));
 
         var projected = await h.Authority.QueryAsync(OperationalMovementProjectionScope.All());
         Assert.Equal(4, projected.Activity.Count);

@@ -1,5 +1,89 @@
 # Documentation Audit Record
 
+## 15 September 2026 — BT-20F-FIX3 governance-only correction
+
+- Entry mechanically matched root `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`, branch `codex/movement-correction`, HEAD/upstream `3293182551e1f221fd59e9aa8981c23d8a53b54a`, divergence 0/0, version `0.5.0-alpha.8.7`, empty staging, 23 tracked modifications and 17 untracked paths. The attributable FIX3 user task begins with the exact working START identity; quoted examples were not used as proof.
+- The five existing Task20F/FIX1 production/test files byte-match the FIX2 review ZIP. Frozen R2 behavior, Task20E, normal catalogue16/dormant writer composition, the nine intentional future reds (R3 four, EF membership one, R7 four), protected/pending Batch #30 and pending Task20 global completion are unchanged. FIX3 contains no production/test, schema activation, migration, report or UI change.
+- Restored the permanent four-boundary task/handoff envelope and removed the weaker two-marker form as a valid convention. The validator now treats the user task and returned assistant/Codex handoff as separate roles: the task must begin with working START; the actual handoff must supply return START, return END and working END; the combined ordered envelope must contain exactly one of all four with one canonical ID. Input success alone explicitly leaves output/handoff unvalidated.
+- Added the mandatory post-compaction repository re-anchor: pause substantive judgment/editing; reread AGENTS, active continuation and material authority; recheck root/branch/HEAD/upstream/divergence/staging/worktree/version; reread task ID/scope; inspect the diff; and resolve any compacted-summary/repository conflict before continuing. Pre-compaction context pressure still favors finishing the current coherent unit and maintaining continuation rather than starting another major semantic change; no arbitrary percentage was invented.
+- JSONL captured during a live substantive turn is now labelled `PARTIAL SESSION PREFIX`, is interim evidence only and cannot prove later events or completeness. Full-session evidence should be captured read-only after the substantive turn ends and record original session/path, byte and record counts, final-record/final-event details, handoff presence, compaction presence and SHA-256. A missing full-session capture is disclosed, never fabricated; a partial prefix's omission of compaction does not prove compaction did not occur.
+- Governance-only validation passes: all 12 named validator self-tests (the required 11 structural/role cases plus quoted-example rejection); exact attributable FIX3 input/task validation; direct valid-input+valid-handoff exit 0, valid-input+invalid-handoff exit 1 and invalid-input+valid-handoff exit 1; `Audit-BinTracker.ps1` with 259 permanent IDs/27 Markdown files/configured contradiction guards; and `git diff --check` with line-ending notices only. The complete 224-file tracked `src/**`+`tests/**` SHA-256 tree digest remains `909477D0C0F7488B22FD3E121A5875092836CD4372A18DAD7CA05A96E95579C6`, with zero untracked source/test paths, exactly matching the pre-FIX3 state. The full application suites and canonical BAT remain deliberately unrun because FIX3 changes no application/test source and the nine ordinary future tests remain intentionally red. TEST REQUIRED: None for application behavior; targeted independent governance/diff review for FIX3.
+
+## 15 September 2026 — BT-20F-FIX2 reconciliation (application review passed; governance checkpoint rejected)
+
+- Mechanically verified root/branch/HEAD/upstream/divergence/version/index/worktree/untracked inventory, Task20E ancestry, normal schema16 dormancy, the complete HEAD diff, affected production/tests and all 27 governed Markdown files before editing. The attributable prompt record contained one matching two-marker `BT-20F-FIX2` input pair, but that proved only input/prompt content and did not validate the actual returned handoff. No unexplained production delta or frozen-authority conflict was found.
+- Independently traced frozen Task20 R2 from Architecture through the actual authoritative service path and real integration evidence. `ExecuteLogicalAsync` validates the trusted current generation and then rejects `Correct + WholeRoot` with typed `WholeRootCorrectionUnavailable` before planning whenever any current line is Reversed; Restore/RemainReversed decisions do not bypass it. The same service uses the sole existing materializer/planner/writer/CAS path, preserves replay/stale ordering, and writes no rejected artifacts. FIX2 changes no production code.
+- FIX2 attempted permanent governance for canonical identifiers, prompt markers, authority precedence, acceptance traceability, status promotion, semantic drift, JSONL review and coherent pass sizing. Independent review rejected that governance checkpoint: the validator covered only the input prompt, the final handoff supplied none of the required return/end boundaries, and the live RAW capture stopped before a later context compaction and subsequent work. Its post-compaction continuity and final handoff therefore were not fully auditable from that RAW. FIX3 corrects governance only; semantic architecture/status review remains explicitly non-regex.
+- Status reconciliation retains the existing vocabulary. The complete delta from HEAD contains the already-present Task20F transition BT-CORR-027 `PLANNED-V1` -> `IMPLEMENTED-STATIC`; FIX2 itself introduces no further requirement/checklist status-marker transition. BT-ARCH-016, BT-CORR-022/024/029/030/032/033, R3, EF membership, R7, normal activation, retained-data/operator acceptance, protected layer audit and Task20 global completion remain pending.
+- Batch #30 remains protected and pending. Database is the concise fixture authority for Blue active `IN 4`, Yellow original `IN 1`, Yellow reversal `OUT 1` and zero current Yellow contribution; Requirements, Roadmap, Testing, TEST-CHECKLIST and active CONTINUATION trace the acceptance/protection boundary. Approximate #1080/#1081/#1082 values require read-only persisted relationship verification and are never identity authority.
+- Final FIX2 validation after reconciliation: Release solution build passed with 0 warnings/0 errors; UnitTests passed 279/279 with 0 failed/skipped; full IntegrationTests ran 480 with 471 passed, exactly nine intentional future failures and 0 skipped. The independent 37-case Task20 activation filter passed 28 and produced the same nine expected failures (R3 four, EF membership one, R7 four), with no unexpected red or green. `Build-BinTracker.bat` remains suspended, not waived, because ordinary future tests are still red. TEST REQUIRED: Targeted independent authority/code/diff/JSONL review; later retained-data and Windows/operator acceptance plus the canonical gate remain mandatory.
+
+The FIX2 application/R2 implementation passed independent architecture/code review and remains accepted at that evidence level. FIX2 itself was not accepted as a governance checkpoint. `BT-20F-FIX2-RAW.jsonl` is truthfully a pre-compaction `PARTIAL SESSION PREFIX`, not complete task-session evidence, because it was captured while the substantive turn remained live and excludes the later compaction, reasoning, package repair, validation and final handoff.
+
+### Task20 R2 acceptance reconciliation
+
+| Acceptance rule | Authority | Enforcement | Evidence | Status |
+|---|---|---|---|---|
+| Active17 legacy writes fail closed | Architecture Decision R2 | early service guards on all three alpha.8 mutation entries | three-case `Enabled_schema17_rejects_legacy_commands_without_appending_alpha8_artifacts` | IMPLEMENTED-STATIC, explicit native17 only |
+| Stable root/line/current-state preview | Architecture Decision R2; BT-ARCH-016/BT-CORR-018..020 | provider-owned persisted-anchor lookup plus existing trusted materializer and client-neutral DTO mapping | `Native_correction_uses_the_preview_identity_and_generation_and_replays_exactly` | R2 static evidence; broader requirements remain pending |
+| Captured generation is executed; stale loses | Architecture Decision R2; BT-CORR-027 | supplied generation in canonical intent, trusted snapshot check and root CAS; no latest substitution | preview/reversal/stale-generation tests | IMPLEMENTED-STATIC under BT-CORR-027 |
+| Any Reversed line blocks direct whole-root correction | Architecture Decision R2 | service guard after trusted snapshot/generation validation and before planner | Restore/RemainReversed real-service theory and unchanged-artifact assertions | IMPLEMENTED-STATIC at execution boundary |
+| Mixed decisions remain separately sequenced planner semantics | Architecture Decision R2 read with BT-CORR-022 | unchanged lower planner plus service activation guard | `Mixed_whole_root_decisions_remain_plannable_but_activation_rejects_execution` | R2 static boundary; BT-CORR-022 remains PLANNED-V1 |
+| Schema16 behavior remains compatible | Architecture Decision R2 | normal dormant writer and unchanged legacy paths/catalogue16 | dormant-schema16 preview/correction test plus regression filter | Static compatibility; normal activation pending |
+
+### Governed Markdown reconciliation inventory
+
+| File | Classification | Result |
+|---|---|---|
+| `AGENTS.md` | governance-rule update required | concise naming/markers/precedence/trace/status/coherent-pass gates added |
+| `KNOWN-ISSUES.md` | current-state correction required | prior Task20F R2 and nine-red state retained; no broader completion |
+| `README.md` | no change required | current version and high-level limitations remain truthful |
+| `TECH-DEBT.md` | current-state correction required | R2 closure remains bounded; R3/EF/R7/cutover stay debt |
+| `TEST-CHECKLIST.md` | current-state correction required | actual vocabulary/counts retained; Batch #30 protection made explicit |
+| `docs/Architecture.md` | current-state correction required | frozen block unchanged; direct execution rule and dormant scope reflected |
+| `docs/AuditCoverage.md` | current-state correction required | R2 artifact boundary distinguished from pending R3 |
+| `docs/BalanceReconciliation.md` | no change required | import arithmetic remains consistent with higher authority |
+| `docs/BusinessRules.md` | current-state correction required | execution cannot fold Restore/RemainReversed into blocked workflow |
+| `docs/CHANGELOG.md` | historical document intentionally unchanged | no historical release text rewritten for an unversioned governance pass |
+| `docs/CONTINUATION.md` | current-state correction required | one operative FIX2 section; all older sections explicitly historical |
+| `docs/Database.md` | current-state correction required | existing Data boundary retained; Batch #30 fixture/protection clarified |
+| `docs/DevelopmentWorkflow.md` | governance-rule update required | detailed permanent anti-drift workflow added |
+| `docs/DocumentationAudit.md` | governance-rule update required | this complete semantic reconciliation and trace recorded |
+| `docs/FunctionalSpecification.md` | current-state correction required | R2 execution behavior retained without activation claim |
+| `docs/ImportWizard.md` | no change required | ImportRun domain remains separately governed |
+| `docs/LegacyContainerRules.md` | no change required | unrelated legacy-token authority remains current |
+| `docs/MasterData.md` | no change required | unrelated master-data rules remain current |
+| `docs/ReconciliationReport.md` | historical document intentionally unchanged | 29 August provenance remains historical and is not re-adopted |
+| `docs/ReimportSafety.md` | no change required | import isolation/snapshot behavior remains consistent |
+| `docs/RELEASE-NOTES.md` | no change required | no package/version candidate is created by FIX2 |
+| `docs/RequirementsAcceptanceRegister.md` | current-state correction required | R2 criterion-level trace and Batch #30 boundary added; IDs stable |
+| `docs/Roadmap.md` | current-state correction required | global completion withheld; Batch #30 protection retained |
+| `docs/RoadmapCoverageMatrix.md` | current-state correction required | R2 evidence remains bounded and later gates remain visible |
+| `docs/SecurityHardeningRegister.md` | no change required | all 50 findings/order/v1 block remain intact |
+| `docs/Testing.md` | current-state correction required | FIX1 naming clarified; nine reds/manual/canonical-gate boundary retained |
+| `docs/Versioning.md` | current-state correction required | stale current-looking example updated to 0.5.0-alpha.8.7 |
+
+No material authority conflict was found. Still-operative investigation/freeze decisions remain in Architecture, BusinessRules, FunctionalSpecification, Database and the permanent register; older micro-slice sequencing and old run IDs remain historical only and were not re-adopted. Current status/testing/continuation agreement is evidence, not independent authority.
+
+### Historical FIX2 governance self-check — insufficient and superseded by FIX3
+
+1. Missing opening marker: rejected mechanically.
+2. Missing closing marker: rejected mechanically.
+3. Mismatched marker IDs: rejected mechanically.
+4. New `R<n>` run/revision suffix: rejected mechanically.
+5. Status promotion without acceptance mapping: prohibited by the status-promotion gate and fails semantic exit reconciliation.
+6. Lower-authority continuation/status conflict with frozen architecture: higher authority wins and the stop-on-conflict gate applies.
+7. Completion inferred from preview-only tests without execution enforcement: prohibited by the acceptance-trace gate; Task20 R2 explicitly requires real authoritative execution evidence.
+
+The first four were deterministic input-only script self-tests; they did not prove returned-handoff compliance and therefore were insufficient. The last three require evidence-backed semantic review and remain deliberately outside regex proof. FIX3's separate input/output four-boundary validator supersedes this rejected FIX2 governance check.
+
+## 14 September 2026 — Task20F FIX1 correction (historical artifact BT-CODEX-20260914-20F-R1)
+
+- Reconciled only the implemented explicit-native17 R2 boundary without editing the frozen R1–R4 block: provider-owned selection lookup -> existing trusted current snapshot -> client-neutral preview DTO with stable root/line identity, current state and expected generation -> existing logical command/planner/writer/CAS using that unchanged generation. A stale preview fails without artifacts; whole-root preview and authoritative execution require every line Active, and embedded Restore/RemainReversed decisions cannot bypass the service policy.
+- Reviewed the production/test delta for duplicate authority and provider leakage. Services adds only preview/result mapping, the three early legacy-write guards and the typed Active-only guard over the already-materialized trusted snapshot; Data adds two lookup methods to the existing internal mutation-writer boundary. Existing resolver, materializer, planner, persistence, operation replay/fingerprint, root CAS, projection and audit authorities remain unchanged. The adjusted mixed-decision fixture proves lower-planner support before service rejection, and the projection fixture reaches the same mixed current state through a separately sequenced Restore. Normal DI/startup/catalogue16 and Task20E/R1 receipt files are untouched.
+- Semantic reconciliation covers Architecture, BusinessRules, FunctionalSpecification, Database, RequirementsAcceptanceRegister, Roadmap/coverage, Testing/checklist, AuditCoverage, Known Issues, Technical Debt, CONTINUATION and this record. The historical-lineage A–K audit found current authoritative homes for every still-operative item. The existing Batch #30 fixture paragraph/checklist was tightened to enumerate the retained Daily/Weekly/Monthly and current/Outstanding acceptance targets; no historical display ID became authority and no competing fixture specification was created. BT-CORR-027 remains IMPLEMENTED-STATIC; BT-CORR-022/024/029/030/032/033 and runtime/operator gates retain their existing pending status. IDs/scopes remain stable. Task20, normal activation, retained-data rehearsal, operator acceptance, release/product-package state and version are not promoted.
+- Before the R1 production edit, the new direct-service bypass theory failed2/2 because valid Restore and RemainReversed commands both committed. Current focused bypass is2/2 green and complete R2 is9/9; existing mutation100/100, schema16 correction/reversal54/54 and UnitTests279/279 pass. Full IntegrationTests is471 pass/9 intentional red/0 skipped across480; the retained future filter independently reports28 green/9 expected red across37. Remaining categories are R3 audit/review4, EF membership1 and R7 snapshots4. Affected/Release builds have0 warnings/errors; audit/frozen-block/Task20E-R1-file/dormancy/diff checks pass. Canonical BAT remains suspended, not waived. TEST REQUIRED: Targeted independent source/diff review.
+
 ## 14 September 2026 — Task20E frozen R1 Single-entry implementation
 
 - Reconciled the implemented explicit-native17 R1 boundary without editing the frozen R1–R4 block: physical movement -> Initial lineage -> existing caller-transaction PositionAsOf(captured business date) -> typed receipt -> audit using the same checked signed result -> commit/return. Exact retry reads immutable receipt evidence without re-projection; migrated/pre-receipt retry returns the typed controlled unavailable outcome without backfill, audit parsing, duplicate or lineage rewrite. Receipt is never current-balance, projection, lineage, report or audit authority.

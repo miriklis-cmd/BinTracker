@@ -44,6 +44,31 @@ public sealed record LogicalMovementMutationCommand(
     LogicalMovementGenerationNumber ExpectedGeneration,
     MovementMutationRequest Mutation);
 
+public sealed record LogicalMovementMutationPreviewState(
+    long MovementId,
+    DateOnly MovementDate,
+    MovementType Direction,
+    int CustomerId,
+    int ContainerTypeId,
+    int Quantity,
+    string? Reference,
+    string? Notes);
+
+public sealed record LogicalMovementMutationPreviewLine(
+    LogicalMovementLineId LogicalMovementLineId,
+    long RootMovementId,
+    int OriginalDisplayOrdinal,
+    LogicalMovementLineState State,
+    LogicalMovementMutationPreviewState LastEffective,
+    long? TerminalReversalMovementId);
+
+public sealed record LogicalMovementMutationPreview(
+    LogicalMovementBatchId LogicalMovementBatchId,
+    LogicalMovementGenerationNumber ExpectedGeneration,
+    int? RootMovementBatchId,
+    bool IsWholeRootCorrectionEligible,
+    IReadOnlyList<LogicalMovementMutationPreviewLine> Lines);
+
 public enum LogicalMovementMutationResultKind
 {
     Committed = 0,
@@ -67,7 +92,9 @@ public enum LogicalMovementMutationFailure
     ReadOnly = 4,
     Unhealthy = 5,
     IntegrityFailure = 6,
-    PersistenceFailure = 7
+    PersistenceFailure = 7,
+    LegacyRouteUnavailable = 8,
+    WholeRootCorrectionUnavailable = 9
 }
 
 public sealed class LogicalMovementMutationException(
@@ -130,6 +157,12 @@ public interface IMovementCorrectionService
 {
     Task<MovementCorrectionDetail?> GetAsync(long id, CancellationToken token = default);
     Task<MovementBatchCorrectionDetail?> GetBatchAsync(int id, CancellationToken token = default);
+    Task<LogicalMovementMutationPreview?> PreviewLogicalAsync(
+        LogicalMovementBatchId logicalMovementBatchId, CancellationToken token = default);
+    Task<LogicalMovementMutationPreview?> PreviewLogicalForMovementAsync(
+        long movementId, CancellationToken token = default);
+    Task<LogicalMovementMutationPreview?> PreviewLogicalForBatchAsync(
+        int movementBatchId, CancellationToken token = default);
     Task<ReverseMovementResult> ReverseAsync(ReverseMovementRequest request, CancellationToken token = default);
     Task<MovementCorrectionResult> CorrectAsync(CorrectMovementRequest request, CancellationToken token = default);
     Task<MovementCorrectionResult> CorrectBatchAsync(CorrectBatchRequest request, CancellationToken token = default);
@@ -155,6 +188,9 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
 
     public async Task<MovementBatchCorrectionDetail?> GetBatchAsync(int id, CancellationToken token = default)
     {
+        var nativePreview = mutationWriter.IsEnabled
+            ? await PreviewLogicalForBatchAsync(id, token)
+            : null;
         await using var db = await factory.CreateDbContextAsync(token);
         var row = await db.MovementBatches.AsNoTracking().Where(x => x.Id == id).Select(x => new
         {
@@ -175,11 +211,45 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
             throw new InvalidOperationException(
                 $"Persisted movement batch #{row.Id} changed while its correction detail was loading. Reload and try again.");
         return new(row.Id, row.Count, row.Total, row.MovementDate,
-            row.MovementType, row.Count > 0 && row.Eligible, lines);
+            row.MovementType,
+            mutationWriter.IsEnabled
+                ? nativePreview?.IsWholeRootCorrectionEligible == true
+                : row.Count > 0 && row.Eligible,
+            lines);
+    }
+
+    public Task<LogicalMovementMutationPreview?> PreviewLogicalAsync(
+        LogicalMovementBatchId logicalMovementBatchId, CancellationToken token = default)
+    {
+        if (logicalMovementBatchId.Value <= 0)
+            throw new ArgumentOutOfRangeException(nameof(logicalMovementBatchId));
+        return PreviewLogicalCoreAsync(
+            (_, _) => Task.FromResult<LogicalMovementBatchId?>(logicalMovementBatchId), token);
+    }
+
+    public Task<LogicalMovementMutationPreview?> PreviewLogicalForMovementAsync(
+        long movementId, CancellationToken token = default)
+    {
+        if (movementId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(movementId));
+        return PreviewLogicalCoreAsync(
+            (db, cancellationToken) => mutationWriter.FindRootByMovementAsync(
+                db, movementId, cancellationToken), token);
+    }
+
+    public Task<LogicalMovementMutationPreview?> PreviewLogicalForBatchAsync(
+        int movementBatchId, CancellationToken token = default)
+    {
+        if (movementBatchId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(movementBatchId));
+        return PreviewLogicalCoreAsync(
+            (db, cancellationToken) => mutationWriter.FindRootByBatchAsync(
+                db, movementBatchId, cancellationToken), token);
     }
 
     public async Task<ReverseMovementResult> ReverseAsync(ReverseMovementRequest request, CancellationToken token = default)
     {
+        RejectLegacyMutationIfNativeEnabled();
         Authorize("reverse");
         var reason = Reason(request.Reason, "reversal");
         OperationId(request.ClientOperationId);
@@ -219,6 +289,7 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
 
     public Task<MovementCorrectionResult> CorrectAsync(CorrectMovementRequest request, CancellationToken token = default)
     {
+        RejectLegacyMutationIfNativeEnabled();
         if (request.MovementDate == default || request.CustomerId <= 0 || request.ContainerTypeId <= 0 || request.Quantity <= 0)
             throw new InvalidOperationException("Corrected date, customer, container type and a positive quantity are required.");
         if (request.MovementDate > clock.Today)
@@ -234,6 +305,7 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
 
     public async Task<MovementCorrectionResult> CorrectBatchAsync(CorrectBatchRequest request, CancellationToken token = default)
     {
+        RejectLegacyMutationIfNativeEnabled();
         Authorize("correct"); OperationId(request.ClientOperationId);
         var reason = Reason(request.Reason, "correction");
         if (request.CorrectedDate > clock.Today)
@@ -259,6 +331,87 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
         return await CorrectCore(request.ClientOperationId, MovementCorrectionKind.WholeBatch,
             request.MovementBatchId, ids, proposal.CorrectedDate, proposal.CorrectedDirection,
             null, null, null, null, null, reason, fp, token);
+    }
+
+    private async Task<LogicalMovementMutationPreview?> PreviewLogicalCoreAsync(
+        Func<BinTrackerDbContext, CancellationToken, Task<LogicalMovementBatchId?>> findRoot,
+        CancellationToken token)
+    {
+        if (!mutationWriter.IsEnabled)
+            throw new LogicalMovementMutationException(LogicalMovementMutationFailure.SchemaUnavailable,
+                "Logical movement previews are dormant in normal runtime composition.");
+
+        await using var db = await factory.CreateDbContextAsync(token);
+        await using var transaction = await db.Database.BeginTransactionAsync(token);
+        try
+        {
+            var rootId = await findRoot(db, token);
+            if (rootId is null)
+            {
+                await transaction.RollbackAsync(token);
+                return null;
+            }
+
+            await mutationWriter.EnsureReadyAsync(db, rootId.Value, token);
+            var snapshot = await mutationWriter.MaterializeAsync(db, rootId.Value, token);
+            var preview = ToPreview(snapshot);
+            await transaction.RollbackAsync(token);
+            return preview;
+        }
+        catch (LogicalMovementMutationException)
+        {
+            await RollbackIfActiveAsync(transaction);
+            throw;
+        }
+        catch (InvalidOperationException ex) when (
+            ex.Message.Contains("SCHEMA17_REQUIRED", StringComparison.Ordinal))
+        {
+            await RollbackIfActiveAsync(transaction);
+            throw new LogicalMovementMutationException(LogicalMovementMutationFailure.SchemaUnavailable,
+                "Exact schema 17 is required for logical movement preview.", ex);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("NotFound", StringComparison.Ordinal))
+        {
+            await RollbackIfActiveAsync(transaction);
+            throw new LogicalMovementMutationException(LogicalMovementMutationFailure.NotFound,
+                "The logical movement root was not found.", ex);
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "MOVEMENT_MUTATION_ROOT_READ_ONLY")
+        {
+            await RollbackIfActiveAsync(transaction);
+            throw new LogicalMovementMutationException(LogicalMovementMutationFailure.ReadOnly,
+                "The logical movement root is read-only.", ex);
+        }
+        catch (InvalidOperationException ex)
+        {
+            await RollbackIfActiveAsync(transaction);
+            throw new LogicalMovementMutationException(LogicalMovementMutationFailure.Unhealthy,
+                "The logical movement root is not healthy enough to preview.", ex);
+        }
+    }
+
+    private static LogicalMovementMutationPreview ToPreview(TrustedMovementPlanningSnapshot snapshot)
+    {
+        var lines = snapshot.Lines.Select(x => new LogicalMovementMutationPreviewLine(
+            x.Current.Id,
+            x.Current.RootMovementId,
+            x.Current.OriginalDisplayOrdinal,
+            x.Current.State,
+            new LogicalMovementMutationPreviewState(
+                x.LastEffective.MovementId,
+                x.LastEffective.MovementDate,
+                x.LastEffective.Direction,
+                x.LastEffective.CustomerId,
+                x.LastEffective.ContainerTypeId,
+                x.LastEffective.Quantity,
+                x.LastEffective.Reference,
+                x.LastEffective.Notes),
+            x.TerminalReversal?.MovementId)).ToArray();
+        return new(snapshot.Root.Id, snapshot.Root.CurrentGenerationNumber,
+            snapshot.Root.RootMovementBatchId,
+            snapshot.Root.RootMovementBatchId is not null &&
+                lines.All(x => x.State == LogicalMovementLineState.Active),
+            lines);
     }
 
     public async Task<LogicalMovementMutationResult> ExecuteLogicalAsync(
@@ -338,6 +491,16 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
             if (snapshot.Root.CurrentGenerationNumber != command.ExpectedGeneration)
                 throw new LogicalMovementMutationException(LogicalMovementMutationFailure.StaleGeneration,
                     "The logical movement root changed; reload and preview the current generation.");
+
+            if (command.Mutation is
+                {
+                    Kind: MovementMutationKind.Correct,
+                    Scope: MovementMutationScope.WholeRoot
+                } && snapshot.Lines.Any(x => x.Current.State == LogicalMovementLineState.Reversed))
+                throw new LogicalMovementMutationException(
+                    LogicalMovementMutationFailure.WholeRootCorrectionUnavailable,
+                    "Whole-root correction requires every current logical line to be active; " +
+                    "restore or retain reversed lines in a separately sequenced operation.");
 
             var plan = MovementMutationPlanner.Plan(snapshot, command.Mutation, clock.Today);
             if (plan.Kind == MovementMutationPlanKind.NoOp)
@@ -777,6 +940,15 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
         if (!session.IsAuthenticated) throw new InvalidOperationException($"You must be signed in to {verb} a movement.");
         if (session.Role is not (UserRole.Administrator or UserRole.Operator))
             throw new UnauthorizedAccessException($"Only Administrators and Operators can {verb} ordinary operational movements.");
+    }
+
+    private void RejectLegacyMutationIfNativeEnabled()
+    {
+        if (mutationWriter.IsEnabled)
+            throw new LogicalMovementMutationException(
+                LogicalMovementMutationFailure.LegacyRouteUnavailable,
+                "Legacy correction and reversal commands are unavailable under active schema 17; " +
+                "preview and execute the logical movement intent with its expected generation.");
     }
     private static string Reason(string? text, string noun)
     {

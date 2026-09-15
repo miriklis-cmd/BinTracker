@@ -1,6 +1,6 @@
 # BinTracker Roadmap Coverage Matrix
 
-Audited: 5 September 2026
+Audited: 15 September 2026
 
 | Workstream | v1? | Roadmap status / gate |
 |---|---|---|
@@ -29,7 +29,9 @@ Audited: 5 September 2026
 
 ## Development acceptance rules
 
-Task20C is a documentation/test-only prerequisite to production cutover. Architecture contains the verbatim R1–R4 approval and R5–R7 constraints. Minimum native audit/review safety belongs in activation; full Audit/History detail and Restore/RemainReversed UI retain their later sequence. Intentional-red tests are ordinary unskipped tests in the existing projects; full-suite/BAT runs are temporarily suspended, not waived. Task20D supplies the production R4/R5 Data coordinator and isolated lifecycle proof. Task20E supplies the R1 typed Single receipt, atomic projection/audit result, exact native replay and controlled pre-receipt outcome under explicit schema17 composition. Normal schema17 cutover remains inactive; preview/legacy-write closure, native audit/review closure, EF membership alignment and R7 remain pending, followed by the unchanged later milestones and acceptance gates.
+Task20C is a documentation/test-only prerequisite to production cutover. Architecture contains the verbatim R1–R4 approval and R5–R7 constraints. Minimum native audit/review safety belongs in activation; full Audit/History detail and Restore/RemainReversed UI retain their later sequence. Intentional-red tests are ordinary unskipped tests in the existing projects; full-suite/BAT runs are temporarily suspended, not waived. Task20D supplies the production R4/R5 Data coordinator and isolated lifecycle proof. Task20E supplies the R1 typed Single receipt, atomic projection/audit result, exact native replay and controlled pre-receipt outcome under explicit schema17 composition. Task20F supplies R2's stable logical preview/current-state/expected-generation bridge, preservation of preview generation into existing CAS, active17 legacy-write closure and Active-only whole-root preview/execution guard over the already-trusted snapshot. Normal schema17 cutover remains inactive; native audit/review closure, EF membership alignment and R7 remain pending, followed by the unchanged later milestones and acceptance gates.
+
+Status coverage is promoted only after criterion-level reconciliation from authoritative requirement through actual enforcement and evidence to the claimed status. Agreement among this matrix, Roadmap, checklist, Testing or continuation is not independent proof and cannot redefine Architecture/Business Rules. The default implementation unit is the largest coherent safe roadmap pass; split only at a genuine semantic, data/migration, transaction/authority, release-risk, manual-acceptance or independent-verification boundary.
 
 - Business-logic change: targeted smoke test.
 - UI change: full smoke test.

@@ -34,6 +34,8 @@ This is the pre-v1 audit-coverage checklist. Audit history is append-only eviden
 
 Task20 R3 (verbatim in Architecture) is the minimum activation gate: route by authoritative EntityType and persisted operation association, never interpret a LogicalMovementBatch ID as a BinMovement ID, and never select alpha.8 payload parsing solely from action text. Until full native detail exists, a controlled unsupported/native-detail outcome or disabled action is permitted. Native review validates affected-root operation/audit health before writing review state. R1's validated operational projection supplies the authoritative signed resulting position for the committed Single snapshot; BOTH the typed response receipt and the audit record that same position. The audit does not derive its position from the receipt. The receipt is command-response evidence only, never current-balance, projection, lineage-state or audit-source authority. Audit prose/JSON is neither balance nor result authority. Task20E implements and behaviorally proves this R1 boundary only under explicit schema17 composition; R3 and normal activation remain pending. Full Audit/History detail remains the next separate milestone after cutover.
 
+Task20F changes no audit model or review route. It closes only R2: enabled native17 composition cannot append alpha.8 correction/reversal/audit artifacts, an Active-only whole-root execution rejection appends no logical operation/audit/output evidence, and successful logical mutations continue using the existing operation-linked primary audit in their single transaction. R3 native detail/review safety remains intentionally unimplemented.
+
 Where relevant, events should preserve:
 
 - timestamp;

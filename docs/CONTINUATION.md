@@ -1,6 +1,60 @@
 # Active BinTracker Continuation Checkpoint
 
-## Active Task20E frozen R1 Single-entry implementation — 14 September 2026
+## Active BT-20F-FIX3 governance-only correction — 15 September 2026
+
+This is the only operative continuation section. `BT-20F-FIX3` changes governance/continuity only. It does not reopen Task20F/FIX1 application behavior or frozen Task20 architecture and does not implement R3, EF membership, R7, schema17 activation, reports, migrations, UI or Task20E changes.
+
+Entry mechanically matches `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`, branch `codex/movement-correction`, HEAD/upstream `3293182551e1f221fd59e9aa8981c23d8a53b54a`, divergence 0/0, version `0.5.0-alpha.8.7` and empty staging. The five production/test paths byte-match the FIX2 review ZIP, normal DI retains `DormantInitialMovementLineageWriter` and `DormantMovementMutationWriter`, and the normal migration catalogue ends at 16. FIX3 preserves that entire application/test state.
+
+The permanent Codex convention is the role-separated four-boundary envelope: working START in the attributable user task, followed by return START, return END and working END in the actual returned handoff. Every applicable marker occurs once, in order, with the same canonical task ID. Input/task validation and output/handoff validation are separate; a valid prompt cannot supply missing output markers or prove the final handoff valid. New `R<n>` run suffixes remain prohibited.
+
+Whenever context compaction is reported or clearly indicated during a live substantive task, substantive judgment/editing pauses until Codex rereads AGENTS/active continuation/material governing authority, rechecks root/branch/HEAD/upstream/divergence/staging/worktree/version, rereads task ID/scope, inspects the diff and resolves any conflict between repository authority and the compacted summary. The repository remains authority.
+
+A live-turn JSONL capture is labelled `PARTIAL SESSION PREFIX` and proves nothing after its capture boundary. Full-session evidence is captured read-only after the substantive turn ends where possible, with original session/path, bytes, records, final completeness/event, returned-handoff presence, compaction presence and SHA-256. If unavailable, that limitation is stated rather than invented.
+
+Task20 application status is unchanged: frozen R2 remains implemented and independently accepted at source/code-review evidence level under explicit native17 composition; R3 native audit/review (four intentional reds), EF immutable membership (one) and R7 snapshots (four) are the only remaining intentional-red implementation groups. Normal schema17 stays dormant, Batch #30 remains protected/pending and Task20 global completion remains pending. Canonical BAT/full application suites are not rerun for this governance-only correction. No Git index/history/ref write is authorized.
+
+FIX3 governance validation passes all 12 validator self-tests (the required 11 structural/role cases plus quoted-example rejection), the exact attributable input-task check, the direct valid/invalid role matrix, the mechanical audit (259 permanent IDs, 27 Markdown files and contradiction guards), diff whitespace and exact 224-file tracked production/test tree identity. The application suites and canonical BAT were not rerun. The narrowly scoped external review package contains only the six FIX3-changed governance/continuity files; verify its final manifest rather than inferring artifact state from this checkpoint.
+
+Every section below is historical, non-operative evidence. It cannot override this section or higher-authority repository rules.
+
+## Historical BT-20F-FIX2 governance reconciliation — rejected governance checkpoint, 15 September 2026
+
+`BT-20F-FIX2` preserved and independently re-verified the current Task20F execution-boundary correction, but independent review rejected its governance checkpoint. Its validator proved only markers in the input prompt; the actual returned Codex handoff lacked the required return/end envelope. Its RAW JSONL was an exact live-session prefix captured before later context compaction, package repair, validation and final handoff, so post-compaction continuity and the final handoff were not fully auditable from that RAW. The underlying Task20F/FIX1 R2 application implementation remains independently accepted. The prior correction artifact keeps its historical ambiguous name `BT-CODEX-20260914-20F-R1`; it is not renamed.
+
+Entry reality was mechanically verified at `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`, branch `codex/movement-correction`, HEAD/upstream `3293182551e1f221fd59e9aa8981c23d8a53b54a` (`Implement Task 20E Single-entry response receipts`), divergence 0/0, version/informational `0.5.0-alpha.8.7`, assembly/file `0.5.0.0`, empty staging, 19 expected tracked Task20F/FIX1 modifications and 16 pre-existing untracked evidence/helper paths. The exact session prompt contained one matching two-marker `BT-20F-FIX2` input pair, but that was input-only evidence and did not validate the returned handoff. HEAD descended from the continuity and reviewed projection checkpoints. No Git index/history/ref mutation was authorized or performed.
+
+FIX1 is mechanically confirmed in `MovementCorrectionService.ExecuteLogicalAsync`: after the existing trusted snapshot is materialized and its current generation is checked, but before the sole planner call, `Correct + WholeRoot` throws typed `WholeRootCorrectionUnavailable` whenever any trusted current line is Reversed. Explicit Restore or RemainReversed decisions cannot bypass it. Replay ordering, stale-generation semantics, lower-planner mixed-decision support, schema16 compatibility and artifact-free rejection remain intact. The real service theory proves both dispositions and unchanged current generation, movements, generations, operations, audits, physical outputs and legacy correction lines. No production code is changed by FIX2.
+
+Task20 is not globally complete. Frozen R2 has the appropriate static/source/automated evidence only under explicit native17 composition. R3 native audit/review (four future reds), EF immutable membership (one) and R7 snapshot consistency (four) remain pending; normal WinForms/schema17 activation, retained-database rehearsal, Batch #30 Windows/operator acceptance, full Audit/History detail, Restore/RemainReversed UI and the protected layer-delineation audit remain pending. The canonical BAT remains suspended, not waived, while intentional ordinary future tests remain red.
+
+Final FIX2 automated evidence: Release solution build passed with 0 warnings/0 errors; UnitTests passed 279/279 with 0 failed/skipped; full IntegrationTests ran 480 with 471 passed, the exact nine intentional future failures and 0 skipped. The dedicated Task20 activation filter independently ran 37 with 28 passed and the same exact nine failures: R3 four, EF membership one and R7 four. No unexpected red or green occurred. The final mechanical audit and diff check follow the documentation-only recording of these results; no canonical BAT, package or operator acceptance is claimed.
+
+The next implementation work must default to the largest coherent safe roadmap pass that can be independently verified without merging unrelated acceptance boundaries. It is not automatically constrained to an R3-only micro-slice. Frozen authority, characterization, migration/transaction boundaries and manual-acceptance gates determine any justified split. Independent review must inspect authority, actual code/diff, tests, status changes and attributable JSONL; this continuation and the Codex handoff are evidence, not authority.
+
+Batch #30 remains protected from mutation/deletion. Its authoritative persisted batch/movement/reversal relationships must be verified read-only before relying on approximate display IDs. Conceptually it retains Blue active `IN 4`, Yellow original `IN 1`, Yellow reversal `OUT 1`, and zero current Yellow contribution. It remains a later Windows/operator fixture at 1920x1080/150% and larger displays for the acceptance scope recorded below and in Roadmap, Requirements, Testing, Database and TEST-CHECKLIST.
+
+Every older section below is historical, non-operative evidence. Its old identifiers, counts and sequencing statements are not current instructions and do not override this section or higher-authority documents.
+
+## Historical Task20F FIX1 correction (artifact named BT-CODEX-20260914-20F-R1) — 14 September 2026
+
+Task `BT-CODEX-20260914-20F-R1` corrects the one independent-review blocker in the otherwise preserved Task20F frozen-R2 implementation: direct logical execution could bypass Active-only whole-root eligibility by embedding valid Restore/RemainReversed decisions. It does not reopen accepted Task20E/R1, implement R3 native audit/review routing, R7 snapshots, EF membership alignment, normal WinForms/schema17 activation, retained-database rehearsal, product packaging, UI/report work or unrelated refactoring. Return the complete unstaged Task20F+R1 source/diff/evidence package for independent ChatGPT review. No Git index/history/ref mutation is authorized or performed.
+
+Entry reality was mechanically verified at root `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`, branch `codex/movement-correction`, HEAD/upstream `3293182551e1f221fd59e9aa8981c23d8a53b54a` (`Implement Task 20E Single-entry response receipts`), divergence 0/0, version/informational `0.5.0-alpha.8.7`, assembly/file `0.5.0.0`, and empty staging/tracked worktree. The same pre-existing untracked evidence/helper paths were inventoried and left untouched. HEAD descends from continuation baseline `904b04c...` and reviewed projection checkpoint `fbcf20f...`; accepted Task20E is the exact starting checkpoint.
+
+Pre-edit characterization from actual source: schema16 `ReverseAsync` owns the alpha.8 reversal row/consumed pointer/audit transaction; `CorrectAsync` and distinct `CorrectBatchAsync` converge on private `CorrectCore`, which owns correction operation/lines, neutraliser/replacement rows, optional physical batch and audit. These three public service methods are every legacy mutation-write entry and WinForms calls only them. Native17 already used `ExecuteLogicalAsync` with canonical intent/fingerprint, existing trusted `SqliteMovementPlanningSnapshotMaterializer`/`MovementMutationPlanner`, atomic `SqliteMovementMutationWriter`, persisted-result replay, Restore/RemainReversed, complete generations, optional physical output, operation-linked audit and `TryPublishAsync` root CAS. `CurrentGenerationNumber` remained the sole current pointer. Pre-edit accepted alpha.8/native mutation characterization passed100/100; the four R2 futures failed exactly because native Reversed-line preview reported eligible and all three legacy write routes persisted alpha.8 artifacts. No R2 test was stale.
+
+Task20F adds the minimum client-neutral bridge to `IMovementCorrectionService`: preview by selected persisted movement, authoritative root-original/native-output physical batch or stable logical root returns the same stable logical root, permanent line IDs/order, validated Active/Reversed state, current business values, terminal reversal identity and the snapshot's `ExpectedGeneration`. Data performs only the two provider-owned anchor lookups inside the existing caller transaction and then reuses the existing ready/materialize authority; SQLite SQL/context/transaction does not escape to the application-facing preview contract. `ExecuteLogicalAsync` is unchanged in lineage authority and still embeds the supplied generation in canonical intent, checks the trusted snapshot against it, persists it, and supplies it unchanged to root CAS. It never substitutes latest generation. Deterministic proof advances the root with one preview-based command and shows another command carrying the same captured generation loses stale with byte-for-byte unchanged state.
+
+When `IMovementMutationWriter.IsEnabled` identifies explicit native17 composition, `ReverseAsync`, `CorrectAsync` and `CorrectBatchAsync` throw typed `LegacyRouteUnavailable` before alpha.8 query/write work. Private `CorrectCore` is reachable only through its two guarded public routes. Dormant normal/schema16 composition retains all accepted alpha.8 behavior and does not offer logical preview. `GetBatchAsync` consults the native preview only when explicitly enabled; every Active line permits the current date/direction whole-root workflow, while any Reversed line or missing logical root makes it ineligible. R1 now applies the same activation policy at authoritative execution: after materializing and generation-validating the trusted snapshot and before calling the general planner, Correct+WholeRoot with any Reversed line throws typed `WholeRootCorrectionUnavailable` regardless of embedded Restore/RemainReversed decisions. It performs no second query or state calculation and creates no movement, generation, operation, audit, physical output or legacy fallback artifact. The lower planner still represents Restore/RemainReversed for the separately sequenced workflow; one existing integration test now proves that plan directly before proving the activated service rejects it. No line is omitted, restored, made Active or represented by a fake movement.
+
+The complete production delta remains limited to `src/BinTracker.Services/MovementCorrectionService.cs` and `src/BinTracker.Data/SqliteMovementMutationWriter.cs`; R1 changes only the former. Focused R2 behavior is in `tests/BinTracker.IntegrationTests/Task20MutationAndAuditTests.cs`; existing lower-planner and corrected-projection fixtures are sequencing-adjusted in `MovementMutationExecutionSchema17Tests.cs` and `OperationalMovementProjectionSchema17Tests.cs`. Governed current-state documentation is reconciled separately. No new production file, planner, resolver, command framework, repository, lineage table, migration, registration, projection authority or UI workflow exists.
+
+Final validation: affected Services build and Release solution build pass with0 warnings/errors. The focused two-case bypass regression and complete R2 class pass2/2 and9/9; accepted alpha.8/native mutation passes100/100; schema16 correction/reversal compatibility passes54/54; UnitTests passes279/279, all with0 skipped. Full IntegrationTests executes480 ordinary tests:471 pass and only the exact9 intentional futures fail,0 skipped. The dedicated future filter independently reports28 green/9 expected red across37. All R2 cases are green; the nine remaining names/reasons are recorded in `docs/Testing.md` and comprise R3 native audit/review4, EF membership1 and R7 snapshots4. No R3/R7/EF test became green unexpectedly. Mechanical audit passes at259 permanent IDs/27 Markdown/version0.5.0-alpha.8.7; frozen R1–R4 equality, accepted R1 production-file non-diff, normal schema16 dormancy and diff whitespace checks pass. Counts overlap and must not be summed. Canonical `Build-BinTracker.bat` remains suspended, not waived, while these ordinary future tests intentionally fail. TEST REQUIRED: Targeted independent source/diff review; later full canonical gate remains mandatory after the future boundary closes.
+
+Historical next-action record for that checkpoint: independent actual-code/diff review of the complete Task20F+FIX1 delta preceded any Git authorization. Its R3-only sequencing sentence is superseded by the active coherent-pass rule above; R3, R7, EF membership, normal atomic activation, retained rehearsal, later full Audit/History detail, Restore/RemainReversed UI and Windows/operator acceptance remain separately evidenced gates.
+
+## Historical Task20E frozen R1 Single-entry implementation — 14 September 2026
 
 Task `BT-CODEX-20260914-20E` implements only the frozen R1 Single-entry activation boundary. It does not implement R2, R3, R7, EF membership alignment, normal schema17 startup/runtime activation, UI/report changes or a generalized command/result framework. Return this unstaged source/diff/evidence to ChatGPT for independent review; Task20 and operator acceptance remain open. Every older section below is historical, non-operative evidence.
 
@@ -18,7 +72,7 @@ Governance changes advance only BT-CORR-026 to IMPLEMENTED-STATIC with source/te
 
 TEST REQUIRED: Targeted independent actual-code/diff review. Canonical BAT/full-release gate remains temporarily suspended, not waived, while13 ordinary future tests intentionally fail. No retained database, application package, deployment or Windows/operator acceptance. NO STAGE / NO COMMIT / NO PUSH; do not ask for Git permission. A future checkpoint is a separate user-authorized action.
 
-## Active Task20D-R1 independent-review corrections — 14 September 2026
+## Historical Task20D-R1 independent-review corrections — 14 September 2026
 
 Task `BT-CODEX-20260914-20D-R1` corrects only the two independent-review blockers in the preserved Task20D foundation. Previous checkpoint readiness was rejected: Load/Fresh lost the NEW published identity between ownership release and StartAsync; the original A13 test only proved a separate retry after the losing call threw. Those are corrected defects, not accepted semantics. Return next to ChatGPT for independent actual-code review; no checkpoint approval or full Task20 acceptance is claimed.
 
@@ -38,7 +92,7 @@ TEST REQUIRED: Targeted — independent actual-code review. Full canonical BAT r
 
 Final delivery uses `C:/Users/jackm/Desktop/build/codex files/BT-CODEX-20260914-20D-R1.txt`, `-Markdown.zip` (27 governed files), `-RAW.jsonl` and `-SHA256.txt`; artifact preparation/copy/hash verification is the last step, so verify actual files rather than inferring delivery from this paragraph. RAW must match session01a097d7-f4eb-7a51-b008-f79cdc0dee23, this cwd, gpt-6-astra/high and the actual R1 user prompt. Scoped external filesystem copying is the only required approval. Previous20D artifacts remain untouched. This section and the external handoff are sufficient to recover scope, exact working state, proof/gates, remaining acceptance and prohibitions without restarting implementation.
 
-## Active Task20D production foundation — final review handoff, 13 September 2026
+## Historical Task20D production foundation — final review handoff, 13 September 2026
 
 Task `BT-CODEX-20260913-20D` implements the R4/R5 production Data coordinator foundation and explicit isolated readiness composition. Normal WinForms startup MUST remain schema16/dormant. R1 receipt, R2 preview/legacy-write closure, R3 audit/review closure, R7 snapshot fixes, EF membership alignment, Task19, retained databases, app packaging and runtime activation remain outside this slice. **NO STAGE / NO COMMIT / NO PUSH.** All older task instructions below are historical, non-operative evidence.
 
@@ -148,7 +202,7 @@ Task 19 evidence and current stopping point:
 
 This record is governed by **Conversation Context Capacity / Continuity Hard Gate** in `docs/DevelopmentWorkflow.md`. It supplements the authoritative requirements and architecture; it does not replace them. Repository reality always wins, and any conflict must be investigated before application-code changes.
 
-## Verified current checkpoint and operative sequencing
+## Historical verified checkpoint and superseded sequencing
 
 Current checkpoint: commit `930f2c77b1df7cd4629be2faff662750431854fe` (`Add shared-snapshot Daily Print Pack prerequisite`), pushed and synchronized with `origin/codex/movement-correction` at divergence 0/0. The canonical BAT evidence is complete as recorded above. Any older hashes, pending-review statements or uncommitted-state descriptions below are historical records only; actual HEAD/upstream must always be established mechanically.
 
@@ -319,7 +373,7 @@ Conceptual state:
 
 Approximate prior movement IDs were `#1080` Blue, `#1081` Yellow original and `#1082` Yellow reversal. These display IDs are not authority. Query the selected database read-only and prove the persisted batch/movement/reversal relationships before relying on them.
 
-Later Windows/operator acceptance must exercise this fixture where practical for `RemainReversed`, Restore, whole-root and selected correction, mixed dates, repeated work, navigation from all evidence roles and descendants without a physical output batch, immutable Batch Detail, Movement History, Audit Detail/Administrator Review, all operational balances/reports, and Windows 11 1920x1080 at 150% plus larger displays.
+Later Windows/operator acceptance must exercise this fixture where practical for `RemainReversed`, Restore, whole-root and selected correction, mixed dates, repeated correction, navigation from original/reversal/correction/restoration evidence and descendants without a physical output batch, immutable physical Batch Detail, Movement History, Audit Detail, Administrator Review, Daily/Weekly/Monthly corrected operational activity, current/Outstanding positions, and Windows 11 1920x1080 at 150% plus larger production displays.
 
 ## IMP-06 implemented boundary
 
@@ -426,7 +480,7 @@ Useful seams to inspect rather than trusting this summary alone:
 - Do not auto-restore a valid source, use a global cross-domain operation-ID namespace, correct imported rows generically, switch reports piecemeal, expose Restore UI early or implement PostgreSQL/API/WinUI as lineage work.
 - Do not stage, commit, push, merge, rebase, reset or discard evidence/user changes without explicit instruction.
 
-## Next-session hard gate and exact next action
+## Historical next-session gate and superseded next action
 
 Before modifying application code, the next session must:
 
@@ -441,7 +495,7 @@ Before modifying application code, the next session must:
 9. Preserve the frozen architecture: no second authority, local lineage reconstruction, raw fallback after projection failure, provider leakage into Services/Core, hidden schema/runtime activation, speculative architecture or post-v1 scope creep.
 10. Reapply this continuity hard gate before future context rollover; repository reality always wins over continuation prose or historical evidence.
 
-The remaining bounded production sequence is operative and must not be skipped or merged without separate authorization:
+Historical sequence recorded at that checkpoint (non-operative; the active coherent-pass rule above now governs sizing):
 
 1. Atomic schema-17/runtime cutover (separate authorization required; Task 19's implementation, independent review and canonical BAT are complete at `930f2c77b1df7cd4629be2faff662750431854fe`).
 3. Audit/history detail.
