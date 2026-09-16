@@ -500,6 +500,19 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             return;
         }
 
+        var preview = await corrections.PreviewLogicalForMovementAsync(selected.MovementId);
+        var line = preview?.Lines.SingleOrDefault(x =>
+            x.LastEffective.MovementId == selected.MovementId &&
+            x.State == LogicalMovementLineState.Active);
+        if (preview is null || line is null)
+        {
+            MessageBox.Show(this,
+                "The selected movement no longer has one valid active logical line. Reload and try again.",
+                "Reverse Movement", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            await LoadReportAsync();
+            return;
+        }
+
         using var dialog = new MovementReversalDialog(detail);
         if (dialog.ShowDialog(this) != DialogResult.OK)
             return;
@@ -508,11 +521,13 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         {
             Enabled = false;
             UseWaitCursor = true;
-            var result = await corrections.ReverseAsync(
-                new ReverseMovementRequest(Guid.NewGuid(), selected.MovementId, dialog.Reason));
+            var result = await corrections.ExecuteLogicalAsync(new LogicalMovementMutationCommand(
+                Guid.NewGuid(), preview.LogicalMovementBatchId, preview.ExpectedGeneration,
+                MovementMutationRequest.Reverse(MovementMutationScope.Individual,
+                    [line.LogicalMovementLineId], dialog.Reason)));
 
             MessageBox.Show(this,
-                $"Movement #{result.OriginalMovementId} was preserved and reversal movement #{result.ReversalMovementId} was created.",
+                $"Movement #{selected.MovementId} was preserved and reversal generation {result.ResultGeneration.Value:N0} was created.",
                 "Movement Reversed", MessageBoxButtons.OK, MessageBoxIcon.Information);
             await LoadReportAsync();
         }
@@ -584,6 +599,16 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         if (grid.CurrentRow?.Tag is not MovementHistoryReportRow selected) return;
         var detail = await corrections.GetAsync(selected.MovementId);
         if (detail is null || detail.IsAlreadyReversed) { MessageBox.Show(this, "This movement is no longer eligible for correction."); await LoadReportAsync(); return; }
+        var preview = await corrections.PreviewLogicalForMovementAsync(selected.MovementId);
+        var line = preview?.Lines.SingleOrDefault(x =>
+            x.LastEffective.MovementId == selected.MovementId &&
+            x.State == LogicalMovementLineState.Active);
+        if (preview is null || line is null)
+        {
+            MessageBox.Show(this, "The selected movement no longer has one valid active logical line. Reload and try again.");
+            await LoadReportAsync();
+            return;
+        }
         var customerRows = await customers.SearchAsync(null, includeInactive: true);
         var containerRows = await containerTypes.SearchAsync(null, includeInactive: true);
         using var dialog = new MovementCorrectionDialog(detail, customerRows, containerRows, clock.Today);
@@ -591,10 +616,34 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         try
         {
             Enabled = false; UseWaitCursor = true;
-            var result = await corrections.CorrectAsync(new CorrectMovementRequest(Guid.NewGuid(), detail.MovementId,
-                dialog.CorrectedDate, dialog.CustomerId, dialog.ContainerTypeId, dialog.CorrectedDirection,
-                dialog.CorrectedQuantity, dialog.Reference, dialog.Notes, dialog.Reason));
-            MessageBox.Show(this, $"Movement #{detail.MovementId} remains preserved. Linked neutralising and corrected replacement movements were created (correction #{result.CorrectionOperationId}).",
+            var result = await corrections.ExecuteLogicalAsync(new LogicalMovementMutationCommand(
+                Guid.NewGuid(), preview.LogicalMovementBatchId, preview.ExpectedGeneration,
+                MovementMutationRequest.Correct(MovementMutationScope.Individual,
+                    [line.LogicalMovementLineId], dialog.Reason,
+                    movementDate: dialog.CorrectedDate != detail.MovementDate
+                        ? MovementFieldIntent<DateOnly>.Selected(dialog.CorrectedDate)
+                        : default,
+                    direction: dialog.CorrectedDirection != detail.Direction
+                        ? MovementFieldIntent<MovementType>.Selected(dialog.CorrectedDirection)
+                        : default,
+                    customer: dialog.CustomerId != detail.CustomerId
+                        ? MovementFieldIntent<int>.Selected(dialog.CustomerId)
+                        : default,
+                    containerType: dialog.ContainerTypeId != detail.ContainerTypeId
+                        ? MovementFieldIntent<int>.Selected(dialog.ContainerTypeId)
+                        : default,
+                    quantity: dialog.CorrectedQuantity != detail.Quantity
+                        ? MovementFieldIntent<int>.Selected(dialog.CorrectedQuantity)
+                        : default,
+                    reference: !string.Equals(dialog.Reference, detail.Reference ?? string.Empty,
+                            StringComparison.Ordinal)
+                        ? MovementFieldIntent<string>.Selected(dialog.Reference)
+                        : default,
+                    notes: !string.Equals(dialog.Notes, detail.Notes ?? string.Empty,
+                            StringComparison.Ordinal)
+                        ? MovementFieldIntent<string>.Selected(dialog.Notes)
+                        : default)));
+            MessageBox.Show(this, $"Movement #{detail.MovementId} remains preserved. Linked neutralising and corrected replacement movements were created (operation #{result.OperationId}).",
                 "Movement Corrected", MessageBoxButtons.OK, MessageBoxIcon.Information);
             await LoadReportAsync();
         }
@@ -609,6 +658,14 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         if (detail?.MovementBatchId is not int batchId) { MessageBox.Show(this, "The selected movement is not part of a persisted Batch Entry."); return; }
         var batch = await corrections.GetBatchAsync(batchId);
         if (batch is null || !batch.IsEligible) { MessageBox.Show(this, "The entire batch is no longer eligible. No lines were changed."); return; }
+        var preview = await corrections.PreviewLogicalForBatchAsync(batchId);
+        if (preview is null || !preview.IsWholeRootCorrectionEligible ||
+            preview.Lines.Count != batch.LineCount)
+        {
+            MessageBox.Show(this, "The entire batch no longer has one valid active logical root. Reload and try again.");
+            await LoadReportAsync();
+            return;
+        }
         using var dialog = new BatchCorrectionDialog(batch, clock.Today);
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         if (MessageBox.Show(this, $"Confirm correction of EVERY one of the {batch.LineCount:N0} lines ({batch.TotalContainers:N0} containers) in persisted batch #{batch.BatchId}?",
@@ -616,8 +673,16 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         try
         {
             Enabled = false; UseWaitCursor = true;
-            await corrections.CorrectBatchAsync(new CorrectBatchRequest(Guid.NewGuid(), batch.BatchId,
-                dialog.CorrectedDate, dialog.CorrectedDirection, dialog.Reason));
+            await corrections.ExecuteLogicalAsync(new LogicalMovementMutationCommand(
+                Guid.NewGuid(), preview.LogicalMovementBatchId, preview.ExpectedGeneration,
+                MovementMutationRequest.Correct(MovementMutationScope.WholeRoot,
+                    preview.Lines.Select(x => x.LogicalMovementLineId), dialog.Reason,
+                    movementDate: dialog.CorrectedDate.HasValue
+                        ? MovementFieldIntent<DateOnly>.Selected(dialog.CorrectedDate.Value)
+                        : default,
+                    direction: dialog.CorrectedDirection.HasValue
+                        ? MovementFieldIntent<MovementType>.Selected(dialog.CorrectedDirection.Value)
+                        : default)));
             MessageBox.Show(this, "The entire batch was corrected atomically. Every original line remains preserved.",
                 "Batch Corrected", MessageBoxButtons.OK, MessageBoxIcon.Information);
             await LoadReportAsync();

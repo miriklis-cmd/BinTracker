@@ -28,6 +28,7 @@ public enum StartupDatabaseFailure
     StructuralCapabilityMissing,
     CurrentHealthInvalid,
     RuntimeParticipationFailed,
+    PendingOperationRecoveryRequired,
     Cancelled,
     InfrastructureFailure
 }
@@ -53,6 +54,7 @@ public enum StartupDatabasePhase
     Replacement,
     ReplacementPublished,
     ReplacementRuntimeTransition,
+    PendingOperationCleanup,
     BootstrapWaiting
 }
 
@@ -76,9 +78,8 @@ public sealed class StartupDatabaseException(
 }
 
 /// <summary>
-/// Proof of validated schema17 readiness for an explicitly activated host. The host
-/// must retain this session until all database users have stopped. It is not registered
-/// by normal schema16 composition and does not install any application writer.
+/// Proof of validated schema17 readiness for an activated host. The host must
+/// retain this session until all database users have stopped.
 /// </summary>
 public sealed class StartupDatabaseSession : IDisposable
 {
@@ -124,12 +125,15 @@ public sealed partial class SqliteStartupDatabaseCoordinator : IStartupDatabaseC
     internal SqliteStartupDatabaseCoordinator(string databasePath, string? backupDirectory,
         string? lockDirectory, string? pendingOperationPath,
         Func<StartupDatabasePhase, Task>? checkpoint, ILineageSchema17FailureInjector? migrationFailures,
-        Func<SqliteConnection, SqliteTransaction, Task>? beforePublicationValidation = null, Action? afterCommit = null)
+        Func<SqliteConnection, SqliteTransaction, Task>? beforePublicationValidation = null, Action? afterCommit = null,
+        Action<PendingDatabaseOperationCleanupStep>? pendingCleanup = null,
+        Action<PendingDatabaseOperationState>? pendingStatePersist = null)
     {
         this.databasePath = Path.GetFullPath(databasePath);
         this.backupDirectory = Path.GetFullPath(backupDirectory ?? DatabaseConfiguration.LineageRecoveryFolder);
         this.lockDirectory = Path.GetFullPath(lockDirectory ?? DatabaseConfiguration.DatabaseAccessLockFolder);
-        pendingOperation = new PendingDatabaseOperationConflictProbe(pendingOperationPath ?? DatabaseConfiguration.PendingDatabaseOperationPath);
+        pendingOperation = new PendingDatabaseOperationConflictProbe(
+            pendingOperationPath ?? DatabaseConfiguration.PendingDatabaseOperationPath, pendingCleanup, pendingStatePersist);
         gate = new WindowsFileDatabaseUpgradeGate(this.lockDirectory, pendingOperation);
         this.checkpoint = checkpoint;
         migrator = new(failureInjector: migrationFailures)
@@ -139,8 +143,89 @@ public sealed partial class SqliteStartupDatabaseCoordinator : IStartupDatabaseC
         };
     }
 
-    public Task<StartupDatabaseSession> StartAsync(CancellationToken cancellationToken = default) =>
-        StartWithExpectedIdentityAsync(null, cancellationToken);
+    public async Task<StartupDatabaseSession> StartAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var pending = pendingOperation.TryClaim(databasePath);
+            if (pending is null)
+                return await StartWithExpectedIdentityAsync(null, cancellationToken);
+
+            StartupDatabaseSession? session = null;
+            try
+            {
+                if (pending.Operation.State == PendingDatabaseOperationState.PublicationReadyForCleanup)
+                {
+                    session = await StartWithExpectedIdentityAsync(
+                        pending.RequirePublishedDatabaseIdentity(), cancellationToken);
+                    await CompletePendingOperationAsync(pending, session,
+                        pending.Operation.DatabaseReplacementPublished);
+                    return session;
+                }
+
+                if (pending.Operation.State == PendingDatabaseOperationState.ExecutionInProgress)
+                    throw new StartupFault(StartupDatabaseFailure.PendingOperationRecoveryRequired);
+
+                pending.BeginExecution();
+                var databaseReplacementPublished = pending.Operation.Type == PendingDatabaseOperationType.Load ||
+                    File.Exists(databasePath);
+                try
+                {
+                    session = pending.Operation.Type switch
+                    {
+                        PendingDatabaseOperationType.Load => await LoadAsync(
+                            pending.RequireStagedDatabasePath(), cancellationToken),
+                        PendingDatabaseOperationType.Fresh => await FreshAsync(cancellationToken),
+                        _ => throw new InvalidOperationException(
+                            $"Unsupported developer database operation '{pending.Operation.Type}'.")
+                    };
+                }
+                catch (StartupDatabaseException ex) when (!ex.DatabaseReplacementPublished)
+                {
+                    pending.RestoreExecutionRequired();
+                    throw;
+                }
+
+                await CompletePendingOperationAsync(pending, session, databaseReplacementPublished);
+                return session;
+            }
+            catch
+            {
+                session?.Dispose();
+                throw;
+            }
+        }
+        catch (StartupDatabaseException) { throw; }
+        catch (Exception ex)
+        {
+            throw new StartupDatabaseException(
+                ClassifyFailure(ex, StartupDatabasePhase.Classification),
+                StartupDatabasePhase.Classification,
+                await ObserveFailureAsync(), false, ex);
+        }
+    }
+
+    private async Task CompletePendingOperationAsync(
+        PendingDatabaseOperationClaim pending, StartupDatabaseSession session,
+        bool databaseReplacementPublished)
+    {
+        try
+        {
+            pending.Complete(session,
+                databaseReplacementPublished);
+        }
+        catch (Exception ex)
+        {
+            throw new StartupDatabaseException(
+                ClassifyFailure(ex, StartupDatabasePhase.PendingOperationCleanup),
+                StartupDatabasePhase.PendingOperationCleanup,
+                await ObserveFailureAsync(),
+                false,
+                ex,
+                databaseReplacementPublished);
+        }
+    }
 
     private async Task<StartupDatabaseSession> StartWithExpectedIdentityAsync(
         string? expectedIdentity, CancellationToken token)
@@ -386,7 +471,7 @@ public sealed partial class SqliteStartupDatabaseCoordinator : IStartupDatabaseC
             .UseSqlite(SqliteStartupInspection.ConnectionString(path, readOnly: false)).Options);
         // The legacy numbered catalogue is reused only after classification/ownership.
         // It remains schema16 and is not another schema17 startup authority.
-        await DatabaseSetup.InitializeSqliteAsync(db);
+        await DatabaseSetup.InitializeSchema16CompatibilityAsync(db);
         token.ThrowIfCancellationRequested();
     }
 

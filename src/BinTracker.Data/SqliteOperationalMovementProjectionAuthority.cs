@@ -32,8 +32,9 @@ public interface ITransactionalOperationalMovementProjectionAuthority
 }
 
 /// <summary>
-/// Explicit dormant schema-17 projection implementation. Normal application composition does
-/// not register it; callers must opt into this SQLite adapter deliberately.
+/// SQLite implementation of the schema-17 operational projection authority.
+/// Normal activated composition registers it as the sole numeric authority;
+/// explicit schema16 compatibility composition may omit it deliberately.
 /// </summary>
 public sealed class SqliteOperationalMovementProjectionAuthority(string connectionString)
     : ITransactionalOperationalMovementProjectionAuthority

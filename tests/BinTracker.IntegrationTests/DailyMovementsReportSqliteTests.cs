@@ -234,7 +234,7 @@ public sealed class DailyMovementsReportSqliteTests
         await using (var db = await factory.CreateDbContextAsync())
         {
             await db.Database.EnsureCreatedAsync();
-            await DatabaseSetup.InitializeSqliteAsync(db);
+            await DatabaseSetup.InitializeSchema16CompatibilityAsync(db);
 
             var inactive = new Customer
             {

@@ -25,7 +25,7 @@ public sealed class SqliteMigrationTests
 
         var version = await DatabaseSetup.GetSchemaVersionAsync(db);
 
-        Assert.Equal(DatabaseSetup.LatestSchemaVersion, version);
+        Assert.Equal(DatabaseSetup.LatestSchema16CompatibilityVersion, version);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public sealed class SqliteMigrationTests
 
         await DatabaseSetup.InitializeSqliteAsync(db);
 
-        Assert.Equal(DatabaseSetup.LatestSchemaVersion, await DatabaseSetup.GetSchemaVersionAsync(db));
+        Assert.Equal(DatabaseSetup.LatestSchema16CompatibilityVersion, await DatabaseSetup.GetSchemaVersionAsync(db));
         Assert.Equal(2, await db.Customers.CountAsync());
     }
 
@@ -128,7 +128,7 @@ public sealed class SqliteMigrationTests
         Assert.Contains("DefaultReportHeader", columns);
 
         Assert.Equal(
-            DatabaseSetup.LatestSchemaVersion,
+            DatabaseSetup.LatestSchema16CompatibilityVersion,
             await DatabaseSetup.GetSchemaVersionAsync(db));
     }
 
@@ -225,7 +225,7 @@ public sealed class SqliteMigrationTests
             foreignTables);
 
         Assert.Equal(
-            DatabaseSetup.LatestSchemaVersion,
+            DatabaseSetup.LatestSchema16CompatibilityVersion,
             await DatabaseSetup.GetSchemaVersionAsync(db));
     }
 
@@ -439,7 +439,7 @@ public sealed class SqliteMigrationTests
 
         Assert.Contains("IX_BinMovements_ReversesMovementId", indexes);
         Assert.Equal(
-            DatabaseSetup.LatestSchemaVersion,
+            DatabaseSetup.LatestSchema16CompatibilityVersion,
             await DatabaseSetup.GetSchemaVersionAsync(db));
     }
 
@@ -514,7 +514,7 @@ public sealed class SqliteMigrationTests
         Assert.Contains("IX_ImportRuns_SourceSha256", importIndexes);
 
         Assert.Equal(
-            DatabaseSetup.LatestSchemaVersion,
+            DatabaseSetup.LatestSchema16CompatibilityVersion,
             await DatabaseSetup.GetSchemaVersionAsync(db));
     }
 
@@ -551,7 +551,7 @@ public sealed class SqliteMigrationTests
         Assert.Contains("SourceClientPath", columns);
         Assert.DoesNotContain("SourceFullPath", columns);
         Assert.Equal(
-            DatabaseSetup.LatestSchemaVersion,
+            DatabaseSetup.LatestSchema16CompatibilityVersion,
             await DatabaseSetup.GetSchemaVersionAsync(db));
     }
 
@@ -595,7 +595,7 @@ public sealed class SqliteMigrationTests
             "SELECT COUNT(*) AS Value FROM AuditEvents WHERE RequiresAdministratorReview = 1 AND ReviewedUtc IS NULL").SingleAsync());
         Assert.Equal(1, await db.Database.SqlQueryRaw<int>(
             "SELECT COUNT(*) AS Value FROM sqlite_master WHERE type='table' AND name='MovementCorrectionOperations'").SingleAsync());
-        Assert.Equal(DatabaseSetup.LatestSchemaVersion, await DatabaseSetup.GetSchemaVersionAsync(db));
+        Assert.Equal(DatabaseSetup.LatestSchema16CompatibilityVersion, await DatabaseSetup.GetSchemaVersionAsync(db));
     }
 
 

@@ -110,7 +110,8 @@ internal sealed class MarketFloorReportService(
         IReadOnlyList<OperationalMovementPosition> projectedPositions = [];
         if (operationalProjection is null)
         {
-            // Normal schema-16 composition retains the accepted alpha.8 authority.
+            // Explicit schema16/no-projection compatibility composition retains
+            // the accepted alpha.8 authority.
             movements = await db.EffectiveOperationalMovements()
                 .Where(x => x.MovementDate <= date)
                 .Select(x => new MarketFloorMovement(

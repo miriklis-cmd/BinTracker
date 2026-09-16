@@ -113,11 +113,70 @@ public interface IDatabaseOperationConflictProbe
     void EnsureNoConflict(string databasePath);
 }
 
-public sealed class PendingDatabaseOperationConflictProbe(string markerPath)
-    : IDatabaseOperationConflictProbe
+public sealed class PendingDatabaseOperationConflictProbe : IDatabaseOperationConflictProbe
 {
+    private readonly string markerPath;
+    private readonly string claimPath;
+    private readonly Action<PendingDatabaseOperationCleanupStep>? beforeCleanup;
+    private readonly Action<PendingDatabaseOperationState>? beforeStatePersist;
+    private PendingDatabaseOperationClaim? claim;
+
+    public PendingDatabaseOperationConflictProbe(string markerPath)
+        : this(markerPath, null) { }
+
+    internal PendingDatabaseOperationConflictProbe(string markerPath,
+        Action<PendingDatabaseOperationCleanupStep>? beforeCleanup = null,
+        Action<PendingDatabaseOperationState>? beforeStatePersist = null)
+    {
+        this.markerPath = Path.GetFullPath(markerPath);
+        claimPath = this.markerPath + ".claim";
+        this.beforeCleanup = beforeCleanup;
+        this.beforeStatePersist = beforeStatePersist;
+    }
+
+    internal PendingDatabaseOperationClaim? TryClaim(string databasePath)
+    {
+        if (!File.Exists(markerPath)) return null;
+
+        FileStream? claimLock = null;
+        FileStream? stream = null;
+        try
+        {
+            claimLock = new FileStream(claimPath, FileMode.CreateNew, FileAccess.ReadWrite,
+                FileShare.None, bufferSize: 1, FileOptions.DeleteOnClose | FileOptions.WriteThrough);
+            stream = new FileStream(markerPath, FileMode.Open, FileAccess.ReadWrite,
+                FileShare.ReadWrite | FileShare.Delete);
+            var operation = JsonSerializer.Deserialize<PendingDatabaseOperation>(stream)
+                ?? throw new InvalidOperationException(
+                    "Pending developer database operation is empty.");
+            var expectedDatabasePath = Path.GetFullPath(databasePath);
+            if (!Path.GetFullPath(operation.ActiveDatabasePath).Equals(
+                    expectedDatabasePath, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    "The pending developer database operation targets a different active database.");
+
+            var created = new PendingDatabaseOperationClaim(markerPath, stream, claimLock, operation,
+                () => Interlocked.Exchange(ref claim, null), beforeCleanup, beforeStatePersist);
+            if (Interlocked.CompareExchange(ref claim, created, null) is not null)
+                throw new InvalidOperationException(
+                    "The pending developer database operation is already being processed.");
+            stream = null;
+            claimLock = null;
+            return created;
+        }
+        catch (Exception ex)
+        {
+            stream?.Dispose();
+            claimLock?.Dispose();
+            throw new DatabaseUpgradeUnavailableException(
+                DatabaseUpgradeUnavailableReason.PendingDatabaseOperation,
+                "The pending BinTracker database operation could not be claimed and validated.", ex);
+        }
+    }
+
     public void EnsureNoConflict(string databasePath)
     {
+        if (claim?.IsActive == true) return;
         if (File.Exists(markerPath))
         {
             throw new DatabaseUpgradeUnavailableException(

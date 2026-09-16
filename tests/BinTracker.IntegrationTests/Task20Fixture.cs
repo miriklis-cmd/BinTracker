@@ -223,11 +223,11 @@ internal sealed class Task20Fixture : IAsyncDisposable
 
     internal static async Task StartAsync(string connectionString)
     {
-        // Retained normal-runtime defect seam only. Acceptance tests use the real
-        // Data coordinator; DatabaseSetup remains dormant until atomic cutover.
+        // Explicit schema16 compatibility fixture only. Activated-runtime tests
+        // use the Data coordinator and normal production composition.
         await using var db = new BinTrackerDbContext(
             new DbContextOptionsBuilder<BinTrackerDbContext>().UseSqlite(connectionString).Options);
-        await DatabaseSetup.InitializeSqliteAsync(db);
+        await DatabaseSetup.InitializeSchema16CompatibilityAsync(db);
     }
 
     public async ValueTask DisposeAsync()

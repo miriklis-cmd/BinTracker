@@ -59,9 +59,9 @@ public sealed record LineageSchema17MigrationResult(
     LineageSchema17PostflightResult Postflight);
 
 /// <summary>
-/// Explicit schema-17 migration entry point. It is deliberately absent from
-/// DatabaseSetup and SqliteSchemaMigrations.All until the coherent activation
-/// slice installs the full startup coordinator.
+/// Governed schema-17 migration entry point. The normal catalogue advertises
+/// version 17, but only the Data-owned startup coordinator may invoke this
+/// migration because it supplies the required ownership, preflight and backup.
 /// </summary>
 public sealed class SqliteLineageSchema17Migrator(
     TimeProvider? timeProvider = null,

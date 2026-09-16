@@ -1,8 +1,8 @@
 namespace BinTracker.Core;
 
-// These persistence contracts are deliberately not registered in the current
-// production DbContext. Schema 17 remains an explicitly invoked migration
-// target until the later coherent runtime activation slice.
+// These provider-neutral persistence contracts are deliberately not mapped by
+// the shared EF DbContext. The Data-owned schema17 adapter persists and validates
+// them without exposing provider mechanics above Data.
 public sealed class LogicalMovementBatch
 {
     public long Id { get; set; }

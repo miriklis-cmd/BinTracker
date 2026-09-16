@@ -10,7 +10,7 @@ internal sealed record SqliteSchemaMigration(
 
 internal static class SqliteSchemaMigrations
 {
-    public static IReadOnlyList<SqliteSchemaMigration> All { get; } =
+    public static IReadOnlyList<SqliteSchemaMigration> Schema16Baseline { get; } =
     [
         new(1, "Security and audit tables", ApplyV1Async),
         new(2, "Customer communication fields", ApplyV2Async),
@@ -29,6 +29,19 @@ internal static class SqliteSchemaMigrations
         new(15, "Import opening reconciliation provenance", ApplyV15Async),
         new(16, "Movement correction operations and administrator review", ApplyV16Async)
     ];
+
+    // Schema 17 is deliberately registered only at the atomic runtime cutover.
+    // Its governed preflight/backup/migration/postflight sequence is owned by
+    // SqliteStartupDatabaseCoordinator rather than this legacy callback shape.
+    public static IReadOnlyList<SqliteSchemaMigration> All { get; } =
+    [
+        .. Schema16Baseline,
+        new(17, "Logical movement lineage activation", ApplyV17ThroughCoordinatorOnlyAsync)
+    ];
+
+    private static Task ApplyV17ThroughCoordinatorOnlyAsync(BinTrackerDbContext db) =>
+        throw new InvalidOperationException(
+            "Schema 17 must be activated through the Data-owned startup coordinator.");
 
     private static async Task ApplyV16Async(BinTrackerDbContext db)
     {

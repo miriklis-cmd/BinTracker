@@ -8,7 +8,7 @@ Every parser, deserializer, importer, migration reader, recovery-manifest reader
 
 ## Planned lineage migration hard gate
 
-Before any lineage migration touches a database, BT-CORR-030 and BT-OPS-011/012 require read-only relationship preflight, exclusive database-scoped upgrade ownership and a unique provider-consistent recovery backup verified for the exact source by hash, integrity/FKs/schema/table counts and preflight equivalence. Failure aborts before schema writes. Dormant schema-17 migration tests use these typed prerequisites against isolated databases; normal production startup remains schema 16 and existing developer backup tools do not substitute for the gate.
+Before any lineage migration touches a database, BT-CORR-030 and BT-OPS-011/012 require read-only relationship preflight, exclusive database-scoped upgrade ownership and a unique provider-consistent recovery backup verified for the exact source by hash, integrity/FKs/schema/table counts and preflight equivalence. Failure aborts before schema writes. Normal schema16-to17 activation uses these typed prerequisites through the single Data-owned startup coordinator; explicit schema16 fixtures and existing developer backup tools do not substitute for the gate.
 
 ## Conversation Context Capacity / Continuity Hard Gate
 
@@ -176,26 +176,72 @@ When JSONL exposes context compaction or summary replacement, independent review
 
 Default to the largest coherent roadmap pass that can be safely implemented and independently verified without combining unrelated acceptance boundaries. Do not create micro-passes merely for more checkpoints, names, repeated full suites or repeated document rewrites. Split at genuine unresolved architecture, migration/data transformation, transaction/authority, materially distinct release risk, manual/operator acceptance, or independent-verification boundaries. Larger scope never permits looser interpretation of frozen semantics.
 
+## Execution-efficiency hard gate
+
+Efficiency means broad safe milestones with narrow execution overhead. It removes duplicated ceremony, never engineering standards. Implementation scope remains as broad as frozen architecture, roadmap sequence and acceptance boundaries safely permit; do not fragment coherent work into unnecessary micro-passes. After mandatory core authority is read, use targeted authority reading, characterization, development tests, source searches and one stabilized documentation reconciliation rather than repeating whole-repository work without a material reason.
+
+### Codex responsibilities and failure-boundary coverage
+
+Reserve Codex primarily for repository-local reasoning and editing: inspect relevant source and authority, identify characterization, implement production/tests, run focused development tests, investigate failures, perform risk-relevant source audits, reconcile documentation after source stabilization and report genuine uncertainty or defects. Codex must not routinely spend its constrained working window duplicating mechanical work assigned to the operator or independent reviewer.
+
+When Codex introduces or changes a state transition, transaction, migration, replacement, publication, cleanup, retry, concurrency, idempotency, backup, recovery or persistence boundary, it **must** add and run focused tests for the material success and failure paths relevant to that changed boundary. As applicable, cover failure before publication; failure after publication but before cleanup/completion; retry after partial external cleanup; cancellation at a newly changed boundary; truthful persisted-state reporting after irreversible publication; cleanup failure after otherwise successful work; and idempotent replay/re-entry. This targeted rule is not a reason to run every broad suite repeatedly, and efficiency never excuses missing failure-path correctness.
+
+### Canonical BAT and full-suite ownership
+
+`Build-BinTracker.bat` remains the mandatory final candidate-level source-audit, restore, build and automated-test gate, but it is **Jack/operator-run by default**. The normal sequence is:
+
+1. Codex completes the final uncommitted candidate.
+2. Codex runs the focused characterization and development tests materially required by the changed behavior.
+3. Codex returns the candidate for independent review/operator validation.
+4. Jack runs `Build-BinTracker.bat` locally on Windows against that exact final uncommitted candidate and provides the exact output to independent ChatGPT.
+5. Independent ChatGPT verifies the BAT output against the candidate/diff as canonical mechanical evidence.
+6. No staging, commit or push occurs unless the canonical BAT passes.
+
+A successful BAT must establish the script's source/mechanical audit, restore and build passes; zero compiler warnings/errors; every UnitTest and IntegrationTest passing; and zero failed/skipped tests. Any source or documentation change after a successful BAT invalidates that evidence and requires Jack to rerun the BAT. Codex may run the BAT only when explicitly instructed for a specific reason, such as the operator being unable to run it; it must not run BAT merely to duplicate operator evidence.
+
+During implementation prefer focused tests. Codex must not routinely run full UnitTests, full IntegrationTests and then BAT in the same pass when BAT will repeat both suites. A broader/full suite remains justified for unusually broad impact, focused evidence suggesting cross-cutting risk, composition/DI/startup changes affecting many consumers, an explicit repository pre-BAT requirement, or a fix after broad evidence that needs wider regression confirmation. Otherwise leave the canonical full suites to the operator-run BAT.
+
+### Authority, search and documentation efficiency
+
+At normal task entry Codex always reads `AGENTS.md`, the required sections of this workflow, the active `docs/CONTINUATION.md` section and the specific authoritative sections relevant to the milestone. For other documents, search by requirement IDs, milestone names and architectural terms, read matching authoritative sections, and expand to full-document reading only when context, ambiguity or contradiction requires it. Context compaction, continuation recovery, contradictory repository state or uncertain authority may require broader rereading under the existing continuity hard gate. Do not reread every Markdown file merely because it exists.
+
+Whole-codebase searches must target the changed architectural risk, such as startup authority, old numeric authority, dormant-writer registrations, direct persistence bypasses, legacy mutation routes or duplicated business rules. Do not repeat an unchanged broad search after every small edit; rerun the relevant search once near final source stabilization when needed.
+
+Prefer this documentation sequence: characterize; implement; focused validation; stabilize source; reconcile current-state documentation once; then perform a final targeted consistency check. Edit documentation earlier only to preserve a safety-critical decision. Historical evidence stays truthful, and implementation without required retained-data/operator/manual evidence never justifies status inflation.
+
+### Mechanical and independent-review ownership
+
+By default, Codex does not use its reasoning window for final Git-state capture, SHA-256 generation, review ZIP creation, byte-equality verification, commit/push script construction or post-push GitHub verification. Jack/operator owns the final BAT, mechanical packaging/hashes when an external helper exists, and guarded local commit/push execution. Independent ChatGPT owns semantic diff/source review, architecture and frozen-requirement comparison, documentation/status review, full JSONL/governance review, commit authorization and post-push GitHub verification. Codex may create review artifacts when specifically requested and no external helper exists, but that is exceptional rather than preferred.
+
+Codex still performs reasonable self-checking and must not knowingly return an inconsistent candidate, but it does not replace deep independent adversarial review. Keep the handoff concise and evidence-focused: repository state, change/reason, focused characterization/validation, changed-file inventory, limitations, unexpected findings, excluded scope and session ID/JSONL path. Do not repeat mechanically derivable facts unless they explain a risk or decision.
+
+Operator-provided BAT output is candidate-level mechanical evidence only for the exact source/document state on which it ran. Independent ChatGPT must compare it with the repository/diff and review candidate; any later candidate-file change requires another BAT run.
+
+### No weakening
+
+This policy does not weaken characterization-before-change, frozen architecture/roadmap compliance, security/audit gates, migration safety, backup/recovery truthfulness, provider-neutral business semantics, version consistency, zero-warning and zero-failure/zero-skip canonical acceptance, independent review before commit, Git-write restrictions, continuity/context-compaction gates, retained-database rehearsal or Windows/operator acceptance. If efficiency and correctness conflict, correctness wins.
+
 ## Implementation passes
 
 For each meaningful BinTracker change:
 
 1. Implement code immediately when the user asks to implement; do not substitute a mockup unless explicitly requested.
 2. Add/retain automated regression coverage where practical.
-3. Perform the full documentation audit defined in `docs/Testing.md`, including `docs/RoadmapCoverageMatrix.md`.
-4. Produce the candidate build/ZIP.
-5. Run `Build-BinTracker.bat` on Windows as the canonical restore/build/test gate.
-6. Perform the required manual smoke level:
+3. Run focused development tests, including the mandatory changed-boundary success/failure paths above; run broader suites only when materially justified.
+4. After source stabilizes, reconcile applicable current-state documentation once, including the audit defined in `docs/Testing.md` and `docs/RoadmapCoverageMatrix.md` when the candidate is packaged.
+5. Return the final uncommitted candidate for independent review/operator validation; create mechanical review/package artifacts only when specifically requested or otherwise required.
+6. Jack/operator runs `Build-BinTracker.bat` on Windows against the exact final candidate as the canonical restore/build/test gate; Codex execution is exceptional and explicit.
+7. Perform the required manual smoke level:
    - UI → Full;
    - business logic → Targeted;
    - UI + logic → Full;
    - reports → real preview/print;
    - importer → real workbook when applicable.
-7. Only after acceptance should the candidate be committed/pushed as the accepted checkpoint.
+8. Only after acceptance should the candidate be committed/pushed as the accepted checkpoint.
 
 ## Build gate
 
-`Build-BinTracker.bat` is the canonical local gate. It must return failure when restore, compilation or automated tests fail; a misleading success banner is itself a release-blocking defect.
+`Build-BinTracker.bat` is the mandatory canonical local gate and is Jack/operator-run by default against the exact final uncommitted candidate. Codex runs it only under explicit task-specific instruction. It must return failure when audit, restore, compilation or automated tests fail; a misleading success banner is itself a release-blocking defect. Any later candidate-file change invalidates the result and requires a rerun before Git write.
 
 ## Documentation discipline
 

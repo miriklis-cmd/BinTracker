@@ -28,7 +28,7 @@ public sealed partial class SqliteStartupDatabaseCoordinator
             if (!File.Exists(databasePath))
             {
                 // Fresh creation already belongs to the ordinary bootstrap funnel.
-                if (sourcePath is null) return await StartAsync(token);
+                if (sourcePath is null) return await StartWithExpectedIdentityAsync(null, token);
             }
             using var bootstrap = File.Exists(databasePath) ? null : ReserveBootstrap(databasePath);
             using (var oldLease = File.Exists(databasePath) ? gate.AcquireUpgrade(databasePath) : null)

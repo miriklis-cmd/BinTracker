@@ -17,11 +17,11 @@ public sealed class LineageSchema17ContractTests
     }
 
     [Fact]
-    public void Dormant_migrator_contract_is_exactly_schema_16_to_17()
+    public void Activated_migrator_contract_is_exactly_schema_16_to_17()
     {
         Assert.Equal(16, SqliteLineageSchema17Migrator.SourceSchemaVersion);
         Assert.Equal(17, SqliteLineageSchema17Migrator.TargetSchemaVersion);
-        Assert.Equal(16, DatabaseSetup.LatestSchemaVersion);
+        Assert.Equal(17, DatabaseSetup.LatestSchemaVersion);
     }
 
     [Fact]

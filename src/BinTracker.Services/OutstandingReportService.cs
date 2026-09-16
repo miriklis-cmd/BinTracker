@@ -109,7 +109,8 @@ internal sealed class OutstandingReportService(
         List<(int CustomerId, int ContainerTypeId, int Balance, DateOnly LastMovementDate)> totals;
         if (operationalProjection is null)
         {
-            // Normal schema-16 composition retains the accepted alpha.8 authority.
+            // Explicit schema16/no-projection compatibility composition retains
+            // the accepted alpha.8 authority.
             // A movement dated after AsOfDate must never affect the result.
             var movementQuery = db.BinMovements
                 .AsNoTracking()

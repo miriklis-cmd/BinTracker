@@ -1,10 +1,14 @@
 # BinTracker Current Release Notes
 
-## Documentation-only lineage architecture freeze
+## Unreleased BT-20-P2 schema17 activation candidate
 
-- Adds no product behavior and does not change v0.5.0-alpha.8.7 package identity.
-- Records planned logical-root correction architecture/requirements after adversarial review and read-only data preflight.
-- Keeps alpha.8 guards/effective behavior intact until complete implementation and acceptance.
+- Keeps the existing `0.5.0-alpha.8.7` identity because this is an unaccepted internal activation candidate, not a packaged milestone.
+- Uses the Data-owned coordinator for every normal startup/developer replacement path and withholds application services until schema17 readiness succeeds.
+- Activates native Single/Batch lineage, typed Single replay receipts, logical correction/reversal and validated corrected operational projection across normal numeric consumers.
+- Preserves explicit schema16 compatibility fixtures, verified backup/postflight truth, native audit-health separation and fail-closed projection behavior without raw fallback.
+- Passes the canonical audit/restore/zero-warning Debug build and all770 automated tests (279 UnitTests plus491 IntegrationTests) with no failures or skips.
+- Does not include retained-production-data rehearsal, Batch #30, full native Audit/History detail, Restore/RemainReversed UI, Windows/operator acceptance, packaging or deployment.
+- TEST REQUIRED: Full Windows/operator acceptance remains later in the frozen Task20 order; automated/canonical results do not establish it.
 
 ## v0.5.0-alpha.8.7
 

@@ -3,7 +3,7 @@
 ## Frozen logical-lineage delivery (pre-v1 blocking)
 
 - Alpha.8 whole-batch eligibility safely rejects partial lineage through physical MovementBatch. Deliver BT-CORR-018..033 as one coherent migration/service/projection/UI change; never bypass the guard piecemeal.
-- Task20F closes the explicit native17 R2 preview/generation/legacy-write boundary without activating normal runtime. BT-20-P1 plus BT-20-FIX1 close minimum R3 audit/review safety, EF immutable-membership tracking and the four characterized R7 snapshots under explicit composition. The frozen remaining order is atomic normal startup composition, full native Audit/History detail, Restore/RemainReversed UI, broader activated-system gates, retained-database rehearsal, Windows/operator acceptance, layer audit, then Security Hardening; do not combine or reorder those scopes.
+- BT-20-P2 activates the reviewed R1/R2/R3/EF/R7 components in normal runtime. The frozen remaining order is full native Audit/History detail, Restore/RemainReversed UI, broader activated-system gates, retained-database rehearsal, Windows/operator acceptance, layer audit, then Security Hardening; do not combine or reorder those scopes.
 - After lineage Windows acceptance, perform the protected whole-codebase presentation/application/domain/infrastructure audit. Move authoritative WinForms validation, data access, balance/report arithmetic, transactions and authorization below presentation before subsequent major pre-v1 work.
 - PostgreSQL/API/portal/handheld/WinUI delivery remains post-v1. v1 debt closure is clean boundaries/provider-neutral semantics, not speculative infrastructure.
 
@@ -19,12 +19,12 @@ Engineering improvements that are not currently user-facing defects. Product wor
 ## Database / data integrity
 
 - BT-20-P1 corrects the EF client relationship so loaded schema17 MovementBatch deletion cannot null tracked member IDs. Data explicitly preserves schema16 persisted `SET NULL` compatibility while schema17 capability validation requires immutable `RESTRICT/NO ACTION`; later activation/rehearsal must retain both proofs.
-- Task20D implements the R4 Data coordinator/R5 capabilities and real lifecycle proof under isolated composition; Task20E implements R1, Task20F implements R2 and BT-20-P1 closes R3/EF/R7 pre-activation blockers under explicit schema17 composition. The later atomic cutover must route normal startup and staged developer-marker handling through the coordinator and retain the ready session through host lifetime. Existing legacy marker application remains unactivated integration work; the explicit coordinator rejects pending markers without bypass. Companion leases coordinate participating processes only; old/nonparticipating clients must be stopped for later rehearsal/deployment.
+- Normal startup and staged developer-marker handling now route through the R4 Data coordinator, and WinForms retains the ready session through host lifetime. Companion leases coordinate participating processes only; old/nonparticipating clients must still be stopped for later retained-data rehearsal/deployment.
 - BT-20-P1 fixes exactly the characterized Dashboard/customer/container/Import snapshot gaps by reusing the existing provider-consistent transaction seam. Preserve Task19 Daily Print Pack and provider-neutral application contracts; any later snapshot change requires new result-affecting evidence rather than blanket transactions.
 
 - Add source-row/import-profile metadata needed for changed-workbook correction tooling.
 - Review useful database-level constraints/indexes rather than relying only on service validation.
-- Activate and production-rehearse the dormant verified pre-lineage backup/exclusive-upgrade infrastructure before schema 17 may run at startup; this does not replace the later user-facing Backup/Restore workstream.
+- Rehearse the now-activated verified pre-lineage backup/exclusive-upgrade path against a separately authorized retained database before release; this does not replace the later user-facing Backup/Restore workstream.
 - Review SQLite concurrency assumptions before production and before any network/shared deployment.
 - PostgreSQL remains a candidate for future simultaneous multi-computer deployment; do not enable it until concurrency, migration and deployment are designed/tested.
 

@@ -38,7 +38,8 @@ internal sealed class DailyPrintPackService(
         DailyMovementsReportResult movements;
         if (operationalProjection is null)
         {
-            // Preserve normal schema-16 composition, including independent delegated reads.
+            // Explicit schema16/no-projection compatibility composition retains
+            // the pre-activation independent delegated reads.
             var outstandingTask = outstandingReports.QueryAsync(outstandingQuery, cancellationToken);
             var movementsTask = dailyMovementsReports.QueryAsync(dailyQuery, cancellationToken);
             await Task.WhenAll(outstandingTask, movementsTask);

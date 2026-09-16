@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Data;
+using BinTracker.Core;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BinTracker.Data;
@@ -31,9 +32,22 @@ public static class DatabaseSetup
             ? 0
             : SqliteSchemaMigrations.All.Max(x => x.Version);
 
+    internal static int LatestSchema16CompatibilityVersion =>
+        SqliteSchemaMigrations.Schema16Baseline.Max(x => x.Version);
+
     public static IServiceCollection AddBinTrackerData(this IServiceCollection services)
     {
-        var settings = Settings;
+        return AddBinTrackerData(services, Settings);
+    }
+
+    internal static IServiceCollection AddBinTrackerData(
+        this IServiceCollection services,
+        DatabaseSettings settings,
+        string? backupDirectory = null,
+        string? lockDirectory = null,
+        string? pendingOperationPath = null)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
 
         services.AddDbContextFactory<BinTrackerDbContext>(options =>
             ConfigureProvider(options, settings));
@@ -42,6 +56,30 @@ public static class DatabaseSetup
             ConfigureProvider(options, settings));
 
         services.AddSingleton<IDeveloperDatabaseService, DeveloperDatabaseService>();
+
+        if (settings.Provider == DatabaseProvider.Sqlite)
+        {
+            var connectionString = settings.ConnectionString ??
+                $"Data Source={DatabaseConfiguration.DefaultSqlitePath};Cache=Shared";
+            var databasePath = DatabaseConfiguration.GetSqlitePath(connectionString)
+                ?? throw new InvalidOperationException("The SQLite database path is required.");
+
+            services.AddSingleton<IStartupDatabaseCoordinator>(_ =>
+                new SqliteStartupDatabaseCoordinator(
+                    databasePath, backupDirectory, lockDirectory, pendingOperationPath));
+            services.AddScoped<IInitialMovementLineageWriter>(_ =>
+                new SqliteInitialMovementLineageWriter(
+                    NoInitialMovementLineageFailureInjector.Instance));
+            services.AddScoped<ISingleMovementResponseReceiptStore>(_ =>
+                new SqliteSingleMovementResponseReceiptStore(
+                    NoSingleMovementResponseReceiptFailureInjector.Instance));
+            services.AddScoped<IMovementMutationWriter>(_ =>
+                new SqliteMovementMutationWriter(NoMovementMutationFailureInjector.Instance));
+            services.AddSingleton<ITransactionalOperationalMovementProjectionAuthority>(_ =>
+                new SqliteOperationalMovementProjectionAuthority(connectionString));
+            services.AddSingleton<IOperationalMovementProjectionAuthority>(sp =>
+                sp.GetRequiredService<ITransactionalOperationalMovementProjectionAuthority>());
+        }
 
         return services;
     }
@@ -68,28 +106,16 @@ public static class DatabaseSetup
         }
     }
 
-    public static async Task InitializeAsync(IServiceProvider services)
+    public static Task<StartupDatabaseSession> InitializeAsync(
+        IServiceProvider services,
+        CancellationToken cancellationToken = default)
     {
-        await using var scope = services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<BinTrackerDbContext>();
-
-        switch (Settings.Provider)
-        {
-            case DatabaseProvider.Sqlite:
-                await InitializeSqliteAsync(db);
-                break;
-
-            case DatabaseProvider.PostgreSql:
-                throw new NotSupportedException(
-                    "PostgreSQL initialisation will be enabled at the multi-user milestone.");
-
-            default:
-                throw new NotSupportedException(
-                    $"Database provider '{Settings.Provider}' is not supported.");
-        }
+        ArgumentNullException.ThrowIfNull(services);
+        return services.GetRequiredService<IStartupDatabaseCoordinator>()
+            .StartAsync(cancellationToken);
     }
 
-    internal static async Task InitializeSqliteAsync(BinTrackerDbContext db)
+    internal static async Task InitializeSchema16CompatibilityAsync(BinTrackerDbContext db)
     {
         var created = await db.Database.EnsureCreatedAsync();
         if (created)
@@ -101,7 +127,7 @@ public static class DatabaseSetup
 
         var currentVersion = await GetSchemaVersionAsync(db);
 
-        foreach (var migration in SqliteSchemaMigrations.All
+        foreach (var migration in SqliteSchemaMigrations.Schema16Baseline
                      .Where(x => x.Version > currentVersion)
                      .OrderBy(x => x.Version))
         {
@@ -121,11 +147,16 @@ public static class DatabaseSetup
         }
     }
 
+    // Retained only for existing schema16 compatibility fixtures. Production
+    // startup is exclusively InitializeAsync -> IStartupDatabaseCoordinator.
+    internal static Task InitializeSqliteAsync(BinTrackerDbContext db) =>
+        InitializeSchema16CompatibilityAsync(db);
+
     private static async Task PreserveFreshSchema16BatchDetachAsync(BinTrackerDbContext db)
     {
         // EF must not null immutable tracked membership when a loaded principal is
         // deleted. Fresh schema16 databases nevertheless retain the accepted
-        // persisted SET NULL behavior until the dormant schema17 rebuild changes
+        // persisted SET NULL behavior until the activated schema17 rebuild changes
         // that FK to RESTRICT. Keep this provider-specific compatibility shape in
         // Data without weakening the client-side relationship model.
         const string relationship =

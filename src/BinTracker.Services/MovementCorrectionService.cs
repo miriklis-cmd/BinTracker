@@ -339,7 +339,7 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
     {
         if (!mutationWriter.IsEnabled)
             throw new LogicalMovementMutationException(LogicalMovementMutationFailure.SchemaUnavailable,
-                "Logical movement previews are dormant in normal runtime composition.");
+                "Logical movement previews require activated schema-17 composition.");
 
         await using var db = await factory.CreateDbContextAsync(token);
         await using var transaction = await db.Database.BeginTransactionAsync(token);
@@ -428,7 +428,7 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
         });
         if (!mutationWriter.IsEnabled)
             throw new LogicalMovementMutationException(LogicalMovementMutationFailure.SchemaUnavailable,
-                "Logical movement mutation execution is dormant in normal runtime composition.");
+                "Logical movement mutation execution requires activated schema-17 composition.");
         OperationId(command.ClientOperationId);
         if (command.LogicalMovementBatchId.Value <= 0 || command.ExpectedGeneration.Value < 0)
             throw new ArgumentException("A valid logical root and expected generation are required.", nameof(command));
@@ -453,7 +453,7 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
                 ex.Message.Contains("SCHEMA17_REQUIRED", StringComparison.Ordinal))
             {
                 throw new LogicalMovementMutationException(LogicalMovementMutationFailure.SchemaUnavailable,
-                    "Exact schema 17 is required for dormant logical movement mutation execution.", ex);
+                    "Exact schema 17 is required for logical movement mutation execution.", ex);
             }
             catch (InvalidOperationException ex)
             {

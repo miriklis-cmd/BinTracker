@@ -18,21 +18,7 @@ internal static class Program
         splash.Refresh();
         Application.DoEvents();
 
-        try
-        {
-            DeveloperDatabaseStartup.ApplyPendingOperation();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(
-                $"Developer database switch failed.\n\n{ex.Message}",
-                "BinTracker",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
-            return;
-        }
-
-        using var host = Host.CreateDefaultBuilder()
+        var host = Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {
                 services.AddBinTrackerData();
@@ -41,15 +27,17 @@ internal static class Program
             })
             .Build();
 
+        StartupDatabaseSession databaseSession;
         try
         {
             // Keep startup on this STA thread. Using async Main here can resume on a
             // thread-pool (MTA) thread before the WinForms message loop starts,
             // which breaks OLE-backed dialogs such as SaveFileDialog.
-            DatabaseSetup.InitializeAsync(host.Services).GetAwaiter().GetResult();
+            databaseSession = DatabaseSetup.InitializeAsync(host.Services).GetAwaiter().GetResult();
         }
         catch (Exception ex)
         {
+            host.Dispose();
             MessageBox.Show(
                 $"Database setup failed.\n\n{ex.Message}",
                 "BinTracker",
@@ -58,9 +46,27 @@ internal static class Program
             return;
         }
 
+        // Retain the validated physical identity, runtime participation and file
+        // pin until every application scope and database user has stopped.
+        try
+        {
+            RunApplication(host.Services, splash);
+        }
+        finally
+        {
+            // Dispose the host (and every service scope/factory) before releasing
+            // the database participation session that protected their lifetime.
+            host.Dispose();
+            databaseSession.Dispose();
+        }
+    }
+
+    private static void RunApplication(IServiceProvider services, SplashForm splash)
+    {
+
         splash.Close();
 
-        using var scope = host.Services.CreateScope();
+        using var scope = services.CreateScope();
         var auth = scope.ServiceProvider.GetRequiredService<IAuthenticationService>();
 
         if (!auth.HasUsersAsync().GetAwaiter().GetResult())

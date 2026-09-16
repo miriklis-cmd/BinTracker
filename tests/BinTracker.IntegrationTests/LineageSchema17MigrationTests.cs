@@ -30,7 +30,7 @@ public sealed class LineageSchema17MigrationTests
     }
 
     [Fact]
-    public async Task Normal_startup_remains_schema_16_without_lineage_tables()
+    public async Task Explicit_schema16_compatibility_fixture_remains_without_lineage_tables()
     {
         await using var fixture = await MigrationFixture.CreateAsync(seed: false);
         await using var connection = await fixture.OpenAsync();
@@ -38,7 +38,8 @@ public sealed class LineageSchema17MigrationTests
         Assert.Equal(16L, await ScalarAsync(connection, "SELECT Version FROM SchemaVersion WHERE Id=1;"));
         Assert.Equal(0L, await ScalarAsync(connection,
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name LIKE 'LogicalMovement%';"));
-        Assert.Equal(16, DatabaseSetup.LatestSchemaVersion);
+        Assert.Equal(16, DatabaseSetup.LatestSchema16CompatibilityVersion);
+        Assert.Equal(17, DatabaseSetup.LatestSchemaVersion);
     }
 
     [Fact]

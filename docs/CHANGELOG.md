@@ -1,3 +1,11 @@
+## Unreleased BT-20-P2 schema17 activation candidate (16 September 2026)
+
+- Routed normal WinForms startup through the single Data-owned coordinator and retained its validated database session for the complete host lifetime.
+- Activated catalogue17, native Single/Batch lineage and receipts, logical correction/reversal, validated operational projection consumers and coordinated developer Load/Fresh marker handling as one architectural boundary.
+- Preserved explicit schema16 compatibility fixtures, fail-closed migration/backup/recovery semantics, R1/R2/R3/EF/R7 protections and the frozen later milestone order.
+- Added normal-composition activation coverage; Release build and canonical audit/restore/Debug build pass with zero warnings/errors, and 279 UnitTests plus491 IntegrationTests pass with zero failures or skips.
+- Kept version `0.5.0-alpha.8.7`; no retained production database, Batch #30, full native Audit/History detail, Restore UI, package or operator acceptance is included.
+
 ## Documentation governance — movement-lineage architecture freeze (29 August 2026)
 
 - Froze planned logical roots/lines/full generations, restoration, corrected activity/PositionAsOf, concurrency, migration/preflight/backup and corruption policies after adversarial review/read-only v16 preflight.

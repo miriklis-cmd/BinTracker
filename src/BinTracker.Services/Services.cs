@@ -928,7 +928,8 @@ internal sealed class BalanceService(
         List<(int CustomerId, int ContainerTypeId, int Balance)> totals;
         if (operationalProjection is null)
         {
-            // Normal schema-16 composition retains the accepted alpha.8 authority.
+            // Explicit schema16/no-projection compatibility composition retains
+            // the accepted alpha.8 authority.
             // Keep this provider-compatible query grouped by scalar foreign keys;
             // navigation-property grouping failed translation in the Import Review path.
             var rawTotals = await db.BinMovements.AsNoTracking()
