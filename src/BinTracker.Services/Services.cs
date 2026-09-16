@@ -139,7 +139,32 @@ public sealed record MovementChangeAuditLine(string Role, long MovementId, int? 
 public sealed record MovementChangeAuditDetail(long AuditEventId, string Action, string Actor,
     DateTime ChangedUtc, string Reason, int? OriginalBatchId, int? ReplacementBatchId,
     IReadOnlyList<MovementChangeAuditLine> Lines, bool OpenedFromReviewAcknowledgement = false,
-    string? ReviewedBy = null, DateTime? ReviewedUtc = null);
+    string? ReviewedBy = null, DateTime? ReviewedUtc = null,
+    NativeMovementChangeAuditEvidence? NativeEvidence = null);
+
+/// <summary>Client-neutral native schema17 operation evidence shown by Audit/History detail.</summary>
+public sealed record NativeMovementChangeAuditEvidence(
+    long LogicalRootId,
+    long OperationId,
+    Guid ClientOperationId,
+    MovementCorrectionKind OperationKind,
+    int ExpectedGenerationNumber,
+    int ResultGenerationNumber,
+    long GenerationId,
+    LogicalMovementGenerationAction GenerationAction,
+    int? PhysicalOutputBatchId,
+    IReadOnlyList<NativeMovementChangeAuditLine> Lines);
+
+public sealed record NativeMovementChangeAuditLine(
+    long LogicalLineId,
+    int OriginalDisplayOrdinal,
+    long GenerationLineId,
+    long PreviousGenerationLineId,
+    LogicalMovementLineState PriorState,
+    LogicalMovementLineState ResultingState,
+    LogicalMovementGenerationAction Action,
+    MovementChangeField AppliedFieldMask,
+    IReadOnlyList<MovementChangeAuditLine> Evidence);
 
 public sealed record MovementChangeDifference(string Field, string OriginalValue, string CorrectedValue)
 {
@@ -196,6 +221,34 @@ public static class MovementChangeComparison
     private static string Customer(MovementChangeAuditLine line) => string.IsNullOrWhiteSpace(line.CustomerCode)
         ? line.CustomerName : string.IsNullOrWhiteSpace(line.CustomerName) ? line.CustomerCode : $"{line.CustomerCode} — {line.CustomerName}";
     private static string Text(string value) => string.IsNullOrWhiteSpace(value) ? "(blank)" : value;
+}
+
+/// <summary>Describes native changes from generation pointers, never audit JSON or root-source values.</summary>
+public static class NativeMovementChangeComparison
+{
+    public static string Describe(IReadOnlyList<NativeMovementChangeAuditLine> lines)
+    {
+        var descriptions = new List<string>();
+        foreach (var line in lines.OrderBy(x => x.OriginalDisplayOrdinal))
+        {
+            var prior = line.Evidence.FirstOrDefault(x => x.Role == "Prior effective");
+            var result = line.Evidence.FirstOrDefault(x => x.Role == "Result effective");
+            var terminal = line.Evidence.FirstOrDefault(x => x.Role == "Result terminal reversal");
+            if (prior is not null && result is not null)
+            {
+                var differences = MovementChangeComparison.Compare([
+                    prior with { Role = "Original" }, result with { Role = "Corrected replacement" }]);
+                if (differences.Count > 0)
+                    descriptions.Add($"Line {line.OriginalDisplayOrdinal + 1}: {string.Join("; ", differences.Select(x => x.Display))}");
+            }
+            else if (prior is not null && terminal is not null)
+                descriptions.Add($"Line {line.OriginalDisplayOrdinal + 1}: reversed by movement #{terminal.MovementId}.");
+            else if (line.PriorState != line.ResultingState)
+                descriptions.Add($"Line {line.OriginalDisplayOrdinal + 1}: {line.PriorState} → {line.ResultingState}.");
+        }
+        return descriptions.Count == 0 ? "No field difference; see the generation-line evidence below." :
+            string.Join(Environment.NewLine, descriptions);
+    }
 }
 
 internal sealed class AuditService(
@@ -291,11 +344,16 @@ internal sealed class AuditService(
             throw new InvalidOperationException("One or more selected movement-change events are not eligible for review or were already reviewed.");
         }
 
-        // A native review acknowledges already-committed operation evidence. Its
-        // persisted association and affected-root audit health must be proven in
-        // this transaction before any tracked review state is changed.
+        // A native review acknowledges already-committed operation evidence.
+        // Read the same native detail evidence in this transaction so every
+        // predecessor and transformation attribution is proven before tracked
+        // review state is changed.
         foreach (var item in events)
-            await mutationWriter.InspectAuditAssociationAsync(db, item.Id, cancellationToken);
+        {
+            var association = await mutationWriter.InspectAuditAssociationAsync(db, item.Id, cancellationToken);
+            if (association.Kind == MovementAuditAssociationKind.Native)
+                _ = await mutationWriter.ReadNativeAuditEvidenceAsync(db, item.Id, cancellationToken);
+        }
 
         var reviewedAt = clock.UtcNow;
         foreach (var item in events)
@@ -346,10 +404,12 @@ internal sealed class AuditService(
             db, auditEvent.Id, cancellationToken);
         if (association.Kind == MovementAuditAssociationKind.Native)
         {
-            // Full native detail is deliberately a later milestone. A controlled
-            // no-detail result is safe; native evidence must never reach the
-            // alpha.8 physical-ID/payload parsers below.
-            return null;
+            var native = await mutationWriter.ReadNativeAuditEvidenceAsync(db, auditEvent.Id, cancellationToken);
+            var nativeDetail = ToNativeDetail(native);
+            return new(auditEvent.Id, auditEvent.Action, native.ActorUsername, native.CreatedUtc,
+                native.Reason, null, native.PhysicalOutputBatchId,
+                nativeDetail.Lines.SelectMany(x => x.Evidence).ToArray(), openedFromAcknowledgement,
+                auditEvent.ReviewedByUsername, auditEvent.ReviewedUtc, nativeDetail);
         }
 
         if (auditEvent.Action == "MOVEMENT_REVERSED")
@@ -406,6 +466,43 @@ internal sealed class AuditService(
         string customer, string container, long? linkedId) => new(role, movement.Id, movement.MovementBatchId,
         movement.MovementDate, code, customer, container, movement.MovementType, movement.Quantity,
         movement.ReferenceNumber ?? "", movement.Notes ?? "", linkedId);
+
+    private static NativeMovementChangeAuditEvidence ToNativeDetail(NativeMovementAuditEvidence native)
+    {
+        MovementChangeAuditLine ToLine(string role, NativeMovementAuditMovement movement, long? linkedId = null) =>
+            new(role, movement.MovementId, movement.MovementBatchId, movement.MovementDate,
+                movement.CustomerCode, movement.CustomerName, movement.ContainerType, movement.Direction,
+                movement.Quantity, movement.Reference, movement.Notes, linkedId);
+        var lines = native.Lines.Select(line =>
+        {
+            var evidence = new List<MovementChangeAuditLine>
+            {
+                ToLine("Original", line.Original)
+            };
+            if (line.PriorEffective is not null) evidence.Add(ToLine("Prior effective", line.PriorEffective));
+            if (line.PriorTerminalReversal is not null) evidence.Add(ToLine("Prior terminal reversal", line.PriorTerminalReversal));
+            if (line.ResultEffective is not null) evidence.Add(ToLine("Result effective", line.ResultEffective));
+            if (line.ResultTerminalReversal is not null) evidence.Add(ToLine("Result terminal reversal", line.ResultTerminalReversal));
+            evidence.AddRange(line.OperationEvidence.Select(item => ToLine(NativeRole(item.Role), item.Movement)));
+            return new NativeMovementChangeAuditLine(line.LogicalMovementLineId, line.OriginalDisplayOrdinal,
+                line.GenerationLineId, line.PreviousGenerationLineId ?? throw new InvalidOperationException(
+                    "MOVEMENT_MUTATION_AUDIT_HEALTH_INVALID"), line.PriorState, line.ResultingState,
+                line.Action, line.AppliedFieldMask, evidence);
+        }).ToArray();
+        return new(native.RootId.Value, native.OperationId, native.ClientOperationId, native.OperationKind,
+            native.ExpectedGenerationNumber, native.ResultGenerationNumber, native.GenerationId,
+            native.GenerationAction, native.PhysicalOutputBatchId, lines);
+    }
+
+    private static string NativeRole(LogicalMovementTransformationRole role) => role switch
+    {
+        LogicalMovementTransformationRole.CorrectionNeutraliser => "Correction neutraliser",
+        LogicalMovementTransformationRole.CorrectionReplacement => "Correction replacement",
+        LogicalMovementTransformationRole.OrdinaryReversal => "Ordinary reversal",
+        LogicalMovementTransformationRole.Restoration => "Restoration",
+        LogicalMovementTransformationRole.RootOriginal => "Root original evidence",
+        _ => throw new InvalidOperationException("MOVEMENT_MUTATION_AUDIT_HEALTH_INVALID")
+    };
 
     private static (long Original, long Neutral, long Replacement)[] ParseCorrectionLineage(string? json)
     {

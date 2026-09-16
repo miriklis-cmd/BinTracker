@@ -103,6 +103,8 @@ public interface IMovementMutationWriter
         CancellationToken cancellationToken = default);
     Task<MovementAuditAssociation> InspectAuditAssociationAsync(BinTrackerDbContext db,
         long auditEventId, CancellationToken cancellationToken = default);
+    Task<NativeMovementAuditEvidence> ReadNativeAuditEvidenceAsync(BinTrackerDbContext db,
+        long auditEventId, CancellationToken cancellationToken = default);
     Task<bool> TryPublishAsync(BinTrackerDbContext db, PendingMovementMutation pending,
         LogicalMovementGenerationNumber expectedGeneration,
         CancellationToken cancellationToken = default);
@@ -138,6 +140,8 @@ public sealed class DormantMovementMutationWriter : IMovementMutationWriter
     public Task<MovementAuditAssociation> InspectAuditAssociationAsync(BinTrackerDbContext db,
         long auditEventId, CancellationToken cancellationToken = default) =>
         Task.FromResult(new MovementAuditAssociation(MovementAuditAssociationKind.Legacy));
+    public Task<NativeMovementAuditEvidence> ReadNativeAuditEvidenceAsync(BinTrackerDbContext db,
+        long auditEventId, CancellationToken cancellationToken = default) => Fail<NativeMovementAuditEvidence>();
     public Task<bool> TryPublishAsync(BinTrackerDbContext db, PendingMovementMutation pending,
         LogicalMovementGenerationNumber expectedGeneration,
         CancellationToken cancellationToken = default) => Fail<bool>();
@@ -632,6 +636,160 @@ internal sealed class SqliteMovementMutationWriter(
         return new(MovementAuditAssociationKind.Native, operationId, nativeRootId);
     }
 
+    public async Task<NativeMovementAuditEvidence> ReadNativeAuditEvidenceAsync(
+        BinTrackerDbContext db,
+        long auditEventId,
+        CancellationToken cancellationToken = default)
+    {
+        var association = await InspectAuditAssociationAsync(db, auditEventId, cancellationToken);
+        if (association.Kind != MovementAuditAssociationKind.Native || association.OperationId is not long operationId ||
+            association.RootId is not LogicalMovementBatchId rootId)
+            throw new InvalidOperationException(AuditHealthInvalid);
+
+        var (connection, transaction) = RequireTransaction(db);
+        NativeAuditOperationRow operation;
+        await using (var command = Command(connection, transaction, """
+            SELECT o.Id,o.ClientOperationId,o.LogicalMovementBatchId,o.ExpectedGenerationNumber,
+                   o.ResultGenerationNumber,o.Kind,o.ActorUsername,o.CreatedUtc,o.Reason,
+                   g.Id,g.Kind,p.MovementBatchId
+            FROM AuditEvents a
+            JOIN MovementCorrectionOperations o ON o.Id=a.MovementCorrectionOperationId
+            JOIN LogicalMovementGenerations g ON g.MovementCorrectionOperationId=o.Id
+            LEFT JOIN LogicalMovementPhysicalOutputs p ON p.LogicalMovementGenerationId=g.Id
+            WHERE a.Id=$audit;
+            """, ("$audit", auditEventId)))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            if (!await reader.ReadAsync(cancellationToken)) throw new InvalidOperationException(AuditHealthInvalid);
+            if (!Guid.TryParse(reader.GetString(1), out var clientOperationId))
+                throw new InvalidOperationException(AuditHealthInvalid);
+            operation = new(
+                reader.GetInt64(0), clientOperationId, reader.GetInt64(2), reader.GetInt32(3),
+                reader.GetInt32(4), (MovementCorrectionKind)reader.GetInt32(5), reader.GetString(6),
+                reader.GetDateTime(7), reader.GetString(8), reader.GetInt64(9),
+                (LogicalMovementGenerationAction)reader.GetInt32(10), NullableInt32(reader, 11));
+            if (await reader.ReadAsync(cancellationToken)) throw new InvalidOperationException(AuditHealthInvalid);
+        }
+        if (operation.OperationId != operationId || operation.RootId != rootId.Value ||
+            operation.ResultGenerationNumber != operation.ExpectedGenerationNumber + 1)
+            throw new InvalidOperationException(AuditHealthInvalid);
+
+        var lines = new List<NativeAuditLineRow>();
+        await using (var command = Command(connection, transaction, """
+            SELECT currentLine.Id,currentLine.LogicalMovementLineId,l.OriginalDisplayOrdinal,l.RootMovementId,
+                   currentLine.PreviousGenerationLineId,previousLine.State,
+                   previousLine.ResultEffectiveMovementId,previousLine.LastEffectiveMovementId,
+                   previousLine.TerminalReversalMovementId,previousLine.LogicalMovementBatchId,
+                   previousLine.LogicalMovementLineId,previousGeneration.LogicalMovementBatchId,
+                   previousGeneration.GenerationNumber,
+                   currentLine.State,currentLine.Action,
+                   currentLine.AppliedFieldMask,currentLine.ResultEffectiveMovementId,
+                   currentLine.LastEffectiveMovementId,currentLine.TerminalReversalMovementId
+            FROM LogicalMovementGenerationLines currentLine
+            JOIN LogicalMovementLines l ON l.Id=currentLine.LogicalMovementLineId
+            LEFT JOIN LogicalMovementGenerationLines previousLine ON previousLine.Id=currentLine.PreviousGenerationLineId
+            LEFT JOIN LogicalMovementGenerations previousGeneration
+              ON previousGeneration.Id=previousLine.LogicalMovementGenerationId
+            WHERE currentLine.LogicalMovementBatchId=$root
+              AND currentLine.LogicalMovementGenerationId=$generation
+            ORDER BY l.OriginalDisplayOrdinal,currentLine.LogicalMovementLineId;
+            """, ("$root", rootId.Value), ("$generation", operation.GenerationId)))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var previousGenerationLineId = NullableInt64(reader, 4);
+                var priorState = NullableInt32(reader, 5);
+                var previousRootId = NullableInt64(reader, 9);
+                var previousLogicalLineId = NullableInt64(reader, 10);
+                var previousGenerationRootId = NullableInt64(reader, 11);
+                var previousGenerationNumber = NullableInt32(reader, 12);
+                // A predecessor ID alone is only referential integrity. Native
+                // detail exposes its state as prior evidence, so prove that it
+                // is the immediately preceding row for this permanent line.
+                if (previousGenerationLineId is null || priorState is null ||
+                    previousRootId != rootId.Value ||
+                    previousLogicalLineId != reader.GetInt64(1) ||
+                    previousGenerationRootId != rootId.Value ||
+                    previousGenerationNumber != operation.ExpectedGenerationNumber)
+                    throw new InvalidOperationException(AuditHealthInvalid);
+                lines.Add(new(
+                    reader.GetInt64(0), reader.GetInt64(1), reader.GetInt32(2), reader.GetInt64(3),
+                    previousGenerationLineId.Value, (LogicalMovementLineState)priorState.Value,
+                    NullableInt64(reader, 6), NullableInt64(reader, 7), NullableInt64(reader, 8),
+                    (LogicalMovementLineState)reader.GetInt32(13),
+                    (LogicalMovementGenerationAction)reader.GetInt32(14),
+                    (MovementChangeField)reader.GetInt32(15), NullableInt64(reader, 16),
+                    NullableInt64(reader, 17), NullableInt64(reader, 18)));
+            }
+        if (lines.Count == 0 || lines.Select(x => x.LogicalLineId).Distinct().Count() != lines.Count)
+            throw new InvalidOperationException(AuditHealthInvalid);
+
+        var ledgerRows = new List<NativeAuditLedgerRow>();
+        await using (var command = Command(connection, transaction, """
+            SELECT link.IntroducedByGenerationLineId,link.BinMovementId,link.Role,
+                   link.LogicalMovementBatchId,link.LogicalMovementLineId,
+                   introducedLine.LogicalMovementBatchId,introducedLine.LogicalMovementLineId,
+                   introducedLine.LogicalMovementGenerationId
+            FROM LogicalMovementLedgerLinks link
+            JOIN LogicalMovementGenerationLines introducedLine
+              ON introducedLine.Id=link.IntroducedByGenerationLineId
+            WHERE link.LogicalMovementBatchId=$root
+              AND introducedLine.LogicalMovementGenerationId=$generation;
+            """, ("$root", rootId.Value), ("$generation", operation.GenerationId)))
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var generationLineId = NullableInt64(reader, 0);
+                // A ledger link owns a permanent line separately from its
+                // introduction pointer. Do not display transformation evidence
+                // unless both persisted identities name this exact line.
+                if (generationLineId is null || reader.GetInt64(3) != rootId.Value ||
+                    reader.GetInt64(5) != rootId.Value || reader.GetInt64(4) != reader.GetInt64(6) ||
+                    reader.GetInt64(7) != operation.GenerationId)
+                    throw new InvalidOperationException(AuditHealthInvalid);
+                ledgerRows.Add(new(generationLineId.Value, reader.GetInt64(1),
+                    (LogicalMovementTransformationRole)reader.GetInt32(2)));
+            }
+
+        var movementIds = lines.Select(x => x.OriginalMovementId)
+            .Concat(lines.SelectMany(x => new[] { x.PriorResultEffectiveMovementId, x.PriorLastEffectiveMovementId,
+                x.PriorTerminalReversalMovementId, x.ResultEffectiveMovementId, x.ResultLastEffectiveMovementId,
+                x.ResultTerminalReversalMovementId }.Where(id => id.HasValue).Select(id => id!.Value)))
+            .Concat(ledgerRows.Select(x => x.MovementId)).Distinct().ToList();
+        var movements = await db.BinMovements.AsNoTracking()
+            .Where(x => movementIds.Contains(x.Id))
+            .Select(x => new NativeMovementAuditMovement(x.Id, x.MovementBatchId, x.MovementDate,
+                x.Customer.CustomerCode ?? "", x.Customer.Name, x.ContainerType.Name, x.MovementType,
+                x.Quantity, x.ReferenceNumber ?? "", x.Notes ?? "", x.CorrectionReason, x.ReversesMovementId))
+            .ToListAsync(cancellationToken);
+        if (movements.Count != movementIds.Count) throw new InvalidOperationException(AuditHealthInvalid);
+        var movementById = movements.ToDictionary(x => x.MovementId);
+        NativeMovementAuditMovement Movement(long id) => movementById.TryGetValue(id, out var movement)
+            ? movement : throw new InvalidOperationException(AuditHealthInvalid);
+        NativeMovementAuditMovement? OptionalMovement(long? id) => id is long value ? Movement(value) : null;
+        var evidenceByGenerationLine = ledgerRows.GroupBy(x => x.GenerationLineId)
+            .ToDictionary(group => group.Key, group => (IReadOnlyList<NativeMovementAuditLedgerEvidence>)group
+                .OrderBy(x => x.Role).ThenBy(x => x.MovementId)
+                .Select(x => new NativeMovementAuditLedgerEvidence(x.Role, Movement(x.MovementId))).ToArray());
+
+        var detailLines = lines.Select(x => new NativeMovementAuditLineEvidence(
+                x.LogicalLineId, x.OriginalDisplayOrdinal,
+                x.GenerationLineId, x.PreviousGenerationLineId, x.PriorState, x.ResultingState, x.Action,
+                x.AppliedFieldMask, Movement(x.OriginalMovementId),
+                OptionalMovement(x.PriorState == LogicalMovementLineState.Active
+                    ? x.PriorResultEffectiveMovementId : x.PriorLastEffectiveMovementId),
+                OptionalMovement(x.PriorTerminalReversalMovementId),
+                OptionalMovement(x.ResultingState == LogicalMovementLineState.Active
+                    ? x.ResultEffectiveMovementId : x.ResultLastEffectiveMovementId),
+                OptionalMovement(x.ResultTerminalReversalMovementId),
+                evidenceByGenerationLine.GetValueOrDefault(x.GenerationLineId, [])))
+            .ToArray();
+        return new NativeMovementAuditEvidence(operation.OperationId, operation.ClientOperationId, rootId,
+            operation.ExpectedGenerationNumber, operation.ResultGenerationNumber, operation.GenerationId,
+            operation.GenerationAction, operation.OperationKind, operation.PhysicalOutputBatchId,
+            operation.ActorUsername, operation.CreatedUtc, operation.Reason, detailLines);
+    }
+
     public async Task<bool> TryPublishAsync(BinTrackerDbContext db, PendingMovementMutation pending,
         LogicalMovementGenerationNumber expectedGeneration,
         CancellationToken cancellationToken = default)
@@ -975,6 +1133,24 @@ internal sealed class SqliteMovementMutationWriter(
             command.Parameters.AddWithValue(name, value ?? DBNull.Value);
         return command;
     }
+
+    private sealed record NativeAuditOperationRow(
+        long OperationId, Guid ClientOperationId, long RootId, int ExpectedGenerationNumber,
+        int ResultGenerationNumber, MovementCorrectionKind OperationKind, string ActorUsername,
+        DateTime CreatedUtc, string Reason, long GenerationId,
+        LogicalMovementGenerationAction GenerationAction, int? PhysicalOutputBatchId);
+
+    private sealed record NativeAuditLineRow(
+        long GenerationLineId, long LogicalLineId, int OriginalDisplayOrdinal, long OriginalMovementId,
+        long PreviousGenerationLineId, LogicalMovementLineState PriorState,
+        long? PriorResultEffectiveMovementId, long? PriorLastEffectiveMovementId,
+        long? PriorTerminalReversalMovementId, LogicalMovementLineState ResultingState,
+        LogicalMovementGenerationAction Action, MovementChangeField AppliedFieldMask,
+        long? ResultEffectiveMovementId, long? ResultLastEffectiveMovementId,
+        long? ResultTerminalReversalMovementId);
+
+    private sealed record NativeAuditLedgerRow(
+        long GenerationLineId, long MovementId, LogicalMovementTransformationRole Role);
 
     private static int? NullableInt32(SqliteDataReader reader, int ordinal) =>
         reader.IsDBNull(ordinal) ? null : reader.GetInt32(ordinal);

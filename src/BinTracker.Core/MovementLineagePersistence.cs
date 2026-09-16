@@ -72,6 +72,60 @@ public sealed class LogicalMovementPhysicalOutput
 }
 
 /// <summary>
+/// Provider-neutral, immutable evidence for one validated native movement
+/// operation. It deliberately keeps logical identity, generation state and
+/// physical ledger evidence separate.
+/// </summary>
+public sealed record NativeMovementAuditEvidence(
+    long OperationId,
+    Guid ClientOperationId,
+    LogicalMovementBatchId RootId,
+    int ExpectedGenerationNumber,
+    int ResultGenerationNumber,
+    long GenerationId,
+    LogicalMovementGenerationAction GenerationAction,
+    MovementCorrectionKind OperationKind,
+    int? PhysicalOutputBatchId,
+    string ActorUsername,
+    DateTime CreatedUtc,
+    string Reason,
+    IReadOnlyList<NativeMovementAuditLineEvidence> Lines);
+
+public sealed record NativeMovementAuditLineEvidence(
+    long LogicalMovementLineId,
+    int OriginalDisplayOrdinal,
+    long GenerationLineId,
+    long? PreviousGenerationLineId,
+    LogicalMovementLineState PriorState,
+    LogicalMovementLineState ResultingState,
+    LogicalMovementGenerationAction Action,
+    MovementChangeField AppliedFieldMask,
+    NativeMovementAuditMovement Original,
+    NativeMovementAuditMovement? PriorEffective,
+    NativeMovementAuditMovement? PriorTerminalReversal,
+    NativeMovementAuditMovement? ResultEffective,
+    NativeMovementAuditMovement? ResultTerminalReversal,
+    IReadOnlyList<NativeMovementAuditLedgerEvidence> OperationEvidence);
+
+public sealed record NativeMovementAuditLedgerEvidence(
+    LogicalMovementTransformationRole Role,
+    NativeMovementAuditMovement Movement);
+
+public sealed record NativeMovementAuditMovement(
+    long MovementId,
+    int? MovementBatchId,
+    DateOnly MovementDate,
+    string CustomerCode,
+    string CustomerName,
+    string ContainerType,
+    MovementType Direction,
+    int Quantity,
+    string Reference,
+    string Notes,
+    string? CorrectionReason,
+    long? ReversesMovementId);
+
+/// <summary>
 /// Validates the materialized, transaction-local construction state for one
 /// native generation-zero root before that root may become current.
 /// Committed-current projection remains the responsibility of

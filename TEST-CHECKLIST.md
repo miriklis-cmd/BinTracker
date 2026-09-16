@@ -20,7 +20,7 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 
 - [S] Task20C R1–R4 documentation freeze records the approved activation semantics without production implementation or requirement-status promotion.
 - [S] BT-20-P2 atomically activates the reviewed Task20D/E/F/P1/FIX1 seams in normal composition: one Data coordinator, catalogue17, native entry/receipt/mutation writers, validated projection consumers, logical WinForms correction/reversal routes, retained runtime session and coordinated developer Load/Fresh markers. Focused activation8/8 and canonical audit/restore/zero-warning build plus UnitTests279/279 and IntegrationTests491/491 (770 total) pass with zero failures/skips; retained-data and Windows/operator acceptance remain separate.
-- [S] Startup/identity/bootstrap/Load/Fresh A2/A3/A8–A11/A13–A15, schema17 structural/current health, R1/R2/R3/EF/R7 and schema16 compatibility remain ordinary automated coverage. Full native detail, Restore UI and later acceptance are not implied.
+- [S] Startup/identity/bootstrap/Load/Fresh A2/A3/A8–A11/A13–A15, schema17 structural/current health, R1/R2/R3/EF/R7 and schema16 compatibility remain ordinary automated coverage. BT-20-P3 adds native Audit/History detail from validated operation/root/generation/line/ledger evidence; Restore UI and later acceptance are not implied.
 
 - [G] Before accepted behaviour changes, identify precise characterization; add missing coverage, run it before the change and rerun it afterward.
 - [G] Structured input/persisted-state boundaries have relevant malformed/adversarial coverage and fully validate or fail closed without partial state.

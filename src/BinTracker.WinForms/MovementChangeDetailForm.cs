@@ -14,11 +14,22 @@ public sealed class MovementChangeDetailForm : BinTrackerForm
         Add(summary, "Performed by", detail.Actor); Add(summary, "Changed", $"{detail.ChangedUtc:yyyy-MM-dd HH:mm:ss} UTC");
         Add(summary, "Original batch", detail.OriginalBatchId is int original ? $"Batch #{original}" : "Not a whole-batch correction");
         Add(summary, "Replacement batch", detail.ReplacementBatchId is int replacement ? $"Batch #{replacement}" : "Not applicable");
+        if (detail.NativeEvidence is { } native)
+        {
+            var physicalOutput = native.PhysicalOutputBatchId is int output ? $"batch #{output}" : "none";
+            Add(summary, "Logical root", $"Root #{native.LogicalRootId} · operation #{native.OperationId} · client request {native.ClientOperationId}");
+            Add(summary, "Generation", $"{native.ExpectedGenerationNumber} → {native.ResultGenerationNumber} (generation record #{native.GenerationId}, {native.GenerationAction})");
+            Add(summary, "Operation", $"{native.OperationKind}; physical output {physicalOutput}");
+            Add(summary, "Logical line evidence", string.Join(Environment.NewLine, native.Lines.Select(line =>
+                $"Line {line.OriginalDisplayOrdinal + 1} (#{line.LogicalLineId}): {line.PriorState} → {line.ResultingState}; {line.Action}; fields {line.AppliedFieldMask}; generation line #{line.GenerationLineId} ← #{line.PreviousGenerationLineId}")));
+        }
         if (detail.OpenedFromReviewAcknowledgement)
             Add(summary, "Review acknowledgement", $"Showing movement change audit event #{detail.AuditEventId} referenced by the selected acknowledgement.");
         if (detail.ReviewedUtc.HasValue)
             Add(summary, "Reviewed", $"{detail.ReviewedBy ?? "Administrator"} · {detail.ReviewedUtc:yyyy-MM-dd HH:mm:ss} UTC");
-        Add(summary, "What changed", MovementChangeComparison.Describe(detail.Lines));
+        Add(summary, "What changed", detail.NativeEvidence is { } nativeComparison
+            ? NativeMovementChangeComparison.Describe(nativeComparison.Lines)
+            : MovementChangeComparison.Describe(detail.Lines));
         Add(summary, "Correction reason", detail.Reason);
         var explanation = new Label { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(16, 4, 16, 8), ForeColor = Color.FromArgb(55, 65, 80),
             Text = "Original rows remain immutable. Neutralisers remove their original effect; corrected replacements carry the intended operational values." };

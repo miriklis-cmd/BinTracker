@@ -29,7 +29,7 @@ Audited: 15 September 2026
 
 ## Development acceptance rules
 
-Task20C froze R1–R4 and R5–R7 constraints; Task20D/E/F/P1/FIX1 supplied the reviewed activation components. BT-20-P2 connects them to normal WinForms startup and composition without pulling forward later milestones. The frozen later order is full native Audit/History detail, Restore/RemainReversed UI, broader activated-system gates, retained-database rehearsal, Windows/operator acceptance, protected layer audit, then Security Hardening/subsequent roadmap work.
+Task20C froze R1–R4 and R5–R7 constraints; Task20D/E/F/P1/FIX1 supplied the reviewed activation components. BT-20-P2 connects them to normal WinForms startup and composition, and BT-20-P3 completes native Audit/History detail without altering correction/reversal semantics. The frozen later order is Restore/RemainReversed UI, broader activated-system gates, retained-database rehearsal, Windows/operator acceptance, protected layer audit, then Security Hardening/subsequent roadmap work.
 
 Status coverage is promoted only after criterion-level reconciliation from authoritative requirement through actual enforcement and evidence to the claimed status. Agreement among this matrix, Roadmap, checklist, Testing or continuation is not independent proof and cannot redefine Architecture/Business Rules. The default implementation unit is the largest coherent safe roadmap pass; split only at a genuine semantic, data/migration, transaction/authority, release-risk, manual-acceptance or independent-verification boundary.
 

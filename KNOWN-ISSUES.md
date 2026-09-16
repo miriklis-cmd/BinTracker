@@ -8,7 +8,7 @@ BT-20-P2 closes the normal-composition activation gap characterized by Task20C: 
 
 R7 deterministic interleavings now prove coherent snapshots across Dashboard attention threshold, customer active/name plus position, container activity/name/order plus visible position, and Import comparison's retained previous-run effects versus current projection. Daily Print Pack's shared snapshot remains frozen and was not reopened. Testing/CONTINUATION record the source and full-suite evidence. The BT-20-P2 canonical gate passes all770 automated tests with0 failed/skipped and0 build warnings/errors.
 
-Normal activated whole-root correction safely blocks any current Reversed line until the later explicit Restore/RemainReversed UI. Batch #30 remains protected and unresolved for operator acceptance. Closure still requires full native detail, Restore UI, broader activated-system gates, retained-database rehearsal and Windows acceptance.
+Normal activated whole-root correction safely blocks any current Reversed line until the later explicit Restore/RemainReversed UI. Batch #30 remains protected and unresolved for operator acceptance. Native Audit/History detail is source/focused-test complete; closure still requires Restore UI, broader activated-system gates, retained-database rehearsal and Windows acceptance.
 
 Current release: **v0.5.0-alpha.8.7**
 

@@ -333,6 +333,97 @@ public sealed class Task20LogicalMutationSafetyTests
 
 public sealed class Task20AuditActivationTests
 {
+    [Theory]
+    [InlineData("cross-line-predecessor")]
+    [InlineData("cross-line-ledger-introduction")]
+    public async Task Native_detail_and_review_reject_cross_line_lineage_evidence(string damage)
+    {
+        await using var f = await Task20Fixture.CreateAsync(role: UserRole.Administrator,
+            nativeActorRole: UserRole.Operator);
+        var root = await f.Database.CreateBatchAsync(7, 4);
+        var lines = (await f.Database.LineIdsAsync(root.RootId)).ToArray();
+        Assert.Equal(2, lines.Length);
+        var result = await f.Database.MutateAsync(root.RootId, 0,
+            MovementMutationRequest.Correct(MovementMutationScope.WholeRoot,
+                lines.Select(x => new LogicalMovementLineId(x)), "cross-line audit evidence",
+                quantity: MovementFieldIntent<int>.Selected(8)));
+        var operationId = Assert.IsType<long>(result.OperationId);
+        var auditId = await f.ScalarAsync(
+            $"SELECT Id FROM AuditEvents WHERE MovementCorrectionOperationId={operationId}");
+        var generationId = await f.ScalarAsync(
+            $"SELECT Id FROM LogicalMovementGenerations WHERE MovementCorrectionOperationId={operationId}");
+        var firstGenerationLineId = await f.ScalarAsync($"""
+            SELECT Id FROM LogicalMovementGenerationLines
+            WHERE LogicalMovementGenerationId={generationId} AND LogicalMovementLineId={lines[0]};
+            """);
+        var secondGenerationLineId = await f.ScalarAsync($"""
+            SELECT Id FROM LogicalMovementGenerationLines
+            WHERE LogicalMovementGenerationId={generationId} AND LogicalMovementLineId={lines[1]};
+            """);
+
+        if (damage == "cross-line-predecessor")
+        {
+            // The FK remains valid: it is a baseline row in this root, but it
+            // belongs to the other permanent logical line.
+            await f.ExecuteAsync($"""
+                UPDATE LogicalMovementGenerationLines
+                SET PreviousGenerationLineId=(
+                    SELECT Id FROM LogicalMovementGenerationLines
+                    WHERE LogicalMovementBatchId={root.RootId}
+                      AND LogicalMovementGenerationId=(
+                          SELECT Id FROM LogicalMovementGenerations
+                          WHERE LogicalMovementBatchId={root.RootId} AND GenerationNumber=0)
+                      AND LogicalMovementLineId={lines[1]})
+                WHERE Id={firstGenerationLineId};
+                """);
+        }
+        else
+        {
+            var movementId = await f.ScalarAsync($"""
+                SELECT BinMovementId FROM LogicalMovementLedgerLinks
+                WHERE LogicalMovementBatchId={root.RootId}
+                  AND LogicalMovementLineId={lines[0]}
+                  AND IntroducedByGenerationLineId={firstGenerationLineId}
+                  AND Role={(int)LogicalMovementTransformationRole.CorrectionNeutraliser};
+                """);
+            // The composite FK remains valid because both generation lines are
+            // in this root. Only the permanent-line attribution is corrupt.
+            await f.ExecuteAsync($"""
+                UPDATE LogicalMovementLedgerLinks
+                SET IntroducedByGenerationLineId={secondGenerationLineId}
+                WHERE BinMovementId={movementId};
+                """);
+        }
+
+        var before = await f.CountsAsync();
+        var state = await f.StateAsync();
+        MovementChangeAuditDetail? detail = null;
+        var detailError = await Record.ExceptionAsync(async () =>
+            detail = await f.Audit.GetMovementChangeDetailAsync(auditId));
+        Assert.Equal(before, await f.CountsAsync());
+        Assert.Equal(state, await f.StateAsync());
+        if (detailError is not null)
+            Task20FailureBoundary.AssertDomainFailure(detailError, ["native", "audit", "lineage"],
+                ["invalid", "health", "integrity"]);
+        var detailFailedClosed = detailError is not null || detail is null;
+
+        var reviewError = await Record.ExceptionAsync(() =>
+            f.Audit.MarkMovementChangesReviewedAsync([auditId]));
+        if (reviewError is not null)
+            Task20FailureBoundary.AssertDomainFailure(reviewError, ["native", "audit", "lineage"],
+                ["invalid", "health", "integrity"]);
+        var reviewedCount = await f.ScalarAsync(
+            $"SELECT COUNT(*) FROM AuditEvents WHERE Id={auditId} AND ReviewedUtc IS NOT NULL");
+        var acknowledgementCount = await f.ScalarAsync(
+            $"SELECT COUNT(*) FROM AuditEvents WHERE Action='MOVEMENT_CHANGE_REVIEWED' AND EntityId='{auditId}'");
+        var afterReview = await f.CountsAsync();
+        var stateAfterReview = await f.StateAsync();
+        var reviewFailedClosed = reviewError is not null && before.SequenceEqual(afterReview) &&
+            state == stateAfterReview && reviewedCount == 0 && acknowledgementCount == 0;
+        Assert.True(detailFailedClosed && reviewFailedClosed,
+            "Cross-line lineage evidence must fail closed for both detail and review without persisted acknowledgement.");
+    }
+
     [Fact]
     public async Task Legitimate_migrated_alpha8_operation_with_root_association_remains_legacy_detail_and_review()
     {
@@ -493,13 +584,17 @@ public sealed class Task20AuditActivationTests
         // Adversarial evidence deliberately resembles alpha8. Its authoritative
         // native association still forbids routing it through the legacy parser.
         var state = await f.StateAsync();
-        MovementChangeAuditDetail? detail = null;
-        var error = await Record.ExceptionAsync(async () => detail = await f.Audit.GetMovementChangeDetailAsync(auditId));
+        var detail = Assert.IsType<MovementChangeAuditDetail>(
+            await f.Audit.GetMovementChangeDetailAsync(auditId));
         Assert.Equal(state, await f.StateAsync());
-        if (error is not null)
-            Task20FailureBoundary.AssertDomainFailure(error, ["native", "audit", "lineage"],
-                ["unsupported", "not supported", "invalid", "integrity", "health"]);
-        Assert.Null(detail); // No legacy detail from corrupt native evidence.
+        var native = Assert.IsType<NativeMovementChangeAuditEvidence>(detail.NativeEvidence);
+        Assert.Equal(root.RootId, native.LogicalRootId);
+        Assert.Equal(result.OperationId, native.OperationId);
+        Assert.Equal(0, native.ExpectedGenerationNumber);
+        Assert.Equal(1, native.ResultGenerationNumber);
+        var nativeLine = Assert.Single(native.Lines);
+        Assert.Contains(nativeLine.Evidence, x => x.Role == "Correction neutraliser" && x.MovementId == neutral);
+        Assert.Contains(nativeLine.Evidence, x => x.Role == "Correction replacement" && x.MovementId == replacement);
     }
 
     [Fact]
@@ -574,13 +669,22 @@ public sealed class Task20AuditCharacterizationTests
             MovementMutationRequest.Reverse(MovementMutationScope.Individual, [new(line)], "healthy review"));
         var auditId = await f.ScalarAsync($"SELECT Id FROM AuditEvents WHERE MovementCorrectionOperationId={result.OperationId}");
         Assert.Equal(1, await f.ScalarAsync($"SELECT RequiresAdministratorReview FROM AuditEvents WHERE Id={auditId}"));
+        var detail = Assert.IsType<MovementChangeAuditDetail>(
+            await f.Audit.GetMovementChangeDetailAsync(auditId));
+        var native = Assert.IsType<NativeMovementChangeAuditEvidence>(detail.NativeEvidence);
+        Assert.Equal(MovementCorrectionKind.Reverse, native.OperationKind);
+        var nativeLine = Assert.Single(native.Lines);
+        Assert.Equal(LogicalMovementLineState.Active, nativeLine.PriorState);
+        Assert.Equal(LogicalMovementLineState.Reversed, nativeLine.ResultingState);
+        Assert.Equal(LogicalMovementGenerationAction.Reversed, nativeLine.Action);
+        Assert.Contains(nativeLine.Evidence, x => x.Role == "Ordinary reversal");
         await f.Audit.MarkMovementChangesReviewedAsync([auditId]);
         Assert.Equal(1, await f.ScalarAsync($"SELECT COUNT(*) FROM AuditEvents WHERE Id={auditId} AND ReviewedUtc IS NOT NULL"));
         Assert.Equal(1, await f.ScalarAsync("SELECT COUNT(*) FROM AuditEvents WHERE Action='MOVEMENT_CHANGE_REVIEWED'"));
     }
 
     [Fact]
-    public async Task Native_correction_payload_currently_returns_no_legacy_detail()
+    public async Task Healthy_native_correction_returns_authoritative_detail()
     {
         await using var f = await Task20Fixture.CreateAsync(role: UserRole.Administrator);
         var root = await f.Database.CreateSingleAsync(Task20Fixture.Today, f.CustomerId, 1, 7);
@@ -589,6 +693,51 @@ public sealed class Task20AuditCharacterizationTests
             MovementMutationRequest.Correct(MovementMutationScope.Individual, [new(line)], "native correction",
                 quantity: MovementFieldIntent<int>.Selected(8)));
         var auditId = await f.ScalarAsync($"SELECT Id FROM AuditEvents WHERE MovementCorrectionOperationId={result.OperationId}");
-        Assert.Null(await f.Audit.GetMovementChangeDetailAsync(auditId));
+        var detail = Assert.IsType<MovementChangeAuditDetail>(
+            await f.Audit.GetMovementChangeDetailAsync(auditId));
+        var native = Assert.IsType<NativeMovementChangeAuditEvidence>(detail.NativeEvidence);
+        Assert.Equal(root.RootId, native.LogicalRootId);
+        Assert.Equal(result.OperationId, native.OperationId);
+        Assert.Equal(0, native.ExpectedGenerationNumber);
+        Assert.Equal(1, native.ResultGenerationNumber);
+        Assert.Equal(MovementCorrectionKind.Single, native.OperationKind);
+        var lineEvidence = Assert.Single(native.Lines);
+        Assert.Equal(line, lineEvidence.LogicalLineId);
+        Assert.Equal(LogicalMovementLineState.Active, lineEvidence.PriorState);
+        Assert.Equal(LogicalMovementLineState.Active, lineEvidence.ResultingState);
+        Assert.Equal(LogicalMovementGenerationAction.Corrected, lineEvidence.Action);
+        Assert.Equal(MovementChangeField.Quantity, lineEvidence.AppliedFieldMask);
+        Assert.Contains(lineEvidence.Evidence, x => x.Role == "Correction neutraliser");
+        Assert.Contains(lineEvidence.Evidence, x => x.Role == "Correction replacement" && x.Quantity == 8);
+    }
+
+    [Fact]
+    public async Task Native_detail_keeps_generation_chronology_and_selected_line_evidence()
+    {
+        await using var f = await Task20Fixture.CreateAsync(role: UserRole.Administrator);
+        var root = await f.Database.CreateSingleAsync(Task20Fixture.Today, f.CustomerId, 1, 7);
+        var line = Assert.Single(await f.Database.LineIdsAsync(root.RootId));
+        await f.Database.MutateAsync(root.RootId, 0,
+            MovementMutationRequest.Correct(MovementMutationScope.Individual, [new(line)], "first correction",
+                quantity: MovementFieldIntent<int>.Selected(8)));
+        var second = await f.Database.MutateAsync(root.RootId, 1,
+            MovementMutationRequest.Correct(MovementMutationScope.Individual, [new(line)], "second correction",
+                quantity: MovementFieldIntent<int>.Selected(9)));
+        var auditId = await f.ScalarAsync(
+            $"SELECT Id FROM AuditEvents WHERE MovementCorrectionOperationId={second.OperationId}");
+
+        var detail = Assert.IsType<MovementChangeAuditDetail>(
+            await f.Audit.GetMovementChangeDetailAsync(auditId));
+        var native = Assert.IsType<NativeMovementChangeAuditEvidence>(detail.NativeEvidence);
+        Assert.Equal(root.RootId, native.LogicalRootId);
+        Assert.Equal(1, native.ExpectedGenerationNumber);
+        Assert.Equal(2, native.ResultGenerationNumber);
+        var nativeLine = Assert.Single(native.Lines);
+        Assert.True(nativeLine.PreviousGenerationLineId > 0);
+        Assert.True(nativeLine.GenerationLineId > 0);
+        Assert.Contains(nativeLine.Evidence, x => x.Role == "Prior effective" && x.Quantity == 8);
+        Assert.Contains(nativeLine.Evidence, x => x.Role == "Correction replacement" && x.Quantity == 9);
+        Assert.Contains("8", NativeMovementChangeComparison.Describe(native.Lines));
+        Assert.Contains("9", NativeMovementChangeComparison.Describe(native.Lines));
     }
 }

@@ -3,7 +3,7 @@
 ## Frozen logical-lineage delivery (pre-v1 blocking)
 
 - Alpha.8 whole-batch eligibility safely rejects partial lineage through physical MovementBatch. Deliver BT-CORR-018..033 as one coherent migration/service/projection/UI change; never bypass the guard piecemeal.
-- BT-20-P2 activates the reviewed R1/R2/R3/EF/R7 components in normal runtime. The frozen remaining order is full native Audit/History detail, Restore/RemainReversed UI, broader activated-system gates, retained-database rehearsal, Windows/operator acceptance, layer audit, then Security Hardening; do not combine or reorder those scopes.
+- BT-20-P2 activates the reviewed R1/R2/R3/EF/R7 components in normal runtime and BT-20-P3 completes native Audit/History detail. The frozen remaining order is Restore/RemainReversed UI, broader activated-system gates, retained-database rehearsal, Windows/operator acceptance, layer audit, then Security Hardening; do not combine or reorder those scopes.
 - After lineage Windows acceptance, perform the protected whole-codebase presentation/application/domain/infrastructure audit. Move authoritative WinForms validation, data access, balance/report arithmetic, transactions and authorization below presentation before subsequent major pre-v1 work.
 - PostgreSQL/API/portal/handheld/WinUI delivery remains post-v1. v1 debt closure is clean boundaries/provider-neutral semantics, not speculative infrastructure.
 
