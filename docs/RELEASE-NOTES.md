@@ -1,14 +1,49 @@
 # BinTracker Current Release Notes
 
-## Unreleased BT-20-P2 schema17 activation candidate
+## v0.5.0-alpha.9.4
 
-- Keeps the existing `0.5.0-alpha.8.7` identity because this is an unaccepted internal activation candidate, not a packaged milestone.
-- Uses the Data-owned coordinator for every normal startup/developer replacement path and withholds application services until schema17 readiness succeeds.
-- Activates native Single/Batch lineage, typed Single replay receipts, logical correction/reversal and validated corrected operational projection across normal numeric consumers.
-- Preserves explicit schema16 compatibility fixtures, verified backup/postflight truth, native audit-health separation and fail-closed projection behavior without raw fallback.
-- Passes the canonical audit/restore/zero-warning Debug build and all770 automated tests (279 UnitTests plus491 IntegrationTests) with no failures or skips.
-- Does not include retained-production-data rehearsal, Batch #30, full native Audit/History detail, Restore/RemainReversed UI, Windows/operator acceptance, packaging or deployment.
-- TEST REQUIRED: Full Windows/operator acceptance remains later in the frozen Task20 order; automated/canonical results do not establish it.
+- Corrects the remaining whole-root correction presentation defect exposed by alpha.9.3 Windows smoke: an older original physical batch remains only a valid anchor and no longer supplies superseded rows/date to the correction dialog.
+- The dialog is projected from the validated current logical generation, so original and lineage-output anchors show the same current effective movements and baseline.
+- Mutation authority remains the stable logical root, preview-captured generation and permanent line IDs. No root identity, generation, CAS, idempotency, correction, reversal or restoration semantics change.
+- If the current active root cannot be represented by the existing single date/direction dialog baseline, the UI fails closed instead of displaying invented/stale common values.
+- Alpha.9.3 remains historical evidence: its canonical gate passed 800/800 with 0 failed/skipped and 0 build warnings/errors; renewed smoke then exposed this acceptance blocker.
+
+## v0.5.0-alpha.9.3
+
+- Fixes `Correct Entire Batch` when the selected current movement belongs to a lineage-native physical correction-output batch. The output batch resolves through authoritative `LogicalMovementPhysicalOutput` evidence to the same stable logical root; `RootMovementBatchId` remains the original batch.
+- Adds a typed provider-neutral physical-batch anchor to the logical preview. Zero, multiple, malformed or cross-root associations fail closed; WinForms performs no SQLite lookup and does not reconstruct identity from movement values.
+- Keeps whole-root execution on the fresh current generation and current effective replacement movements, preserving root CAS, idempotency, Reversed-line blocking and the existing Correct Selected controls.
+- Labels persisted Restoration evidence distinctly from ordinary Reversal evidence in Movement History and continues to classify correction neutralisers from persisted transformation roles rather than display text.
+- Opens Resolve Reversed Batch Lines at `1160x660` client size while retaining the existing `1050x550` minimum, resizable/non-maximized behavior and vertical-only grid scrolling.
+- Records the alpha.9.2 disposable Windows smoke as partial acceptance evidence: startup/setup, Restore/RemainReversed sequencing, native detail, subsequent whole-root correction, corrected current projection and Correct Selected controls passed; output-batch whole-root routing and the two presentation items failed.
+- Uses disposable automated fixtures only for FIX4. The retained database, protected Batch #30 and preserved smoke database were not accessed or mutated. Canonical BAT and renewed Windows smoke remain mandatory.
+- Passes120/120 affected controls,179/179 FIX2 startup/migration controls and168/168 broader Task20 controls with zero failed/skipped. The Release solution build passes with0 warnings/errors, and the alpha.9.3 mechanical audit and diff check pass. These overlapping automated runs do not replace the operator-owned canonical BAT or corrected Windows acceptance.
+
+Historical alpha.9.2 operator-comprehension correction retained in this candidate:
+
+- Makes Resolve Reversed Batch Lines operator-readable: Customer, Container, Direction, Quantity, Date, plain-language reversal context and Explicit Decision are now the primary columns.
+- Loads customer code/name and container name through the existing client-neutral Services preview contract in the same read transaction as the validated logical-lineage snapshot; WinForms does not query SQLite or infer identity.
+- Keeps logical root, permanent line, original movement, last-effective movement, reversal movement and preview generation available as compact wrapped technical evidence and a tooltip.
+- Preserves no default decision, Cancel/Esc no-write behavior, grouped Restore, all-Remain no-write, root CAS, idempotency, direct whole-root blocking and fresh re-preview semantics.
+- Records the alpha.9.1 disposable Windows smoke evidence truthfully: startup, admin setup, synthetic batch/reversal, interception, no default choice, Cancel/Esc and tested-scale visibility passed before the operator-comprehension defect stopped P4 acceptance.
+- Uses synthetic automated fixtures only. The retained database has not been migrated or rehearsed and Batch #30 was not accessed.
+
+Historical alpha.9.1 startup correction retained in this candidate:
+
+- Fixes startup of historically upgraded schema16 databases whose V13 `ReversesMovementId` column and unique partial index legitimately have no persisted self-FK.
+- Accepts only that historical form or the exact current fresh-schema16 RESTRICT self-FK; malformed target/delete/duplicate forms and other missing capabilities still fail before backup or schema mutation.
+- Makes the governed 16-to17 rebuild add the exact self-FK for historical inputs, then applies unchanged native schema17 structural and health validation.
+- The retained database remains unrehearsed; the earlier alpha.9 and alpha.9.1 canonical results are historical evidence for their exact candidates only.
+
+- Adds the Restore / Remain Reversed WinForms workflow for a whole-root correction attempt containing current Reversed logical lines.
+- Requires one explicit decision for every affected persisted logical line; Cancel/Esc makes no service call and no decision is silently defaulted.
+- Sends every Restore choice together through one separately sequenced existing logical Restore mutation using the preview-captured root generation. Remain Reversed lines are unchanged; all-RemainReversed creates no generation, operation, movement or audit.
+- Re-previews authoritative state after disposition and opens the established whole-batch correction dialog only when the fresh root is all-Active and still matches the persisted batch.
+- Keeps direct `Correct + WholeRoot` with any Reversed line blocked, including commands embedding Restore/RemainReversed decisions.
+- Preserves authorization, root CAS, idempotent replay/conflict handling, atomic rollback, schema17 lineage authority and explicit schema16 compatibility.
+- Includes native Audit/History detail from BT-20-P3. Broader activated-system gates, retained-database rehearsal, Batch #30, Windows/operator acceptance, packaging and deployment remain pending.
+- Focused P4 display/disposition coverage passes8/8. The combined P4/direct-block/mutation-checkpoint and FIX2 startup/schema/migration/backup/recovery filter passes270/270 with zero failures/skips, and the Release solution build passes with zero warnings/errors. The mechanical audit and final diff check are recorded separately; the operator-owned canonical BAT/full suite remain pending.
+- TEST REQUIRED: Full Windows smoke at 1920x1080/150% and larger displays, including multiple reversed lines, every disposition combination, Cancel/Esc, stale refresh, continuation to correction and controlled all-RemainReversed outcome.
 
 ## v0.5.0-alpha.8.7
 

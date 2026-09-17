@@ -1,3 +1,4 @@
+using BinTracker.Core;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -180,6 +181,9 @@ internal sealed class MovementHistoryReportPdfService(
 
     private static string ExportStatus(MovementHistoryReportRow row)
     {
+        if (row.TransformationRole == LogicalMovementTransformationRole.Restoration)
+            return $"Restoration - #{row.ReversesMovementId}";
+
         if (row.IsCorrectionRelated)
             return row.Status;
 

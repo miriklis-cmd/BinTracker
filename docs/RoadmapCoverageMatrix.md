@@ -1,6 +1,6 @@
 # BinTracker Roadmap Coverage Matrix
 
-Audited: 15 September 2026
+Audited: 17 September 2026
 
 | Workstream | v1? | Roadmap status / gate |
 |---|---|---|
@@ -16,7 +16,7 @@ Audited: 15 September 2026
 | Customer operational analytics | Yes | Sorting, lifetime OUT/IN, statement workflow |
 | Backup/Restore | Yes | Manual + scheduled automatic + retention/recovery drill |
 | Security/Audit hardening | Yes | Authorization, audit-coverage matrix, secrets/logging |
-| Logical movement lineage | Required before v1 | Frozen roots/lines/full generations/restoration/projection/migration are normal schema17 runtime authority after BT-20-P2. Startup, native entry/mutation writers, typed Single receipts, validated projection consumers and developer replacement share one Data-owned readiness boundary. Full audit/history detail, Restore UI, broader activated-system gates, retained-DB rehearsal, Windows/operator acceptance, packaging and full acceptance remain pending |
+| Logical movement lineage | Required before v1 | Frozen roots/lines/full generations/restoration/projection/migration are normal schema17 runtime authority after BT-20-P2. BT-20-P3 supplies full native audit/history detail, BT-20-P4 supplies the separately sequenced Restore/RemainReversed UI, BT-20-FIX2 corrects historical schema16 startup compatibility, BT-20-FIX3 corrects the dialog's operator-facing information hierarchy, and BT-20-FIX4 restores whole-root routing from authoritative lineage-output physical batches while clarifying restoration presentation/default dialog size. Broader activated-system gates, retained-DB rehearsal, corrected Windows/operator acceptance, packaging and full acceptance remain pending |
 | Whole-codebase layer audit | Protected pre-v1 gate | After lineage acceptance, remove authoritative WinForms business/persistence logic before subsequent major milestones |
 | PostgreSQL/API/Multi-computer | Post-v1 implementation | v1 preserves client/provider-neutral services, concurrency and idempotency; central host/provider/client delivery is post-v1 |
 | Installer/Upgrade | Yes | Production package and safe upgrade path |
@@ -29,7 +29,7 @@ Audited: 15 September 2026
 
 ## Development acceptance rules
 
-Task20C froze R1–R4 and R5–R7 constraints; Task20D/E/F/P1/FIX1 supplied the reviewed activation components. BT-20-P2 connects them to normal WinForms startup and composition, and BT-20-P3 completes native Audit/History detail without altering correction/reversal semantics. The frozen later order is Restore/RemainReversed UI, broader activated-system gates, retained-database rehearsal, Windows/operator acceptance, protected layer audit, then Security Hardening/subsequent roadmap work.
+Task20C froze R1–R4 and R5–R7 constraints; Task20D/E/F/P1/FIX1 supplied the reviewed activation components. BT-20-P2 connects them to normal WinForms startup and composition, BT-20-P3 completes native Audit/History detail, and BT-20-P4 implements the separately sequenced Restore/RemainReversed UI without weakening the direct whole-root correction block. The frozen later order is broader activated-system gates, retained-database rehearsal, Windows/operator acceptance, protected layer audit, then Security Hardening/subsequent roadmap work.
 
 Status coverage is promoted only after criterion-level reconciliation from authoritative requirement through actual enforcement and evidence to the claimed status. Agreement among this matrix, Roadmap, checklist, Testing or continuation is not independent proof and cannot redefine Architecture/Business Rules. The default implementation unit is the largest coherent safe roadmap pass; split only at a genuine semantic, data/migration, transaction/authority, release-risk, manual-acceptance or independent-verification boundary.
 

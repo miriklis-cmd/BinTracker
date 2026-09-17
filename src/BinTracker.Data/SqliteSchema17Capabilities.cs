@@ -99,8 +99,11 @@ internal static partial class SqliteSchema17Capabilities
             {
                 var target = fk.PrincipalEntityType.GetTableName() ?? string.Empty;
                 var targetStore = StoreObjectIdentifier.Table(target, fk.PrincipalEntityType.GetSchema());
+                var localProperties = fk.Properties.Select(p => p.Name).ToArray();
                 var batchMembership = table == "BinMovements" &&
-                    fk.Properties.Select(p => p.Name).SequenceEqual(["MovementBatchId"]);
+                    localProperties.SequenceEqual(["MovementBatchId"]);
+                var reversalRelationship = table == "BinMovements" &&
+                    localProperties.SequenceEqual(["ReversesMovementId"]);
                 var delete = batchMembership
                     ? immutableMembership ? "RESTRICT" : "SET NULL"
                     : fk.DeleteBehavior switch
@@ -114,6 +117,23 @@ internal static partial class SqliteSchema17Capabilities
                     target, p.GetColumnName(store) ?? string.Empty,
                     fk.PrincipalKey.Properties[i].GetColumnName(targetStore) ?? string.Empty,
                     "NO ACTION", delete, "NONE"])));
+                if (reversalRelationship)
+                {
+                    var declared = shape.ForeignKeys
+                        .Where(candidate => ForeignKeyUsesLocalColumn(candidate, "ReversesMovementId"))
+                        .ToArray();
+                    var wrongColumn = shape.ForeignKeys.Any(candidate =>
+                        ForeignKeyReferences(candidate, "BinMovements", "Id") &&
+                        !ForeignKeyUsesLocalColumn(candidate, "ReversesMovementId"));
+                    // Historical V13 added the nullable column and unique partial
+                    // index in place, so upgraded schema16 databases legitimately
+                    // have no persisted self-FK. Current EnsureCreated schema16 has
+                    // the exact relationship. No third or ambiguous form is valid.
+                    if (!wrongColumn && ((!immutableMembership && declared.Length == 0) ||
+                        (declared.Length == 1 && declared[0] == required)))
+                        continue;
+                    throw new StartupFault(StartupDatabaseFailure.StructuralCapabilityMissing);
+                }
                 if (!shape.ForeignKeys.Contains(required))
                     throw new StartupFault(StartupDatabaseFailure.StructuralCapabilityMissing);
             }
@@ -121,7 +141,24 @@ internal static partial class SqliteSchema17Capabilities
     }
 
     private sealed record Shape(HashSet<string> Columns, string[] PrimaryKey,
-        HashSet<string> ForeignKeys, HashSet<string> UniqueKeys, HashSet<string> Checks);
+        IReadOnlyList<string> ForeignKeys, HashSet<string> UniqueKeys, HashSet<string> Checks);
+
+    private static bool ForeignKeyUsesLocalColumn(string foreignKey, string column)
+        => ForeignKeyRows(foreignKey).Any(parts => parts.Length > 1 && parts[1] == column);
+
+    private static bool ForeignKeyReferences(string foreignKey, string table, string column)
+        => ForeignKeyRows(foreignKey).Any(parts => parts.Length > 2 &&
+            parts[0] == table && parts[2] == column);
+
+    private static IEnumerable<string[]> ForeignKeyRows(string foreignKey)
+    {
+        using var encoded = JsonDocument.Parse(foreignKey);
+        foreach (var item in encoded.RootElement.EnumerateArray())
+        {
+            var parts = JsonSerializer.Deserialize<string[]>(item.GetString() ?? "[]");
+            if (parts is not null) yield return parts;
+        }
+    }
 
     private static async Task<Dictionary<string, Shape>> ReadShapesAsync(SqliteConnection c,
         SqliteTransaction? tx, CancellationToken token)
@@ -183,7 +220,7 @@ internal static partial class SqliteSchema17Capabilities
             cmd.CommandText = "SELECT sql FROM sqlite_master WHERE type='table' AND name=$name";
             var declaration = Convert.ToString(await cmd.ExecuteScalarAsync(token)) ?? string.Empty;
             result.Add(name, new(columns, primary.Values.ToArray(),
-                fks.Values.Select(Canonical).ToHashSet(StringComparer.Ordinal), unique, Checks(declaration)));
+                fks.Values.Select(Canonical).ToArray(), unique, Checks(declaration)));
         }
         return result;
     }

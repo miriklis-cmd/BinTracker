@@ -656,16 +656,106 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         if (grid.CurrentRow?.Tag is not MovementHistoryReportRow selected) return;
         var detail = await corrections.GetAsync(selected.MovementId);
         if (detail?.MovementBatchId is not int batchId) { MessageBox.Show(this, "The selected movement is not part of a persisted Batch Entry."); return; }
-        var batch = await corrections.GetBatchAsync(batchId);
-        if (batch is null || !batch.IsEligible) { MessageBox.Show(this, "The entire batch is no longer eligible. No lines were changed."); return; }
-        var preview = await corrections.PreviewLogicalForBatchAsync(batchId);
-        if (preview is null || !preview.IsWholeRootCorrectionEligible ||
-            preview.Lines.Count != batch.LineCount)
+        MovementBatchCorrectionDetail? batch;
+        LogicalMovementMutationPreview? preview;
+        try
         {
-            MessageBox.Show(this, "The entire batch no longer has one valid active logical root. Reload and try again.");
+            batch = await corrections.GetBatchAsync(batchId);
+            preview = await corrections.PreviewLogicalForBatchAsync(batchId);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Correct Entire Batch",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
             await LoadReportAsync();
             return;
         }
+        if (batch is null) { MessageBox.Show(this, "The persisted batch no longer exists. No lines were changed."); return; }
+        if (preview is null ||
+            !MovementCorrectionSelection.IsValidWholeBatchAnchor(batchId, batch, preview))
+        {
+            MessageBox.Show(this, "The entire batch no longer has one valid logical root. Reload and try again.");
+            await LoadReportAsync();
+            return;
+        }
+
+        var reversedLines = preview.Lines
+            .Where(x => x.State == LogicalMovementLineState.Reversed)
+            .ToArray();
+        if (reversedLines.Length > 0)
+        {
+            using var dispositionDialog = new ReversedLineDispositionDialog(batchId, preview);
+            if (dispositionDialog.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            LogicalMovementReversedDispositionResult dispositionResult;
+            try
+            {
+                Enabled = false;
+                UseWaitCursor = true;
+                dispositionResult = await corrections.ResolveReversedLinesAsync(new(
+                    Guid.NewGuid(), preview.LogicalMovementBatchId, preview.ExpectedGeneration,
+                    dispositionDialog.Decisions, dispositionDialog.RestorationReason));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Resolve Reversed Lines",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                await LoadReportAsync();
+                return;
+            }
+            finally
+            {
+                Enabled = true;
+                UseWaitCursor = false;
+            }
+
+            preview = dispositionResult.CurrentPreview;
+            var remainingReversed = preview.Lines.Count(x => x.State == LogicalMovementLineState.Reversed);
+            if (remainingReversed > 0)
+            {
+                var restored = dispositionDialog.Decisions.Count(x =>
+                    x.Disposition == ReversedLineDisposition.Restore);
+                MessageBox.Show(this,
+                    restored == 0
+                        ? "Every affected line remains reversed by your explicit decision. No restoration or batch correction was written."
+                        : $"{restored:N0} line(s) were restored atomically, but {remainingReversed:N0} line(s) remain reversed. " +
+                          "The batch correction is still unavailable and was not manufactured.",
+                    "Batch Correction Not Continued", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                await LoadReportAsync();
+                return;
+            }
+
+            batch = await corrections.GetBatchAsync(batchId);
+            if (batch is null || !batch.IsEligible || batch.LineCount != preview.Lines.Count)
+            {
+                MessageBox.Show(this,
+                    "The restored logical root changed before batch correction could continue. Reload and try again; no batch correction was written.",
+                    "Batch Correction Not Continued", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                await LoadReportAsync();
+                return;
+            }
+        }
+
+        if (!batch.IsEligible || !preview.IsWholeRootCorrectionEligible)
+        {
+            MessageBox.Show(this, "The entire batch is no longer eligible. No lines were changed.");
+            await LoadReportAsync();
+            return;
+        }
+
+        try
+        {
+            batch = MovementCorrectionSelection.BuildCurrentWholeRootCorrectionDetail(batchId, preview);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Correct Entire Batch",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            await LoadReportAsync();
+            return;
+        }
+
         using var dialog = new BatchCorrectionDialog(batch, clock.Today);
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         if (MessageBox.Show(this, $"Confirm correction of EVERY one of the {batch.LineCount:N0} lines ({batch.TotalContainers:N0} containers) in persisted batch #{batch.BatchId}?",
@@ -790,23 +880,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     }
 
     private static string DisplayStatus(MovementHistoryReportRow row)
-    {
-        if (row.IsCorrectionRelated)
-            return row.Status;
-
-        if (row.ReversesMovementId.HasValue)
-            return $"Reversal — #{row.ReversesMovementId.Value}";
-
-        if (row.CorrectedByMovementId.HasValue)
-        {
-            var reference = row.LinkedReversalReference;
-            return string.IsNullOrWhiteSpace(reference)
-                ? "Reversed"
-                : $"Reversed — {reference}";
-        }
-
-        return row.Status;
-    }
+        => row.PresentationStatus;
 
     private static GraphicsPath RoundedRectangle(Rectangle bounds, int radius)
     {

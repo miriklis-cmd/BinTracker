@@ -1,6 +1,6 @@
 # Versioning
 
-BinTracker currently uses semantic pre-release version `0.5.0-alpha.8.7`.
+BinTracker currently uses semantic pre-release version `0.5.0-alpha.9.4`.
 
 ## Single source of truth
 
@@ -9,7 +9,7 @@ The release version is defined in the repository root:
 `Directory.Build.props`
 
 ```xml
-<Version>0.5.0-alpha.8.7</Version>
+<Version>0.5.0-alpha.9.4</Version>
 ```
 
 The same value is used by:
@@ -69,6 +69,14 @@ For **new milestones from the next clean milestone onward**, use:
 - Next feature after those fixes: `0.5.0-alpha.3`
 
 Hard rule: **maximum two numeric components after `alpha`** for the new scheme.
+
+`0.5.0-alpha.9.1` is the corrective successor to the already built/tested alpha.9 candidate after Windows smoke exposed a startup defect before acceptance; it does not overwrite alpha.9 history.
+
+`0.5.0-alpha.9.2` is the next correction to that same alpha.9 milestone after the built/tested alpha.9.1 candidate reached P4 Windows smoke and exposed an operator-comprehension defect in the disposition dialog. It preserves both alpha.9 and alpha.9.1 as tested historical candidates.
+
+`0.5.0-alpha.9.3` is the next correction to the same alpha.9 milestone after the built/tested alpha.9.2 candidate entered end-to-end Windows smoke and exposed a lineage-output physical-batch routing defect plus bounded Movement History/dialog presentation defects. It preserves alpha.9 through alpha.9.2 as tested historical candidates.
+
+`0.5.0-alpha.9.4` is the corrective successor after alpha.9.3 passed the canonical 800/800 gate but renewed Windows smoke exposed a stale operator-baseline defect when an older original physical batch was used as the whole-root correction anchor. Alpha.9.3 remains historical build/smoke evidence and is not overwritten.
 
 Do not create forms such as:
 

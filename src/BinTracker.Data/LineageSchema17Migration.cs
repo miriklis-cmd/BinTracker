@@ -275,8 +275,36 @@ public sealed class SqliteLineageSchema17Migrator(
         if (columns.Count == 0 || columns.Any(x => !IsIdentifier(x)))
             throw new InvalidOperationException("LINEAGE_BINMOVEMENT_COLUMNS_UNSAFE");
 
+        var reversalForeignKeys = Convert.ToInt32(await ScalarAsync(c, tx, """
+            SELECT COUNT(*)
+            FROM pragma_foreign_key_list('BinMovements')
+            WHERE "from"='ReversesMovementId';
+            """, token), CultureInfo.InvariantCulture);
+        var exactReversalForeignKeys = Convert.ToInt32(await ScalarAsync(c, tx, """
+            SELECT COUNT(*)
+            FROM pragma_foreign_key_list('BinMovements')
+            WHERE "from"='ReversesMovementId'
+              AND "table"='BinMovements'
+              AND "to"='Id'
+              AND on_update='NO ACTION'
+              AND on_delete='RESTRICT'
+              AND match='NONE';
+            """, token), CultureInfo.InvariantCulture);
+        if (reversalForeignKeys is not (0 or 1) || exactReversalForeignKeys != reversalForeignKeys)
+            throw new InvalidOperationException("LINEAGE_BINMOVEMENT_REVERSAL_FK_SHAPE_UNEXPECTED");
+
         await NonQueryAsync(c, tx, "ALTER TABLE BinMovements RENAME TO __BinMovements_v16;", token);
         var rebuiltSql = createSql.Replace("ON DELETE SET NULL", "ON DELETE RESTRICT", StringComparison.OrdinalIgnoreCase);
+        if (reversalForeignKeys == 0)
+        {
+            var close = rebuiltSql.LastIndexOf(')');
+            if (close < 0 || rebuiltSql[(close + 1)..].Trim().TrimEnd(';').Length != 0)
+                throw new InvalidOperationException("LINEAGE_BINMOVEMENT_TABLE_SHAPE_UNEXPECTED");
+            rebuiltSql = rebuiltSql.Insert(close, """
+                , CONSTRAINT FK_BinMovements_BinMovements_ReversesMovementId
+                    FOREIGN KEY (ReversesMovementId) REFERENCES BinMovements (Id) ON DELETE RESTRICT
+                """);
+        }
         await NonQueryAsync(c, tx, rebuiltSql, token);
         var quoted = string.Join(", ", columns.Select(x => $"\"{x}\""));
         await NonQueryAsync(c, tx,

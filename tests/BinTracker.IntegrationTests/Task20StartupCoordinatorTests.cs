@@ -8,6 +8,101 @@ namespace BinTracker.IntegrationTests;
 public sealed class Task20StartupCoordinatorTests
 {
     [Fact]
+    public async Task Historical_schema16_fixture_replays_v13_without_a_reversal_self_foreign_key()
+    {
+        await using var f = await Task20Fixture.CreateHistoricalSchema16Async();
+        Assert.Equal(16, await f.ScalarAsync("SELECT Version FROM SchemaVersion WHERE Id=1"));
+        foreach (var column in new[] { "ReversesMovementId", "CorrectedByMovementId", "CorrectionReason" })
+            Assert.Equal(1, await f.ScalarAsync($"SELECT COUNT(*) FROM pragma_table_info('BinMovements') WHERE name='{column}'"));
+        Assert.Equal(1, await f.ScalarAsync("SELECT COUNT(*) FROM pragma_index_list('BinMovements') WHERE name='IX_BinMovements_ReversesMovementId' AND \"unique\"=1"));
+        Assert.Equal(0, await ReversalForeignKeyCountAsync(f));
+        Assert.Equal(1, await f.ScalarAsync("""
+            SELECT COUNT(*) FROM pragma_foreign_key_list('BinMovements')
+            WHERE "from"='MovementBatchId' AND "table"='MovementBatches'
+              AND "to"='Id' AND on_delete='SET NULL'
+            """));
+    }
+
+    [Fact]
+    public async Task Historical_schema16_baseline_capabilities_are_accepted()
+    {
+        await using var f = await Task20Fixture.CreateHistoricalSchema16Async();
+        await using var connection = await f.Database.OpenAsync();
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync();
+        await SqliteSchema17Capabilities.ValidateBaseAsync(connection, transaction, default);
+    }
+
+    [Fact]
+    public async Task Historical_schema16_uses_governed_startup_and_finalizes_exact_reversal_self_fk()
+    {
+        await using var f = await Task20Fixture.CreateHistoricalSchema16Async();
+        var phases = new List<StartupDatabasePhase>();
+        using var ready = await f.Coordinator(p => { phases.Add(p); return Task.CompletedTask; }).StartAsync();
+        Assert.True(ready.IsReadyForActivatedHost);
+        Assert.Equal(StartupDatabaseState.Schema16ActivationRequired, ready.InitialState);
+        Assert.Equal(17, await f.ScalarAsync("SELECT Version FROM SchemaVersion WHERE Id=1"));
+        Assert.Equal(1, await ReversalForeignKeyCountAsync(f, "BinMovements", "Id", "RESTRICT"));
+        Assert.True(phases.IndexOf(StartupDatabasePhase.Preflight) < phases.IndexOf(StartupDatabasePhase.Backup));
+        Assert.True(phases.IndexOf(StartupDatabasePhase.BackupVerified) < phases.IndexOf(StartupDatabasePhase.SourceVerification));
+        Assert.True(phases.IndexOf(StartupDatabasePhase.SourceVerification) < phases.IndexOf(StartupDatabasePhase.Migration));
+        Assert.True(phases.IndexOf(StartupDatabasePhase.Schema17Published) < phases.IndexOf(StartupDatabasePhase.NativeStructure));
+        Assert.True(phases.IndexOf(StartupDatabasePhase.NativeHealth) < phases.IndexOf(StartupDatabasePhase.RuntimeTransition));
+        Assert.True(phases.IndexOf(StartupDatabasePhase.RuntimeReacquired) < phases.IndexOf(StartupDatabasePhase.FinalValidation));
+        Assert.Single(Directory.GetFiles(Backups(f), "*.manifest.json"));
+    }
+
+    [Theory]
+    [InlineData("wrong-target")]
+    [InlineData("wrong-column")]
+    [InlineData("wrong-delete")]
+    [InlineData("duplicate")]
+    public async Task Schema16_reversal_self_foreign_key_acceptance_fails_closed_on_malformed_forms(string damage)
+    {
+        await using var f = await Task20Fixture.CreateHistoricalSchema16Async();
+        var exact = "CONSTRAINT FK_Test_Reversal FOREIGN KEY (ReversesMovementId) REFERENCES BinMovements (Id) ON DELETE RESTRICT";
+        var constraints = damage switch
+        {
+            "wrong-target" => "CONSTRAINT FK_Test_Reversal FOREIGN KEY (ReversesMovementId) REFERENCES Customers (Id) ON DELETE RESTRICT",
+            "wrong-column" => "CONSTRAINT FK_Test_Reversal FOREIGN KEY (CorrectedByMovementId) REFERENCES BinMovements (Id) ON DELETE RESTRICT",
+            "wrong-delete" => "CONSTRAINT FK_Test_Reversal FOREIGN KEY (ReversesMovementId) REFERENCES BinMovements (Id) ON DELETE SET NULL",
+            _ => exact + ", CONSTRAINT FK_Test_Reversal_Duplicate FOREIGN KEY (ReversesMovementId) REFERENCES BinMovements (Id) ON DELETE RESTRICT"
+        };
+        await AppendBinMovementConstraintAsync(f, constraints);
+        var localColumn = damage == "wrong-column" ? "CorrectedByMovementId" : "ReversesMovementId";
+        Assert.True(await f.ScalarAsync($"SELECT COUNT(*) FROM pragma_foreign_key_list('BinMovements') WHERE \"from\"='{localColumn}'") > 0);
+        var before = await f.StateAsync();
+        var failure = await Assert.ThrowsAsync<StartupDatabaseException>(() => f.Coordinator().StartAsync());
+        Assert.Equal(StartupDatabaseFailure.StructuralCapabilityMissing, failure.Failure);
+        Assert.Equal(StartupDatabasePhase.Preflight, failure.Phase);
+        Assert.False(failure.SchemaMutationAttempted);
+        Assert.Equal(before, await f.StateAsync());
+        Assert.False(Directory.Exists(Backups(f)));
+    }
+
+    [Fact]
+    public async Task Historical_schema16_exception_does_not_weaken_other_required_capabilities()
+    {
+        await using var f = await Task20Fixture.CreateHistoricalSchema16Async();
+        await f.ExecuteAsync("ALTER TABLE BinMovements RENAME COLUMN Quantity TO MissingQuantity");
+        var before = await f.StateAsync();
+        var failure = await Assert.ThrowsAsync<StartupDatabaseException>(() => f.Coordinator().StartAsync());
+        Assert.Equal(StartupDatabaseFailure.StructuralCapabilityMissing, failure.Failure);
+        Assert.Equal(StartupDatabasePhase.Preflight, failure.Phase);
+        Assert.False(failure.SchemaMutationAttempted);
+        Assert.Equal(before, await f.StateAsync());
+    }
+
+    [Fact]
+    public async Task Fresh_schema16_exact_reversal_self_foreign_key_remains_accepted()
+    {
+        await using var f = await Task20Fixture.CreateAsync(schema17: false, enabled: false, projection: false);
+        Assert.Equal(1, await ReversalForeignKeyCountAsync(f, "BinMovements", "Id", "RESTRICT"));
+        using var ready = await f.Coordinator().StartAsync();
+        Assert.True(ready.IsReadyForActivatedHost);
+        Assert.Equal(17, await f.ScalarAsync("SELECT Version FROM SchemaVersion WHERE Id=1"));
+    }
+
+    [Fact]
     public async Task A2_schema16_activation_then_native_reentry_needs_no_retained_backup()
     {
         await using var f = await Task20Fixture.CreateAsync(schema17: false, enabled: false, projection: false);
@@ -748,6 +843,46 @@ public sealed class Task20StartupCoordinatorTests
     private static string Backups(Task20Fixture f) => System.IO.Path.Combine(Root(f), "startup-backups");
     private static WindowsFileDatabaseUpgradeGate Gate(Task20Fixture f) => new(System.IO.Path.Combine(Root(f), "startup-locks"),
         new PendingDatabaseOperationConflictProbe(System.IO.Path.Combine(Root(f), "pending.json")));
+
+    private static Task<long> ReversalForeignKeyCountAsync(Task20Fixture f,
+        string? targetTable = null, string? targetColumn = null, string? deleteAction = null)
+    {
+        var filters = new List<string> { "\"from\"='ReversesMovementId'" };
+        if (targetTable is not null) filters.Add($"\"table\"='{targetTable}'");
+        if (targetColumn is not null) filters.Add($"\"to\"='{targetColumn}'");
+        if (deleteAction is not null) filters.Add($"on_delete='{deleteAction}'");
+        return f.ScalarAsync($"SELECT COUNT(*) FROM pragma_foreign_key_list('BinMovements') WHERE {string.Join(" AND ", filters)}");
+    }
+
+    private static async Task AppendBinMovementConstraintAsync(Task20Fixture f, string constraint)
+    {
+        await using var connection = await f.Database.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT sql FROM sqlite_master WHERE type='table' AND name='BinMovements'";
+        var declaration = Convert.ToString(await command.ExecuteScalarAsync())
+            ?? throw new InvalidOperationException("BinMovements declaration is missing.");
+        var close = declaration.LastIndexOf(')');
+        if (close < 0) throw new InvalidOperationException("BinMovements declaration is malformed.");
+        var replacement = declaration.Insert(close, $", {constraint}");
+        command.CommandText = "PRAGMA schema_version";
+        var schemaCookie = Convert.ToInt32(await command.ExecuteScalarAsync());
+        try
+        {
+            command.CommandText = "PRAGMA writable_schema=ON";
+            await command.ExecuteNonQueryAsync();
+            command.CommandText = "UPDATE sqlite_master SET sql=$sql WHERE type='table' AND name='BinMovements'";
+            command.Parameters.AddWithValue("$sql", replacement);
+            await command.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            command.Parameters.Clear();
+            command.CommandText = "PRAGMA writable_schema=OFF";
+            await command.ExecuteNonQueryAsync();
+        }
+        command.CommandText = $"PRAGMA schema_version={schemaCookie + 1}";
+        await command.ExecuteNonQueryAsync();
+    }
 
     private static async Task AssertBackupValidAsync(Task20Fixture f)
     {

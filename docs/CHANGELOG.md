@@ -1,4 +1,47 @@
-## Unreleased BT-20-P2 schema17 activation candidate (16 September 2026)
+## v0.5.0-alpha.9.4 (17 September 2026)
+
+- Preserves alpha.9.3 as the candidate that passed the 800/800 canonical gate but failed renewed Windows acceptance because whole-root correction entered through historical original Batch #1 displayed superseded #1/#2 and the old 17/09 baseline.
+- Keeps mutation authority unchanged on the fresh logical root/current generation/permanent line IDs; the defect was operator presentation, not stale ledger execution.
+- Builds the correction dialog from the fresh current logical preview after validating the selected physical batch as an authoritative RootOriginal or LineageOutput anchor.
+- Carries truthful nullable physical-batch membership for current effective movements into the preview and fails closed if the current active root has no single date/direction baseline representable by the existing dialog.
+- Adds regression coverage proving original and output anchors present the same current effective rows after a native output generation.
+- Retained database, protected Batch #30, packaging and Task20 global acceptance remain pending.
+
+## v0.5.0-alpha.9.3 (17 September 2026)
+
+- Corrected `Correct Entire Batch` for a selected lineage-native correction-output batch. Data now returns a typed provider-neutral physical-batch anchor (`RootOriginal` or `LineageOutput`) only after authoritative persisted resolution to exactly one logical root; WinForms validates that anchor instead of comparing the selected physical batch with immutable `RootMovementBatchId`.
+- Preserved the original batch as root identity while allowing a valid output batch to preview and correct the same current root/generation. Missing, ambiguous and cross-root output associations remain fail-closed, and a second correction targets current replacement movements rather than superseded originals.
+- Classified Movement History restoration and correction-neutraliser presentation from persisted `LogicalMovementLedgerLink` transformation roles. Restoration now displays distinctly from an ordinary reversal; display wording remains non-authoritative.
+- Increased the Resolve Reversed Batch Lines default client size from `1050x640` to `1160x660`, retaining the `1050x550` minimum, resizable/non-maximized behavior, vertical-only grid scrolling and decision-column reachability.
+- Recorded the successful alpha.9.2 disposable Windows lineage workflow and the three defects it exposed. FIX4 Windows retest, retained-database rehearsal, protected Batch #30 and Task20 global acceptance remain pending.
+
+## v0.5.0-alpha.9.2 (17 September 2026)
+
+- Reworked Resolve Reversed Batch Lines so its primary columns show authoritative customer code/name, container name, direction, quantity, movement date and a plain-language `Reversed by movement #...` context before the explicit decision.
+- Retained logical root, permanent line, original movement, last-effective movement, reversal movement and preview-generation identities as wrapped secondary technical evidence and tooltips rather than unexplained primary columns.
+- Extended the existing provider-neutral logical preview DTO in Services; display names are loaded from authoritative master data in the same service-owned read transaction as the validated lineage snapshot. WinForms performs no database lookup or lineage reconstruction.
+- Preserved no-default decisions, Cancel/Esc no-write behavior, Restore/RemainReversed mapping, grouped Restore, all-Remain no-write, root CAS, idempotency, fresh re-preview and the direct whole-root Reversed-line block.
+- Advanced the already built/tested alpha.9.1 smoke candidate to corrective alpha.9.2 without rewriting prior candidate history. Retained-database rehearsal, protected Batch #30 and completed P4 Windows acceptance remain pending.
+
+## v0.5.0-alpha.9.1 (17 September 2026)
+
+- Corrected schema16 startup preflight to accept the historically valid V13-upgraded `ReversesMovementId` shape with its unique partial index and no self-FK, while continuing to accept only the exact RESTRICT self-FK on current fresh schema16 databases.
+- Kept malformed, wrong-target, wrong-delete and duplicate reversal relationships fail-closed, with all unrelated schema16 capability checks unchanged.
+- Updated the governed schema16-to17 table rebuild to add the exact `ReversesMovementId -> BinMovements.Id ON DELETE RESTRICT` relationship for historical inputs; native schema17 validation still requires exactly one authoritative relationship.
+- Added synthetic historical-migration, full startup coordinator, backup/source-verification, publication/native-health and adversarial regression coverage without accessing the retained database or Batch #30.
+- Superseded alpha.9 as the candidate version after its canonical build passed but Windows smoke failed during startup before the P4 UI opened. P4 Windows smoke and retained-database migration/rehearsal remain pending.
+
+## v0.5.0-alpha.9 (17 September 2026)
+
+- Added a resizable DPI-aware Restore / Remain Reversed dialog for blocked whole-root correction, showing persisted root/generation/line and current effective/reversal evidence without reconstructing lineage in WinForms.
+- Required an explicit choice for every current Reversed line and preserved Cancel/Esc as a no-write outcome.
+- Added a provider-neutral disposition command that validates complete decisions, combines all Restore choices into one existing atomic Restore mutation, returns no change for all-RemainReversed and refreshes authoritative state before correction can continue.
+- Preserved the direct `Correct + WholeRoot` Reversed-line block, preview-captured root CAS, authorization, idempotency/replay/conflict behavior and rollback boundaries.
+- Added focused coverage for one/multiple/mixed Restore and RemainReversed decisions, no-write, stale, unauthorized, incomplete/cancel-equivalent, retry/conflict and restoration failure rollback paths.
+- Advanced Version/InformationalVersion to `0.5.0-alpha.9`; AssemblyVersion/FileVersion remain `0.5.0.0`.
+- Windows/operator acceptance, the canonical BAT/full suite, retained-database rehearsal, Batch #30, broader activated-system gates, packaging/deployment, protected layer audit and Security Hardening remain pending.
+
+## BT-20-P2 schema17 activation candidate (16 September 2026)
 
 - Routed normal WinForms startup through the single Data-owned coordinator and retained its validated database session for the complete host lifetime.
 - Activated catalogue17, native Single/Batch lineage and receipts, logical correction/reversal, validated operational projection consumers and coordinated developer Load/Fresh marker handling as one architectural boundary.

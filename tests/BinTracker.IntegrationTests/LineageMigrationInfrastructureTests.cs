@@ -289,7 +289,12 @@ public sealed class LineageMigrationInfrastructureTests
         Assert.Equal(LineageMigrationBackupPolicy.ManifestFormatVersion, result.Manifest.FormatVersion);
         Assert.Equal(Guid.Parse("11111111-2222-3333-4444-555555555555"), result.Manifest.ArtifactId);
         Assert.Equal(LineageMigrationBackupPolicy.Purpose, result.Manifest.Purpose);
-        Assert.StartsWith("0.5.0-alpha.8.7", result.Manifest.ApplicationInformationalVersion, StringComparison.Ordinal);
+        var expectedInformationalVersion = System.Reflection.CustomAttributeExtensions
+            .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(
+                typeof(LineageMigrationBackupPolicy).Assembly)?
+            .InformationalVersion;
+        Assert.False(string.IsNullOrWhiteSpace(expectedInformationalVersion));
+        Assert.Equal(expectedInformationalVersion, result.Manifest.ApplicationInformationalVersion);
         Assert.Equal("SQLite", result.Manifest.Provider);
         Assert.Equal(Path.GetFullPath(fixture.DatabasePath), result.Manifest.SourceDatabasePath);
         Assert.False(string.IsNullOrWhiteSpace(result.Manifest.SourcePathIdentityHash));

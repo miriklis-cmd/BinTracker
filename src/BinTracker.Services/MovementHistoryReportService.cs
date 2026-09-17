@@ -40,7 +40,8 @@ public sealed record MovementHistoryReportRow(
     long? CorrectedByMovementId,
     string LinkedReversalReference,
     string CorrectionReason,
-    IReadOnlyList<MovementCorrectionLineage>? CorrectionLines = null)
+    IReadOnlyList<MovementCorrectionLineage>? CorrectionLines = null,
+    LogicalMovementTransformationRole? TransformationRole = null)
 {
     public string DirectionText =>
         Direction == MovementType.Out ? "OUT" : "IN";
@@ -54,11 +55,18 @@ public sealed record MovementHistoryReportRow(
         Lineage.Where(x => x.ReplacementMovementId == MovementId).ToArray();
 
     public bool IsCorrectionOriginal => CorrectedByCorrections.Count > 0;
-    public bool IsCorrectionNeutraliser => NeutraliserForCorrections.Count > 0;
-    public bool IsCorrectionReplacement => CreatedByCorrections.Count > 0;
-    public bool IsCorrectionRelated => Lineage.Count > 0;
+    public bool IsCorrectionNeutraliser =>
+        TransformationRole == LogicalMovementTransformationRole.CorrectionNeutraliser ||
+        NeutraliserForCorrections.Count > 0;
+    public bool IsCorrectionReplacement =>
+        TransformationRole == LogicalMovementTransformationRole.CorrectionReplacement ||
+        CreatedByCorrections.Count > 0;
+    public bool IsCorrectionRelated => IsCorrectionOriginal || IsCorrectionNeutraliser ||
+        IsCorrectionReplacement;
 
-    public string SourceText => IsCorrectionRelated ? "Correction"
+    public string SourceText => TransformationRole == LogicalMovementTransformationRole.Restoration
+        ? "Restoration"
+        : IsCorrectionRelated ? "Correction"
         : ReversesMovementId.HasValue ? "Reversal" : Source switch
     {
         MovementSource.Manual => "Single Entry",
@@ -68,13 +76,35 @@ public sealed record MovementHistoryReportRow(
         _ => Source.ToString()
     };
 
-    public string Status => IsCorrectionRelated
+    public string Status => TransformationRole switch
+    {
+        LogicalMovementTransformationRole.Restoration =>
+            $"Restoration — #{ReversesMovementId}" +
+            (string.IsNullOrWhiteSpace(CorrectionReason) ? "" : $" — {CorrectionReason}"),
+        LogicalMovementTransformationRole.CorrectionNeutraliser =>
+            $"Correction neutraliser for #{ReversesMovementId}",
+        LogicalMovementTransformationRole.CorrectionReplacement => "Corrected replacement",
+        _ => IsCorrectionRelated
         ? string.Join("; ", CorrectionStatusParts())
         : CorrectedByMovementId.HasValue
         ? $"Reversed — see {(!string.IsNullOrWhiteSpace(LinkedReversalReference) ? LinkedReversalReference : $"movement #{CorrectedByMovementId}") }"
         : ReversesMovementId.HasValue
             ? $"Reversal of #{ReversesMovementId}" + (string.IsNullOrWhiteSpace(CorrectionReason) ? "" : $" — {CorrectionReason}")
-            : "";
+            : ""
+    };
+
+    public string PresentationStatus => TransformationRole ==
+        LogicalMovementTransformationRole.Restoration
+            ? $"Restoration — #{ReversesMovementId}"
+            : IsCorrectionRelated
+                ? Status
+                : ReversesMovementId.HasValue
+                    ? $"Reversal — #{ReversesMovementId.Value}"
+                    : CorrectedByMovementId.HasValue
+                        ? string.IsNullOrWhiteSpace(LinkedReversalReference)
+                            ? "Reversed"
+                            : $"Reversed — {LinkedReversalReference}"
+                        : Status;
 
     public bool CanReverse => !ReversesMovementId.HasValue && !CorrectedByMovementId.HasValue;
 
@@ -125,7 +155,8 @@ public interface IMovementHistoryReportService
 
 internal sealed class MovementHistoryReportService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    IBusinessClock clock)
+    IBusinessClock clock,
+    IMovementMutationWriter mutationWriter)
     : IMovementHistoryReportService
 {
     public async Task<MovementHistoryReportResult> QueryAsync(
@@ -152,6 +183,9 @@ internal sealed class MovementHistoryReportService(
 
         await using var db =
             await factory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = mutationWriter.IsEnabled
+            ? await db.Database.BeginTransactionAsync(cancellationToken)
+            : null;
 
         var movements = db.BinMovements
             .AsNoTracking()
@@ -204,6 +238,9 @@ internal sealed class MovementHistoryReportService(
             .ToListAsync(cancellationToken);
 
         var movementIds = raw.Select(x => x.Id).ToList();
+        var transformationRoles = mutationWriter.IsEnabled
+            ? await mutationWriter.ReadTransformationRolesAsync(db, movementIds, cancellationToken)
+            : new Dictionary<long, LogicalMovementTransformationRole>();
         var correctionLines = await db.MovementCorrectionLines.AsNoTracking()
             .Where(line => movementIds.Contains(line.OriginalMovementId) ||
                 movementIds.Contains(line.NeutralisingMovementId) ||
@@ -239,6 +276,7 @@ internal sealed class MovementHistoryReportService(
             .Select(x =>
             {
                 correctionLinesByMovementId.TryGetValue(x.Id, out var movementCorrectionLines);
+                transformationRoles.TryGetValue(x.Id, out var transformationRole);
                 return new MovementHistoryReportRow(
                 x.Id,
                 x.MovementDate,
@@ -260,7 +298,8 @@ internal sealed class MovementHistoryReportService(
                 x.CorrectedByMovementId,
                 x.LinkedReversalReference,
                 x.CorrectionReason,
-                movementCorrectionLines);
+                movementCorrectionLines,
+                transformationRoles.ContainsKey(x.Id) ? transformationRole : null);
             })
             .OrderBy(x => x.MovementDate)
             .ThenBy(x => x.CustomerCode, StringComparer.OrdinalIgnoreCase)
@@ -287,11 +326,14 @@ internal sealed class MovementHistoryReportService(
             .ThenBy(x => x.ContainerType, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return new MovementHistoryReportResult(
+        var result = new MovementHistoryReportResult(
             start,
             end,
             rows,
             totals);
+        if (transaction is not null)
+            await transaction.RollbackAsync(cancellationToken);
+        return result;
     }
 
     private static bool Contains(string? value, string term) =>

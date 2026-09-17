@@ -10,6 +10,203 @@ namespace BinTracker.IntegrationTests;
 public sealed class Task20MutationActivationTests
 {
     [Fact]
+    public async Task Whole_batch_selection_accepts_root_and_native_output_physical_anchors()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var root = await f.Database.CreateBatchAsync(7, 4);
+
+        var originalBatch = Assert.IsType<MovementBatchCorrectionDetail>(
+            await f.Corrections.GetBatchAsync(root.BatchId));
+        var originalPreview = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalForBatchAsync(root.BatchId));
+        Assert.Equal(root.RootId, originalPreview.LogicalMovementBatchId.Value);
+        Assert.Equal(root.BatchId, originalPreview.RootMovementBatchId);
+        Assert.Equal(LogicalMovementPhysicalBatchAnchorKind.RootOriginal,
+            originalPreview.PhysicalBatchAnchor?.Kind);
+        Assert.True(MovementCorrectionSelection.IsValidWholeBatchAnchor(
+            root.BatchId, originalBatch, originalPreview));
+
+        var firstCurrentMovementIds = originalPreview.Lines
+            .Select(x => x.LastEffective.MovementId)
+            .ToArray();
+        var first = await f.Corrections.ExecuteLogicalAsync(new(
+            Guid.NewGuid(), originalPreview.LogicalMovementBatchId,
+            originalPreview.ExpectedGeneration,
+            MovementMutationRequest.Correct(MovementMutationScope.WholeRoot,
+                originalPreview.Lines.Select(x => x.LogicalMovementLineId),
+                "create native physical output",
+                movementDate: MovementFieldIntent<DateOnly>.Selected(Task20Fixture.Today))));
+        var outputBatchId = Assert.IsType<int>(first.PhysicalOutputBatchId);
+        Assert.NotEqual(root.BatchId, outputBatchId);
+
+        var outputBatch = Assert.IsType<MovementBatchCorrectionDetail>(
+            await f.Corrections.GetBatchAsync(outputBatchId));
+        var outputPreview = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalForBatchAsync(outputBatchId));
+        Assert.Equal(root.RootId, outputPreview.LogicalMovementBatchId.Value);
+        Assert.Equal(root.BatchId, outputPreview.RootMovementBatchId);
+        Assert.Equal(LogicalMovementPhysicalBatchAnchorKind.LineageOutput,
+            outputPreview.PhysicalBatchAnchor?.Kind);
+        Assert.Equal(outputBatchId, outputPreview.PhysicalBatchAnchor?.MovementBatchId);
+        Assert.Equal(1, outputPreview.ExpectedGeneration.Value);
+        Assert.True(outputPreview.IsWholeRootCorrectionEligible);
+        Assert.True(MovementCorrectionSelection.IsValidWholeBatchAnchor(
+            outputBatchId, outputBatch, outputPreview));
+
+        var originalAnchorCurrentPreview = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalForBatchAsync(root.BatchId));
+        var originalAnchorCurrentDetail =
+            MovementCorrectionSelection.BuildCurrentWholeRootCorrectionDetail(
+                root.BatchId, originalAnchorCurrentPreview);
+        var outputAnchorCurrentDetail =
+            MovementCorrectionSelection.BuildCurrentWholeRootCorrectionDetail(
+                outputBatchId, outputPreview);
+        var expectedCurrentIds = outputPreview.Lines
+            .Select(x => x.LastEffective.MovementId)
+            .OrderBy(x => x)
+            .ToArray();
+
+        Assert.Equal(Task20Fixture.Today, originalAnchorCurrentDetail.MovementDate);
+        Assert.Equal(outputPreview.Lines[0].LastEffective.Direction,
+            originalAnchorCurrentDetail.Direction);
+        Assert.Equal(expectedCurrentIds,
+            originalAnchorCurrentDetail.Lines
+                .Select(x => x.MovementId)
+                .OrderBy(x => x)
+                .ToArray());
+        Assert.Equal(expectedCurrentIds,
+            outputAnchorCurrentDetail.Lines
+                .Select(x => x.MovementId)
+                .OrderBy(x => x)
+                .ToArray());
+        Assert.DoesNotContain(firstCurrentMovementIds,
+            id => originalAnchorCurrentDetail.Lines.Any(x => x.MovementId == id));
+        Assert.All(originalAnchorCurrentDetail.Lines,
+            line => Assert.Equal(outputBatchId, line.MovementBatchId));
+
+        var currentReplacement = outputPreview.Lines[0].LastEffective.MovementId;
+        var selectedCurrent = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalForMovementAsync(currentReplacement));
+        Assert.Single(selectedCurrent.Lines, x =>
+            x.LastEffective.MovementId == currentReplacement &&
+            x.State == LogicalMovementLineState.Active);
+
+        var supersededOriginal = firstCurrentMovementIds[0];
+        var selectedHistorical = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalForMovementAsync(supersededOriginal));
+        Assert.DoesNotContain(selectedHistorical.Lines, x =>
+            x.LastEffective.MovementId == supersededOriginal &&
+            x.State == LogicalMovementLineState.Active);
+
+        var currentMovementIds = outputPreview.Lines
+            .Select(x => x.LastEffective.MovementId)
+            .OrderBy(x => x)
+            .ToArray();
+        var second = await f.Corrections.ExecuteLogicalAsync(new(
+            Guid.NewGuid(), outputPreview.LogicalMovementBatchId,
+            outputPreview.ExpectedGeneration,
+            MovementMutationRequest.Correct(MovementMutationScope.WholeRoot,
+                outputPreview.Lines.Select(x => x.LogicalMovementLineId),
+                "correct again from native output anchor",
+                direction: MovementFieldIntent<MovementType>.Selected(MovementType.In))));
+        Assert.Equal(2, second.ResultGeneration.Value);
+        Assert.Equal(root.BatchId, await f.ScalarAsync(
+            $"SELECT RootMovementBatchId FROM LogicalMovementBatches WHERE Id={root.RootId}"));
+        var neutralisedCurrentIds = await f.ReadInt64sAsync($"""
+            SELECT m.ReversesMovementId
+            FROM LogicalMovementLedgerLinks l
+            JOIN BinMovements m ON m.Id=l.BinMovementId
+            WHERE l.LogicalMovementBatchId={root.RootId}
+              AND l.Role={(int)LogicalMovementTransformationRole.CorrectionNeutraliser}
+              AND l.IntroducedByGenerationLineId IN (
+                  SELECT Id FROM LogicalMovementGenerationLines
+                  WHERE LogicalMovementBatchId={root.RootId}
+                    AND LogicalMovementGenerationId=(
+                        SELECT Id FROM LogicalMovementGenerations
+                        WHERE LogicalMovementBatchId={root.RootId} AND GenerationNumber=2))
+            ORDER BY m.ReversesMovementId;
+            """);
+        Assert.Equal(currentMovementIds, neutralisedCurrentIds);
+        Assert.DoesNotContain(supersededOriginal, neutralisedCurrentIds);
+    }
+
+    [Fact]
+    public async Task Physical_batch_without_authoritative_root_or_output_association_fails_closed()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var root = await f.Database.CreateBatchAsync(7, 4);
+        var preview = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalForBatchAsync(root.BatchId));
+        var mutation = await f.Corrections.ExecuteLogicalAsync(new(
+            Guid.NewGuid(), preview.LogicalMovementBatchId, preview.ExpectedGeneration,
+            MovementMutationRequest.Correct(MovementMutationScope.WholeRoot,
+                preview.Lines.Select(x => x.LogicalMovementLineId), "create output",
+                movementDate: MovementFieldIntent<DateOnly>.Selected(Task20Fixture.Today))));
+        var outputBatchId = Assert.IsType<int>(mutation.PhysicalOutputBatchId);
+        await f.ExecuteAsync(
+            $"DELETE FROM LogicalMovementPhysicalOutputs WHERE MovementBatchId={outputBatchId};");
+
+        Assert.Null(await f.Corrections.PreviewLogicalForBatchAsync(outputBatchId));
+        var detail = Assert.IsType<MovementBatchCorrectionDetail>(
+            await f.Corrections.GetBatchAsync(outputBatchId));
+        Assert.False(detail.IsEligible);
+    }
+
+    [Fact]
+    public async Task Physical_batch_claiming_original_and_output_roots_fails_closed_as_ambiguous()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var firstRoot = await f.Database.CreateBatchAsync(7, 4);
+        var preview = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalForBatchAsync(firstRoot.BatchId));
+        var mutation = await f.Corrections.ExecuteLogicalAsync(new(
+            Guid.NewGuid(), preview.LogicalMovementBatchId, preview.ExpectedGeneration,
+            MovementMutationRequest.Correct(MovementMutationScope.WholeRoot,
+                preview.Lines.Select(x => x.LogicalMovementLineId), "create output",
+                movementDate: MovementFieldIntent<DateOnly>.Selected(Task20Fixture.Today))));
+        var outputBatchId = Assert.IsType<int>(mutation.PhysicalOutputBatchId);
+        var secondRoot = await f.Database.CreateSingleAsync(
+            Task20Fixture.Today, f.CustomerId, 1, 3);
+        await f.ExecuteAsync($"""
+            UPDATE LogicalMovementBatches
+            SET RootMovementBatchId={outputBatchId}
+            WHERE Id={secondRoot.RootId};
+            """);
+
+        var error = await Assert.ThrowsAsync<LogicalMovementMutationException>(
+            () => f.Corrections.PreviewLogicalForBatchAsync(outputBatchId));
+        Assert.Equal(LogicalMovementMutationFailure.Unhealthy, error.Failure);
+    }
+
+    [Fact]
+    public async Task Cross_root_physical_output_association_fails_closed()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var firstRoot = await f.Database.CreateBatchAsync(7, 4);
+        var preview = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalForBatchAsync(firstRoot.BatchId));
+        var mutation = await f.Corrections.ExecuteLogicalAsync(new(
+            Guid.NewGuid(), preview.LogicalMovementBatchId, preview.ExpectedGeneration,
+            MovementMutationRequest.Correct(MovementMutationScope.WholeRoot,
+                preview.Lines.Select(x => x.LogicalMovementLineId), "create output",
+                movementDate: MovementFieldIntent<DateOnly>.Selected(Task20Fixture.Today))));
+        var outputBatchId = Assert.IsType<int>(mutation.PhysicalOutputBatchId);
+        var secondRoot = await f.Database.CreateSingleAsync(
+            Task20Fixture.Today, f.CustomerId, 1, 3);
+        await f.ExecuteAsync($"""
+            PRAGMA foreign_keys=OFF;
+            UPDATE LogicalMovementPhysicalOutputs
+            SET LogicalMovementBatchId={secondRoot.RootId}
+            WHERE MovementBatchId={outputBatchId};
+            PRAGMA foreign_keys=ON;
+            """);
+
+        var error = await Assert.ThrowsAsync<LogicalMovementMutationException>(
+            () => f.Corrections.PreviewLogicalForBatchAsync(outputBatchId));
+        Assert.Equal(LogicalMovementMutationFailure.Unhealthy, error.Failure);
+    }
+
+    [Fact]
     public async Task Dormant_schema16_keeps_legacy_correction_and_does_not_offer_logical_preview()
     {
         await using var f = await Task20Fixture.CreateAsync(
@@ -272,6 +469,325 @@ public sealed class Task20MutationActivationTests
         Assert.Equal(LogicalMovementMutationFailure.LegacyRouteUnavailable, legacy.Failure);
         Task20FailureBoundary.AssertDomainFailure(error, ["legacy", "schema17", "schema 17", "logical", "generation"],
             ["disabled", "unavailable", "unsupported", "not supported", "required", "reject"]);
+    }
+}
+
+public sealed class Task20ReversedDispositionWorkflowTests
+{
+    [Fact]
+    public async Task Movement_history_distinguishes_reversal_restoration_and_correction_neutraliser_roles()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var root = await f.Database.CreateBatchAsync(7);
+        var initial = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalForBatchAsync(root.BatchId));
+        var lineId = Assert.Single(initial.Lines).LogicalMovementLineId;
+        await f.Corrections.ExecuteLogicalAsync(new(
+            Guid.NewGuid(), initial.LogicalMovementBatchId, initial.ExpectedGeneration,
+            MovementMutationRequest.Reverse(MovementMutationScope.Individual,
+                [lineId], "ordinary reversal")));
+        var reversalId = (await f.Database.MovementIdsByRoleAsync(root.RootId))
+            [LogicalMovementTransformationRole.OrdinaryReversal];
+
+        var reversed = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalAsync(new(root.RootId)));
+        var restored = await f.Corrections.ResolveReversedLinesAsync(new(
+            Guid.NewGuid(), reversed.LogicalMovementBatchId, reversed.ExpectedGeneration,
+            [new(lineId, ReversedLineDisposition.Restore)], "restore mistaken reversal"));
+        var restorationId = (await f.Database.MovementIdsByRoleAsync(root.RootId))
+            [LogicalMovementTransformationRole.Restoration];
+
+        await f.Corrections.ExecuteLogicalAsync(new(
+            Guid.NewGuid(), restored.CurrentPreview.LogicalMovementBatchId,
+            restored.CurrentPreview.ExpectedGeneration,
+            MovementMutationRequest.Correct(MovementMutationScope.WholeRoot,
+                [lineId], "correct restored line",
+                direction: MovementFieldIntent<MovementType>.Selected(MovementType.In))));
+        var correctionNeutraliserId = (await f.Database.MovementIdsByRoleAsync(root.RootId))
+            [LogicalMovementTransformationRole.CorrectionNeutraliser];
+
+        var history = await f.History.QueryAsync(new(
+            new DateOnly(2026, 9, 1), Task20Fixture.Today,
+            IncludeAdjustments: true));
+        var reversal = Assert.Single(history.Rows, x => x.MovementId == reversalId);
+        Assert.Equal("Reversal", reversal.SourceText);
+        Assert.StartsWith($"Reversal of #{initial.Lines[0].LastEffective.MovementId}",
+            reversal.Status);
+        Assert.Equal($"Reversal — #{initial.Lines[0].LastEffective.MovementId}",
+            reversal.PresentationStatus);
+
+        var restoration = Assert.Single(history.Rows, x => x.MovementId == restorationId);
+        Assert.Equal("Restoration", restoration.SourceText);
+        Assert.StartsWith($"Restoration — #{reversalId}", restoration.Status);
+        Assert.Equal($"Restoration — #{reversalId}", restoration.PresentationStatus);
+
+        var correctionNeutraliser = Assert.Single(history.Rows,
+            x => x.MovementId == correctionNeutraliserId);
+        Assert.Equal("Correction", correctionNeutraliser.SourceText);
+        Assert.StartsWith("Correction neutraliser", correctionNeutraliser.Status);
+        Assert.StartsWith("Correction neutraliser", correctionNeutraliser.PresentationStatus);
+    }
+
+    [Fact]
+    public async Task Reversed_preview_carries_authoritative_operator_display_and_forensic_identity()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var root = await f.Database.CreateBatchAsync(7, 4);
+        var lineId = new LogicalMovementLineId((await f.Database.LineIdsAsync(root.RootId))[1]);
+        await f.Database.MutateAsync(root.RootId, 0,
+            MovementMutationRequest.Reverse(MovementMutationScope.Individual,
+                [lineId], "prepare display contract"));
+
+        var preview = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalAsync(new(root.RootId)));
+        var line = Assert.Single(preview.Lines,
+            x => x.State == LogicalMovementLineState.Reversed);
+
+        Assert.Equal("PROJ-A", line.LastEffective.CustomerCode);
+        Assert.Equal("Projection A", line.LastEffective.CustomerName);
+        Assert.Equal("Small Bin", line.LastEffective.ContainerTypeName);
+        Assert.Equal((new DateOnly(2026, 9, 1), MovementType.Out, 4),
+            (line.LastEffective.MovementDate, line.LastEffective.Direction,
+                line.LastEffective.Quantity));
+        Assert.Equal(lineId, line.LogicalMovementLineId);
+        Assert.Equal(root.RootId, preview.LogicalMovementBatchId.Value);
+        Assert.True(line.RootMovementId > 0);
+        Assert.True(line.LastEffective.MovementId > 0);
+        Assert.True(line.TerminalReversalMovementId > 0);
+        Assert.Equal(1, preview.ExpectedGeneration.Value);
+    }
+
+    [Fact]
+    public async Task Disposition_identity_and_mapping_do_not_depend_on_display_labels()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var root = await f.Database.CreateBatchAsync(7, 4);
+        var lineId = new LogicalMovementLineId((await f.Database.LineIdsAsync(root.RootId))[1]);
+        await f.Database.MutateAsync(root.RootId, 0,
+            MovementMutationRequest.Reverse(MovementMutationScope.Individual,
+                [lineId], "prepare display rename"));
+        var preview = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalAsync(new(root.RootId)));
+
+        await f.ExecuteAsync($"""
+            UPDATE Customers SET CustomerCode='RENAMED', Name='Renamed Customer'
+            WHERE Id={f.CustomerId};
+            UPDATE ContainerTypes SET Name='Renamed Container', NameKey='RENAMED CONTAINER'
+            WHERE Id=2;
+            """);
+        var beforeDecision = await f.StateAsync();
+
+        var result = await f.Corrections.ResolveReversedLinesAsync(new(
+            Guid.NewGuid(), preview.LogicalMovementBatchId, preview.ExpectedGeneration,
+            [new(lineId, ReversedLineDisposition.RemainReversed)], null));
+
+        Assert.Equal(LogicalMovementMutationResultKind.NoChange, result.Kind);
+        var currentLine = Assert.Single(result.CurrentPreview.Lines,
+            x => x.LogicalMovementLineId == lineId);
+        Assert.Equal("RENAMED", currentLine.LastEffective.CustomerCode);
+        Assert.Equal("Renamed Customer", currentLine.LastEffective.CustomerName);
+        Assert.Equal("Renamed Container", currentLine.LastEffective.ContainerTypeName);
+        Assert.Equal(LogicalMovementLineState.Reversed, currentLine.State);
+        Assert.Equal(beforeDecision, await f.StateAsync());
+    }
+
+    [Fact]
+    public async Task One_reversed_line_restore_uses_existing_authority_and_returns_fresh_eligible_preview()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var root = await f.Database.CreateBatchAsync(7, 4);
+        var lines = (await f.Database.LineIdsAsync(root.RootId))
+            .Select(x => new LogicalMovementLineId(x)).ToArray();
+        await f.Database.MutateAsync(root.RootId, 0,
+            MovementMutationRequest.Reverse(MovementMutationScope.Individual,
+                [lines[1]], "prepare disposition"));
+        var preview = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalAsync(new(root.RootId)));
+        var reversed = Assert.Single(preview.Lines,
+            x => x.State == LogicalMovementLineState.Reversed);
+
+        var result = await f.Corrections.ResolveReversedLinesAsync(new(
+            Guid.NewGuid(), preview.LogicalMovementBatchId, preview.ExpectedGeneration,
+            [new(reversed.LogicalMovementLineId, ReversedLineDisposition.Restore)],
+            "the reversal was entered in error"));
+
+        Assert.Equal(LogicalMovementMutationResultKind.Committed, result.Kind);
+        Assert.NotNull(result.OperationId);
+        Assert.Equal(2, result.CurrentPreview.ExpectedGeneration.Value);
+        Assert.True(result.CurrentPreview.IsWholeRootCorrectionEligible);
+        Assert.All(result.CurrentPreview.Lines,
+            x => Assert.Equal(LogicalMovementLineState.Active, x.State));
+        Assert.Equal(1, await f.ScalarAsync($"""
+            SELECT COUNT(*) FROM LogicalMovementGenerationLines
+            WHERE LogicalMovementBatchId={root.RootId}
+              AND LogicalMovementGenerationId=(
+                  SELECT Id FROM LogicalMovementGenerations
+                  WHERE LogicalMovementBatchId={root.RootId} AND GenerationNumber=2)
+              AND Action={(int)LogicalMovementGenerationAction.Restored};
+            """));
+    }
+
+    [Fact]
+    public async Task Remain_reversed_is_an_explicit_no_write_outcome()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var root = await f.Database.CreateBatchAsync(7, 4);
+        var line = new LogicalMovementLineId((await f.Database.LineIdsAsync(root.RootId))[1]);
+        await f.Database.MutateAsync(root.RootId, 0,
+            MovementMutationRequest.Reverse(MovementMutationScope.Individual,
+                [line], "prepare remain reversed"));
+        var preview = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalAsync(new(root.RootId)));
+        var before = await f.StateAsync();
+
+        var result = await f.Corrections.ResolveReversedLinesAsync(new(
+            Guid.NewGuid(), preview.LogicalMovementBatchId, preview.ExpectedGeneration,
+            [new(line, ReversedLineDisposition.RemainReversed)], null));
+
+        Assert.Equal(LogicalMovementMutationResultKind.NoChange, result.Kind);
+        Assert.Null(result.OperationId);
+        Assert.False(result.CurrentPreview.IsWholeRootCorrectionEligible);
+        Assert.Equal(before, await f.StateAsync());
+    }
+
+    [Fact]
+    public async Task Multiple_reversed_lines_restore_and_remain_are_one_complete_atomic_generation()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var root = await f.Database.CreateBatchAsync(7, 4, 3);
+        var lines = (await f.Database.LineIdsAsync(root.RootId))
+            .Select(x => new LogicalMovementLineId(x)).ToArray();
+        await f.Database.MutateAsync(root.RootId, 0,
+            MovementMutationRequest.Reverse(MovementMutationScope.Individual,
+                [lines[1], lines[2]], "prepare mixed dispositions"));
+        var preview = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalAsync(new(root.RootId)));
+
+        var result = await f.Corrections.ResolveReversedLinesAsync(new(
+            Guid.NewGuid(), preview.LogicalMovementBatchId, preview.ExpectedGeneration,
+            [new(lines[1], ReversedLineDisposition.Restore),
+                new(lines[2], ReversedLineDisposition.RemainReversed)],
+            "restore only the erroneous reversal"));
+
+        Assert.Equal(LogicalMovementMutationResultKind.Committed, result.Kind);
+        Assert.Equal(2, result.CurrentPreview.ExpectedGeneration.Value);
+        Assert.Equal(LogicalMovementLineState.Active,
+            result.CurrentPreview.Lines.Single(x => x.LogicalMovementLineId == lines[1]).State);
+        Assert.Equal(LogicalMovementLineState.Reversed,
+            result.CurrentPreview.Lines.Single(x => x.LogicalMovementLineId == lines[2]).State);
+        Assert.False(result.CurrentPreview.IsWholeRootCorrectionEligible);
+        Assert.Equal(3, await f.ScalarAsync($"""
+            SELECT COUNT(*) FROM LogicalMovementGenerationLines
+            WHERE LogicalMovementBatchId={root.RootId}
+              AND LogicalMovementGenerationId=(
+                  SELECT Id FROM LogicalMovementGenerations
+                  WHERE LogicalMovementBatchId={root.RootId} AND GenerationNumber=2);
+            """));
+        Assert.Equal(1, await f.ScalarAsync($"""
+            SELECT COUNT(*) FROM LogicalMovementGenerationLines
+            WHERE LogicalMovementBatchId={root.RootId}
+              AND LogicalMovementGenerationId=(
+                  SELECT Id FROM LogicalMovementGenerations
+                  WHERE LogicalMovementBatchId={root.RootId} AND GenerationNumber=2)
+              AND Action={(int)LogicalMovementGenerationAction.Restored};
+            """));
+    }
+
+    [Fact]
+    public async Task Stale_disposition_generation_is_controlled_and_writes_nothing()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var root = await f.Database.CreateBatchAsync(7, 4);
+        var lines = (await f.Database.LineIdsAsync(root.RootId))
+            .Select(x => new LogicalMovementLineId(x)).ToArray();
+        await f.Database.MutateAsync(root.RootId, 0,
+            MovementMutationRequest.Reverse(MovementMutationScope.Individual,
+                [lines[1]], "prepare stale disposition"));
+        var stale = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalAsync(new(root.RootId)));
+        await f.Database.MutateAsync(root.RootId, stale.ExpectedGeneration.Value,
+            MovementMutationRequest.Correct(MovementMutationScope.Individual,
+                [lines[0]], "advance root", quantity: MovementFieldIntent<int>.Selected(8)));
+        var before = await f.StateAsync();
+
+        var error = await Assert.ThrowsAsync<LogicalMovementMutationException>(() =>
+            f.Corrections.ResolveReversedLinesAsync(new(
+                Guid.NewGuid(), stale.LogicalMovementBatchId, stale.ExpectedGeneration,
+                [new(lines[1], ReversedLineDisposition.Restore)], "stale restore")));
+
+        Assert.Equal(LogicalMovementMutationFailure.StaleGeneration, error.Failure);
+        Assert.Equal(before, await f.StateAsync());
+    }
+
+    [Fact]
+    public async Task Disposition_retry_replays_exact_restore_and_changed_reuse_conflicts()
+    {
+        await using var f = await Task20Fixture.CreateAsync();
+        var root = await f.Database.CreateSingleAsync(Task20Fixture.Today, f.CustomerId, 1, 7);
+        var line = new LogicalMovementLineId((await f.Database.LineIdsAsync(root.RootId)).Single());
+        await f.Database.MutateAsync(root.RootId, 0,
+            MovementMutationRequest.Reverse(MovementMutationScope.Individual,
+                [line], "prepare retry"));
+        var preview = Assert.IsType<LogicalMovementMutationPreview>(
+            await f.Corrections.PreviewLogicalAsync(new(root.RootId)));
+        var operationId = Guid.NewGuid();
+        var command = new LogicalMovementReversedDispositionCommand(
+            operationId, preview.LogicalMovementBatchId, preview.ExpectedGeneration,
+            [new(line, ReversedLineDisposition.Restore)], "restore retry");
+
+        var committed = await f.Corrections.ResolveReversedLinesAsync(command);
+        var committedState = await f.StateAsync();
+        var replay = await f.Corrections.ResolveReversedLinesAsync(command);
+
+        Assert.Equal(LogicalMovementMutationResultKind.Committed, committed.Kind);
+        Assert.Equal(LogicalMovementMutationResultKind.Replayed, replay.Kind);
+        Assert.Equal(committed.OperationId, replay.OperationId);
+        Assert.Equal(committedState, await f.StateAsync());
+        var conflict = await Assert.ThrowsAsync<LogicalMovementMutationException>(() =>
+            f.Corrections.ResolveReversedLinesAsync(command with
+            {
+                RestorationReason = "changed restoration reason"
+            }));
+        Assert.Equal(LogicalMovementMutationFailure.OperationIdConflict, conflict.Failure);
+        Assert.Equal(committedState, await f.StateAsync());
+    }
+
+    [Fact]
+    public async Task Viewer_and_incomplete_decisions_leave_no_disposition_artifacts()
+    {
+        await using var viewer = await Task20Fixture.CreateAsync(
+            role: UserRole.Viewer, nativeActorRole: UserRole.Operator);
+        var root = await viewer.Database.CreateBatchAsync(7, 4);
+        var line = new LogicalMovementLineId((await viewer.Database.LineIdsAsync(root.RootId))[1]);
+        await viewer.Database.MutateAsync(root.RootId, 0,
+            MovementMutationRequest.Reverse(MovementMutationScope.Individual,
+                [line], "prepare viewer"));
+        var preview = Assert.IsType<LogicalMovementMutationPreview>(
+            await viewer.Corrections.PreviewLogicalAsync(new(root.RootId)));
+        var beforeViewer = await viewer.StateAsync();
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            viewer.Corrections.ResolveReversedLinesAsync(new(
+                Guid.NewGuid(), preview.LogicalMovementBatchId, preview.ExpectedGeneration,
+                [new(line, ReversedLineDisposition.Restore)], "viewer denied")));
+        Assert.Equal(beforeViewer, await viewer.StateAsync());
+
+        await using var operatorFixture = await Task20Fixture.CreateAsync();
+        var operatorRoot = await operatorFixture.Database.CreateBatchAsync(7, 4);
+        var operatorLine = new LogicalMovementLineId(
+            (await operatorFixture.Database.LineIdsAsync(operatorRoot.RootId))[1]);
+        await operatorFixture.Database.MutateAsync(operatorRoot.RootId, 0,
+            MovementMutationRequest.Reverse(MovementMutationScope.Individual,
+                [operatorLine], "prepare cancel"));
+        var operatorPreview = Assert.IsType<LogicalMovementMutationPreview>(
+            await operatorFixture.Corrections.PreviewLogicalAsync(new(operatorRoot.RootId)));
+        var beforeIncomplete = await operatorFixture.StateAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            operatorFixture.Corrections.ResolveReversedLinesAsync(new(
+                Guid.NewGuid(), operatorPreview.LogicalMovementBatchId,
+                operatorPreview.ExpectedGeneration, [], null)));
+        Assert.Equal(beforeIncomplete, await operatorFixture.StateAsync());
     }
 }
 

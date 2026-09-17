@@ -85,7 +85,10 @@ public interface IMovementMutationWriter
     bool IsEnabled { get; }
     Task<LogicalMovementBatchId?> FindRootByMovementAsync(BinTrackerDbContext db, long movementId,
         CancellationToken cancellationToken = default);
-    Task<LogicalMovementBatchId?> FindRootByBatchAsync(BinTrackerDbContext db, int movementBatchId,
+    Task<LogicalMovementPhysicalBatchAnchor?> FindRootByBatchAsync(BinTrackerDbContext db, int movementBatchId,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<long, LogicalMovementTransformationRole>> ReadTransformationRolesAsync(
+        BinTrackerDbContext db, IReadOnlyCollection<long> movementIds,
         CancellationToken cancellationToken = default);
     Task EnsureReadyAsync(BinTrackerDbContext db, LogicalMovementBatchId rootId,
         CancellationToken cancellationToken = default);
@@ -121,8 +124,14 @@ public sealed class DormantMovementMutationWriter : IMovementMutationWriter
     public bool IsEnabled => false;
     public Task<LogicalMovementBatchId?> FindRootByMovementAsync(BinTrackerDbContext db, long movementId,
         CancellationToken cancellationToken = default) => Fail<LogicalMovementBatchId?>();
-    public Task<LogicalMovementBatchId?> FindRootByBatchAsync(BinTrackerDbContext db, int movementBatchId,
-        CancellationToken cancellationToken = default) => Fail<LogicalMovementBatchId?>();
+    public Task<LogicalMovementPhysicalBatchAnchor?> FindRootByBatchAsync(BinTrackerDbContext db,
+        int movementBatchId, CancellationToken cancellationToken = default) =>
+        Fail<LogicalMovementPhysicalBatchAnchor?>();
+    public Task<IReadOnlyDictionary<long, LogicalMovementTransformationRole>> ReadTransformationRolesAsync(
+        BinTrackerDbContext db, IReadOnlyCollection<long> movementIds,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyDictionary<long, LogicalMovementTransformationRole>>(
+            new Dictionary<long, LogicalMovementTransformationRole>());
     public Task EnsureReadyAsync(BinTrackerDbContext db, LogicalMovementBatchId rootId,
         CancellationToken cancellationToken = default) => Fail();
     public Task<MovementMutationReplay?> FindCommittedAsync(BinTrackerDbContext db,
@@ -225,16 +234,46 @@ internal sealed class SqliteMovementMutationWriter(
             """, movementId, cancellationToken);
     }
 
-    public Task<LogicalMovementBatchId?> FindRootByBatchAsync(BinTrackerDbContext db, int movementBatchId,
+    public Task<LogicalMovementPhysicalBatchAnchor?> FindRootByBatchAsync(BinTrackerDbContext db,
+        int movementBatchId,
         CancellationToken cancellationToken = default)
     {
         if (movementBatchId <= 0)
             throw new ArgumentOutOfRangeException(nameof(movementBatchId));
-        return FindRootAsync(db, """
-            SELECT Id FROM LogicalMovementBatches WHERE RootMovementBatchId=$id
+        return FindPhysicalBatchAnchorAsync(db, """
+            SELECT Id,0 FROM LogicalMovementBatches WHERE RootMovementBatchId=$id
             UNION ALL
-            SELECT LogicalMovementBatchId FROM LogicalMovementPhysicalOutputs WHERE MovementBatchId=$id;
+            SELECT LogicalMovementBatchId,1 FROM LogicalMovementPhysicalOutputs WHERE MovementBatchId=$id;
             """, movementBatchId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<long, LogicalMovementTransformationRole>>
+        ReadTransformationRolesAsync(BinTrackerDbContext db, IReadOnlyCollection<long> movementIds,
+            CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(movementIds);
+        if (movementIds.Count == 0)
+            return new Dictionary<long, LogicalMovementTransformationRole>();
+        if (movementIds.Any(x => x <= 0) || movementIds.Distinct().Count() != movementIds.Count)
+            throw new ArgumentException("Movement identities must be positive and unique.", nameof(movementIds));
+
+        var (connection, transaction) = RequireTransaction(db);
+        await using var command = InCommand(connection, transaction, """
+            SELECT BinMovementId,Role
+            FROM LogicalMovementLedgerLinks
+            WHERE BinMovementId IN (
+            """, movementIds.ToArray());
+        var roles = new Dictionary<long, LogicalMovementTransformationRole>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var movementId = reader.GetInt64(0);
+            var roleValue = reader.GetInt32(1);
+            if (!Enum.IsDefined(typeof(LogicalMovementTransformationRole), roleValue) ||
+                !roles.TryAdd(movementId, (LogicalMovementTransformationRole)roleValue))
+                throw new InvalidOperationException(HealthInvalid);
+        }
+        return roles;
     }
 
     public async Task EnsureReadyAsync(BinTrackerDbContext db, LogicalMovementBatchId rootId,
@@ -301,6 +340,32 @@ internal sealed class SqliteMovementMutationWriter(
             if (rootId <= 0 || await reader.ReadAsync(cancellationToken))
                 throw new InvalidOperationException(HealthInvalid);
             return new(rootId);
+        }
+        catch (SqliteException ex)
+        {
+            throw new InvalidOperationException(SchemaRequired, ex);
+        }
+    }
+
+    private static async Task<LogicalMovementPhysicalBatchAnchor?> FindPhysicalBatchAnchorAsync(
+        BinTrackerDbContext db, string sql, int movementBatchId,
+        CancellationToken cancellationToken)
+    {
+        var (connection, transaction) = RequireTransaction(db);
+        try
+        {
+            await using var command = Command(connection, transaction, sql, ("$id", movementBatchId));
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+                return null;
+            var rootId = reader.GetInt64(0);
+            var kindValue = reader.GetInt32(1);
+            if (rootId <= 0 ||
+                !Enum.IsDefined(typeof(LogicalMovementPhysicalBatchAnchorKind), kindValue) ||
+                await reader.ReadAsync(cancellationToken))
+                throw new InvalidOperationException(HealthInvalid);
+            return new(movementBatchId, new(rootId),
+                (LogicalMovementPhysicalBatchAnchorKind)kindValue);
         }
         catch (SqliteException ex)
         {

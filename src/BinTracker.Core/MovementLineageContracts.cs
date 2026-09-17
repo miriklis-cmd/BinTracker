@@ -29,6 +29,26 @@ public readonly record struct LogicalMovementGenerationLineId(long Value);
 public readonly record struct LogicalMovementGenerationNumber(int Value);
 
 /// <summary>
+/// How an immutable physical batch is authoritatively associated with a stable
+/// logical movement root. The original batch remains the root identity; a
+/// lineage output is only later physical evidence for that same root.
+/// </summary>
+public enum LogicalMovementPhysicalBatchAnchorKind
+{
+    RootOriginal = 0,
+    LineageOutput = 1
+}
+
+/// <summary>
+/// Provider-neutral result of resolving one persisted physical batch through
+/// authoritative root or lineage-output relationships.
+/// </summary>
+public sealed record LogicalMovementPhysicalBatchAnchor(
+    int MovementBatchId,
+    LogicalMovementBatchId LogicalMovementBatchId,
+    LogicalMovementPhysicalBatchAnchorKind Kind);
+
+/// <summary>
 /// Operational health of a persisted logical movement root.
 /// </summary>
 public enum LogicalMovementBatchStatus

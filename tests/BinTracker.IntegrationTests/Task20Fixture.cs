@@ -21,6 +21,8 @@ internal sealed class Task20Fixture : IAsyncDisposable
     private Task20ReceiptFailureInjector ReceiptFailure { get; } = new();
     internal IMovementService Movements => services.GetRequiredService<IMovementService>();
     internal IMovementCorrectionService Corrections => services.GetRequiredService<IMovementCorrectionService>();
+    internal IMovementHistoryReportService History =>
+        services.GetRequiredService<IMovementHistoryReportService>();
     internal IAuditService Audit => services.GetRequiredService<IAuditService>();
     internal ICustomerService Customers => services.GetRequiredService<ICustomerService>();
     internal IImportExecutionService Imports => services.GetRequiredService<IImportExecutionService>();
@@ -69,6 +71,74 @@ internal sealed class Task20Fixture : IAsyncDisposable
                 if (legacyCorrection)
                     await CreateAcceptedSchema16CorrectionAsync(db);
             }), enabled, projection, role, interceptor);
+
+    internal static async Task<Task20Fixture> CreateHistoricalSchema16Async() =>
+        new(await OperationalMovementProjectionSchema17Tests.Harness.CreateAsync(
+            migrateToSchema17: false,
+            enableSchema17Writers: false,
+            enableProjectionBackedServices: false,
+            beforeMigration: ReproduceHistoricalSchema16MovementShapeAsync),
+            enabled: false, projection: false, UserRole.Operator, interceptor: null);
+
+    private static async Task ReproduceHistoricalSchema16MovementShapeAsync(BinTrackerDbContext db)
+    {
+        // Current EnsureCreated produces the accepted fresh-schema16 form with the
+        // self-FK. Rewind only the V13/V14 movement additions, then execute the real
+        // numbered V13..V16 catalogue so this fixture reproduces an upgraded database.
+        await db.Database.OpenConnectionAsync();
+        var connection = (SqliteConnection)db.Database.GetDbConnection();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT sql FROM sqlite_master WHERE type='table' AND name='BinMovements'";
+        var declaration = Convert.ToString(await command.ExecuteScalarAsync())
+            ?? throw new InvalidOperationException("BinMovements declaration is missing.");
+        var lines = declaration.Split('\n').ToList();
+        var reversalForeignKeyLines = lines
+            .Select((line, index) => (line, index))
+            .Where(x => x.line.Contains("FOREIGN KEY (\"ReversesMovementId\")", StringComparison.Ordinal))
+            .ToArray();
+        if (reversalForeignKeyLines.Length != 1)
+            throw new InvalidOperationException("Fresh schema16 reversal FK shape is unexpected.");
+        lines.RemoveAt(reversalForeignKeyLines[0].index);
+        for (var i = lines.Count - 1; i >= 0; i--)
+        {
+            if (lines[i].TrimStart().StartsWith(')')) continue;
+            lines[i] = lines[i].TrimEnd().TrimEnd(',');
+            break;
+        }
+        var historicalDeclaration = string.Join('\n', lines);
+
+        command.CommandText = "PRAGMA schema_version";
+        var schemaCookie = Convert.ToInt32(await command.ExecuteScalarAsync());
+        try
+        {
+            command.CommandText = "PRAGMA writable_schema=ON";
+            await command.ExecuteNonQueryAsync();
+            command.CommandText = "UPDATE sqlite_master SET sql=$sql WHERE type='table' AND name='BinMovements'";
+            command.Parameters.AddWithValue("$sql", historicalDeclaration);
+            await command.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            command.Parameters.Clear();
+            command.CommandText = "PRAGMA writable_schema=OFF";
+            await command.ExecuteNonQueryAsync();
+        }
+        command.CommandText = $"PRAGMA schema_version={schemaCookie + 1}";
+        await command.ExecuteNonQueryAsync();
+        await db.Database.CloseConnectionAsync();
+        await db.Database.OpenConnectionAsync();
+
+        await db.Database.ExecuteSqlRawAsync("""
+            DROP INDEX IX_BinMovements_ReversesMovementId;
+            DROP INDEX IX_BinMovements_ClientOperationId;
+            ALTER TABLE BinMovements DROP COLUMN ReversesMovementId;
+            ALTER TABLE BinMovements DROP COLUMN CorrectedByMovementId;
+            ALTER TABLE BinMovements DROP COLUMN CorrectionReason;
+            ALTER TABLE BinMovements DROP COLUMN ClientOperationId;
+            UPDATE SchemaVersion SET Version=12 WHERE Id=1;
+            """);
+        await DatabaseSetup.InitializeSchema16CompatibilityAsync(db);
+    }
 
     private static async Task CreateAcceptedSchema16CorrectionAsync(BinTrackerDbContext db)
     {
@@ -160,6 +230,18 @@ internal sealed class Task20Fixture : IAsyncDisposable
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
         return Convert.ToInt64(await command.ExecuteScalarAsync());
+    }
+
+    internal async Task<long[]> ReadInt64sAsync(string sql)
+    {
+        await using var connection = await Database.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        var values = new List<long>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+            values.Add(reader.GetInt64(0));
+        return values.ToArray();
     }
 
     internal async Task<long[]> CountsAsync()
