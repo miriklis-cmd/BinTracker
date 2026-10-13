@@ -1,5 +1,11 @@
 # BinTracker Full Reconciliation Report
 
+## 8 October 2026 BT-RPT-017 fixed-header clarification
+
+Alpha.9.8 passed automated/build gates but failed real Movement History layout acceptance at 1920×1080/150%. Its synthetic `▲99` width reservation preserved the former all-single-line header implementation by inflating structural columns, crushing Notes/Status and still causing horizontal overflow. The Item-8 corrective instruction explicitly permits clean two-line headings such as Movement ID and Entered by while preserving visible multi-sort direction/priority and stable layout.
+
+BT-RPT-017 is therefore narrowed only in presentation geometry: an applicable grid may configure a fixed one- or two-line header layout, and active sort indicators must remain visible inside that configured layout without any sort-driven header/grid height or column-width change. Explicit filled-triangle direction/priority captions and typed multi-sort behavior remain mandatory. This does not authorize dynamic wrapping, hidden indicators or sorting layout shifts. The audit now requires the fixed wrapped-header path for Movement History, preserves established single-line behavior for auto-sized report headers and rejects restoration of the failed synthetic-reservation method. BT-RPT-017 remains `IMPLEMENTED-STATIC`; the separate Task20 Item-8 Windows/display matrix subsequently passed on alpha.9.10.
+
 ## 29 August 2026 lineage architecture reconciliation
 
 Alpha.8 physical-MovementBatch correction remains the implemented safety baseline but is insufficient after partial reversal/correction. Planned BT-CORR-018..033 now governs logical roots/lines/full generations. Read-only v16 preflight found 28 deterministic roots, repeated correction chains and two partial-reversal batches with no ambiguous/invalid/cross-import component. BT-CORR-009/015 remain stable with explicit supersession; BT-ARCH-008 central deployment is post-v1 while v1 groundwork remains mandatory.

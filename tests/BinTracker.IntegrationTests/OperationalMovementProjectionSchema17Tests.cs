@@ -641,6 +641,159 @@ public sealed class OperationalMovementProjectionSchema17Tests
     }
 
     [Fact]
+    public async Task Import_replacement_delete_collision_preserves_prior_cutover_and_all_evidence()
+    {
+        await using var h = await Harness.CreateAsync(
+            enableProjectionBackedServices: true,
+            userRole: UserRole.Administrator);
+        var cutover = DateOnly.MinValue;
+        var prior = await h.ImportExecution.ExecuteAsync(
+            await NewImportRequestAsync(h, cutover, "committed prior import"));
+
+        long referencedMovementId;
+        long quarantinedRootId;
+        long quarantinedLineId;
+        long customerCount;
+        long movementCount;
+        long importRunCount;
+        long auditCount;
+        long completedAuditId;
+        await using (var setup = await h.OpenAsync())
+        {
+            await using (var movement = setup.CreateCommand())
+            {
+                movement.CommandText = """
+                    SELECT Id
+                    FROM BinMovements
+                    WHERE ImportRunId=$run AND Source=$source
+                    ORDER BY Id
+                    LIMIT 1;
+                    """;
+                movement.Parameters.AddWithValue("$run", prior.ImportRunId);
+                movement.Parameters.AddWithValue("$source", (int)MovementSource.ExcelImport);
+                referencedMovementId = Convert.ToInt64(await movement.ExecuteScalarAsync());
+            }
+
+            await using (var quarantine = setup.CreateCommand())
+            {
+                quarantine.CommandText = """
+                    INSERT INTO LogicalMovementBatches
+                        (RootMovementBatchId,Status,CurrentGenerationNumber,LineCount,
+                         StatusReasonCode,CreatedUtc)
+                    VALUES (NULL,$status,NULL,1,$reason,$utc)
+                    RETURNING Id;
+                    """;
+                quarantine.Parameters.AddWithValue(
+                    "$status", (int)LogicalMovementBatchStatus.Invalid);
+                quarantine.Parameters.AddWithValue(
+                    "$reason", "IMPORT_OWNED_MOVEMENT_REFERENCE_QUARANTINE");
+                quarantine.Parameters.AddWithValue(
+                    "$utc", "2026-09-05T01:02:03.0000000Z");
+                quarantinedRootId = Convert.ToInt64(await quarantine.ExecuteScalarAsync());
+            }
+
+            await using (var evidence = setup.CreateCommand())
+            {
+                evidence.CommandText = """
+                    INSERT INTO LogicalMovementLines
+                        (LogicalMovementBatchId,RootMovementId,OriginalDisplayOrdinal,CreatedUtc)
+                    VALUES ($root,$movement,0,$utc)
+                    RETURNING Id;
+                    """;
+                evidence.Parameters.AddWithValue("$root", quarantinedRootId);
+                evidence.Parameters.AddWithValue("$movement", referencedMovementId);
+                evidence.Parameters.AddWithValue(
+                    "$utc", "2026-09-05T01:02:03.0000000Z");
+                quarantinedLineId = Convert.ToInt64(await evidence.ExecuteScalarAsync());
+            }
+
+            customerCount = await ScalarAsync(setup, "SELECT COUNT(*) FROM Customers;");
+            movementCount = await ScalarAsync(setup, "SELECT COUNT(*) FROM BinMovements;");
+            importRunCount = await ScalarAsync(setup, "SELECT COUNT(*) FROM ImportRuns;");
+            auditCount = await ScalarAsync(setup, "SELECT COUNT(*) FROM AuditEvents;");
+
+            await using (var audit = setup.CreateCommand())
+            {
+                audit.CommandText = """
+                    SELECT Id
+                    FROM AuditEvents
+                    WHERE Action='EXCEL_IMPORT_COMPLETED'
+                      AND EntityType='ImportRun'
+                      AND EntityId=$run
+                      AND Succeeded=1;
+                    """;
+                audit.Parameters.AddWithValue("$run", prior.ImportRunId.ToString());
+                completedAuditId = Convert.ToInt64(await audit.ExecuteScalarAsync());
+            }
+
+            await using var foreignKeys = setup.CreateCommand();
+            foreignKeys.CommandText = "PRAGMA foreign_key_check;";
+            await using var violations = await foreignKeys.ExecuteReaderAsync();
+            Assert.False(await violations.ReadAsync());
+        }
+
+        var request = await ExecutableReplacementRequestAsync(
+            h,
+            prior.ImportRunId,
+            cutover);
+        var failure = await Assert.ThrowsAsync<DbUpdateException>(() =>
+            h.ImportExecution.ExecuteAsync(request));
+        var sqliteFailure = Assert.IsType<SqliteException>(failure.InnerException);
+        Assert.Equal(19, sqliteFailure.SqliteErrorCode);
+
+        await using var verify = await h.OpenAsync();
+        Assert.Equal(customerCount, await ScalarAsync(verify, "SELECT COUNT(*) FROM Customers;"));
+        Assert.Equal(movementCount, await ScalarAsync(verify, "SELECT COUNT(*) FROM BinMovements;"));
+        Assert.Equal(importRunCount, await ScalarAsync(verify, "SELECT COUNT(*) FROM ImportRuns;"));
+        Assert.Equal(auditCount, await ScalarAsync(verify, "SELECT COUNT(*) FROM AuditEvents;"));
+        Assert.Equal(1L, await ScalarAsync(verify, $"""
+            SELECT COUNT(*) FROM ImportRuns
+            WHERE Id={prior.ImportRunId}
+              AND Status='Completed'
+              AND CurrentCutoverDate='0001-01-01';
+            """));
+        Assert.Equal(prior.MovementCount, await ScalarAsync(verify, $"""
+            SELECT COUNT(*) FROM BinMovements WHERE ImportRunId={prior.ImportRunId};
+            """));
+        Assert.Equal(1L, await ScalarAsync(verify, $"""
+            SELECT COUNT(*) FROM LogicalMovementLines
+            WHERE Id={quarantinedLineId}
+              AND LogicalMovementBatchId={quarantinedRootId}
+              AND RootMovementId={referencedMovementId};
+            """));
+        Assert.Equal(1L, await ScalarAsync(verify, $"""
+            SELECT COUNT(*) FROM AuditEvents
+            WHERE Id={completedAuditId}
+              AND Action='EXCEL_IMPORT_COMPLETED'
+              AND EntityId='{prior.ImportRunId}'
+              AND Succeeded=1;
+            """));
+        Assert.Equal(0L, await ScalarAsync(verify, $"""
+            SELECT COUNT(*) FROM ImportRuns
+            WHERE ReplacesImportRunId={prior.ImportRunId};
+            """));
+        Assert.Equal(0L, await ScalarAsync(verify, """
+            SELECT COUNT(*) FROM ImportRuns WHERE Status='Pending' OR Status='Replaced';
+            """));
+        Assert.Equal(0L, await ScalarAsync(verify, """
+            SELECT COUNT(*) FROM AuditEvents WHERE Action='EXCEL_IMPORT_REPLACED';
+            """));
+
+        await using (var integrity = verify.CreateCommand())
+        {
+            integrity.CommandText = "PRAGMA integrity_check;";
+            Assert.Equal("ok", Convert.ToString(await integrity.ExecuteScalarAsync()));
+        }
+
+        await using (var foreignKeys = verify.CreateCommand())
+        {
+            foreignKeys.CommandText = "PRAGMA foreign_key_check;";
+            await using var violations = await foreignKeys.ExecuteReaderAsync();
+            Assert.False(await violations.ReadAsync());
+        }
+    }
+
+    [Fact]
     public async Task Projection_cancellation_propagates_and_rolls_back_import_execution()
     {
         await using var h = await Harness.CreateAsync(

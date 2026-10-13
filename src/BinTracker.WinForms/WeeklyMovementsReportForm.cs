@@ -49,7 +49,7 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
     };
     private readonly DataGridView detailGrid = Grid();
     private readonly DataGridView summaryGrid = Grid();
-    private readonly IAuditService audit;
+    private readonly IReportExportAuditService audit;
     private WeeklyMovementsReportResult? current;
     private bool autoRefreshReady;
 
@@ -59,7 +59,7 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
         IWeeklyMovementsReportService reports,
         IWeeklyMovementsReportPdfService pdfReports,
         IContainerTypeService containerTypes,
-        IAuditService audit,
+        IReportExportAuditService audit,
         IBusinessClock clock)
     {
         this.reports = reports;
@@ -475,15 +475,15 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
 
         if (overviewView)
         {
-            writer.WriteLine(
-                "Customer Code,Customer Name,Container,OUT,IN,Net");
+            var rows = ReportCsvExportContract.PreserveDisplayedOrder(
+                summaryGrid.Rows.Cast<DataGridViewRow>()
+                    .Select(row => row.Tag as WeeklyMovementSummaryRow));
 
-            foreach (DataGridViewRow gridRow in summaryGrid.Rows)
+            var csvRows = new List<string>();
+
+            foreach (var row in rows)
             {
-                if (gridRow.Tag is not WeeklyMovementSummaryRow row)
-                    continue;
-
-                writer.WriteLine(string.Join(",",
+                csvRows.Add(string.Join(",",
                     Csv(row.CustomerCode),
                     Csv(row.CustomerName),
                     Csv(row.ContainerType),
@@ -495,36 +495,49 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
                         System.Globalization.CultureInfo.InvariantCulture)));
             }
 
+            ReportCsvExportContract.WriteRows(
+                writer,
+                "Customer Code,Customer Name,Container,OUT,IN,Net",
+                csvRows);
+
             writer.Flush();
+
+            var auditEntry = ReportCsvExportContract.Weekly(
+                dialog.FileName,
+                rows.Count,
+                current.WeekStart,
+                current.WeekEnd,
+                "Weekly Overview",
+                customerSearch.Text,
+                containerFilter.Text,
+                sourceFilter.Text,
+                includeAdjustments.Checked,
+                includeNotes: null);
 
             await ReportCsvAudit.WriteAsync(
                 this, audit,
-                "WEEKLY_MOVEMENTS_CSV_EXPORTED",
-                $"{current.WeekStart:yyyy-MM-dd}:{current.WeekEnd:yyyy-MM-dd}",
-                $"Weekly Movements CSV exported for {current.WeekStart:dd/MM/yyyy} - {current.WeekEnd:dd/MM/yyyy}: {summaryGrid.Rows.Count:N0} overview row(s).",
-                dialog.FileName,
-                summaryGrid.Rows.Cast<DataGridViewRow>().Count(x => x.Tag is WeeklyMovementSummaryRow),
-                new
-                {
-                    current.WeekStart, current.WeekEnd,
-                    View = "Weekly Overview",
-                    CustomerSearch = customerSearch.Text.Trim(),
-                    Container = containerFilter.Text,
-                    Source = sourceFilter.Text,
-                    IncludeAdjustments = includeAdjustments.Checked
-                });
+                new WeeklyMovementsCsvExportAuditIntent(
+                    auditEntry.Description,
+                    auditEntry.FileName,
+                    rows.Count,
+                    current.WeekStart,
+                    current.WeekEnd,
+                    "Weekly Overview",
+                    customerSearch.Text.Trim(),
+                    containerFilter.Text,
+                    sourceFilter.Text,
+                    includeAdjustments.Checked,
+                    IncludeNotes: null));
             return;
         }
 
-        writer.WriteLine(includeNotesInExports.Checked
-            ? "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Notes,Entered By"
-            : "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Entered By");
+        var detailRows = ReportCsvExportContract.PreserveDisplayedOrder(
+            detailGrid.Rows.Cast<DataGridViewRow>()
+                .Select(row => row.Tag as WeeklyMovementReportRow));
+        var detailCsvRows = new List<string>();
 
-        foreach (DataGridViewRow gridRow in detailGrid.Rows)
+        foreach (var row in detailRows)
         {
-            if (gridRow.Tag is not WeeklyMovementReportRow row)
-                continue;
-
             var fields = new List<string>
             {
                 Csv(row.MovementDate.ToString("dd/MM/yyyy")),
@@ -544,28 +557,44 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
 
             fields.Add(Csv(row.EnteredBy));
 
-            writer.WriteLine(string.Join(",", fields));
+            detailCsvRows.Add(string.Join(",", fields));
         }
+
+        ReportCsvExportContract.WriteRows(
+            writer,
+            includeNotesInExports.Checked
+                ? "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Notes,Entered By"
+                : "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Entered By",
+            detailCsvRows);
 
         writer.Flush();
 
+        var detailAuditEntry = ReportCsvExportContract.Weekly(
+            dialog.FileName,
+            detailRows.Count,
+            current.WeekStart,
+            current.WeekEnd,
+            "Daily Detail",
+            customerSearch.Text,
+            containerFilter.Text,
+            sourceFilter.Text,
+            includeAdjustments.Checked,
+            includeNotesInExports.Checked);
+
         await ReportCsvAudit.WriteAsync(
             this, audit,
-            "WEEKLY_MOVEMENTS_CSV_EXPORTED",
-            $"{current.WeekStart:yyyy-MM-dd}:{current.WeekEnd:yyyy-MM-dd}",
-            $"Weekly Movements CSV exported for {current.WeekStart:dd/MM/yyyy} - {current.WeekEnd:dd/MM/yyyy}: {detailGrid.Rows.Cast<DataGridViewRow>().Count(x => x.Tag is WeeklyMovementReportRow):N0} detail row(s).",
-            dialog.FileName,
-            detailGrid.Rows.Cast<DataGridViewRow>().Count(x => x.Tag is WeeklyMovementReportRow),
-            new
-            {
-                current.WeekStart, current.WeekEnd,
-                View = "Daily Detail",
-                CustomerSearch = customerSearch.Text.Trim(),
-                Container = containerFilter.Text,
-                Source = sourceFilter.Text,
-                IncludeAdjustments = includeAdjustments.Checked,
-                IncludeNotes = includeNotesInExports.Checked
-            });
+            new WeeklyMovementsCsvExportAuditIntent(
+                detailAuditEntry.Description,
+                detailAuditEntry.FileName,
+                detailRows.Count,
+                current.WeekStart,
+                current.WeekEnd,
+                "Daily Detail",
+                customerSearch.Text.Trim(),
+                containerFilter.Text,
+                sourceFilter.Text,
+                includeAdjustments.Checked,
+                includeNotesInExports.Checked));
     }
 
     private void ConfigureDetailGrid()

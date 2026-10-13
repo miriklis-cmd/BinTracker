@@ -107,10 +107,10 @@ public sealed class ExcelImportAnalysisTests
             Task.FromResult(new BinTrackerDbContext(options));
     }
 
-    private sealed class TestAuditService : IAuditService
+    private sealed class TestAuditService : IAuditService, IAuditAppender
     {
         public event EventHandler<AdministratorReviewState>? AdministratorReviewStateChanged { add { } remove { } }
-        public Task WriteAsync(
+        public Task AppendAsync(
             string action,
             string entityType,
             string? entityId,
@@ -118,15 +118,13 @@ public sealed class ExcelImportAnalysisTests
             bool succeeded = true,
             object? before = null,
             object? after = null,
-            int? userIdOverride = null,
-            string? usernameOverride = null,
             CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
-        public Task<IReadOnlyList<AuditEvent>> GetRecentAsync(
+        public Task<IReadOnlyList<AuditEventSummary>> GetRecentAsync(
             int limit = 500,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<AuditEvent>>([]);
+            Task.FromResult<IReadOnlyList<AuditEventSummary>>([]);
 
         public Task<IReadOnlyList<AuditTrailRow>> GetAuditTrailAsync(AuditReviewFilter filter = AuditReviewFilter.All,
             int limit = 500, CancellationToken cancellationToken = default) =>
@@ -135,9 +133,9 @@ public sealed class ExcelImportAnalysisTests
         public Task<AdministratorReviewState> GetAdministratorReviewStateAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new AdministratorReviewState(0));
 
-        public Task<IReadOnlyList<AuditEvent>> GetUnreviewedMovementChangesAsync(
+        public Task<IReadOnlyList<PendingMovementChangeAuditEvent>> GetUnreviewedMovementChangesAsync(
             CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<AuditEvent>>([]);
+            Task.FromResult<IReadOnlyList<PendingMovementChangeAuditEvent>>([]);
 
         public Task MarkMovementChangesReviewedAsync(
             IReadOnlyCollection<long> auditEventIds,

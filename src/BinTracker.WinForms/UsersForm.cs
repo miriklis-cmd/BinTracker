@@ -12,7 +12,9 @@ public sealed class UsersForm : BinTrackerForm
         string Role,
         string Status,
         string LastLogin,
-        UserAccount Source);
+        UserRole RoleValue,
+        bool IsActive,
+        bool IsLocked);
 
     private readonly IUserService users;
 
@@ -148,7 +150,9 @@ public sealed class UsersForm : BinTrackerForm
                 user.Role.ToString(),
                 StatusText(user),
                 user.LastLoginUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Never",
-                user))
+                user.Role,
+                user.IsActive,
+                user.IsLocked))
             .ToList();
 
         UpdateContextButtons();
@@ -187,7 +191,7 @@ public sealed class UsersForm : BinTrackerForm
         if (column != "Role")
             return;
 
-        var role = row.Source.Role;
+        var role = row.RoleValue;
         var roleStyle = e.CellStyle ?? new DataGridViewCellStyle();
         e.CellStyle = roleStyle;
 
@@ -265,7 +269,7 @@ public sealed class UsersForm : BinTrackerForm
         if (SelectedUser() is not { } user)
             return;
 
-        using var form = new ChangeRoleForm(user.Username, user.Role);
+        using var form = new ChangeRoleForm(user.Username, user.RoleValue);
 
         if (form.ShowDialog(this) != DialogResult.OK)
             return;
@@ -328,9 +332,9 @@ public sealed class UsersForm : BinTrackerForm
         }
     }
 
-    private UserAccount? SelectedUser() =>
+    private UserGridRow? SelectedUser() =>
         grid.CurrentRow?.DataBoundItem is UserGridRow row
-            ? row.Source
+            ? row
             : null;
 
     private void SelectUser(int id)
@@ -347,7 +351,7 @@ public sealed class UsersForm : BinTrackerForm
         }
     }
 
-    private static string StatusText(UserAccount user)
+    private static string StatusText(UserAdministrationUser user)
     {
         if (!user.IsActive)
             return "Inactive";

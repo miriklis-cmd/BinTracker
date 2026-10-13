@@ -1,10 +1,10 @@
-using BinTracker.Data;
+using BinTracker.Services;
 
 namespace BinTracker.WinForms;
 
 public sealed class DeveloperDatabaseToolsForm : BinTrackerForm
 {
-    private readonly IDeveloperDatabaseService service;
+    private readonly IDeveloperDatabaseToolsService service;
     private readonly Action requestRestart;
 
     private readonly Label activeDatabase = new()
@@ -22,7 +22,7 @@ public sealed class DeveloperDatabaseToolsForm : BinTrackerForm
     };
 
     public DeveloperDatabaseToolsForm(
-        IDeveloperDatabaseService service,
+        IDeveloperDatabaseToolsService service,
         Action requestRestart)
     {
         this.service = service;

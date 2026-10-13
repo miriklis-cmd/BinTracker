@@ -57,7 +57,7 @@ public sealed class MonthlySummaryReportForm : BinTrackerForm
         ScrollBars = ScrollBars.Both
     };
 
-    private readonly IAuditService audit;
+    private readonly IReportExportAuditService audit;
     private MonthlySummaryReportResult? current;
     private bool autoRefreshReady;
 
@@ -67,7 +67,7 @@ public sealed class MonthlySummaryReportForm : BinTrackerForm
         IMonthlySummaryReportService reports,
         IMonthlySummaryReportPdfService pdfReports,
         IContainerTypeService containerTypes,
-        IAuditService audit,
+        IReportExportAuditService audit,
         IBusinessClock clock)
     {
         this.reports = reports;
@@ -419,38 +419,23 @@ public sealed class MonthlySummaryReportForm : BinTrackerForm
         var source = current ??
             throw new InvalidOperationException("Open the report first.");
 
-        var rows = grid.Rows
+        var rows = ReportCsvExportContract.PreserveDisplayedOrder(grid.Rows
             .Cast<DataGridViewRow>()
             .Where(x => !x.IsNewRow)
-            .Select(x => x.Tag as MonthlySummaryReportRow)
-            .Where(x => x is not null)
-            .Cast<MonthlySummaryReportRow>()
-            .ToList();
+            .Select(x => x.Tag as MonthlySummaryReportRow));
 
-        var totals = rows
-            .GroupBy(x => new
-            {
-                x.ContainerTypeId,
-                x.ContainerType,
-                x.ContainerDisplayOrder
-            })
-            .Select(g => new MonthlySummaryContainerTotal(
-                g.Key.ContainerTypeId,
-                g.Key.ContainerType,
-                g.Key.ContainerDisplayOrder,
-                g.Sum(x => x.OutQuantity),
-                g.Sum(x => x.InQuantity)))
-            .OrderBy(x => x.DisplayOrder)
-            .ThenBy(x => x.ContainerType)
-            .ToList();
+        return BuildDisplayedResult(source, rows);
+    }
 
-        return new MonthlySummaryReportResult(
+    internal static MonthlySummaryReportResult BuildDisplayedResult(
+        MonthlySummaryReportResult source,
+        IReadOnlyList<MonthlySummaryReportRow> displayedRows) =>
+        new(
             source.MonthStart,
             source.MonthEnd,
             source.DataThroughDate,
-            rows,
-            totals);
-    }
+            displayedRows,
+            source.ContainerTotals);
 
     private async Task GeneratePdfAsync(bool openAfter)
     {
@@ -537,12 +522,11 @@ public sealed class MonthlySummaryReportForm : BinTrackerForm
             false,
             new System.Text.UTF8Encoding(true));
 
-        writer.WriteLine(
-            "Customer Code,Customer Name,Container,OUT,IN,Net");
+        var csvRows = new List<string>();
 
         foreach (var row in result.Rows)
         {
-            writer.WriteLine(string.Join(",",
+            csvRows.Add(string.Join(",",
                 Csv(row.CustomerCode),
                 Csv(row.CustomerName),
                 Csv(row.ContainerType),
@@ -554,25 +538,39 @@ public sealed class MonthlySummaryReportForm : BinTrackerForm
                     System.Globalization.CultureInfo.InvariantCulture)));
         }
 
+        ReportCsvExportContract.WriteRows(
+            writer,
+            "Customer Code,Customer Name,Container,OUT,IN,Net",
+            csvRows);
+
         writer.Flush();
+
+        var auditEntry = ReportCsvExportContract.Monthly(
+            dialog.FileName,
+            result.Rows.Count,
+            result.MonthStart,
+            result.DataThroughDate,
+            result.OutQuantity,
+            result.InQuantity,
+            result.NetQuantity,
+            customerSearch.Text,
+            containerFilter.Text,
+            sourceFilter.Text,
+            includeAdjustments.Checked);
 
         await ReportCsvAudit.WriteAsync(
             this, audit,
-            "MONTHLY_SUMMARY_CSV_EXPORTED",
-            result.MonthStart.ToString("yyyy-MM"),
-            $"Monthly Summary CSV exported for {result.MonthStart:MMMM yyyy}: {result.Rows.Count:N0} row(s), {result.OutQuantity:N0} OUT, {result.InQuantity:N0} IN, Net {result.NetQuantity:+#;-#;0}.",
-            dialog.FileName,
-            result.Rows.Count,
-            new
-            {
+            new MonthlySummaryCsvExportAuditIntent(
+                auditEntry.Description,
+                auditEntry.FileName,
+                result.Rows.Count,
                 result.MonthStart,
                 result.MonthEnd,
                 result.DataThroughDate,
-                CustomerSearch = customerSearch.Text.Trim(),
-                Container = containerFilter.Text,
-                Source = sourceFilter.Text,
-                IncludeAdjustments = includeAdjustments.Checked
-            });
+                customerSearch.Text.Trim(),
+                containerFilter.Text,
+                sourceFilter.Text,
+                includeAdjustments.Checked));
     }
 
     private void ConfigureGrid()

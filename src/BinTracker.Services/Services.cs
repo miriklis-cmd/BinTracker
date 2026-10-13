@@ -40,19 +40,82 @@ public sealed class UserSession(IBusinessClock clock) : IUserContext
 
 public interface IAuditService
 {
-    Task WriteAsync(string action, string entityType, string? entityId, string description,
-        bool succeeded = true, object? before = null, object? after = null,
-        int? userIdOverride = null, string? usernameOverride = null,
-        CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<AuditEvent>> GetRecentAsync(int limit = 500, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AuditEventSummary>> GetRecentAsync(int limit = 500, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<AuditTrailRow>> GetAuditTrailAsync(AuditReviewFilter filter = AuditReviewFilter.All,
         int limit = 500, CancellationToken cancellationToken = default);
     Task<AdministratorReviewState> GetAdministratorReviewStateAsync(CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<AuditEvent>> GetUnreviewedMovementChangesAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PendingMovementChangeAuditEvent>> GetUnreviewedMovementChangesAsync(CancellationToken cancellationToken = default);
     Task MarkMovementChangesReviewedAsync(IReadOnlyCollection<long> auditEventIds, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<MovementBatchAuditLine>> GetMovementBatchDetailAsync(int batchId, CancellationToken cancellationToken = default);
     Task<MovementChangeAuditDetail?> GetMovementChangeDetailAsync(long auditEventId, CancellationToken cancellationToken = default);
     event EventHandler<AdministratorReviewState>? AdministratorReviewStateChanged;
+}
+
+public sealed record AuditEventSummary(
+    long Id,
+    DateTime TimestampUtc,
+    string Username,
+    string Action,
+    string EntityType,
+    string? EntityId,
+    string Description,
+    bool Succeeded);
+
+public sealed record PendingMovementChangeAuditEvent(
+    long Id,
+    DateTime TimestampUtc,
+    string Username,
+    string Action,
+    string EntityType,
+    string? EntityId,
+    string Description);
+
+internal interface IAuditAppender
+{
+    Task AppendAsync(
+        string action,
+        string entityType,
+        string? entityId,
+        string description,
+        bool succeeded = true,
+        object? before = null,
+        object? after = null,
+        CancellationToken cancellationToken = default);
+}
+
+internal interface IAuthenticationAuditAppender
+{
+    Task AppendAuthenticationEventAsync(
+        string action,
+        string entityType,
+        string? entityId,
+        string description,
+        int? actorUserId,
+        string actorUsername,
+        bool succeeded = true,
+        object? before = null,
+        object? after = null,
+        CancellationToken cancellationToken = default);
+}
+
+internal static class TrustedAuditExtensions
+{
+    public static Task WriteAsync(
+        this IAuditService audit,
+        string action,
+        string entityType,
+        string? entityId,
+        string description,
+        bool succeeded = true,
+        object? before = null,
+        object? after = null,
+        CancellationToken cancellationToken = default) =>
+        audit is IAuditAppender appender
+            ? appender.AppendAsync(
+                action, entityType, entityId, description,
+                succeeded, before, after, cancellationToken)
+            : throw new InvalidOperationException(
+                "The configured audit query service does not provide the trusted internal audit appender.");
 }
 
 public enum AuditReviewFilter { All, NeedsReview, Reviewed }
@@ -256,20 +319,57 @@ internal sealed class AuditService(
     IUserContext session,
     IBusinessClock clock,
     IClientContext client,
-    IMovementMutationWriter mutationWriter) : IAuditService
+    IMovementMutationWriter mutationWriter) : IAuditService, IAuditAppender, IAuthenticationAuditAppender
 {
     public event EventHandler<AdministratorReviewState>? AdministratorReviewStateChanged;
-    public async Task WriteAsync(string action, string entityType, string? entityId, string description,
-        bool succeeded = true, object? before = null, object? after = null,
-        int? userIdOverride = null, string? usernameOverride = null,
-        CancellationToken cancellationToken = default)
+    public Task AppendAsync(
+        string action,
+        string entityType,
+        string? entityId,
+        string description,
+        bool succeeded = true,
+        object? before = null,
+        object? after = null,
+        CancellationToken cancellationToken = default) =>
+        AppendCoreAsync(
+            action, entityType, entityId, description,
+            session.UserId, session.Username,
+            succeeded, before, after, cancellationToken);
+
+    public Task AppendAuthenticationEventAsync(
+        string action,
+        string entityType,
+        string? entityId,
+        string description,
+        int? actorUserId,
+        string actorUsername,
+        bool succeeded = true,
+        object? before = null,
+        object? after = null,
+        CancellationToken cancellationToken = default) =>
+        AppendCoreAsync(
+            action, entityType, entityId, description,
+            actorUserId, actorUsername,
+            succeeded, before, after, cancellationToken);
+
+    private async Task AppendCoreAsync(
+        string action,
+        string entityType,
+        string? entityId,
+        string description,
+        int? actorUserId,
+        string actorUsername,
+        bool succeeded,
+        object? before,
+        object? after,
+        CancellationToken cancellationToken)
     {
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         db.AuditEvents.Add(new AuditEvent
         {
             TimestampUtc = clock.UtcNow,
-            UserId = userIdOverride ?? session.UserId,
-            Username = usernameOverride ?? session.Username,
+            UserId = actorUserId,
+            Username = actorUsername,
             Action = action,
             EntityType = entityType,
             EntityId = entityId,
@@ -283,12 +383,21 @@ internal sealed class AuditService(
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<AuditEvent>> GetRecentAsync(int limit = 500, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<AuditEventSummary>> GetRecentAsync(int limit = 500, CancellationToken cancellationToken = default)
     {
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         return await db.AuditEvents.AsNoTracking()
             .OrderByDescending(x => x.TimestampUtc)
             .Take(Math.Clamp(limit, 1, 5000))
+            .Select(x => new AuditEventSummary(
+                x.Id,
+                x.TimestampUtc,
+                x.Username,
+                x.Action,
+                x.EntityType,
+                x.EntityId,
+                x.Description,
+                x.Succeeded))
             .ToListAsync(cancellationToken);
     }
 
@@ -320,13 +429,22 @@ internal sealed class AuditService(
             x => x.RequiresAdministratorReview && x.ReviewedUtc == null, cancellationToken));
     }
 
-    public async Task<IReadOnlyList<AuditEvent>> GetUnreviewedMovementChangesAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<PendingMovementChangeAuditEvent>> GetUnreviewedMovementChangesAsync(CancellationToken cancellationToken = default)
     {
         if (session.Role != UserRole.Administrator) throw new UnauthorizedAccessException("Administrator access is required.");
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         return await db.AuditEvents.AsNoTracking()
             .Where(x => x.RequiresAdministratorReview && x.ReviewedUtc == null)
-            .OrderBy(x => x.TimestampUtc).ToListAsync(cancellationToken);
+            .OrderBy(x => x.TimestampUtc)
+            .Select(x => new PendingMovementChangeAuditEvent(
+                x.Id,
+                x.TimestampUtc,
+                x.Username,
+                x.Action,
+                x.EntityType,
+                x.EntityId,
+                x.Description))
+            .ToListAsync(cancellationToken);
     }
 
     public async Task MarkMovementChangesReviewedAsync(IReadOnlyCollection<long> auditEventIds, CancellationToken cancellationToken = default)
@@ -534,7 +652,8 @@ public interface IAuthenticationService
 internal sealed class AuthenticationService(
     IDbContextFactory<BinTrackerDbContext> factory,
     UserSession session,
-    IAuditService audit,
+    IAuditAppender audit,
+    IAuthenticationAuditAppender authenticationAudit,
     IBusinessClock clock) : IAuthenticationService
 {
     public async Task<bool> HasUsersAsync(CancellationToken cancellationToken = default)
@@ -566,9 +685,12 @@ internal sealed class AuthenticationService(
         };
         db.UserAccounts.Add(user);
         await db.SaveChangesAsync(cancellationToken);
-        await audit.WriteAsync("USER_CREATED", "UserAccount", user.Id.ToString(),
-            $"Initial administrator '{username}' created.", after: new { user.Username, user.DisplayName, user.Role },
-            userIdOverride: user.Id, usernameOverride: user.Username, cancellationToken: cancellationToken);
+        await authenticationAudit.AppendAuthenticationEventAsync(
+            "USER_CREATED", "UserAccount", user.Id.ToString(),
+            $"Initial administrator '{username}' created.",
+            user.Id, user.Username,
+            after: new { user.Username, user.DisplayName, user.Role },
+            cancellationToken: cancellationToken);
     }
 
     public async Task<bool> LoginAsync(string username, string password, CancellationToken cancellationToken = default)
@@ -579,14 +701,14 @@ internal sealed class AuthenticationService(
 
         if (user is not null && user.IsLocked)
         {
-            await audit.WriteAsync(
+            await authenticationAudit.AppendAuthenticationEventAsync(
                 "LOGIN_BLOCKED_LOCKED",
                 "Session",
                 null,
                 $"Login blocked because account '{username}' is locked.",
-                false,
-                userIdOverride: user.Id,
-                usernameOverride: user.Username,
+                user.Id,
+                user.Username,
+                succeeded: false,
                 cancellationToken: cancellationToken);
 
             throw new InvalidOperationException(
@@ -631,26 +753,26 @@ internal sealed class AuthenticationService(
                     .SingleAsync(x => x.Id == user.Id, cancellationToken);
             }
 
-            await audit.WriteAsync(
+            await authenticationAudit.AppendAuthenticationEventAsync(
                 "LOGIN_FAILED",
                 "Session",
                 null,
                 $"Failed login attempt for username '{username}'.",
-                false,
-                userIdOverride: user?.Id,
-                usernameOverride: string.IsNullOrWhiteSpace(username) ? "unknown" : username,
+                user?.Id,
+                string.IsNullOrWhiteSpace(username) ? "unknown" : username,
+                succeeded: false,
                 cancellationToken: cancellationToken);
 
             if (user?.IsLocked == true)
             {
-                await audit.WriteAsync(
+                await authenticationAudit.AppendAuthenticationEventAsync(
                     "ACCOUNT_LOCKED",
                     "UserAccount",
                     user.Id.ToString(),
                     $"User '{user.Username}' locked after repeated failed login attempts.",
-                    false,
-                    userIdOverride: user.Id,
-                    usernameOverride: user.Username,
+                    user.Id,
+                    user.Username,
+                    succeeded: false,
                     cancellationToken: cancellationToken);
             }
 
@@ -677,7 +799,7 @@ internal sealed class AuthenticationService(
 
         session.SignIn(user);
 
-        await audit.WriteAsync(
+        await audit.AppendAsync(
             "LOGIN_SUCCEEDED",
             "Session",
             session.SessionId,
@@ -729,7 +851,7 @@ internal sealed class AuthenticationService(
 
         session.PasswordChanged();
 
-        await audit.WriteAsync(
+        await audit.AppendAsync(
             "PASSWORD_CHANGED",
             "UserAccount",
             user.Id.ToString(),
@@ -740,7 +862,7 @@ internal sealed class AuthenticationService(
     public async Task LogoutAsync(CancellationToken cancellationToken = default)
     {
         if (session.IsAuthenticated)
-            await audit.WriteAsync("LOGOUT", "Session", session.SessionId,
+            await audit.AppendAsync("LOGOUT", "Session", session.SessionId,
                 $"{session.DisplayName} logged out.", cancellationToken: cancellationToken);
     }
 
@@ -754,7 +876,7 @@ internal sealed class AuthenticationService(
 
 public interface IUserService
 {
-    Task<IReadOnlyList<UserAccount>> GetUsersAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<UserAdministrationUser>> GetUsersAsync(CancellationToken cancellationToken = default);
     Task CreateUserAsync(string username, string displayName, string password, UserRole role, CancellationToken cancellationToken = default);
     Task SetActiveAsync(int userId, bool active, CancellationToken cancellationToken = default);
     Task ResetPasswordAsync(int userId, string temporaryPassword, CancellationToken cancellationToken = default);
@@ -762,17 +884,38 @@ public interface IUserService
     Task SetRoleAsync(int userId, UserRole role, CancellationToken cancellationToken = default);
 }
 
+public sealed record UserAdministrationUser(
+    int Id,
+    string Username,
+    string DisplayName,
+    UserRole Role,
+    bool IsActive,
+    bool IsLocked,
+    bool MustChangePassword,
+    DateTime? LastLoginUtc);
+
 internal sealed class UserService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IUserContext session,
     IAuditService audit,
     IBusinessClock clock) : IUserService
 {
-    public async Task<IReadOnlyList<UserAccount>> GetUsersAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<UserAdministrationUser>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
         RequireAdmin();
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        return await db.UserAccounts.AsNoTracking().OrderBy(x => x.Username).ToListAsync(cancellationToken);
+        return await db.UserAccounts.AsNoTracking()
+            .OrderBy(x => x.Username)
+            .Select(x => new UserAdministrationUser(
+                x.Id,
+                x.Username,
+                x.DisplayName,
+                x.Role,
+                x.IsActive,
+                x.IsLocked,
+                x.MustChangePassword,
+                x.LastLoginUtc))
+            .ToListAsync(cancellationToken);
     }
 
     public async Task CreateUserAsync(string username, string displayName, string password, UserRole role, CancellationToken cancellationToken = default)
@@ -946,7 +1089,12 @@ internal sealed class UserService(
 
     private void RequireAdmin()
     {
-        if (session.Role != UserRole.Administrator) throw new UnauthorizedAccessException("Administrator access is required.");
+        if (!session.IsAuthenticated ||
+            !session.UserId.HasValue ||
+            session.Role != UserRole.Administrator)
+        {
+            throw new UnauthorizedAccessException("Administrator access is required.");
+        }
     }
 }
 
@@ -1106,7 +1254,13 @@ public static class ServiceSetup
         this IServiceCollection services)
     {
         services.TryAddSingleton<IBusinessClock, ConfiguredBusinessClock>();
-        services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<AuditService>();
+        services.AddScoped<IAuditService>(provider =>
+            provider.GetRequiredService<AuditService>());
+        services.AddScoped<IAuditAppender>(provider =>
+            provider.GetRequiredService<AuditService>());
+        services.AddScoped<IAuthenticationAuditAppender>(provider =>
+            provider.GetRequiredService<AuditService>());
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IBalanceService, BalanceService>();
         services.AddScoped<ICustomerService, CustomerService>();
@@ -1131,6 +1285,7 @@ public static class ServiceSetup
         services.AddScoped<IMovementHistoryReportPdfService, MovementHistoryReportPdfService>();
         services.AddScoped<IMonthlySummaryReportService, MonthlySummaryReportService>();
         services.AddScoped<IMonthlySummaryReportPdfService, MonthlySummaryReportPdfService>();
+        services.AddScoped<IReportExportAuditService, ReportExportAuditService>();
         services.TryAddScoped<
             IInitialMovementLineageWriter,
             DormantInitialMovementLineageWriter>();
@@ -1158,6 +1313,7 @@ public static class ServiceSetup
         services.AddSingleton<IBatchDraftStore, FileBatchDraftStore>();
         services.AddSingleton<ApplicationState>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();
+        services.AddScoped<IDeveloperDatabaseToolsService, DeveloperDatabaseToolsService>();
 
         return services.AddBinTrackerBusinessServices();
     }

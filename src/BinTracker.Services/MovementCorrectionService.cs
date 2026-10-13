@@ -143,6 +143,36 @@ public static class MovementCorrectionSelection
             preview.Lines.Count == physicalBatch.LineCount;
     }
 
+    /// <summary>
+    /// Validates the fresh physical-batch route used after a separately committed
+    /// Restore without turning that navigation anchor into logical-root authority.
+    /// </summary>
+    public static LogicalMovementMutationPreview ValidateReacquiredWholeRootPreview(
+        int selectedPhysicalBatchId,
+        LogicalMovementBatchId expectedLogicalMovementBatchId,
+        LogicalMovementGenerationNumber expectedGeneration,
+        LogicalMovementMutationPreview? preview)
+    {
+        var anchor = preview?.PhysicalBatchAnchor;
+        if (selectedPhysicalBatchId <= 0 ||
+            expectedLogicalMovementBatchId.Value <= 0 ||
+            expectedGeneration.Value < 0 ||
+            preview is null ||
+            preview.LogicalMovementBatchId != expectedLogicalMovementBatchId ||
+            preview.ExpectedGeneration != expectedGeneration ||
+            anchor is null ||
+            anchor.MovementBatchId != selectedPhysicalBatchId ||
+            anchor.LogicalMovementBatchId != expectedLogicalMovementBatchId ||
+            !Enum.IsDefined(anchor.Kind) ||
+            !preview.IsWholeRootCorrectionEligible ||
+            preview.Lines.Count == 0 ||
+            preview.Lines.Any(x => x.State != LogicalMovementLineState.Active))
+            throw new InvalidOperationException(
+                "The selected physical batch no longer resolves to the restored logical root and generation. Reload and try again; no batch correction was written.");
+
+        return preview;
+    }
+
     public static MovementBatchCorrectionDetail BuildCurrentWholeRootCorrectionDetail(
         int selectedPhysicalBatchId,
         LogicalMovementMutationPreview preview)

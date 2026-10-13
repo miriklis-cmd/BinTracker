@@ -64,7 +64,7 @@ public sealed class DailyMovementsReportForm : BinTrackerForm
         ScrollBars = ScrollBars.Both
     };
 
-    private readonly IAuditService audit;
+    private readonly IReportExportAuditService audit;
     private DailyMovementsReportResult? currentResult;
     private bool autoRefreshReady;
 
@@ -74,7 +74,7 @@ public sealed class DailyMovementsReportForm : BinTrackerForm
         IDailyMovementsReportService reports,
         IDailyMovementsReportPdfService pdfReports,
         IContainerTypeService containerTypes,
-        IAuditService audit,
+        IReportExportAuditService audit,
         IBusinessClock clock)
     {
         this.reports = reports;
@@ -499,13 +499,10 @@ actions.Controls.Add(ActionButton(
         var source = currentResult
             ?? throw new InvalidOperationException("Run the report first.");
 
-        var rows = grid.Rows
+        var rows = ReportCsvExportContract.PreserveDisplayedOrder(grid.Rows
             .Cast<DataGridViewRow>()
             .Where(x => !x.IsNewRow)
-            .Select(x => x.Tag as DailyMovementReportRow)
-            .Where(x => x is not null)
-            .Cast<DailyMovementReportRow>()
-            .ToList();
+            .Select(x => x.Tag as DailyMovementReportRow));
 
         return new DailyMovementsReportResult(
             source.ReportDate,
@@ -596,16 +593,7 @@ actions.Controls.Add(ActionButton(
             dialog.FileName, false,
             new System.Text.UTF8Encoding(true));
 
-        if (includeNotesInPdf.Checked)
-        {
-            writer.WriteLine(
-                "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Notes,Entered By");
-        }
-        else
-        {
-            writer.WriteLine(
-                "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Entered By");
-        }
+        var csvRows = new List<string>();
 
         foreach (var row in result.Rows)
         {
@@ -628,28 +616,42 @@ actions.Controls.Add(ActionButton(
 
             fields.Add(Csv(row.EnteredBy));
 
-            writer.WriteLine(string.Join(",", fields));
+            csvRows.Add(string.Join(",", fields));
         }
+
+        ReportCsvExportContract.WriteRows(
+            writer,
+            includeNotesInPdf.Checked
+                ? "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Notes,Entered By"
+                : "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Entered By",
+            csvRows);
 
         writer.Flush();
 
-        await ReportCsvAudit.WriteAsync(
-            this, audit,
-            "DAILY_MOVEMENTS_CSV_EXPORTED",
-            result.ReportDate.ToString("yyyy-MM-dd"),
-            $"Daily Movements CSV exported for {result.ReportDate:dd/MM/yyyy}: {result.Rows.Count:N0} row(s).",
+        var auditEntry = ReportCsvExportContract.Daily(
             dialog.FileName,
             result.Rows.Count,
-            new
-            {
-                ReportDate = result.ReportDate,
-                CustomerSearch = customerSearch.Text.Trim(),
-                Container = containerFilter.Text,
-                Direction = directionFilter.Text,
-                Source = sourceFilter.Text,
-                IncludeAdjustments = includeAdjustments.Checked,
-                IncludeNotes = includeNotesInPdf.Checked
-            });
+            result.ReportDate,
+            customerSearch.Text,
+            containerFilter.Text,
+            directionFilter.Text,
+            sourceFilter.Text,
+            includeAdjustments.Checked,
+            includeNotesInPdf.Checked);
+
+        await ReportCsvAudit.WriteAsync(
+            this, audit,
+            new DailyMovementsCsvExportAuditIntent(
+                auditEntry.Description,
+                auditEntry.FileName,
+                result.Rows.Count,
+                result.ReportDate,
+                customerSearch.Text.Trim(),
+                containerFilter.Text,
+                directionFilter.Text,
+                sourceFilter.Text,
+                includeAdjustments.Checked,
+                includeNotesInPdf.Checked));
     }
 
     private void ResizeContentColumns()

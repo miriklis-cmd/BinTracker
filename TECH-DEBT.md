@@ -3,8 +3,8 @@
 ## Frozen logical-lineage delivery (pre-v1 blocking)
 
 - Alpha.8 whole-batch eligibility safely rejects partial lineage through physical MovementBatch. Deliver BT-CORR-018..033 as one coherent migration/service/projection/UI change; never bypass the guard piecemeal.
-- BT-20-P2 activates the reviewed R1/R2/R3/EF/R7 components in normal runtime, BT-20-P3 completes native Audit/History detail and BT-20-P4 implements the separately sequenced Restore/RemainReversed UI at static/focused-test level. The frozen remaining order is broader activated-system gates, retained-database rehearsal, Windows/operator acceptance, layer audit, then Security Hardening; do not combine or reorder those scopes.
-- After lineage Windows acceptance, perform the protected whole-codebase presentation/application/domain/infrastructure audit. Move authoritative WinForms validation, data access, balance/report arithmetic, transactions and authorization below presentation before subsequent major pre-v1 work.
+- BT-20-P2 activates the reviewed R1/R2/R3/EF/R7 components in normal runtime, BT-20-P3 completes native Audit/History detail and BT-20-P4 implements the separately sequenced Restore/RemainReversed UI. The bounded Task20 acceptance inventory is complete through alpha.9.10 Item 8: the canonical gate passed 827/827, the complete matrix passed at 1920×1080/150% and on a separate 1920×1080/100% PC, and final read-only integrity/FKs and domain counts remained clean. The protected layer audit and Security Hardening remain next; bounded evidence does not silently promote the wider permanent lineage rows.
+- BT-ARCH-018 Stage A completed the protected whole-codebase layer audit. Alpha.10 implements the four independently accepted findings at source/focused-test level: credential-free user-list DTOs, Services authorization for developer database mutations, constrained internal/public audit seams and Services-owned report totals. Independent review and the exact-candidate canonical BAT remain required before this gate closes or Security Hardening begins.
 - PostgreSQL/API/portal/handheld/WinUI delivery remains post-v1. v1 debt closure is clean boundaries/provider-neutral semantics, not speculative infrastructure.
 
 Engineering improvements that are not currently user-facing defects. Product work belongs in `docs/Roadmap.md`; active defects/limitations belong in `KNOWN-ISSUES.md`.
@@ -24,7 +24,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 - Add source-row/import-profile metadata needed for changed-workbook correction tooling.
 - Review useful database-level constraints/indexes rather than relying only on service validation.
-- Rehearse the now-activated verified pre-lineage backup/exclusive-upgrade path against a separately authorized retained database before release; this does not replace the later user-facing Backup/Restore workstream.
+- Preserve the passed exact-copy retained-data rehearsal evidence and later perform an actual stopped-client recovery drill when separately authorized; neither substitutes for the user-facing Backup/Restore workstream.
 - Review SQLite concurrency assumptions before production and before any network/shared deployment.
 - PostgreSQL remains a candidate for future simultaneous multi-computer deployment; do not enable it until concurrency, migration and deployment are designed/tested.
 
@@ -71,6 +71,10 @@ Engineering improvements that are not currently user-facing defects. Product wor
 - Dirty-state snapshots remain per editor, but the operator-facing **Save / Discard / Cancel** dialog is shared. Consider extracting the remaining navigation/snapshot mechanics if more editable master-data screens are added.
 - Consider common validation/error-display helpers for edit forms.
 - Save button could visually indicate pending editor changes; this is polish, not a data-loss blocker now that navigation guards are implemented.
+
+## Login UI
+
+- During the bounded alpha.9.10 Item-8 check at 1920x1080/100%, the larger effective workspace made the Login username and password fields look disproportionately wide. Functionality and DPI accessibility were unaffected. Future visual polish should constrain their maximum logical width while preserving DPI scaling and responsive layout; this observation is not a Task20 blocker.
 
 ## Communications
 

@@ -86,7 +86,7 @@ internal sealed class ReversedLineDispositionDialog : BinTrackerForm
                 line.LastEffective.ContainerTypeName,
                 line.LastEffective.Direction.ToString().ToUpperInvariant(),
                 line.LastEffective.Quantity.ToString("N0"),
-                line.LastEffective.MovementDate.ToString("dd/MM/yyyy"),
+                line.LastEffective.MovementDate,
                 technicalEvidence,
                 null);
             grid.Rows[rowIndex].Tag = line;
@@ -184,7 +184,9 @@ internal sealed class ReversedLineDispositionDialog : BinTrackerForm
         grid.Columns.Add(TextColumn("Direction", "Direction", 95));
         grid.Columns.Add(TextColumn("Quantity", "Quantity", 90,
             alignment: DataGridViewContentAlignment.MiddleRight));
-        grid.Columns.Add(TextColumn("Date", "Date", 105));
+        var dateColumn = TextColumn("Date", "Date", 125);
+        dateColumn.DefaultCellStyle.Format = "dd/MM/yyyy";
+        grid.Columns.Add(dateColumn);
         grid.Columns.Add(new DataGridViewTextBoxColumn
         {
             Name = "ReversalContext",

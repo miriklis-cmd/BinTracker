@@ -50,6 +50,14 @@ $requiredDocuments = @(
 )
 foreach ($doc in $requiredDocuments) { if (-not (Test-Path -LiteralPath $doc)) { Fail "Missing required audited document: $doc" } }
 
+$solutionPath = 'BinTracker.sln'
+$winFormsTestProjectPath = 'tests\BinTracker.WinForms.Tests\BinTracker.WinForms.Tests.csproj'
+if (-not (Test-Path -LiteralPath $solutionPath)) { Fail "Missing solution: $solutionPath" }
+$solutionText = Get-Content -Raw -LiteralPath $solutionPath
+if (-not $solutionText.Contains($winFormsTestProjectPath)) {
+    Fail "$winFormsTestProjectPath is missing from $solutionPath."
+}
+
 # Codex task/handoff identity is mechanically testable; semantic authority and
 # status promotion remain mandatory reviews rather than brittle regex claims.
 if (-not (Test-Path -LiteralPath 'Test-BinTrackerCodexPrompt.ps1')) { Fail 'Codex prompt marker validator is missing.' }
@@ -200,15 +208,19 @@ foreach ($check in $sourceChecks) {
 }
 
 $csvEventChecks = @(
-    @{ Path='src/BinTracker.WinForms/OutstandingContainersReportForm.cs'; Event='OUTSTANDING_CONTAINERS_CSV_EXPORTED' },
-    @{ Path='src/BinTracker.WinForms/DailyMovementsReportForm.cs'; Event='DAILY_MOVEMENTS_CSV_EXPORTED' },
-    @{ Path='src/BinTracker.WinForms/WeeklyMovementsReportForm.cs'; Event='WEEKLY_MOVEMENTS_CSV_EXPORTED' },
-    @{ Path='src/BinTracker.WinForms/MovementHistoryReportForm.cs'; Event='MOVEMENT_HISTORY_CSV_EXPORTED' },
-    @{ Path='src/BinTracker.WinForms/MonthlySummaryReportForm.cs'; Event='MONTHLY_SUMMARY_CSV_EXPORTED' }
+    @{ Path='src/BinTracker.WinForms/OutstandingContainersReportForm.cs'; Intent='OutstandingContainersCsvExportAuditIntent'; Event='OUTSTANDING_CONTAINERS_CSV_EXPORTED' },
+    @{ Path='src/BinTracker.WinForms/DailyMovementsReportForm.cs'; Intent='DailyMovementsCsvExportAuditIntent'; Event='DAILY_MOVEMENTS_CSV_EXPORTED' },
+    @{ Path='src/BinTracker.WinForms/WeeklyMovementsReportForm.cs'; Intent='WeeklyMovementsCsvExportAuditIntent'; Event='WEEKLY_MOVEMENTS_CSV_EXPORTED' },
+    @{ Path='src/BinTracker.WinForms/MovementHistoryReportForm.cs'; Intent='MovementHistoryCsvExportAuditIntent'; Event='MOVEMENT_HISTORY_CSV_EXPORTED' },
+    @{ Path='src/BinTracker.WinForms/MonthlySummaryReportForm.cs'; Intent='MonthlySummaryCsvExportAuditIntent'; Event='MONTHLY_SUMMARY_CSV_EXPORTED' }
 )
+$reportExportAuditPath = 'src/BinTracker.Services/ReportExportAuditService.cs'
+if (-not (Test-Path -LiteralPath $reportExportAuditPath)) { Fail "Missing report-export audit authority: $reportExportAuditPath" }
+$reportExportAuditText = Get-Content -Raw -LiteralPath $reportExportAuditPath
 foreach ($check in $csvEventChecks) {
     if (-not (Test-Path -LiteralPath $check.Path)) { Fail "Missing CSV-capable report form: $($check.Path)" }
-    if ((Get-Content -Raw -LiteralPath $check.Path) -notmatch [regex]::Escape($check.Event)) { Fail "$($check.Path) lost CSV audit event $($check.Event)." }
+    if ((Get-Content -Raw -LiteralPath $check.Path) -notmatch [regex]::Escape($check.Intent)) { Fail "$($check.Path) lost typed CSV audit intent $($check.Intent)." }
+    if ($reportExportAuditText -notmatch [regex]::Escape($check.Event)) { Fail "$reportExportAuditPath lost CSV audit event $($check.Event)." }
 }
 
 # Containers navigation/permission compromise (BT-CT-005 / BT-UI-012) must remain mechanically represented in source.
@@ -287,13 +299,19 @@ if ($multiSortText -notmatch 'Shift\+click to add another column' -or
 # Visible report sort direction/priority guard (BT-RPT-017).
 $dailyMovementsText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\DailyMovementsReportForm.cs")
 $weeklyMovementsText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\WeeklyMovementsReportForm.cs")
+$movementHistoryText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\MovementHistoryReportForm.cs")
 if ($multiSortText -notmatch 'var indicator = item.Direction == SortOrder.Descending' -or
     $multiSortText -notmatch 'HeaderText = \$"\{baseText\} \{indicator\}\{i \+ 1\}"' -or
-    $multiSortText -notmatch 'ReserveSortIndicatorSpace' -or
-    $multiSortText -notmatch 'HeaderCell\.Style\.WrapMode = DataGridViewTriState\.False' -or
+    $multiSortText -match 'ReserveSortIndicatorSpace' -or
+    $multiSortText -notmatch 'ColumnHeadersHeightSizeMode ==\s*DataGridViewColumnHeadersHeightSizeMode\.DisableResizing' -or
+    $multiSortText -notmatch 'BaseHeaderWrapModes\.GetValueOrDefault' -or
+    $multiSortText -notmatch ': DataGridViewTriState\.False' -or
+    $movementHistoryText -notmatch 'ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode\.DisableResizing' -or
+    $movementHistoryText -notmatch 'MovementHistoryColumnLayout\.MovementIdHeader' -or
+    $movementHistoryText -notmatch 'MovementHistoryColumnLayout\.EnteredByHeader' -or
     $dailyMovementsText -notmatch 'Column\("Direction", 125, "Direction"\)' -or
     $weeklyMovementsText -notmatch 'Column\("Direction",120,"Direction"\)') {
-    Fail "BT-RPT-017 source gate failed: explicit visible sort direction/priority, single-line active headers, stable sort widths, or DPI-safe Direction header width is incomplete."
+    Fail "BT-RPT-017 source gate failed: explicit visible sort direction/priority, fixed configured header wrapping, stable sort widths, or DPI-safe Direction header width is incomplete."
 }
 
 # Movement correction/reversal hard source gate (BT-CORR-001..004).
@@ -560,6 +578,7 @@ if ($movementHistoryServiceText -notmatch 'Reversed — see' -or $movementHistor
 
 # Integrated Movement History presentation/export gate (BT-HIST-002..006).
 $movementHistoryFileNameText = Get-Content -Raw 'src/BinTracker.Services/MovementHistoryExportFileName.cs'
+$movementHistoryColumnLayoutText = Get-Content -Raw 'src/BinTracker.WinForms/MovementHistoryColumnLayout.cs'
 if ($mainFormText -notmatch 'OpenEmbeddedReport\(\s*"Movement History"' -or
     $mainFormText -notmatch 'new MovementHistoryReportForm\(' -or
     $mainFormText -notmatch 'private void OpenEmbeddedReport\(' -or
@@ -584,7 +603,10 @@ if ($mainFormText -notmatch 'OpenEmbeddedReport\(\s*"Movement History"' -or
     $correctionUiText -notmatch 'actions\.WrapContents = true' -or
     $correctionUiText -notmatch 'FilterGroup' -or
     $correctionUiText -notmatch 'AllocateResponsiveColumns' -or
-    $correctionUiText -notmatch 'available < minimumTotal' -or
+    $correctionUiText -notmatch 'MovementHistoryColumnLayout\.Allocate\(available, specifications\)' -or
+    $movementHistoryColumnLayoutText -notmatch 'headerMinimum\("MovementId"\)' -or
+    $movementHistoryColumnLayoutText -notmatch 'headerMinimum\("EnteredBy"\)' -or
+    $movementHistoryColumnLayoutText -notmatch 'availableWidth - widths\.Values\.Sum\(\)' -or
     $correctionUiText -notmatch 'grid\.Resize' -or
     $correctionUiText -notmatch 'CellPainting' -or
     $correctionUiText -notmatch 'Color\.FromArgb\(218, 242, 226\)' -or
@@ -592,9 +614,12 @@ if ($mainFormText -notmatch 'OpenEmbeddedReport\(\s*"Movement History"' -or
     $correctionUiText -notmatch 'Color\.FromArgb\(255, 232, 194\)' -or
     $correctionUiText -notmatch 'Cells\["Status"\]\.ToolTipText' -or
     $correctionUiText -notmatch 'Cells\["Notes"\]\.ToolTipText' -or
-    $correctionUiText -notmatch 'Column\("Movement ID", 112, 108, "MovementId"\)' -or
-    $correctionUiText -notmatch 'Column\("Status", 185, 165, "Status", wrap: true\)' -or
-    $correctionUiText -notmatch 'Column\("Notes", 155, 135, "Notes", wrap: true\)' -or
+    $correctionUiText -notmatch 'CreateColumn\(MovementHistoryColumnLayout\.MovementIdHeader, 92, "MovementId"\)' -or
+    $correctionUiText -notmatch 'CreateColumn\("Status", 190, "Status", wrap: true\)' -or
+    $correctionUiText -notmatch 'CreateColumn\("Notes", 240, "Notes", wrap: true\)' -or
+    $movementHistoryColumnLayoutText -notmatch 'new\("Status", Preferred\("Status", 190\), Math\.Max\(headerMinimum\("Status"\), 150\), 0\.28\)' -or
+    $movementHistoryColumnLayoutText -notmatch 'new\("Notes", Preferred\("Notes", 240\), Math\.Max\(headerMinimum\("Notes"\), 180\), 0\.45\)' -or
+    $movementHistoryColumnLayoutText -notmatch 'OrderBy\(column => column\.ExtraWeight\)' -or
     $correctionUiText -notmatch 'AutoSizeRowsMode = DataGridViewAutoSizeRowsMode\.AllCells' -or
     $correctionUiText -notmatch 'row\.MovementId,' -or
     $correctionUiText -notmatch '"MovementId" => left\.MovementId\.CompareTo\(right\.MovementId\)' -or

@@ -1,6 +1,65 @@
 # BinTracker Current Release Notes
 
-## v0.5.0-alpha.9.4
+## v0.5.0-alpha.10
+
+- Completes BT-ARCH-018 Stage A remediation for the four independently accepted findings without reopening accepted Task20 behavior.
+- User administration now receives an immutable Services DTO containing only stable ID, username/display name, role, active/locked/password-reset state and last login; credential hashes, salts, counters and persistence-only fields no longer cross to WinForms.
+- Developer database backup/load/fresh operations remain Data-owned but are reachable from WinForms only through an authenticated-Administrator Services facade. Operator, Viewer and anonymous denials occur before Data or restart side effects.
+- Public audit operations no longer expose raw `AuditEvent` entities or generic append/actor-override authority. Trusted append seams are Services-internal, authentication/bootstrap actor attribution is narrowly scoped, and WinForms CSV exports submit typed report intents whose action/entity semantics are fixed in Services while preserving established descriptions and structured payloads.
+- Monthly Summary and Movement History retain current displayed row ordering for PDF/CSV but use the authoritative container totals supplied by Services rather than recomputing them in presentation.
+- Focused characterization/regression evidence and a Release build are required for this candidate. Independent ChatGPT review and the operator-owned canonical `Build-BinTracker.bat` remain pending; no Windows reacceptance, package, retained-database mutation or Security Hardening work is claimed.
+
+## v0.5.0-alpha.9.10
+
+- Corrects the remaining Resolve Reversed Batch Lines layout defect found after alpha.9.9 passed its 826/826 canonical BAT: at Windows 11 1920×1080/150%, `28/08/2026` was visibly truncated to `28/08/2...`.
+- Preserves the overall dialog layout, readable customer/container/direction/quantity/evidence/decision fields, reason/actions and vertical-only scrolling. Date is now a typed value with explicit `dd/MM/yyyy` formatting and a 125-pixel width/minimum instead of a preformatted string in a 105-pixel column.
+- Adds focused WinForms coverage for the complete formatted value and sizing/scroll contract. No workflow or mutation semantics changed.
+- Passed the canonical source/package-state audit, build and 827/827 automated tests with 0 failed/skipped under .NET SDK 10.0.401.
+- Passed the complete Task20 Item-8 surface matrix on Windows 11 at 1920×1080/150% and on a separate Windows PC at 1920×1080/100%. The disposition Date displayed full `28/08/2026`; Movement History used both compact and larger workspaces sensibly; correction, report, audit and detail surfaces remained usable and readable.
+- Final read-only disposable-fixture verification returned integrity OK, zero foreign-key violations and unchanged domain counts. The bounded Task20 acceptance inventory is complete; broad permanent lineage/report/audit rows remain unchanged and the protected layer-delineation audit is next.
+
+## v0.5.0-alpha.9.9
+
+- Corrects the remaining Movement History layout failure found only after alpha.9.8 passed its 824/824 canonical BAT and entered real Windows 11 1920×1080/150% Item-8 acceptance.
+- Removes synthetic `▲99` sortable-header sizing. Movement ID and Entered by now use compact, readable two-line headings in a slightly taller fixed header row; normal data rows retain their established sizing and Status/Notes wrapping.
+- Keeps Date/Code/Type/Container/Direction/Qty/Source compact, protects useful Status/Notes widths, and distributes larger-workspace surplus only to Customer, Reference, Status and Notes. Movement ID, Direction and Entered by no longer grow merely because more space is available.
+- Preserves all report rows, multi-sort behavior, Status/Notes tooltips, correction/reversal workflows, filters/actions/summary and report/export semantics. Focused/static evidence does not accept Item 8; the complete floor and larger-production-display rerun remains required.
+
+## v0.5.0-alpha.9.8
+
+- Corrects the three presentation defects found during real Task20 Item-8 Windows 11 1920×1080/150% acceptance: Movement History column overflow/truncated headers, physical Batch Detail date clipping and a native grid tooltip remaining visible after report navigation.
+- Movement History now allocates all existing contract columns against the actual grid width using current-DPI measured sortable-header minima. It protects the full Movement ID and Entered by headers, retains readable structured columns, keeps Status/Notes wrapping and tooltips, and uses additional space on larger displays.
+- Physical Batch Detail explicitly displays `dd/MM/yyyy` and lets the date column size to its header/content while preserving Movement ID, customer, container, direction, quantity, Reference/notes and Close access.
+- Embedded report teardown now dismisses native DataGridView tooltips before the owner is disposed and releases shared sort state; active-page cell and header tooltips remain unchanged.
+- Focused automated coverage protects layout allocation, date formatting and tooltip lifecycle. Item 8 is not accepted by these tests and still requires the complete real floor and larger-production-display rerun.
+
+## v0.5.0-alpha.9.7
+
+- Corrects the CSV audit-description defect exposed during alpha.9.6 item-6 Windows testing. Daily, Weekly Detail/Overview, Monthly, Outstanding and Movement History successful-export descriptions now include the actual filename, row count and applicable active report/filter/view context.
+- Retains the established report-specific action names and structured audit payloads, and records only the filename rather than a volatile absolute path.
+- Preserves CSV data and filename rules, displayed-grid ordering, report calculations/filtering, PDF behavior, authorization and audit-review policy.
+- Adds focused contract coverage for every exporter, Weekly view distinction and current-display-order preservation. Task20 item 6 subsequently passed bounded Windows/operator acceptance: corrected Daily/Weekly/Monthly activity, PositionAsOf/current/Outstanding results, numeric sorting, five initial exports/audits #592–596, and final explicit Daily sorted-grid/CSV order with complete audit #599 context and no absolute-path leak.
+- The alpha.9.7 canonical gate passed source/package audit, restore, build and 820/820 automated tests with 0 failed/skipped under .NET SDK 10.0.401. One first-attempt lock-file cleanup timing failure passed 5/5 in isolation before the unchanged full rerun passed; it is not an accepted product defect.
+- Bounded Task20 Item 7 real PDF preview/print is accepted for Daily, both Weekly views, Monthly, Outstanding and Daily Print Pack. The Windows 11 1920x1080/150% plus larger-display matrix remains pending as Item 8.
+
+Historical alpha.9.6 Movement History synchronization and acceptance evidence retained in this candidate:
+
+## v0.5.0-alpha.9.6
+
+- Records alpha.9.5 protected Batch #30 FIX6 core continuation as passed. The selected physical anchor was reacquired and the current whole-root correction dialog opened with the restored state.
+- Corrects Movement History date-picker coupling: changing a valid From or To preserves the other boundary, while invalid ranges clamp only the edited boundary without recursive reloads.
+- Keeps displayed filters and applied report state synchronized by capturing one immutable query and allowing only the latest matching result to update the grid/summary.
+- Refreshes authoritative persisted history immediately after a separately committed Restore, before the later correction dialog. Cancelling that later correction no longer leaves restoration hidden; successful correction still refreshes after its own commit.
+- Preserves FIX6 anchor reacquisition, stable-root/current-generation validation, physical/logical identity separation, CAS/idempotency/fail-closed behavior and all service/data authority below WinForms.
+- Focused WinForms interaction-state coverage passes 9/9 and the extended exact FIX6 restoration/history regression passes 1/1.
+- The operator-run canonical BAT passes on the exact uncommitted alpha.9.6 candidate with .NET SDK 10.0.401: audit, restore and Debug build pass; all projects including WinForms.Tests build; UnitTests, IntegrationTests and WinForms.Tests pass; and 811/811 automated tests pass with 0 failed/skipped before `BUILD SUCCESSFUL`.
+- A fresh SHA-256-matched isolated copy of the retained schema16 source opened normally and migrated to schema17 with integrity/FKs and physical counts preserved, 28 roots/181 lines/28 generations/181 generation lines/222 links, Batch #30 as one two-line generation-0 root, and a new exact-hash recovery artifact. The real retained database was not used for mutation smoke.
+- FIX7-A/B/C Windows acceptance passes: valid date edits preserve the opposite boundary, invalid From clamps to To, rapid To changes settle the controls/summary/grid on the final range, and Restore followed by later correction Cancel shows restored #1083 immediately. The follow-on dialog used current #1080/#1083, confirming FIX6 anchor reacquisition. Mechanical database verification found exactly the one Restore generation/movement and no later correction movement after Cancel.
+- A later isolated Windows smoke passes the successful original-anchor whole-root correction/refresh path: Direction-only OUT correction of current #1080/#1083 committed atomically, #1084..#1087 and the corrected summary appeared immediately, and read-only verification proved complete generation 2/operation #12, physical output Batch #31, primary audit #558 and no later root ledger movement.
+- Task20 acceptance item 2 also passes on an isolated rehearsal: both selected/whole correction orders, mixed dates/line states, repeated whole-root correction, later reversal/restoration and post-Restore reacquisition reached healthy generation 7. Read-only verification passed at SHA-256 `2BF06AF1952C3E0A2F92F8DA54E72BFDF2265D8D503737362BFAE1B11F2DD821`, schema17 integrity/FKs, 510 movements, operations #13–#17 and five primary audits, with no operation after the final Cancel.
+- Remaining Task20 Batch #31 output-anchor/multi-window, DPI/report/detail/review and real preview/print scenarios, actual production-database recovery, packaging and deployment are not implied.
+
+Historical alpha.9.4 current-state presentation correction retained in this candidate:
 
 - Corrects the remaining whole-root correction presentation defect exposed by alpha.9.3 Windows smoke: an older original physical batch remains only a valid anchor and no longer supplies superseded rows/date to the correction dialog.
 - The dialog is projected from the validated current logical generation, so original and lineage-output anchors show the same current effective movements and baseline.

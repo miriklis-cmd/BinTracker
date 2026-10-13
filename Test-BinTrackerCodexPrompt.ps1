@@ -17,7 +17,21 @@ $ReturnEndPattern = '^=== RETURN TO CHATGPT: (?<id>[A-Z0-9-]+) END ===$'
 $WorkingEndPattern = '^=== BINTRACKER CODEX WORKING: (?<id>[A-Z0-9-]+) END ===$'
 
 function Test-CanonicalTaskId([string]$candidate) {
-    return $candidate -cmatch '^BT-[A-Z0-9]+(?:-(?:P|FIX)[1-9][0-9]*)?$'
+    if ($candidate -cnotmatch '^BT-[A-Z0-9]+(?:-[A-Z0-9]+)*$') {
+        return $false
+    }
+
+    # R<n> is reserved for architecture/requirement labels and is never a run suffix.
+    if ($candidate -cmatch '-R[1-9][0-9]*$') {
+        return $false
+    }
+
+    # P<n>/FIX<n> execution suffixes are positive integers when present.
+    if ($candidate -cmatch '-(?:P|FIX)0[0-9]*$') {
+        return $false
+    }
+
+    return $true
 }
 
 function Get-FirstNonBlankLine([string]$text) {
@@ -167,6 +181,12 @@ function Invoke-SelfTests {
     $validHandoff = "=== RETURN TO CHATGPT: $id START ===`nhandoff`n=== RETURN TO CHATGPT: $id END ===`n=== BINTRACKER CODEX WORKING: $id END ==="
 
     Assert-SelfTest 'valid-four-boundary-envelope' (Test-CompleteEnvelope $validTask $validHandoff $id).IsValid
+    Assert-SelfTest 'valid-multisegment-roadmap-id' (Test-CanonicalTaskId 'BT-ARCH-018')
+    Assert-SelfTest 'valid-multisegment-pass-id' (Test-CanonicalTaskId 'BT-ARCH-018-P1')
+    Assert-SelfTest 'valid-multisegment-fix-id' (Test-CanonicalTaskId 'BT-ARCH-018-FIX1')
+    Assert-SelfTest 'prohibited-multisegment-r-suffix' (-not (Test-CanonicalTaskId 'BT-ARCH-018-R1'))
+    Assert-SelfTest 'prohibited-zero-pass-suffix' (-not (Test-CanonicalTaskId 'BT-ARCH-018-P0'))
+    Assert-SelfTest 'prohibited-zero-fix-suffix' (-not (Test-CanonicalTaskId 'BT-ARCH-018-FIX0'))
     Assert-SelfTest 'missing-working-start' (-not (Test-CompleteEnvelope 'work' $validHandoff $id).IsValid)
     Assert-SelfTest 'missing-return-start' (-not (Test-CompleteEnvelope $validTask "handoff`n=== RETURN TO CHATGPT: $id END ===`n=== BINTRACKER CODEX WORKING: $id END ===" $id).IsValid)
     Assert-SelfTest 'missing-return-end' (-not (Test-CompleteEnvelope $validTask "=== RETURN TO CHATGPT: $id START ===`nhandoff`n=== BINTRACKER CODEX WORKING: $id END ===" $id).IsValid)
@@ -181,7 +201,7 @@ function Invoke-SelfTests {
     $quotedOnly = "intro`n" + '```text' +
         "`n=== BINTRACKER CODEX WORKING: $id START ===`n" + '```'
     Assert-SelfTest 'quoted-marker-example-does-not-prove-input' (-not (Test-TaskInput $quotedOnly $id).IsValid)
-    if (-not $Quiet) { Write-Host 'BinTracker Codex four-boundary validator self-test passed: 12/12.' -ForegroundColor Green }
+    if (-not $Quiet) { Write-Host 'BinTracker Codex four-boundary validator self-test passed: 18/18.' -ForegroundColor Green }
 }
 
 function Get-MessageText([object]$record) {

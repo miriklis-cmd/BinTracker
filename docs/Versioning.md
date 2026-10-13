@@ -1,6 +1,6 @@
 # Versioning
 
-BinTracker currently uses semantic pre-release version `0.5.0-alpha.9.4`.
+BinTracker currently uses semantic pre-release version `0.5.0-alpha.10`.
 
 ## Single source of truth
 
@@ -9,7 +9,7 @@ The release version is defined in the repository root:
 `Directory.Build.props`
 
 ```xml
-<Version>0.5.0-alpha.9.4</Version>
+<Version>0.5.0-alpha.10</Version>
 ```
 
 The same value is used by:
@@ -77,6 +77,20 @@ Hard rule: **maximum two numeric components after `alpha`** for the new scheme.
 `0.5.0-alpha.9.3` is the next correction to the same alpha.9 milestone after the built/tested alpha.9.2 candidate entered end-to-end Windows smoke and exposed a lineage-output physical-batch routing defect plus bounded Movement History/dialog presentation defects. It preserves alpha.9 through alpha.9.2 as tested historical candidates.
 
 `0.5.0-alpha.9.4` is the corrective successor after alpha.9.3 passed the canonical 800/800 gate but renewed Windows smoke exposed a stale operator-baseline defect when an older original physical batch was used as the whole-root correction anchor. Alpha.9.3 remains historical build/smoke evidence and is not overwritten.
+
+`0.5.0-alpha.9.5` is the corrective successor after alpha.9.4 passed its canonical 800/800 gate and controlled retained schema16-to17 rehearsal, but protected Batch #30 Windows acceptance exposed loss of the selected physical-batch anchor after a separately committed Restore. Alpha.9.4 remains historical build/rehearsal evidence and is not overwritten.
+
+`0.5.0-alpha.9.6` is the corrective successor after alpha.9.5 passed the core protected Batch #30 FIX6 continuation but the same Windows rehearsal exposed Movement History date-picker coupling, stale/reordered report refreshes and a missing post-Restore refresh when the later correction dialog was cancelled. Alpha.9.5 remains historical Windows evidence and is not overwritten.
+
+`0.5.0-alpha.9.7` is the corrective successor after alpha.9.6 entered item-6 Windows acceptance and successful Daily, Weekly Detail/Overview, Monthly and Outstanding CSV exports exposed incomplete audit descriptions that omitted filename and active filter/view context. Alpha.9.6 remains historical build and Windows evidence and is not overwritten.
+
+`0.5.0-alpha.9.8` is the corrective successor after alpha.9.7 underwent real Item-8 Windows acceptance at 1920×1080/150% and exposed Movement History width allocation, physical Batch Detail date clipping and an orphaned native grid tooltip across report navigation. Alpha.9.7 remains historical canonical-build and Windows evidence and is not overwritten.
+
+`0.5.0-alpha.9.9` is the corrective successor after alpha.9.8 passed its 824/824 canonical BAT but then failed real Item-8 Movement History layout acceptance because synthetic sortable-header width reservation inflated structural columns, reduced Notes/Status and still required horizontal scrolling. Alpha.9.8 remains historical build and failed Windows-acceptance evidence and is not overwritten.
+
+`0.5.0-alpha.9.10` is the corrective successor after alpha.9.9 passed its 826/826 canonical BAT but renewed real Item-8 Windows acceptance found the Resolve Reversed Batch Lines Date value truncated at 1920×1080/150%. Alpha.9.9 remains historical build and failed Windows-acceptance evidence and is not overwritten.
+
+`0.5.0-alpha.10` is the next feature/development increment after the accepted alpha.9 correction series. It carries the BT-ARCH-018 protected layer-delineation remediation without overwriting alpha.9.10's canonical-build and Windows-acceptance evidence. Its independent review and exact-candidate canonical BAT remain pending.
 
 Do not create forms such as:
 

@@ -76,8 +76,17 @@ public sealed class MovementBatchDetailForm : BinTrackerForm
         ClientSize = new Size(1080, 620); MinimumSize = new Size(860, 500);
         var heading = new Label { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(14), Font = new Font("Segoe UI Semibold", 12F), Text = $"Persisted batch #{batchId} · {rows.Count} movement line{(rows.Count == 1 ? "" : "s")}" };
         var grid = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true, AutoGenerateColumns = false, RowHeadersVisible = false, BackgroundColor = Color.White, DataSource = rows.ToList(), ScrollBars = ScrollBars.Vertical };
-        grid.Columns.Add(Column("Movement ID", nameof(MovementBatchAuditLine.MovementId), 100)); grid.Columns.Add(Column("Date", nameof(MovementBatchAuditLine.MovementDate), 100));
-        grid.Columns.Add(Column("Customer", nameof(MovementBatchAuditLine.CustomerCode), 100)); grid.Columns.Add(Column("Customer name", nameof(MovementBatchAuditLine.CustomerName), 190));
+        grid.Columns.Add(Column("Movement ID", nameof(MovementBatchAuditLine.MovementId), 110));
+        grid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            Name = "Date",
+            HeaderText = "Date",
+            DataPropertyName = nameof(MovementBatchAuditLine.MovementDate),
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
+            MinimumWidth = 120,
+            DefaultCellStyle = new DataGridViewCellStyle { Format = "dd/MM/yyyy" }
+        });
+        grid.Columns.Add(Column("Customer", nameof(MovementBatchAuditLine.CustomerCode), 100)); grid.Columns.Add(Column("Customer name", nameof(MovementBatchAuditLine.CustomerName), 180));
         grid.Columns.Add(Column("Container", nameof(MovementBatchAuditLine.ContainerType), 140)); grid.Columns.Add(Column("Direction", nameof(MovementBatchAuditLine.Direction), 85));
         grid.Columns.Add(Column("Quantity", nameof(MovementBatchAuditLine.Quantity), 85));
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Reference / notes", DataPropertyName = nameof(MovementBatchAuditLine.Notes), AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill, MinimumWidth = 180 });

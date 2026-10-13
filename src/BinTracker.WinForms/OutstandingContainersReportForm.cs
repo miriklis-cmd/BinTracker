@@ -64,7 +64,7 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         BorderStyle = BorderStyle.FixedSingle
     };
 
-    private readonly IAuditService audit;
+    private readonly IReportExportAuditService audit;
     private OutstandingReportResult? currentResult;
     private bool autoRefreshReady;
 
@@ -74,7 +74,7 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
         IOutstandingReportService outstanding,
         IOutstandingReportPdfService pdfReports,
         IContainerTypeService containerTypes,
-        IAuditService audit,
+        IReportExportAuditService audit,
         IBusinessClock clock)
     {
         this.outstanding = outstanding;
@@ -623,13 +623,10 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
     private OutstandingReportResult BuildDisplayedResultFromCurrentGrid(
         OutstandingReportResult result)
     {
-        var displayedRows = grid.Rows
+        var displayedRows = ReportCsvExportContract.PreserveDisplayedOrder(grid.Rows
             .Cast<DataGridViewRow>()
             .Where(row => !row.IsNewRow)
-            .Select(row => row.Tag as OutstandingReportRow)
-            .Where(row => row is not null)
-            .Cast<OutstandingReportRow>()
-            .ToList();
+            .Select(row => row.Tag as OutstandingReportRow));
 
         // The PDF is intentionally a printable snapshot of the dataset the
         // operator is currently viewing, including their chosen grid sort.
@@ -743,12 +740,11 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
             false,
             new System.Text.UTF8Encoding(true));
 
-        writer.WriteLine(
-            "As Of,Customer Code,Customer Name,Customer Type,Container,Position,Quantity,Last Movement,Status");
+        var csvRows = new List<string>();
 
         foreach (var row in exportResult.Rows)
         {
-            writer.WriteLine(string.Join(",",
+            csvRows.Add(string.Join(",",
                 Csv(exportResult.AsOfDate.ToString("dd/MM/yyyy")),
                 Csv(row.CustomerCode),
                 Csv(row.CustomerName),
@@ -765,25 +761,35 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
                 Csv(row.IsActive ? "Active" : "Inactive")));
         }
 
+        ReportCsvExportContract.WriteRows(
+            writer,
+            "As Of,Customer Code,Customer Name,Customer Type,Container,Position,Quantity,Last Movement,Status",
+            csvRows);
+
         summary.Text +=
             Environment.NewLine +
             $"Exported CSV: {dialog.FileName}";
 
-        await ReportCsvAudit.WriteAsync(
-            this, audit,
-            "OUTSTANDING_CONTAINERS_CSV_EXPORTED",
-            exportResult.AsOfDate.ToString("yyyy-MM-dd"),
-            $"Outstanding Containers CSV exported for {exportResult.AsOfDate:dd/MM/yyyy}: {exportResult.Rows.Count:N0} row(s).",
+        var auditEntry = ReportCsvExportContract.Outstanding(
             dialog.FileName,
             exportResult.Rows.Count,
-            new
-            {
-                AsOfDate = exportResult.AsOfDate,
-                CustomerSearch = customerSearch.Text.Trim(),
-                Container = containerFilter.Text,
-                BalanceFilter = exportResult.BalanceFilter.ToString(),
-                IncludeInactive = includeInactive.Checked
-            });
+            exportResult.AsOfDate,
+            customerSearch.Text,
+            containerFilter.Text,
+            balanceFilter.Text,
+            includeInactive.Checked);
+
+        await ReportCsvAudit.WriteAsync(
+            this, audit,
+            new OutstandingContainersCsvExportAuditIntent(
+                auditEntry.Description,
+                auditEntry.FileName,
+                exportResult.Rows.Count,
+                exportResult.AsOfDate,
+                customerSearch.Text.Trim(),
+                containerFilter.Text,
+                exportResult.BalanceFilter.ToString(),
+                includeInactive.Checked));
     }
 
     private static Label ControlLabel(

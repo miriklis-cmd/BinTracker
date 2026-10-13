@@ -51,6 +51,40 @@ internal static class ReportGridMultiSort
 
         grid.ColumnAdded += (_, e) => ConfigureColumn(grid, e.Column);
         grid.ColumnHeaderMouseClick += OnColumnHeaderMouseClick;
+        grid.Disposed += (_, _) => DetachGrid(grid, dismissToolTips: false);
+    }
+
+    public static void PrepareForOwnerDisposal(Control owner)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+
+        foreach (var grid in DescendantsAndSelf(owner).OfType<DataGridView>())
+            DetachGrid(grid, dismissToolTips: true);
+    }
+
+    internal static bool IsAttached(DataGridView grid) => States.ContainsKey(grid);
+
+    private static IEnumerable<Control> DescendantsAndSelf(Control owner)
+    {
+        yield return owner;
+        foreach (Control child in owner.Controls)
+        foreach (var descendant in DescendantsAndSelf(child))
+            yield return descendant;
+    }
+
+    private static void DetachGrid(DataGridView grid, bool dismissToolTips)
+    {
+        if (dismissToolTips && !grid.IsDisposed)
+            grid.ShowCellToolTips = false;
+
+        grid.ColumnHeaderMouseClick -= OnColumnHeaderMouseClick;
+        States.Remove(grid);
+        TypedValueSelectors.Remove(grid);
+        foreach (DataGridViewColumn column in grid.Columns)
+        {
+            BaseHeaderTexts.Remove(column);
+            BaseHeaderWrapModes.Remove(column);
+        }
     }
 
 
@@ -78,7 +112,6 @@ internal static class ReportGridMultiSort
         BaseHeaderWrapModes[column] = column.HeaderCell.Style.WrapMode;
         column.HeaderCell.SortGlyphDirection = SortOrder.None;
         column.HeaderCell.ToolTipText = "Click to sort. Shift+click adds another sort level.";
-        ReserveSortIndicatorSpace(grid, column);
     }
 
     private static void OnColumnHeaderMouseClick(object? sender, DataGridViewCellMouseEventArgs e)
@@ -132,10 +165,13 @@ internal static class ReportGridMultiSort
             var baseText = BaseHeaderTexts.TryGetValue(c, out var stored) ? stored : c.HeaderText;
             var indicator = item.Direction == SortOrder.Descending ? "▼" : "▲";
             c.HeaderText = $"{baseText} {indicator}{i + 1}";
-            // Never let an active sort indicator create a second header line.
-            // WinForms AutoSize header height otherwise makes the grid visibly jump
-            // when a narrow column is sorted (Direction was the clearest example).
-            c.HeaderCell.Style.WrapMode = DataGridViewTriState.False;
+            // A fixed-height report header can safely retain its configured wrapping
+            // without jumping when a sort marker is added. Auto-sized report headers
+            // retain the established single-line sorted-caption behaviour.
+            c.HeaderCell.Style.WrapMode = grid.ColumnHeadersHeightSizeMode ==
+                DataGridViewColumnHeadersHeightSizeMode.DisableResizing
+                    ? BaseHeaderWrapModes.GetValueOrDefault(c, DataGridViewTriState.NotSet)
+                    : DataGridViewTriState.False;
             c.HeaderCell.ToolTipText =
                 $"Sort {i + 1}: {item.Direction}. Shift+click another column to add the next level.";
         }
@@ -148,22 +184,6 @@ internal static class ReportGridMultiSort
             ? selectors
             : new Dictionary<string, Func<DataGridViewRow, object?>>(StringComparer.Ordinal);
         grid.Sort(new GridComparer(state.ToArray(), originalOrder, typedSelectors));
-    }
-
-
-    private static void ReserveSortIndicatorSpace(DataGridView grid, DataGridViewColumn column)
-    {
-        // Reserve sort-marker room once when the grid is configured. Never resize an
-        // active column during sorting: changing widths on click made neighbouring
-        // columns visibly jump even though the sort itself was correct.
-        if (column.AutoSizeMode != DataGridViewAutoSizeColumnMode.None)
-            return;
-
-        var font = grid.ColumnHeadersDefaultCellStyle.Font ?? grid.Font;
-        var baseText = BaseHeaderTexts.TryGetValue(column, out var stored) ? stored : column.HeaderText;
-        var required = TextRenderer.MeasureText($"{baseText} ▲99", font).Width + 16;
-        if (column.Width < required)
-            column.Width = required;
     }
 
     private sealed class GridComparer(

@@ -6,28 +6,12 @@ internal static class ReportCsvAudit
 {
     public static async Task WriteAsync(
         IWin32Window owner,
-        IAuditService audit,
-        string action,
-        string entityId,
-        string description,
-        string outputPath,
-        int rowCount,
-        object? context = null)
+        IReportExportAuditService audit,
+        CsvReportExportAuditIntent intent)
     {
         try
         {
-            await audit.WriteAsync(
-                action,
-                "Report",
-                entityId,
-                description,
-                after: new
-                {
-                    Format = "CSV",
-                    RowCount = rowCount,
-                    FileName = Path.GetFileName(outputPath),
-                    Context = context
-                });
+            await audit.RecordCsvExportAsync(intent);
         }
         catch (Exception ex)
         {

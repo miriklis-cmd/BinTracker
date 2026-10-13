@@ -25,6 +25,7 @@ public sealed class MainForm : BinTrackerForm
     private readonly IBusinessClock clock;
     private readonly IUserService users;
     private readonly IAuditService audit;
+    private readonly IReportExportAuditService reportExportAudit;
     private readonly ICustomerService customers;
     private readonly ICustomerStatementReportService statementReports;
     private readonly IAuthenticationService auth;
@@ -49,7 +50,7 @@ public sealed class MainForm : BinTrackerForm
     private readonly IImportExecutionService importExecution;
     private readonly IImportRunHistoryService importRunHistory;
     private readonly IBalanceService balances;
-    private readonly IDeveloperDatabaseService developerDatabase;
+    private readonly IDeveloperDatabaseToolsService developerDatabase;
 
     /// <summary>
     /// True when the user deliberately chose Logout rather than closing
@@ -63,6 +64,7 @@ public sealed class MainForm : BinTrackerForm
         IBusinessClock clock,
         IUserService users,
         IAuditService audit,
+        IReportExportAuditService reportExportAudit,
         ICustomerService customers,
         ICustomerStatementReportService statementReports,
         IAuthenticationService auth,
@@ -87,12 +89,13 @@ public sealed class MainForm : BinTrackerForm
         IImportExecutionService importExecution,
         IImportRunHistoryService importRunHistory,
         IBalanceService balances,
-        IDeveloperDatabaseService developerDatabase)
+        IDeveloperDatabaseToolsService developerDatabase)
     {
         this.session = session;
         this.clock = clock;
         this.users = users;
         this.audit = audit;
+        this.reportExportAudit = reportExportAudit;
         this.customers = customers;
         this.statementReports = statementReports;
         this.auth = auth;
@@ -763,7 +766,7 @@ public sealed class MainForm : BinTrackerForm
                 outstandingReports,
                 outstandingReportPdfs,
                 containerTypes,
-                audit,
+                reportExportAudit,
                 clock));
     }
 
@@ -776,7 +779,7 @@ public sealed class MainForm : BinTrackerForm
                 dailyMovementReports,
                 dailyMovementReportPdfs,
                 containerTypes,
-                audit,
+                reportExportAudit,
                 clock));
     }
 
@@ -789,7 +792,7 @@ public sealed class MainForm : BinTrackerForm
                 weeklyMovementReports,
                 weeklyMovementReportPdfs,
                 containerTypes,
-                audit,
+                reportExportAudit,
                 clock));
     }
 
@@ -803,7 +806,7 @@ public sealed class MainForm : BinTrackerForm
                 movementHistoryReportPdfs,
                 containerTypes,
                 customers,
-                audit,
+                reportExportAudit,
                 movementCorrections,
                 session,
                 clock),
@@ -830,7 +833,7 @@ public sealed class MainForm : BinTrackerForm
                 monthlySummaryReports,
                 monthlySummaryReportPdfs,
                 containerTypes,
-                audit,
+                reportExportAudit,
                 clock));
     }
 
@@ -1339,6 +1342,10 @@ private async Task<bool> ConfirmCanLeaveActiveCustomerAsync() =>
     {
         if (activeReportPage is not null)
         {
+            // Native DataGridView tooltips own a top-level popup window. Dismiss
+            // them before removing their report owner so no popup can remain
+            // orphaned over the next report page.
+            ReportGridMultiSort.PrepareForOwnerDisposal(activeReportPage);
             activeReportPage.Dispose();
             activeReportPage = null;
         }

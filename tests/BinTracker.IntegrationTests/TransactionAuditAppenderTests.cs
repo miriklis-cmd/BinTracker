@@ -80,13 +80,13 @@ public sealed class TransactionAuditAppenderTests
     }
 
     [Fact]
-    public async Task Existing_independent_audit_service_still_saves_its_event()
+    public async Task Trusted_internal_audit_appender_still_saves_its_event()
     {
         await using var harness = await Harness.CreateAsync();
         using var provider = harness.CreateServices();
-        var audit = provider.GetRequiredService<IAuditService>();
+        var audit = provider.GetRequiredService<IAuditAppender>();
 
-        await audit.WriteAsync(
+        await audit.AppendAsync(
             "EXISTING_AUDIT_BEHAVIOR",
             "Characterization",
             "42",

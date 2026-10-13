@@ -57,6 +57,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
     private readonly DataGridView grid = new()
     {
+        Name = "MovementHistoryGrid",
         Dock = DockStyle.Fill,
         ReadOnly = true,
         AllowUserToAddRows = false,
@@ -67,12 +68,13 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         RowHeadersVisible = false,
         AutoGenerateColumns = false,
         AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells,
+        ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
         BackgroundColor = Color.White,
         BorderStyle = BorderStyle.FixedSingle,
         ScrollBars = ScrollBars.Both
     };
 
-    private readonly IAuditService audit;
+    private readonly IReportExportAuditService audit;
     private readonly IMovementCorrectionService corrections;
     private readonly UserSession session;
     private Button? reverseButton;
@@ -80,7 +82,9 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     private Button? correctBatchButton;
     private MovementHistoryReportResult? currentResult;
     private bool autoRefreshReady;
+    private bool synchronizingDateControls;
     private bool allocatingColumns;
+    private readonly MovementHistoryRefreshCoordinator refreshCoordinator = new();
 
     private readonly IBusinessClock clock;
 
@@ -89,7 +93,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         IMovementHistoryReportPdfService pdfReports,
         IContainerTypeService containerTypes,
         ICustomerService customers,
-        IAuditService audit,
+        IReportExportAuditService audit,
         IMovementCorrectionService corrections,
         UserSession session,
         IBusinessClock clock)
@@ -114,22 +118,10 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         endDate.Value = BusinessToday;
 
         startDate.ValueChanged += async (_, _) =>
-        {
-            if (startDate.Value.Date > endDate.Value.Date)
-                endDate.Value = startDate.Value.Date;
-
-            if (autoRefreshReady)
-                await LoadReportAsync();
-        };
+            await DateRangeChangedAsync(MovementHistoryDateBoundary.From);
 
         endDate.ValueChanged += async (_, _) =>
-        {
-            if (endDate.Value.Date < startDate.Value.Date)
-                startDate.Value = endDate.Value.Date;
-
-            if (autoRefreshReady)
-                await LoadReportAsync();
-        };
+            await DateRangeChangedAsync(MovementHistoryDateBoundary.To);
 
         customerSearch.KeyDown += async (_, e) =>
         {
@@ -371,29 +363,70 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
 
     private async Task SetRangeAndRefreshAsync(DateTime from, DateTime to)
     {
-        autoRefreshReady = false;
-        startDate.Value = from;
-        endDate.Value = to;
-        autoRefreshReady = true;
+        if (from.Date > to.Date)
+            throw new ArgumentException("The report start date cannot be after its end date.");
+
+        synchronizingDateControls = true;
+        try
+        {
+            startDate.Value = from.Date;
+            endDate.Value = to.Date;
+        }
+        finally
+        {
+            synchronizingDateControls = false;
+        }
+
         await LoadReportAsync();
     }
 
-    private async Task LoadReportAsync()
+    private async Task DateRangeChangedAsync(MovementHistoryDateBoundary changedBoundary)
     {
+        if (synchronizingDateControls || !autoRefreshReady)
+            return;
+
+        var range = MovementHistoryDateRange
+            .FromPickerValues(startDate.Value, endDate.Value)
+            .NormalizeAfterChange(changedBoundary);
+
+        synchronizingDateControls = true;
+        try
+        {
+            startDate.Value = range.From.ToDateTime(TimeOnly.MinValue);
+            endDate.Value = range.To.ToDateTime(TimeOnly.MinValue);
+        }
+        finally
+        {
+            synchronizingDateControls = false;
+        }
+
+        await LoadReportAsync();
+    }
+
+    private MovementHistoryReportQuery CaptureReportQuery() =>
+        new(
+            DateOnly.FromDateTime(startDate.Value.Date),
+            DateOnly.FromDateTime(endDate.Value.Date),
+            customerSearch.Text,
+            (containerFilter.SelectedItem as Choice<int?>)?.Value,
+            (directionFilter.SelectedItem as Choice<MovementType?>)?.Value,
+            (sourceFilter.SelectedItem as Choice<MovementSource?>)?.Value,
+            includeAdjustments.Checked);
+
+    private async Task<bool> LoadReportAsync()
+    {
+        var request = refreshCoordinator.Begin(CaptureReportQuery());
         try
         {
             Enabled = false;
             UseWaitCursor = true;
 
-            var result = await reports.QueryAsync(
-                new MovementHistoryReportQuery(
-                    DateOnly.FromDateTime(startDate.Value.Date),
-                    DateOnly.FromDateTime(endDate.Value.Date),
-                    customerSearch.Text,
-                    (containerFilter.SelectedItem as Choice<int?>)?.Value,
-                    (directionFilter.SelectedItem as Choice<MovementType?>)?.Value,
-                    (sourceFilter.SelectedItem as Choice<MovementSource?>)?.Value,
-                    includeAdjustments.Checked));
+            var result = await reports.QueryAsync(request.Query);
+            if (!refreshCoordinator.IsLatest(request))
+                return false;
+            if (!refreshCoordinator.MatchesAppliedRange(request, result))
+                throw new InvalidOperationException(
+                    "Movement History returned a different date range from the requested range.");
 
             currentResult = result;
             grid.Rows.Clear();
@@ -440,20 +473,33 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
                     ? Environment.NewLine +
                       string.Join("   •   ", totals)
                     : Environment.NewLine + "No matching movements.");
+            return true;
         }
         catch (Exception ex)
         {
+            if (!refreshCoordinator.IsLatest(request))
+                return false;
+
+            currentResult = null;
+            grid.Rows.Clear();
+            SynchronizeSelectionAndActions();
+            summary.Text =
+                $"{request.Query.StartDate:dd/MM/yyyy} - {request.Query.EndDate:dd/MM/yyyy} - report not loaded.";
             MessageBox.Show(
                 this,
                 ex.Message,
                 "Movement History",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
+            return false;
         }
         finally
         {
-            Enabled = true;
-            UseWaitCursor = false;
+            if (refreshCoordinator.IsLatest(request))
+            {
+                Enabled = true;
+                UseWaitCursor = false;
+            }
         }
     }
 
@@ -654,6 +700,8 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     private async Task CorrectBatchAsync()
     {
         if (grid.CurrentRow?.Tag is not MovementHistoryReportRow selected) return;
+        var mutationRefresh = new MovementHistoryMutationRefreshState();
+        var reportRefreshedAfterDisposition = false;
         var detail = await corrections.GetAsync(selected.MovementId);
         if (detail?.MovementBatchId is not int batchId) { MessageBox.Show(this, "The selected movement is not part of a persisted Batch Entry."); return; }
         MovementBatchCorrectionDetail? batch;
@@ -711,6 +759,14 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             }
 
             preview = dispositionResult.CurrentPreview;
+            mutationRefresh.RecordDisposition(dispositionResult.Kind);
+            if (mutationRefresh.TakeRefreshRequirement())
+            {
+                if (!await LoadReportAsync())
+                    return;
+                reportRefreshedAfterDisposition = true;
+            }
+
             var remainingReversed = preview.Lines.Count(x => x.State == LogicalMovementLineState.Reversed);
             if (remainingReversed > 0)
             {
@@ -722,17 +778,33 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
                         : $"{restored:N0} line(s) were restored atomically, but {remainingReversed:N0} line(s) remain reversed. " +
                           "The batch correction is still unavailable and was not manufactured.",
                     "Batch Correction Not Continued", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                await LoadReportAsync();
                 return;
             }
 
-            batch = await corrections.GetBatchAsync(batchId);
+            try
+            {
+                batch = await corrections.GetBatchAsync(batchId);
+                var anchoredPreview = await corrections.PreviewLogicalForBatchAsync(batchId);
+                preview = MovementCorrectionSelection.ValidateReacquiredWholeRootPreview(
+                    batchId, dispositionResult.CurrentPreview.LogicalMovementBatchId,
+                    dispositionResult.CurrentPreview.ExpectedGeneration, anchoredPreview);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Batch Correction Not Continued",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                if (!reportRefreshedAfterDisposition)
+                    await LoadReportAsync();
+                return;
+            }
+
             if (batch is null || !batch.IsEligible || batch.LineCount != preview.Lines.Count)
             {
                 MessageBox.Show(this,
                     "The restored logical root changed before batch correction could continue. Reload and try again; no batch correction was written.",
                     "Batch Correction Not Continued", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                await LoadReportAsync();
+                if (!reportRefreshedAfterDisposition)
+                    await LoadReportAsync();
                 return;
             }
         }
@@ -740,7 +812,8 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         if (!batch.IsEligible || !preview.IsWholeRootCorrectionEligible)
         {
             MessageBox.Show(this, "The entire batch is no longer eligible. No lines were changed.");
-            await LoadReportAsync();
+            if (!reportRefreshedAfterDisposition)
+                await LoadReportAsync();
             return;
         }
 
@@ -752,7 +825,8 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         {
             MessageBox.Show(this, ex.Message, "Correct Entire Batch",
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            await LoadReportAsync();
+            if (!reportRefreshedAfterDisposition)
+                await LoadReportAsync();
             return;
         }
 
@@ -773,9 +847,11 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
                     direction: dialog.CorrectedDirection.HasValue
                         ? MovementFieldIntent<MovementType>.Selected(dialog.CorrectedDirection.Value)
                         : default)));
+            mutationRefresh.RecordCorrectionCommitted();
             MessageBox.Show(this, "The entire batch was corrected atomically. Every original line remains preserved.",
                 "Batch Corrected", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            await LoadReportAsync();
+            if (mutationRefresh.TakeRefreshRequirement())
+                await LoadReportAsync();
         }
         catch (Exception ex) { MessageBox.Show(this, ex.Message, "Correct Entire Batch", MessageBoxButtons.OK, MessageBoxIcon.Error); }
         finally { Enabled = true; UseWaitCursor = false; }
@@ -784,19 +860,20 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
     private void ConfigureGrid()
     {
         grid.RowTemplate.Height = 30;
-        grid.Columns.Add(Column("Date", 125, 118, "Date"));
-        grid.Columns.Add(Column("Movement ID", 112, 108, "MovementId"));
-        grid.Columns.Add(Column("Code", 100, 90, "Code"));
-        grid.Columns.Add(Column("Customer", 185, 160, "Customer"));
-        grid.Columns.Add(Column("Type", 78, 72, "Type"));
-        grid.Columns.Add(Column("Container", 102, 92, "Container"));
-        grid.Columns.Add(Column("Direction", 98, 92, "Direction"));
-        grid.Columns.Add(Column("Qty", 58, 52, "Quantity"));
-        grid.Columns.Add(Column("Source", 108, 98, "Source"));
-        grid.Columns.Add(Column("Reference", 92, 82, "Reference"));
-        grid.Columns.Add(Column("Status", 185, 165, "Status", wrap: true));
-        grid.Columns.Add(Column("Notes", 155, 135, "Notes", wrap: true));
-        grid.Columns.Add(Column("Entered by", 92, 84, "EnteredBy"));
+        MovementHistoryColumnLayout.ConfigureWrappedHeaders(grid);
+        grid.Columns.Add(CreateColumn("Date", 112, "Date"));
+        grid.Columns.Add(CreateColumn(MovementHistoryColumnLayout.MovementIdHeader, 92, "MovementId"));
+        grid.Columns.Add(CreateColumn("Code", 72, "Code"));
+        grid.Columns.Add(CreateColumn("Customer", 145, "Customer"));
+        grid.Columns.Add(CreateColumn("Type", 72, "Type"));
+        grid.Columns.Add(CreateColumn("Container", 105, "Container"));
+        grid.Columns.Add(CreateColumn("Direction", 84, "Direction"));
+        grid.Columns.Add(CreateColumn("Qty", 52, "Quantity"));
+        grid.Columns.Add(CreateColumn("Source", 88, "Source"));
+        grid.Columns.Add(CreateColumn("Reference", 105, "Reference"));
+        grid.Columns.Add(CreateColumn("Status", 190, "Status", wrap: true));
+        grid.Columns.Add(CreateColumn("Notes", 240, "Notes", wrap: true));
+        grid.Columns.Add(CreateColumn(MovementHistoryColumnLayout.EnteredByHeader, 86, "EnteredBy"));
 
         grid.SortCompare += Grid_SortCompare;
         grid.CellPainting += Grid_CellPainting;
@@ -926,39 +1003,22 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         var source = currentResult ??
             throw new InvalidOperationException("Run the report first.");
 
-        var rows = grid.Rows
+        var rows = ReportCsvExportContract.PreserveDisplayedOrder(grid.Rows
             .Cast<DataGridViewRow>()
             .Where(x => !x.IsNewRow)
-            .Select(x => x.Tag as MovementHistoryReportRow)
-            .Where(x => x is not null)
-            .Cast<MovementHistoryReportRow>()
-            .ToList();
+            .Select(x => x.Tag as MovementHistoryReportRow));
 
-        var totals = rows
-            .GroupBy(x => new
-            {
-                x.ContainerTypeId,
-                x.ContainerType,
-                x.ContainerDisplayOrder
-            })
-            .Select(g => new MovementHistoryContainerTotal(
-                g.Key.ContainerTypeId,
-                g.Key.ContainerType,
-                g.Key.ContainerDisplayOrder,
-                g.Where(x => x.Direction == MovementType.Out)
-                    .Sum(x => x.Quantity),
-                g.Where(x => x.Direction == MovementType.In)
-                    .Sum(x => x.Quantity)))
-            .OrderBy(x => x.DisplayOrder)
-            .ThenBy(x => x.ContainerType)
-            .ToList();
+        return BuildDisplayedResult(source, rows);
+    }
 
-        return new MovementHistoryReportResult(
+    internal static MovementHistoryReportResult BuildDisplayedResult(
+        MovementHistoryReportResult source,
+        IReadOnlyList<MovementHistoryReportRow> displayedRows) =>
+        new(
             source.StartDate,
             source.EndDate,
-            rows,
-            totals);
-    }
+            displayedRows,
+            source.ContainerTotals);
 
     private async Task GeneratePdfAsync(bool openAfter)
     {
@@ -1051,9 +1111,7 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             false,
             new System.Text.UTF8Encoding(true));
 
-        writer.WriteLine(includeNotesInExports.Checked
-            ? "Date,Movement ID,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Status,Notes,Entered By"
-            : "Date,Movement ID,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Status,Entered By");
+        var csvRows = new List<string>();
 
         foreach (var row in result.Rows)
         {
@@ -1077,29 +1135,44 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
                 fields.Add(Csv(row.Notes));
 
             fields.Add(Csv(row.EnteredBy));
-            writer.WriteLine(string.Join(",", fields));
+            csvRows.Add(string.Join(",", fields));
         }
+
+        ReportCsvExportContract.WriteRows(
+            writer,
+            includeNotesInExports.Checked
+                ? "Date,Movement ID,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Status,Notes,Entered By"
+                : "Date,Movement ID,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Status,Entered By",
+            csvRows);
 
         writer.Flush();
 
-        await ReportCsvAudit.WriteAsync(
-            this, audit,
-            "MOVEMENT_HISTORY_CSV_EXPORTED",
-            $"{result.StartDate:yyyy-MM-dd}:{result.EndDate:yyyy-MM-dd}",
-            $"Movement History CSV exported for {result.StartDate:dd/MM/yyyy} - {result.EndDate:dd/MM/yyyy}: {result.Rows.Count:N0} row(s).",
+        var auditEntry = ReportCsvExportContract.MovementHistory(
             dialog.FileName,
             result.Rows.Count,
-            new
-            {
+            result.StartDate,
+            result.EndDate,
+            customerSearch.Text,
+            containerFilter.Text,
+            directionFilter.Text,
+            sourceFilter.Text,
+            includeAdjustments.Checked,
+            includeNotesInExports.Checked);
+
+        await ReportCsvAudit.WriteAsync(
+            this, audit,
+            new MovementHistoryCsvExportAuditIntent(
+                auditEntry.Description,
+                auditEntry.FileName,
+                result.Rows.Count,
                 result.StartDate,
                 result.EndDate,
-                CustomerSearch = customerSearch.Text.Trim(),
-                Container = containerFilter.Text,
-                Direction = directionFilter.Text,
-                Source = sourceFilter.Text,
-                IncludeAdjustments = includeAdjustments.Checked,
-                IncludeNotes = includeNotesInExports.Checked
-            });
+                customerSearch.Text.Trim(),
+                containerFilter.Text,
+                directionFilter.Text,
+                sourceFilter.Text,
+                includeAdjustments.Checked,
+                includeNotesInExports.Checked));
     }
 
     private void AllocateResponsiveColumns()
@@ -1110,58 +1183,38 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         allocatingColumns = true;
         try
         {
-            var fixedWidths = new Dictionary<string, int>(StringComparer.Ordinal)
-            {
-                ["Date"] = 125,
-                ["MovementId"] = 112,
-                ["Code"] = 100,
-                ["Type"] = 78,
-                ["Container"] = 102,
-                ["Direction"] = 98,
-                ["Quantity"] = 58,
-                ["Source"] = 108,
-                ["Reference"] = 92,
-                ["EnteredBy"] = 92
-            };
-
-            foreach (var pair in fixedWidths)
-                grid.Columns[pair.Key].Width = pair.Value;
-
-            var available = grid.ClientSize.Width - 4;
-            var verticalScrollBar = grid.Controls
-                .OfType<VScrollBar>()
-                .FirstOrDefault(scrollBar => scrollBar.Visible);
-            if (verticalScrollBar is not null)
-                available -= verticalScrollBar.Width;
-
-            var fixedTotal = fixedWidths.Values.Sum();
-            var flexible = new[]
-            {
-                (Name: "Customer", Minimum: 160, Weight: 0.40),
-                (Name: "Status", Minimum: 165, Weight: 0.30),
-                (Name: "Notes", Minimum: 135, Weight: 0.30)
-            };
-            var minimumFlexibleTotal = flexible.Sum(item => item.Minimum);
-            var minimumTotal = fixedTotal + minimumFlexibleTotal;
-
-            if (available < minimumTotal)
-            {
-                foreach (var item in flexible)
-                    grid.Columns[item.Name].Width = item.Minimum;
+            var available = grid.ClientSize.Width -
+                SystemInformation.VerticalScrollBarWidth - 4;
+            if (available <= 0)
                 return;
+
+            int HeaderMinimum(string name)
+            {
+                var column = grid.Columns[name];
+                var font = grid.ColumnHeadersDefaultCellStyle.Font ?? grid.Font;
+                var longestLineWidth = column.HeaderText
+                    .Split('\n')
+                    .Max(line => TextRenderer.MeasureText(
+                        line,
+                        font,
+                        Size.Empty,
+                        TextFormatFlags.NoPadding).Width);
+                var boundedSortAllowance = Math.Max(12, DeviceDpi / 8);
+                return longestLineWidth + boundedSortAllowance + 10;
             }
 
-            var distributable = available - fixedTotal - minimumFlexibleTotal;
-            var assignedExtra = 0;
-            for (var index = 0; index < flexible.Length; index++)
-            {
-                var item = flexible[index];
-                var extra = index == flexible.Length - 1
-                    ? distributable - assignedExtra
-                    : (int)Math.Floor(distributable * item.Weight);
-                assignedExtra += extra;
-                grid.Columns[item.Name].Width = item.Minimum + extra;
-            }
+            var dateContentWidth = TextRenderer.MeasureText(
+                "Wed 00/00/0000",
+                grid.Font,
+                Size.Empty,
+                TextFormatFlags.NoPadding).Width + 10;
+            var specifications = MovementHistoryColumnLayout.CreateSpecifications(
+                dateContentWidth,
+                HeaderMinimum);
+
+            var widths = MovementHistoryColumnLayout.Allocate(available, specifications);
+            foreach (var pair in widths)
+                grid.Columns[pair.Key].Width = pair.Value;
         }
         finally
         {
@@ -1229,18 +1282,21 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             DropDownStyle = ComboBoxStyle.DropDownList
         };
 
-    private static DataGridViewTextBoxColumn Column(
+    internal static DataGridViewTextBoxColumn CreateColumn(
         string header,
         int width,
-        int minimumWidth,
         string name,
-        bool wrap = false) =>
-        new()
+        bool wrap = false)
+    {
+        var column = new DataGridViewTextBoxColumn
         {
             Name = name,
             HeaderText = header,
             Width = width,
-            MinimumWidth = minimumWidth,
+            // Runtime allocation uses measured headers at the current DPI. Keeping
+            // a large design-time minimum here prevents the allocator from shrinking
+            // columns after WinForms scales MinimumWidth for the monitor.
+            MinimumWidth = 24,
             AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
             SortMode = DataGridViewColumnSortMode.Automatic,
             DefaultCellStyle = new DataGridViewCellStyle
@@ -1248,6 +1304,9 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
                 WrapMode = wrap ? DataGridViewTriState.True : DataGridViewTriState.False
             }
         };
+        column.HeaderCell.Style.WrapMode = DataGridViewTriState.True;
+        return column;
+    }
 
     private static string CustomerTypeText(CustomerType type) =>
         type == CustomerType.Account

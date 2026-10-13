@@ -16,6 +16,9 @@
     <ProjectReference Include="..\BinTracker.Services\BinTracker.Services.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="BinTracker.WinForms.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
   </ItemGroup>
   <ItemGroup>
