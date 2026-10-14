@@ -1,0 +1,6 @@
+# Keep repository text independent of each developer's core.autocrlf setting.
+* text=auto eol=lf
+
+# Keep native Windows command scripts compatible with cmd.exe.
+*.bat text eol=crlf
+*.cmd text eol=crlf
