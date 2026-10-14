@@ -1,5 +1,12 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.13
+
+- Fixes BT-SH-003 at the desktop authentication lifecycle boundary. `UserSession` now holds one atomically replaced authentication snapshot, and logout clears it before awaiting the logout audit so audit failure/cancellation cannot preserve the prior identity or role.
+- Every new login attempt begins from anonymous state. Failed or cancelled login cannot retain an earlier user; a later successful login establishes only the new user ID, name, role, password-change state and login time. Repeated logout is idempotent.
+- Logout audit evidence retains the signed-out actor through the existing internal authentication-audit seam. Services authorization remains authoritative, WinForms continues to request logout through `IAuthenticationService`, and a future API still supplies request-scoped `IUserContext` rather than the desktop singleton.
+- Pre-fix focused coverage passed 1/7 and failed the six stale-session cases as expected. Post-fix lifecycle coverage passes 8/8 and adjacent authentication/audit, user-administration, developer-database authorization and movement-entry authorization coverage passes 37/37. BT-SH-004..050 remain unchanged; Security Hardening is not complete.
+
 ## v0.5.0-alpha.12
 
 - Fixes BT-SH-002 at the single Data-owned pending developer database-operation marker reader. The configured active database and configured marker location now independently authorize the operation; marker text cannot select an arbitrary database or cleanup target.

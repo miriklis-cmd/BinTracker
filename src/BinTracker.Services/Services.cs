@@ -16,27 +16,77 @@ public sealed record BalanceRow(int CustomerId, string CustomerName, int Contain
 
 public sealed class UserSession(IBusinessClock clock) : IUserContext
 {
+    private static readonly UserSessionState AnonymousState = new(
+        UserId: null,
+        Username: "anonymous",
+        DisplayName: "Not signed in",
+        Role: UserRole.Viewer,
+        MustChangePassword: false,
+        LoginUtc: null);
+
+    private UserSessionState state = AnonymousState;
+
     public string SessionId { get; } = Guid.NewGuid().ToString("N");
-    public int? UserId { get; private set; }
-    public string Username { get; private set; } = "anonymous";
-    public string DisplayName { get; private set; } = "Not signed in";
-    public UserRole Role { get; private set; } = UserRole.Viewer;
-    public bool MustChangePassword { get; private set; }
-    public DateTime? LoginUtc { get; private set; }
-    public bool IsAuthenticated => UserId.HasValue;
+    public int? UserId => Volatile.Read(ref state).UserId;
+    public string Username => Volatile.Read(ref state).Username;
+    public string DisplayName => Volatile.Read(ref state).DisplayName;
+    public UserRole Role => Volatile.Read(ref state).Role;
+    public bool MustChangePassword => Volatile.Read(ref state).MustChangePassword;
+    public DateTime? LoginUtc => Volatile.Read(ref state).LoginUtc;
+    public bool IsAuthenticated => Volatile.Read(ref state).UserId.HasValue;
 
     public void SignIn(UserAccount user)
     {
-        UserId = user.Id;
-        Username = user.Username;
-        DisplayName = user.DisplayName;
-        Role = user.Role;
-        MustChangePassword = user.MustChangePassword;
-        LoginUtc = clock.UtcNow;
+        ArgumentNullException.ThrowIfNull(user);
+
+        Volatile.Write(ref state, new UserSessionState(
+            user.Id,
+            user.Username,
+            user.DisplayName,
+            user.Role,
+            user.MustChangePassword,
+            clock.UtcNow));
     }
 
-    public void PasswordChanged() => MustChangePassword = false;
+    internal AuthenticatedUserSession? SignOut()
+    {
+        var prior = Interlocked.Exchange(ref state, AnonymousState);
+        return prior.UserId.HasValue
+            ? new(prior.UserId.Value, prior.Username, prior.DisplayName)
+            : null;
+    }
+
+    public void PasswordChanged()
+    {
+        while (true)
+        {
+            var current = Volatile.Read(ref state);
+            if (!current.UserId.HasValue || !current.MustChangePassword)
+                return;
+
+            var updated = current with { MustChangePassword = false };
+            if (ReferenceEquals(
+                    Interlocked.CompareExchange(ref state, updated, current),
+                    current))
+            {
+                return;
+            }
+        }
+    }
+
+    private sealed record UserSessionState(
+        int? UserId,
+        string Username,
+        string DisplayName,
+        UserRole Role,
+        bool MustChangePassword,
+        DateTime? LoginUtc);
 }
+
+internal sealed record AuthenticatedUserSession(
+    int UserId,
+    string Username,
+    string DisplayName);
 
 public interface IAuditService
 {
@@ -695,6 +745,11 @@ internal sealed class AuthenticationService(
 
     public async Task<bool> LoginAsync(string username, string password, CancellationToken cancellationToken = default)
     {
+        // A login attempt is a new authentication boundary. Clear any prior
+        // desktop identity before work that can fail or be cancelled so an old
+        // user can never survive a return to the login screen.
+        session.SignOut();
+
         username = username.Trim();
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         var user = await db.UserAccounts.SingleOrDefaultAsync(x => x.Username == username, cancellationToken);
@@ -861,9 +916,20 @@ internal sealed class AuthenticationService(
 
     public async Task LogoutAsync(CancellationToken cancellationToken = default)
     {
-        if (session.IsAuthenticated)
-            await audit.AppendAsync("LOGOUT", "Session", session.SessionId,
-                $"{session.DisplayName} logged out.", cancellationToken: cancellationToken);
+        // Authentication ends before the audit write. Audit failure or
+        // cancellation must never preserve the authority being logged out.
+        var signedOut = session.SignOut();
+        if (signedOut is null)
+            return;
+
+        await authenticationAudit.AppendAuthenticationEventAsync(
+            "LOGOUT",
+            "Session",
+            session.SessionId,
+            $"{signedOut.DisplayName} logged out.",
+            signedOut.UserId,
+            signedOut.Username,
+            cancellationToken: cancellationToken);
     }
 
     private static void ValidateCredentials(string username, string displayName, string password)

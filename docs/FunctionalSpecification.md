@@ -73,6 +73,7 @@ Task20 activation follows the verbatim approved R1–R4 in `docs/Architecture.md
 - BT-SEC-005: Saved movement history is not silently deleted or overwritten.
 - BT-SEC-006: Administrative actions are role-restricted.
 - BT-SEC-007: Credentials/secrets for external providers must not be stored in plain text.
+- BT-SH-003: Logout immediately clears the current desktop authentication context below presentation. Failed or cancelled later login attempts remain unauthenticated, successful re-login establishes only the new identity, and Services authorization cannot continue using the prior user or role.
 
 ## Reporting
 

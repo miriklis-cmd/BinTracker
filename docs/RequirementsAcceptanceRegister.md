@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.5.0-alpha.12**
+Current baseline: **v0.5.0-alpha.13**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -166,7 +166,7 @@ Provenance tags:
 | ID | Scope | Status | Requirement | Provenance |
 |---|---|---|---|---|
 | BT-SEC-001 | v1 | IMPLEMENTED-STATIC | First-run Administrator creation and role-based user management. | CURRENT-DOC,HIST-BUILD,CODE |
-| BT-SEC-002 | v1 | IMPLEMENTED-STATIC | Login/logout, failed-login lockout/unlock and password change/reset flows. | CURRENT-DOC,HIST-BUILD,CODE |
+| BT-SEC-002 | v1 | IMPLEMENTED-STATIC | Login/logout, failed-login lockout/unlock and password change/reset flows. Desktop logout atomically clears the authenticated `UserSession` before audit work, and every new login attempt starts unauthenticated so failure/cancellation cannot retain an earlier identity or role. | CURRENT-DOC,HIST-BUILD,CODE |
 | BT-SEC-003 | v1 | IMPLEMENTED-STATIC | Password fields start masked and eye controls reveal/re-hide passwords consistently. | HIST-BUILD,CODE |
 | BT-SEC-004 | v1 | IMPLEMENTED-STATIC | Viewer/read-only roles cannot perform prohibited movement/admin writes. | CURRENT-DOC,HIST-BUILD,CODE |
 | BT-SEC-005 | v1 | PLANNED-V1 | Full authorization review across every write/admin action before v1. | CURRENT-DOC |

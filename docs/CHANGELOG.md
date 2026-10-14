@@ -1,3 +1,11 @@
+## v0.5.0-alpha.13 (15 October 2026)
+
+- Fixed BT-SH-003 by making the desktop `UserSession` replace its complete authenticated state atomically and by clearing it before logout auditing or any new login attempt.
+- Logout now preserves trusted prior-actor audit attribution without allowing cancellation/audit failure to retain user ID, username, display name, role, password-change state or login time. Repeated logout writes no duplicate logout audit.
+- Failed and cancelled login attempts remain anonymous; successful re-login installs only the new identity. Administrator-only Services reject immediately after logout, while ordinary authenticated login behavior remains unchanged.
+- Added focused lifecycle/security integration coverage. The pre-fix run reproduced six stale-session failures; the post-fix suite passes 8/8 and the adjacent authentication/authorization regression set passes 37/37.
+- Advanced Version/InformationalVersion from accepted alpha.12 to alpha.13 while retaining AssemblyVersion/FileVersion `0.5.0.0`. BT-SH-004..050 remain unchanged and the Security Hardening workstream remains open.
+
 ## v0.5.0-alpha.12 (15 October 2026)
 
 - Fixed BT-SH-002 by centralizing strict pending database-operation marker parsing and semantic validation at its sole Data-owned reader before any marker transition, database replacement or cleanup.

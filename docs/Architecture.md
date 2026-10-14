@@ -1,6 +1,6 @@
 # BinTracker Architecture
 
-Current baseline: **v0.5.0-alpha.12**
+Current baseline: **v0.5.0-alpha.13**
 
 ## Display and DPI boundary
 
@@ -43,6 +43,8 @@ R6: companion leases coordinate participating BinTracker processes only, not old
 `AddBinTrackerBusinessServices()` registers provider-neutral business services. A future API must provide request-scoped `IUserContext` and `IClientContext`, and may supply its business-clock configuration. It must not inherit the desktop singleton `UserSession`.
 
 `AddBinTrackerServices()` is the current desktop composition and adds the local session, client identity, authentication adapter and crash-draft storage before registering business services.
+
+The desktop `UserSession` owns one atomically replaced authentication snapshot. `AuthenticationService` clears that snapshot before a logout audit and before every new login attempt, so audit failure/cancellation, failed login and cancelled login cannot retain a prior user ID, name, role, password-change flag or login time. Logout audit attribution uses the captured prior actor through the existing internal authentication-audit seam. A later successful login replaces the anonymous snapshot with only the new identity. This mutable process-lifetime adapter is desktop-only; a future API continues to supply request-scoped `IUserContext` and does not inherit it.
 
 - `IUserContext` carries authenticated user identity and role.
 - `IBusinessClock` supplies UTC and configured business-local time/date.
