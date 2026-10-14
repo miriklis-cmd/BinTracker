@@ -1111,38 +1111,37 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
             false,
             new System.Text.UTF8Encoding(true));
 
-        var csvRows = new List<string>();
+        var csvRows = new List<IReadOnlyList<object?>>();
 
         foreach (var row in result.Rows)
         {
-            var fields = new List<string>
+            var fields = new List<object?>
             {
-                Csv(row.MovementDate.ToString("dd/MM/yyyy")),
-                row.MovementId.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                Csv(row.CustomerCode),
-                Csv(row.CustomerName),
-                Csv(CustomerTypeText(row.CustomerType)),
-                Csv(row.ContainerType),
-                Csv(row.DirectionText),
-                row.Quantity.ToString(
-                    System.Globalization.CultureInfo.InvariantCulture),
-                Csv(row.SourceText),
-                Csv(row.Reference),
-                Csv(DisplayStatus(row))
+                row.MovementDate.ToString("dd/MM/yyyy"),
+                row.MovementId,
+                row.CustomerCode,
+                row.CustomerName,
+                CustomerTypeText(row.CustomerType),
+                row.ContainerType,
+                row.DirectionText,
+                row.Quantity,
+                row.SourceText,
+                row.Reference,
+                DisplayStatus(row)
             };
 
             if (includeNotesInExports.Checked)
-                fields.Add(Csv(row.Notes));
+                fields.Add(row.Notes);
 
-            fields.Add(Csv(row.EnteredBy));
-            csvRows.Add(string.Join(",", fields));
+            fields.Add(row.EnteredBy);
+            csvRows.Add(fields);
         }
 
         ReportCsvExportContract.WriteRows(
             writer,
             includeNotesInExports.Checked
-                ? "Date,Movement ID,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Status,Notes,Entered By"
-                : "Date,Movement ID,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Status,Entered By",
+                ? ["Date", "Movement ID", "Customer Code", "Customer Name", "Customer Type", "Container", "Direction", "Quantity", "Source", "Reference", "Status", "Notes", "Entered By"]
+                : ["Date", "Movement ID", "Customer Code", "Customer Name", "Customer Type", "Container", "Direction", "Quantity", "Source", "Reference", "Status", "Entered By"],
             csvRows);
 
         writer.Flush();
@@ -1312,18 +1311,6 @@ public sealed class MovementHistoryReportForm : BinTrackerForm
         type == CustomerType.Account
             ? "Account"
             : "Cash / COD";
-
-    private static string Csv(string value)
-    {
-        var escaped = value.Replace("\"", "\"\"");
-
-        return value.Contains(',') ||
-               value.Contains('"') ||
-               value.Contains('\r') ||
-               value.Contains('\n')
-            ? $"\"{escaped}\""
-            : escaped;
-    }
 
     private sealed record Choice<T>(
         T Value,

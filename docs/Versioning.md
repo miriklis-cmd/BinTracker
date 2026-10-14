@@ -1,6 +1,6 @@
 # Versioning
 
-BinTracker currently uses semantic pre-release version `0.5.0-alpha.10`.
+BinTracker currently uses semantic pre-release version `0.5.0-alpha.11`.
 
 ## Single source of truth
 
@@ -9,7 +9,7 @@ The release version is defined in the repository root:
 `Directory.Build.props`
 
 ```xml
-<Version>0.5.0-alpha.10</Version>
+<Version>0.5.0-alpha.11</Version>
 ```
 
 The same value is used by:
@@ -91,6 +91,8 @@ Hard rule: **maximum two numeric components after `alpha`** for the new scheme.
 `0.5.0-alpha.9.10` is the corrective successor after alpha.9.9 passed its 826/826 canonical BAT but renewed real Item-8 Windows acceptance found the Resolve Reversed Batch Lines Date value truncated at 1920×1080/150%. Alpha.9.9 remains historical build and failed Windows-acceptance evidence and is not overwritten.
 
 `0.5.0-alpha.10` is the next feature/development increment after the accepted alpha.9 correction series. It carries the BT-ARCH-018 protected layer-delineation remediation without overwriting alpha.9.10's canonical-build and Windows-acceptance evidence. Independent review passed, and the exact-candidate canonical BAT passed audit/build with zero warnings/errors and 841/841 automated tests with none failed/skipped under SDK 10.0.401. The accepted implementation is commit `cd53f9ca19de1a10ea9ec375b63e294fdddfad23`; later documentation-only reconciliation is not covered by that BAT.
+
+`0.5.0-alpha.11` is the next feature/development increment for the Security Hardening workstream. Its first bounded pass fixes BT-SH-001 across every current report CSV export without overwriting accepted alpha.10 architecture evidence. Later BT-SH findings remain separately governed in register order.
 
 Do not create forms such as:
 

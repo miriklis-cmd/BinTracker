@@ -2,7 +2,7 @@
 
 Task 19's shared-snapshot prerequisite was reviewed/canonically verified at commit `930f2c77b1df7cd4629be2faff662750431854fe`; BT-20-P2 now includes that authority in normal schema17 composition. Windows/operator real preview/print and retained-database acceptance remain separate.
 
-Current baseline: **v0.5.0-alpha.10**
+Current baseline: **v0.5.0-alpha.11**
 
 This is the practical operator/release checklist. `docs/RequirementsAcceptanceRegister.md` remains the authoritative implementation/status ledger; historical candidate detail belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`.
 
@@ -17,6 +17,8 @@ Status legend:
 Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candidate-specific changes retain their own `[R]` status until actually retested.
 
 ## Release, audit and packaging
+
+- [S] BT-SH-001 routes Daily, both Weekly views, Monthly, Outstanding and Movement History CSV rows through one structured serializer. Text beginning with `=`, `+`, `-` or `@`, including after leading whitespace/control/format characters, is apostrophe-neutralized before normal CSV escaping; typed numeric values remain invariant and unmodified. Pre-fix characterization proved all five duplicated helpers vulnerable, and focused post-fix regression/security coverage passes. This does not disposition BT-SH-002 or any later finding and is not manual spreadsheet acceptance.
 
 - [A] BT-ARCH-018-P1 remediates the four accepted layer-audit findings: user administration lists a credential-free immutable Services DTO; developer database mutations require an authenticated Administrator in a Services facade before unchanged Data mechanics; public audit queries return DTOs while only internal Services appenders may write and CSV exports submit bounded typed intent; Monthly Summary and Movement History preserve displayed row order while retaining Services-supplied totals. Independent ChatGPT review passed with no blocking correction, and Jack/operator's exact-candidate canonical BAT passed audit/build with zero warnings/errors and 841/841 tests with none failed/skipped under SDK 10.0.401. Commit `cd53f9ca19de1a10ea9ec375b63e294fdddfad23` is the accepted implementation; the architecture gate is closed. No Windows UI acceptance or Security Hardening remediation is implied.
 
@@ -137,7 +139,7 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 - [P] Dashboard design discussion precedes implementation; then validate KPIs, attention/drill-through, activity, summaries, charts/ageing and display layouts.
 - [P] Google Workspace email + Texto SMS delivery, templates, secure settings, manual/automatic sends, opt-out, history, retry/idempotency and audit.
 - [P] Production user-facing Backup/Restore, scheduled retention and recovery drill (separate from pre-lineage migration safety).
-- [P] Security/Data Integrity/Code Quality hardening and all required BT-SH dispositions.
+- [P] Complete Security/Data Integrity/Code Quality hardening and all remaining required BT-SH dispositions after fixed BT-SH-001.
 - [P] Installer/upgrade/deployment acceptance and full v1 production regression.
 
 ## Current manual acceptance floor

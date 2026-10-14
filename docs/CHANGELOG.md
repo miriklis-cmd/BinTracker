@@ -1,3 +1,10 @@
+## v0.5.0-alpha.11 (14 October 2026)
+
+- Fixed BT-SH-001 by replacing five duplicated report-form CSV escaping helpers with one structured `ReportCsvExportContract.WriteRows` serialization boundary used by all six current export branches.
+- Formula-leading text (`=`, `+`, `-`, `@`) is apostrophe-neutralized even after leading whitespace/control/Unicode-format characters, then composed with existing comma/quote/CR/LF escaping. Numeric primitives remain invariant typed output so negative report quantities/totals are not converted to text.
+- Added focused characterization and regression/security coverage for legacy escaping, the pre-fix vulnerability, all required dangerous prefixes and bypass forms, structural escaping, numeric/date preservation, report routing and row/column ordering. No PDF, screen, filter, audit, filename, lineage or report-business semantics changed.
+- Advanced the feature/development version from accepted alpha.10 to alpha.11 without rewriting alpha.10's architecture-review/canonical-build evidence. BT-SH-002 and all later findings remain unchanged.
+
 ## v0.5.0-alpha.10 (13 October 2026)
 
 - Completed BT-ARCH-018 Stage A and implemented only accepted findings F02, F01, F03 and F04: credential-safe user administration DTOs; authenticated Services authority above unchanged Data-owned developer database mechanics; internal trusted audit append/authentication seams plus DTO public queries and bounded CSV-export intent; and presentation retention of Services-supplied Monthly Summary/Movement History totals.

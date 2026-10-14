@@ -479,25 +479,22 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
                 summaryGrid.Rows.Cast<DataGridViewRow>()
                     .Select(row => row.Tag as WeeklyMovementSummaryRow));
 
-            var csvRows = new List<string>();
+            var csvRows = new List<IReadOnlyList<object?>>();
 
             foreach (var row in rows)
             {
-                csvRows.Add(string.Join(",",
-                    Csv(row.CustomerCode),
-                    Csv(row.CustomerName),
-                    Csv(row.ContainerType),
-                    row.OutQuantity.ToString(
-                        System.Globalization.CultureInfo.InvariantCulture),
-                    row.InQuantity.ToString(
-                        System.Globalization.CultureInfo.InvariantCulture),
-                    row.NetQuantity.ToString(
-                        System.Globalization.CultureInfo.InvariantCulture)));
+                csvRows.Add([
+                    row.CustomerCode,
+                    row.CustomerName,
+                    row.ContainerType,
+                    row.OutQuantity,
+                    row.InQuantity,
+                    row.NetQuantity]);
             }
 
             ReportCsvExportContract.WriteRows(
                 writer,
-                "Customer Code,Customer Name,Container,OUT,IN,Net",
+                ["Customer Code", "Customer Name", "Container", "OUT", "IN", "Net"],
                 csvRows);
 
             writer.Flush();
@@ -534,37 +531,36 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
         var detailRows = ReportCsvExportContract.PreserveDisplayedOrder(
             detailGrid.Rows.Cast<DataGridViewRow>()
                 .Select(row => row.Tag as WeeklyMovementReportRow));
-        var detailCsvRows = new List<string>();
+        var detailCsvRows = new List<IReadOnlyList<object?>>();
 
         foreach (var row in detailRows)
         {
-            var fields = new List<string>
+            var fields = new List<object?>
             {
-                Csv(row.MovementDate.ToString("dd/MM/yyyy")),
-                Csv(row.CustomerCode),
-                Csv(row.CustomerName),
-                Csv(CustomerTypeText(row.CustomerType)),
-                Csv(row.ContainerType),
-                Csv(row.DirectionText),
-                row.Quantity.ToString(
-                    System.Globalization.CultureInfo.InvariantCulture),
-                Csv(row.SourceText),
-                Csv(row.Reference)
+                row.MovementDate.ToString("dd/MM/yyyy"),
+                row.CustomerCode,
+                row.CustomerName,
+                CustomerTypeText(row.CustomerType),
+                row.ContainerType,
+                row.DirectionText,
+                row.Quantity,
+                row.SourceText,
+                row.Reference
             };
 
             if (includeNotesInExports.Checked)
-                fields.Add(Csv(row.Notes));
+                fields.Add(row.Notes);
 
-            fields.Add(Csv(row.EnteredBy));
+            fields.Add(row.EnteredBy);
 
-            detailCsvRows.Add(string.Join(",", fields));
+            detailCsvRows.Add(fields);
         }
 
         ReportCsvExportContract.WriteRows(
             writer,
             includeNotesInExports.Checked
-                ? "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Notes,Entered By"
-                : "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Entered By",
+                ? ["Date", "Customer Code", "Customer Name", "Customer Type", "Container", "Direction", "Quantity", "Source", "Reference", "Notes", "Entered By"]
+                : ["Date", "Customer Code", "Customer Name", "Customer Type", "Container", "Direction", "Quantity", "Source", "Reference", "Entered By"],
             detailCsvRows);
 
         writer.Flush();
@@ -681,12 +677,6 @@ public sealed class WeeklyMovementsReportForm : BinTrackerForm
     {Name=name,HeaderText=header,Width=width,MinimumWidth=Math.Min(width,90),AutoSizeMode=auto,
      SortMode=DataGridViewColumnSortMode.Automatic};
     private static string CustomerTypeText(CustomerType t)=>t==CustomerType.Account?"Account":"Cash / COD";
-    private static string Csv(string value)
-    {
-        var escaped=value.Replace("\"","\"\"");
-        return value.Contains(',')||value.Contains('"')||value.Contains('\r')||value.Contains('\n')
-            ? $"\"{escaped}\"":escaped;
-    }
     private sealed record Choice<T>(T Value,string Text)
     { public override string ToString()=>Text; }
 }

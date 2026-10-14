@@ -216,6 +216,7 @@ Task20 activation follows the verbatim approved R1–R4 in `docs/Architecture.md
 
 - BT-EXPORT-001: Outstanding Containers CSV export preserves the currently displayed grid row order/sort.
 - BT-EXPORT-002: Printable/exported report outputs use the same visible dataset ordering so CSV and PDF do not silently disagree with the operator's on-screen view.
+- BT-SH-001: Every current report CSV export uses one shared structured cell serializer. Text whose first content character after any leading whitespace, control or Unicode-format characters is `=`, `+`, `-` or `@` is prefixed with an apostrophe before ordinary CSV quote/delimiter/newline escaping. Numeric cells remain typed and use invariant formatting, so legitimate negative numeric output is not changed.
 
 
 ## Daily Movements Report

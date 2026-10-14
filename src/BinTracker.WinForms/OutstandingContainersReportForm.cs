@@ -740,30 +740,29 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
             false,
             new System.Text.UTF8Encoding(true));
 
-        var csvRows = new List<string>();
+        var csvRows = new List<IReadOnlyList<object?>>();
 
         foreach (var row in exportResult.Rows)
         {
-            csvRows.Add(string.Join(",",
-                Csv(exportResult.AsOfDate.ToString("dd/MM/yyyy")),
-                Csv(row.CustomerCode),
-                Csv(row.CustomerName),
-                Csv(row.CustomerType ==
+            csvRows.Add([
+                exportResult.AsOfDate.ToString("dd/MM/yyyy"),
+                row.CustomerCode,
+                row.CustomerName,
+                row.CustomerType ==
                     BinTracker.Core.CustomerType.Account
                         ? "Account"
-                        : "Cash / COD"),
-                Csv(row.ContainerType),
-                Csv(row.Balance > 0 ? "OUT" : "CREDIT"),
-                Math.Abs(row.Balance).ToString(
-                    System.Globalization.CultureInfo.InvariantCulture),
-                Csv(row.LastMovementDate?.ToString("dd/MM/yyyy")
-                    ?? string.Empty),
-                Csv(row.IsActive ? "Active" : "Inactive")));
+                        : "Cash / COD",
+                row.ContainerType,
+                row.Balance > 0 ? "OUT" : "CREDIT",
+                Math.Abs(row.Balance),
+                row.LastMovementDate?.ToString("dd/MM/yyyy")
+                    ?? string.Empty,
+                row.IsActive ? "Active" : "Inactive"]);
         }
 
         ReportCsvExportContract.WriteRows(
             writer,
-            "As Of,Customer Code,Customer Name,Customer Type,Container,Position,Quantity,Last Movement,Status",
+            ["As Of", "Customer Code", "Customer Name", "Customer Type", "Container", "Position", "Quantity", "Last Movement", "Status"],
             csvRows);
 
         summary.Text +=
@@ -817,18 +816,6 @@ public sealed class OutstandingContainersReportForm : BinTrackerForm
             MinimumWidth = Math.Min(width, 90),
             SortMode = DataGridViewColumnSortMode.Programmatic
         };
-
-    private static string Csv(string value)
-    {
-        var escaped = value.Replace("\"", "\"\"");
-
-        return value.Contains(',') ||
-               value.Contains('"') ||
-               value.Contains('\r') ||
-               value.Contains('\n')
-            ? $"\"{escaped}\""
-            : escaped;
-    }
 
     private sealed record BalanceChoice(OutstandingBalanceFilter Filter, string Name)
     {

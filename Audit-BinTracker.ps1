@@ -623,11 +623,11 @@ if ($mainFormText -notmatch 'OpenEmbeddedReport\(\s*"Movement History"' -or
     $correctionUiText -notmatch 'AutoSizeRowsMode = DataGridViewAutoSizeRowsMode\.AllCells' -or
     $correctionUiText -notmatch 'row\.MovementId,' -or
     $correctionUiText -notmatch '"MovementId" => left\.MovementId\.CompareTo\(right\.MovementId\)' -or
-    $correctionUiText -notmatch 'Date,Movement ID,Customer Code' -or
+    $correctionUiText -notmatch '\["Date", "Movement ID", "Customer Code"' -or
     $correctionUiText -notmatch 'MovementHistoryExportFileName\.Build' -or
     $movementHistoryFileNameText -notmatch 'ResolveSingleCustomerCode' -or
     $movementHistoryFileNameText -notmatch 'SanitizeWindowsSegment' -or
-    $correctionUiText -notmatch 'Reference,Status' -or
+    $correctionUiText -notmatch '"Reference", "Status"' -or
     (Get-Content -Raw 'src/BinTracker.Services/MovementHistoryReportPdfService.cs') -notmatch 'Header\(table, "Status"\)' -or
     (Get-Content -Raw 'src/BinTracker.Services/MovementHistoryReportPdfService.cs') -notmatch 'Header\(table, "Movement ID"\)') {
     Fail 'BT-HIST-002..007 source gate failed: integrated layout, responsive columns, persisted Movement ID, badges/tooltips or stable customer-code export naming is incomplete.'

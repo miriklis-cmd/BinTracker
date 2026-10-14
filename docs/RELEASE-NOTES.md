@@ -1,5 +1,12 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.11
+
+- Fixes BT-SH-001 across every current CSV export: Daily, Weekly Detail/Overview, Monthly, Outstanding and Movement History now submit structured raw cells to one shared serializer instead of duplicating local escaping helpers.
+- Text whose first content character after leading whitespace/control/Unicode-format characters is `=`, `+`, `-` or `@` is apostrophe-neutralized before normal comma/quote/CR/LF escaping. Typed numeric cells remain invariant and unchanged, including legitimate negative values.
+- Preserves report filters, displayed row/column order, totals, filenames, UTF-8 BOM output and export-audit behavior. PDF and on-screen reports are unchanged.
+- Pre-fix characterization passed 10/10 and proved the duplicated helpers emitted formula prefixes unchanged. Post-fix focused security/regression coverage passes 22/22; the finalized WinForms-focused project passes 40/40 and the five affected SQLite report regression classes pass 25/25. BT-SH-002..050 remain unchanged, and Security Hardening as a whole is not complete.
+
 ## v0.5.0-alpha.10
 
 - Completes BT-ARCH-018 Stage A remediation for the four independently accepted findings without reopening accepted Task20 behavior.

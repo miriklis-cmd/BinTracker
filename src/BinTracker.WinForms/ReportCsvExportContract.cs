@@ -129,12 +129,69 @@ internal static class ReportCsvExportContract
 
     public static void WriteRows(
         TextWriter writer,
-        string header,
-        IEnumerable<string> rows)
+        IReadOnlyList<string> header,
+        IEnumerable<IReadOnlyList<object?>> rows)
     {
-        writer.WriteLine(header);
+        writer.WriteLine(SerializeRow(header));
         foreach (var row in rows)
-            writer.WriteLine(row);
+            writer.WriteLine(SerializeRow(row));
+    }
+
+    public static string SerializeRow(params object?[] fields) =>
+        SerializeRow((IReadOnlyList<object?>)fields);
+
+    private static string SerializeRow<T>(IReadOnlyList<T> fields) =>
+        string.Join(",", fields.Select(field => SerializeCell(field)));
+
+    private static string SerializeCell(object? value)
+    {
+        if (value is null)
+            return string.Empty;
+
+        if (value is string text)
+            return SerializeTextCell(text);
+
+        if (value is sbyte or byte or short or ushort or int or uint or
+            long or ulong or float or double or decimal)
+        {
+            return Convert.ToString(value, CultureInfo.InvariantCulture)
+                ?? string.Empty;
+        }
+
+        throw new ArgumentException(
+            $"Unsupported CSV cell type '{value.GetType().FullName}'.",
+            nameof(value));
+    }
+
+    private static string SerializeTextCell(string value)
+    {
+        var protectedValue = StartsWithFormula(value)
+            ? $"'{value}"
+            : value;
+        var escaped = protectedValue.Replace("\"", "\"\"");
+
+        return protectedValue.Contains(',') ||
+               protectedValue.Contains('"') ||
+               protectedValue.Contains('\r') ||
+               protectedValue.Contains('\n')
+            ? $"\"{escaped}\""
+            : escaped;
+    }
+
+    private static bool StartsWithFormula(string value)
+    {
+        foreach (var character in value)
+        {
+            if (character is '=' or '+' or '-' or '@')
+                return true;
+
+            if (!char.IsWhiteSpace(character) &&
+                !char.IsControl(character) &&
+                char.GetUnicodeCategory(character) != UnicodeCategory.Format)
+                return false;
+        }
+
+        return false;
     }
 
     private static ReportCsvAuditEntry Create(

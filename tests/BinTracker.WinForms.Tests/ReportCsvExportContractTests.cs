@@ -1,10 +1,20 @@
 using BinTracker.WinForms;
+using System.Reflection;
 using Xunit;
 
 namespace BinTracker.WinForms.Tests;
 
 public sealed class ReportCsvExportContractTests
 {
+    private static readonly Type[] CurrentCsvExporters =
+    [
+        typeof(DailyMovementsReportForm),
+        typeof(WeeklyMovementsReportForm),
+        typeof(MonthlySummaryReportForm),
+        typeof(OutstandingContainersReportForm),
+        typeof(MovementHistoryReportForm)
+    ];
+
     [Fact]
     public void Daily_description_identifies_file_rows_and_active_filters()
     {
@@ -121,8 +131,12 @@ public sealed class ReportCsvExportContractTests
 
         ReportCsvExportContract.WriteRows(
             writer,
-            "Header A,Header B",
-            ["third,3", "first,1", "second,2"]);
+            ["Header A", "Header B"],
+            [
+                new object?[] { "third", 3 },
+                new object?[] { "first", 1 },
+                new object?[] { "second", 2 }
+            ]);
 
         Assert.Equal(
             $"Header A,Header B{Environment.NewLine}" +
@@ -130,5 +144,98 @@ public sealed class ReportCsvExportContractTests
             $"first,1{Environment.NewLine}" +
             $"second,2{Environment.NewLine}",
             writer.ToString());
+    }
+
+    [Fact]
+    public void Csv_serializer_preserves_ordinary_structural_and_empty_text()
+    {
+        Assert.Equal("ordinary", ReportCsvExportContract.SerializeRow("ordinary"));
+        Assert.Equal("\"two, fields\"", ReportCsvExportContract.SerializeRow("two, fields"));
+        Assert.Equal("\"a \"\"quote\"\"\"", ReportCsvExportContract.SerializeRow("a \"quote\""));
+        Assert.Equal("\"line one\r\nline two\"", ReportCsvExportContract.SerializeRow("line one\r\nline two"));
+        Assert.Equal(",", ReportCsvExportContract.SerializeRow(string.Empty, null));
+    }
+
+    [Theory]
+    [InlineData("=1+1", "'=1+1")]
+    [InlineData("+1+1", "'+1+1")]
+    [InlineData("-1+1", "'-1+1")]
+    [InlineData("@SUM(A1:A2)", "'@SUM(A1:A2)")]
+    public void Csv_serializer_neutralizes_formula_leading_text(
+        string value,
+        string expected)
+    {
+        Assert.Equal(expected, ReportCsvExportContract.SerializeRow(value));
+    }
+
+    [Theory]
+    [InlineData(" =1+1", "' =1+1")]
+    [InlineData("\t@SUM(A1:A2)", "'\t@SUM(A1:A2)")]
+    [InlineData("\r\n-1+1", "\"'\r\n-1+1\"")]
+    [InlineData("\u200B+1+1", "'\u200B+1+1")]
+    [InlineData(" ACME", " ACME")]
+    public void Csv_serializer_handles_formula_bypass_prefixes_without_changing_safe_whitespace(
+        string value,
+        string expected)
+    {
+        Assert.Equal(expected, ReportCsvExportContract.SerializeRow(value));
+    }
+
+    [Fact]
+    public void Csv_serializer_composes_formula_protection_with_csv_escaping()
+    {
+        Assert.Equal(
+            "\"'=SUM(A1:A2), \"\"quoted\"\"\r\nnext\"",
+            ReportCsvExportContract.SerializeRow(
+                "=SUM(A1:A2), \"quoted\"\r\nnext"));
+    }
+
+    [Fact]
+    public void Csv_serializer_preserves_numeric_and_date_semantics()
+    {
+        Assert.Equal(
+            "-42,12.5,14/10/2026,'-42",
+            ReportCsvExportContract.SerializeRow(
+                -42,
+                12.5m,
+                "14/10/2026",
+                "-42"));
+    }
+
+    [Fact]
+    public void Csv_writer_applies_security_to_every_text_cell()
+    {
+        using var writer = new StringWriter();
+
+        ReportCsvExportContract.WriteRows(
+            writer,
+            ["Text", "Number", "Date"],
+            [new object?[] { "=1+1", -42, "14/10/2026" }]);
+
+        Assert.Equal(
+            $"Text,Number,Date{Environment.NewLine}" +
+            $"'=1+1,-42,14/10/2026{Environment.NewLine}",
+            writer.ToString());
+    }
+
+    [Fact]
+    public void Current_report_exporters_do_not_own_bypassable_csv_serializers()
+    {
+        foreach (var exporter in CurrentCsvExporters)
+        {
+            var localCsvMethods = exporter.GetMethods(
+                    BindingFlags.NonPublic |
+                    BindingFlags.Public |
+                    BindingFlags.Static |
+                    BindingFlags.Instance)
+                .Where(method => method.Name.Contains(
+                    "Csv",
+                    StringComparison.OrdinalIgnoreCase) &&
+                    method.ReturnType == typeof(string) &&
+                    method.GetParameters() is [{ ParameterType: var parameterType }] &&
+                    parameterType == typeof(string));
+
+            Assert.Empty(localCsvMethods);
+        }
     }
 }

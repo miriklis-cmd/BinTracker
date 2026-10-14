@@ -1,5 +1,13 @@
 # BinTracker Automated Testing
 
+## BT-SH-001-P1 CSV formula-injection remediation — 14 October 2026
+
+Current source routes Daily, Weekly Detail/Overview, Monthly, Outstanding and Movement History CSV output through `ReportCsvExportContract.WriteRows`. The boundary serializes raw structured cells: text is formula-checked before ordinary CSV escaping, while typed numeric primitives retain invariant numeric formatting. Report ordering, columns, filenames, filters, totals, UTF-8 BOM and export audit behavior remain outside and unchanged.
+
+Pre-change characterization passed 10/10 with zero failed/skipped. It proved each of the five duplicated form-local helpers preserved ordinary, comma, quote, CR/LF and empty behavior while emitting `=`, `+`, `-` and `@` prefixes unchanged.
+
+Post-change focused `ReportCsvExportContractTests` pass 22/22 with zero failed/skipped. Coverage includes ordinary/empty cells; commas, embedded quotes and CR/LF; every required formula marker; dangerous markers after whitespace, tab, CR/LF and Unicode-format prefixes; formula text containing comma/quote/newline; unchanged typed negative/decimal and formatted-date output; direct writer enforcement; header/row/column order; displayed-row preservation; and absence of form-local string serializers. The finalized WinForms-focused project passes 40/40, and the existing Daily, Weekly, Monthly, Outstanding and Movement History SQLite report regression classes pass 25/25, all with zero failed/skipped. Release solution build passes with zero warnings/errors. These are automated/source evidence, not manual Excel-compatible application acceptance or the operator-owned canonical BAT.
+
 ## BT-ARCH-018-P1 layer-boundary remediation — 14 October 2026
 
 BT-ARCH-018 Stage A identified four accepted presentation/application/infrastructure boundary findings. Alpha.10 P1 implements only those findings: a credential-free immutable user-administration DTO; authenticated-Administrator Services authority above unchanged Data-owned developer database mechanics; DTO-only public audit queries with trusted append/authentication seams internal to Services and typed report-export audit intent; and retention of Services-supplied Monthly Summary and Movement History container totals when presentation preserves displayed row order. Accepted Task20 lineage, mutation, audit, review, report and navigation semantics are unchanged, and no Security Hardening finding is claimed fixed.

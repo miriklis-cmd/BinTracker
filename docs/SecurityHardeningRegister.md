@@ -1,6 +1,6 @@
 # Security Hardening Finding Register
 
-External finding-capture baseline: **v0.5.0-alpha.6.5**. Current repository/application baseline: **v0.5.0-alpha.9.10**.
+External finding-capture baseline: **v0.5.0-alpha.6.5**. Current repository/application baseline: **v0.5.0-alpha.11**.
 
 This is the permanent ledger for the 50 findings supplied by the external BinTracker code/security audit on 19 August 2026. It is a **hard-gated pre-v1 input**, not a claim that every external severity rating is accepted unchanged. Each item must be reconciled against current source before implementation.
 
@@ -8,7 +8,7 @@ Allowed dispositions: `CONFIRMED-V1`, `REVIEW-V1`, `POST-V1`, `NOT-APPLICABLE`, 
 
 | Finding | Disposition | Audit finding | Required treatment |
 |---|---|---|---|
-| BT-SH-001 | CONFIRMED-V1 | CSV formula injection in exported spreadsheet cells | Remediate and add regression/security coverage. |
+| BT-SH-001 | FIXED | CSV formula injection in exported spreadsheet cells | Alpha.11 routes every current report CSV path through one protected structured serializer; focused regression/security coverage is recorded below. |
 | BT-SH-002 | CONFIRMED-V1 | Pending database-operation marker trusts file paths | Remediate and add regression/security coverage. |
 | BT-SH-003 | CONFIRMED-V1 | Logout does not clear authenticated UserSession | Remediate and add regression/security coverage. |
 | BT-SH-004 | CONFIRMED-V1 | Failed-login lockout update is concurrency-prone | Remediate and add regression/security coverage. |
@@ -58,6 +58,14 @@ Allowed dispositions: `CONFIRMED-V1`, `REVIEW-V1`, `POST-V1`, `NOT-APPLICABLE`, 
 | BT-SH-048 | CONFIRMED-V1 | No automated dependency/security supply-chain gate | Remediate and add regression/security coverage. |
 | BT-SH-049 | REVIEW-V1 | Packaged artifacts lack checksum/signing integrity | Reconcile against current source; then fix, defer with rationale, or reject with evidence. |
 | BT-SH-050 | CONFIRMED-V1 | Audit-BinTracker is governance-heavy and lacks code-security checks | Remediate and add regression/security coverage. |
+
+## Fixed-finding evidence
+
+### BT-SH-001 — CSV formula injection
+
+- **Enforcement:** `ReportCsvExportContract.WriteRows` is the single cell-serialization boundary for Daily, Weekly Detail/Overview, Monthly, Outstanding and Movement History CSV exports. It apostrophe-neutralizes formula-leading text after leading whitespace/control/Unicode-format characters, then performs ordinary CSV quote escaping. Typed numeric primitives bypass text neutralization and retain invariant numeric output.
+- **Coverage:** pre-fix characterization proved all five duplicated form helpers preserved comma/quote/CR/LF/empty behavior but emitted `=`, `+`, `-` and `@` prefixes unchanged. Post-fix focused tests cover ordinary/empty/structural escaping, all four formula markers, whitespace/control/format-prefix bypasses, formula text containing commas/quotes/newlines, unchanged negative/decimal/date output, displayed row/column order and absence of form-local text serializers.
+- **Scope:** PDF and on-screen reports, filters, columns, row ordering, filenames and export auditing are unchanged. BT-SH-002..050 retain their prior dispositions.
 
 ## Hard-gate rules
 

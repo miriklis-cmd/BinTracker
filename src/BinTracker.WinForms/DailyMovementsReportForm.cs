@@ -593,37 +593,36 @@ actions.Controls.Add(ActionButton(
             dialog.FileName, false,
             new System.Text.UTF8Encoding(true));
 
-        var csvRows = new List<string>();
+        var csvRows = new List<IReadOnlyList<object?>>();
 
         foreach (var row in result.Rows)
         {
-            var fields = new List<string>
+            var fields = new List<object?>
             {
-                Csv(result.ReportDate.ToString("dd/MM/yyyy")),
-                Csv(row.CustomerCode),
-                Csv(row.CustomerName),
-                Csv(CustomerTypeText(row.CustomerType)),
-                Csv(row.ContainerType),
-                Csv(row.DirectionText),
-                row.Quantity.ToString(
-                    System.Globalization.CultureInfo.InvariantCulture),
-                Csv(row.SourceText),
-                Csv(row.Reference)
+                result.ReportDate.ToString("dd/MM/yyyy"),
+                row.CustomerCode,
+                row.CustomerName,
+                CustomerTypeText(row.CustomerType),
+                row.ContainerType,
+                row.DirectionText,
+                row.Quantity,
+                row.SourceText,
+                row.Reference
             };
 
             if (includeNotesInPdf.Checked)
-                fields.Add(Csv(row.Notes));
+                fields.Add(row.Notes);
 
-            fields.Add(Csv(row.EnteredBy));
+            fields.Add(row.EnteredBy);
 
-            csvRows.Add(string.Join(",", fields));
+            csvRows.Add(fields);
         }
 
         ReportCsvExportContract.WriteRows(
             writer,
             includeNotesInPdf.Checked
-                ? "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Notes,Entered By"
-                : "Date,Customer Code,Customer Name,Customer Type,Container,Direction,Quantity,Source,Reference,Entered By",
+                ? ["Date", "Customer Code", "Customer Name", "Customer Type", "Container", "Direction", "Quantity", "Source", "Reference", "Notes", "Entered By"]
+                : ["Date", "Customer Code", "Customer Name", "Customer Type", "Container", "Direction", "Quantity", "Source", "Reference", "Entered By"],
             csvRows);
 
         writer.Flush();
@@ -760,18 +759,6 @@ actions.Controls.Add(ActionButton(
         type == CustomerType.Account
             ? "Account"
             : "Cash / COD";
-
-    private static string Csv(string value)
-    {
-        var escaped = value.Replace("\"", "\"\"");
-
-        return value.Contains(',') ||
-               value.Contains('"') ||
-               value.Contains('\r') ||
-               value.Contains('\n')
-            ? $"\"{escaped}\""
-            : escaped;
-    }
 
     private sealed record Choice<T>(
         T Value,

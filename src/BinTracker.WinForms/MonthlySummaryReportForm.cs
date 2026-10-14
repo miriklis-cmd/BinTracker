@@ -522,25 +522,22 @@ public sealed class MonthlySummaryReportForm : BinTrackerForm
             false,
             new System.Text.UTF8Encoding(true));
 
-        var csvRows = new List<string>();
+        var csvRows = new List<IReadOnlyList<object?>>();
 
         foreach (var row in result.Rows)
         {
-            csvRows.Add(string.Join(",",
-                Csv(row.CustomerCode),
-                Csv(row.CustomerName),
-                Csv(row.ContainerType),
-                row.OutQuantity.ToString(
-                    System.Globalization.CultureInfo.InvariantCulture),
-                row.InQuantity.ToString(
-                    System.Globalization.CultureInfo.InvariantCulture),
-                row.NetQuantity.ToString(
-                    System.Globalization.CultureInfo.InvariantCulture)));
+            csvRows.Add([
+                row.CustomerCode,
+                row.CustomerName,
+                row.ContainerType,
+                row.OutQuantity,
+                row.InQuantity,
+                row.NetQuantity]);
         }
 
         ReportCsvExportContract.WriteRows(
             writer,
-            "Customer Code,Customer Name,Container,OUT,IN,Net",
+            ["Customer Code", "Customer Name", "Container", "OUT", "IN", "Net"],
             csvRows);
 
         writer.Flush();
@@ -722,18 +719,6 @@ public sealed class MonthlySummaryReportForm : BinTrackerForm
             AutoSizeMode = autoSize,
             SortMode = DataGridViewColumnSortMode.Automatic
         };
-
-    private static string Csv(string value)
-    {
-        var escaped = value.Replace("\"", "\"\"");
-
-        return value.Contains(',') ||
-               value.Contains('"') ||
-               value.Contains('\r') ||
-               value.Contains('\n')
-            ? $"\"{escaped}\""
-            : escaped;
-    }
 
     private sealed record Choice<T>(
         T Value,
