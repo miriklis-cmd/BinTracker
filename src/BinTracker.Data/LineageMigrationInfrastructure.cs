@@ -146,14 +146,8 @@ public sealed class PendingDatabaseOperationConflictProbe : IDatabaseOperationCo
                 FileShare.None, bufferSize: 1, FileOptions.DeleteOnClose | FileOptions.WriteThrough);
             stream = new FileStream(markerPath, FileMode.Open, FileAccess.ReadWrite,
                 FileShare.ReadWrite | FileShare.Delete);
-            var operation = JsonSerializer.Deserialize<PendingDatabaseOperation>(stream)
-                ?? throw new InvalidOperationException(
-                    "Pending developer database operation is empty.");
-            var expectedDatabasePath = Path.GetFullPath(databasePath);
-            if (!Path.GetFullPath(operation.ActiveDatabasePath).Equals(
-                    expectedDatabasePath, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException(
-                    "The pending developer database operation targets a different active database.");
+            var operation = ValidatedPendingDatabaseOperation.Read(
+                stream, markerPath, databasePath);
 
             var created = new PendingDatabaseOperationClaim(markerPath, stream, claimLock, operation,
                 () => Interlocked.Exchange(ref claim, null), beforeCleanup, beforeStatePersist);

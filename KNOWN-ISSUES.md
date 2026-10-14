@@ -10,9 +10,9 @@ R7 deterministic interleavings now prove coherent snapshots across Dashboard att
 
 Normal activated whole-root correction safely blocks any current Reversed line. The alpha.9 Restore/RemainReversed dialog collects an explicit disposition for every reversed permanent line and applies all Restore choices through one separately sequenced atomic logical mutation. Alpha.9.6 passed the protected Batch #30 FIX6 continuation plus bounded FIX7-A/B/C Windows re-smoke, and Items 2–7 passed their bounded mutation, concurrency, forensic-detail, Administrator-review, corrected-report and real PDF preview/print acceptance. Alpha.9.10 then passed its 827/827 canonical gate and the complete Item-8 surface matrix at Windows 11 1920×1080/150% plus a separate 1920×1080/100% PC. The bounded Task20 acceptance inventory is complete. BT-ARCH-018 Stage A identified four accepted layer violations and alpha.10 implements their bounded remediation. Independent review and the exact-candidate 841/841 operator BAT passed; commit `cd53f9ca19de1a10ea9ec375b63e294fdddfad23` closes that protected architecture gate. Security Hardening has begun in register order with BT-SH-001.
 
-BT-SH-001 is fixed in alpha.11: every current report CSV path uses one protected serializer that neutralizes formula-leading text while retaining typed numeric output and established CSV/report ordering. The other BT-SH findings remain governed by `docs/SecurityHardeningRegister.md`; Security Hardening as a whole is not complete.
+BT-SH-001 is fixed in alpha.11: every current report CSV path uses one protected serializer that neutralizes formula-leading text while retaining typed numeric output and established CSV/report ordering. BT-SH-002 is fixed in alpha.12: the Data-owned pending-operation reader validates the complete marker before transition, derives the only authorized staged artifact from trusted configuration and never deletes a marker-supplied path. The other BT-SH findings remain governed by `docs/SecurityHardeningRegister.md`; Security Hardening as a whole is not complete.
 
-Current release: **v0.5.0-alpha.11**
+Current release: **v0.5.0-alpha.12**
 
 This file contains current defects/limitations that affect testing or production readiness. Completed history is in `docs/CHANGELOG.md`; future features are in `docs/Roadmap.md`; engineering cleanup is in `TECH-DEBT.md`.
 

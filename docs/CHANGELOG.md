@@ -1,9 +1,16 @@
+## v0.5.0-alpha.12 (15 October 2026)
+
+- Fixed BT-SH-002 by centralizing strict pending database-operation marker parsing and semantic validation at its sole Data-owned reader before any marker transition, database replacement or cleanup.
+- Active database authority now comes from trusted coordinator configuration. The only Load stage is derived as `pending-database-load.db` beside the configured marker and that derived path alone is used for execution/deletion; Fresh cannot supply a stage and publication-ready cleanup cannot bypass validation.
+- Added hostile-marker coverage for arbitrary absolute and relative/traversal cleanup redirection, wrong active identity, missing Load stage, undefined enums and malformed/duplicate/extended JSON, with unchanged marker/database/protected-file assertions. Existing valid Load/Fresh, cleanup retry and recovery-required behavior remain green.
+- Preserved the marker JSON shape/backward-compatible defaults, interrupted-operation evidence, backup/migration/publication sequencing, Services authorization, Task20 lineage and BT-ARCH-018 behavior. Advanced the feature/development version from accepted alpha.11 to alpha.12; BT-SH-003..050 remain unchanged.
+
 ## v0.5.0-alpha.11 (14 October 2026)
 
 - Fixed BT-SH-001 by replacing five duplicated report-form CSV escaping helpers with one structured `ReportCsvExportContract.WriteRows` serialization boundary used by all six current export branches.
 - Formula-leading text (`=`, `+`, `-`, `@`) is apostrophe-neutralized even after leading whitespace/control/Unicode-format characters, then composed with existing comma/quote/CR/LF escaping. Numeric primitives remain invariant typed output so negative report quantities/totals are not converted to text.
 - Added focused characterization and regression/security coverage for legacy escaping, the pre-fix vulnerability, all required dangerous prefixes and bypass forms, structural escaping, numeric/date preservation, report routing and row/column ordering. No PDF, screen, filter, audit, filename, lineage or report-business semantics changed.
-- Advanced the feature/development version from accepted alpha.10 to alpha.11 without rewriting alpha.10's architecture-review/canonical-build evidence. BT-SH-002 and all later findings remain unchanged.
+- Advanced the feature/development version from accepted alpha.10 to alpha.11 without rewriting alpha.10's architecture-review/canonical-build evidence. At that checkpoint BT-SH-002 and all later findings remained unchanged.
 
 ## v0.5.0-alpha.10 (13 October 2026)
 

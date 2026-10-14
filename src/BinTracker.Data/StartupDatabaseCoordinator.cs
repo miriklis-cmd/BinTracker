@@ -167,6 +167,9 @@ public sealed partial class SqliteStartupDatabaseCoordinator : IStartupDatabaseC
                 if (pending.Operation.State == PendingDatabaseOperationState.ExecutionInProgress)
                     throw new StartupFault(StartupDatabaseFailure.PendingOperationRecoveryRequired);
 
+                var stagedDatabasePath = pending.Operation.Type == PendingDatabaseOperationType.Load
+                    ? pending.RequireStagedDatabasePath()
+                    : null;
                 pending.BeginExecution();
                 var databaseReplacementPublished = pending.Operation.Type == PendingDatabaseOperationType.Load ||
                     File.Exists(databasePath);
@@ -175,7 +178,7 @@ public sealed partial class SqliteStartupDatabaseCoordinator : IStartupDatabaseC
                     session = pending.Operation.Type switch
                     {
                         PendingDatabaseOperationType.Load => await LoadAsync(
-                            pending.RequireStagedDatabasePath(), cancellationToken),
+                            stagedDatabasePath!, cancellationToken),
                         PendingDatabaseOperationType.Fresh => await FreshAsync(cancellationToken),
                         _ => throw new InvalidOperationException(
                             $"Unsupported developer database operation '{pending.Operation.Type}'.")

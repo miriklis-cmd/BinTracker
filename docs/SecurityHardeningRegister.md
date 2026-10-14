@@ -1,6 +1,6 @@
 # Security Hardening Finding Register
 
-External finding-capture baseline: **v0.5.0-alpha.6.5**. Current repository/application baseline: **v0.5.0-alpha.11**.
+External finding-capture baseline: **v0.5.0-alpha.6.5**. Current repository/application baseline: **v0.5.0-alpha.12**.
 
 This is the permanent ledger for the 50 findings supplied by the external BinTracker code/security audit on 19 August 2026. It is a **hard-gated pre-v1 input**, not a claim that every external severity rating is accepted unchanged. Each item must be reconciled against current source before implementation.
 
@@ -9,7 +9,7 @@ Allowed dispositions: `CONFIRMED-V1`, `REVIEW-V1`, `POST-V1`, `NOT-APPLICABLE`, 
 | Finding | Disposition | Audit finding | Required treatment |
 |---|---|---|---|
 | BT-SH-001 | FIXED | CSV formula injection in exported spreadsheet cells | Alpha.11 routes every current report CSV path through one protected structured serializer; focused regression/security coverage is recorded below. |
-| BT-SH-002 | CONFIRMED-V1 | Pending database-operation marker trusts file paths | Remediate and add regression/security coverage. |
+| BT-SH-002 | FIXED | Pending database-operation marker trusts file paths | Alpha.12 validates the complete marker at its sole Data reader before transition and derives all operative/cleanup locations from trusted configuration; focused hostile-marker and recovery coverage is recorded below. |
 | BT-SH-003 | CONFIRMED-V1 | Logout does not clear authenticated UserSession | Remediate and add regression/security coverage. |
 | BT-SH-004 | CONFIRMED-V1 | Failed-login lockout update is concurrency-prone | Remediate and add regression/security coverage. |
 | BT-SH-005 | REVIEW-V1 | Excel workbook processing lacks hostile-input resource limits | Reconcile against current source; then fix, defer with rationale, or reject with evidence. |
@@ -65,7 +65,15 @@ Allowed dispositions: `CONFIRMED-V1`, `REVIEW-V1`, `POST-V1`, `NOT-APPLICABLE`, 
 
 - **Enforcement:** `ReportCsvExportContract.WriteRows` is the single cell-serialization boundary for Daily, Weekly Detail/Overview, Monthly, Outstanding and Movement History CSV exports. It apostrophe-neutralizes formula-leading text after leading whitespace/control/Unicode-format characters, then performs ordinary CSV quote escaping. Typed numeric primitives bypass text neutralization and retain invariant numeric output.
 - **Coverage:** pre-fix characterization proved all five duplicated form helpers preserved comma/quote/CR/LF/empty behavior but emitted `=`, `+`, `-` and `@` prefixes unchanged. Post-fix focused tests cover ordinary/empty/structural escaping, all four formula markers, whitespace/control/format-prefix bypasses, formula text containing commas/quotes/newlines, unchanged negative/decimal/date output, displayed row/column order and absence of form-local text serializers.
-- **Scope:** PDF and on-screen reports, filters, columns, row ordering, filenames and export auditing are unchanged. BT-SH-002..050 retain their prior dispositions.
+- **Scope:** PDF and on-screen reports, filters, columns, row ordering, filenames and export auditing are unchanged. That alpha.11 pass left BT-SH-002..050 at their prior dispositions.
+
+### BT-SH-002 — pending database-operation marker path trust
+
+- **Threat/failure model:** the configured active database path was already supplied independently and normal Load execution compared its marker stage with the fixed marker-directory artifact. Fresh nevertheless accepted a non-null marker `StagedDatabasePath`, and completion canonicalized then deleted any nonblank marker path. Publication-ready Load re-entry reached the same deletion without the earlier execution-time stage check. A forged Fresh or publication-ready marker could therefore delete an arbitrary absolute or relative file after readiness; an undefined operation also transitioned the marker before being rejected.
+- **Enforcement:** `ValidatedPendingDatabaseOperation.Read` is the only marker deserialization/validation boundary. Before the coordinator can persist a state transition, replace/create a database or clean an artifact, it validates the structured shape, enum/state consistency, configured active identity and operation-specific path rules. The only Load stage is derived as `pending-database-load.db` beside the trusted configured marker and that derived path alone is used for Load and cleanup. Fresh cannot carry a stage. Publication-ready re-entry passes the same validation. Invalid evidence remains in place for diagnosis. Relative/traversal, alternate absolute, short-name and marker-supplied symlink/reparse aliases cannot satisfy the exact fully-qualified path rule. Replacing the trusted configured app-data directory or its fixed artifact through independent OS filesystem authority is not a capability conferred by marker text and remains outside this marker-input finding; the staged database still undergoes the existing structural/current-health validation before publication.
+- **Compatibility/recovery:** the JSON field shape is unchanged; the original five fields remain required and later state/publication fields keep their established defaults, so legitimate pre-state-field markers remain readable. A valid publication-ready Load may have already removed the fixed stage during partial cleanup, and re-entry still completes without replay. Execution-in-progress still requires controlled recovery. Marker age is not treated as corruption because legitimate interrupted recovery has no safe arbitrary expiry.
+- **Coverage:** pre-fix security regression reproduced arbitrary cleanup redirection for Fresh and publication-ready Load and proved an undefined operation mutated the marker before failure. Post-fix coverage rejects hostile absolute and relative/traversal paths, wrong active identity, missing execution-required Load evidence, undefined enums and malformed/duplicate/extended JSON with marker bytes, protected file and active database unchanged. Existing valid Load/Fresh, publication-ready cleanup retry, partial cleanup and recovery-required behavior remain green.
+- **Scope:** Data/infrastructure retains SQLite/filesystem ownership. Backup contents, migration manifests/hashes, Load/Fresh publication sequencing, Services authorization, WinForms behavior, Task20 lineage and BT-ARCH-018 boundaries are unchanged. BT-SH-003..050 retain their prior dispositions.
 
 ## Hard-gate rules
 

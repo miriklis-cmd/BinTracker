@@ -41,12 +41,149 @@ internal sealed record PendingDatabaseOperation(
     string? PublishedDatabaseIdentity = null,
     bool DatabaseReplacementPublished = false);
 
+internal sealed record ValidatedPendingDatabaseOperation(
+    PendingDatabaseOperation Operation,
+    string? StagedDatabasePath)
+{
+    // Marker text is persisted control input, not filesystem authority. Keep its
+    // legacy shape readable, but establish every operative path from trusted
+    // coordinator configuration before a transition or database/file mutation.
+    private static readonly HashSet<string> KnownProperties =
+    [
+        nameof(PendingDatabaseOperation.Type),
+        nameof(PendingDatabaseOperation.ActiveDatabasePath),
+        nameof(PendingDatabaseOperation.StagedDatabasePath),
+        nameof(PendingDatabaseOperation.AutomaticBackupPath),
+        nameof(PendingDatabaseOperation.CreatedUtc),
+        nameof(PendingDatabaseOperation.State),
+        nameof(PendingDatabaseOperation.PublishedDatabaseIdentity),
+        nameof(PendingDatabaseOperation.DatabaseReplacementPublished)
+    ];
+
+    private static readonly HashSet<string> RequiredProperties =
+    [
+        nameof(PendingDatabaseOperation.Type),
+        nameof(PendingDatabaseOperation.ActiveDatabasePath),
+        nameof(PendingDatabaseOperation.StagedDatabasePath),
+        nameof(PendingDatabaseOperation.AutomaticBackupPath),
+        nameof(PendingDatabaseOperation.CreatedUtc)
+    ];
+
+    internal static ValidatedPendingDatabaseOperation Read(
+        Stream stream,
+        string markerPath,
+        string activeDatabasePath)
+    {
+        using var document = JsonDocument.Parse(stream);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+            throw new InvalidOperationException(
+                "Pending developer database operation must be a JSON object.");
+
+        var present = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var property in document.RootElement.EnumerateObject())
+        {
+            if (!KnownProperties.Contains(property.Name))
+                throw new InvalidOperationException(
+                    $"Pending developer database operation contains unexpected field '{property.Name}'.");
+            if (!present.Add(property.Name))
+                throw new InvalidOperationException(
+                    $"Pending developer database operation contains duplicate field '{property.Name}'.");
+        }
+
+        if (!RequiredProperties.IsSubsetOf(present))
+            throw new InvalidOperationException(
+                "Pending developer database operation is missing required fields.");
+
+        var operation = document.RootElement.Deserialize<PendingDatabaseOperation>()
+            ?? throw new InvalidOperationException(
+                "Pending developer database operation is empty.");
+        return Validate(operation, markerPath, activeDatabasePath);
+    }
+
+    private static ValidatedPendingDatabaseOperation Validate(
+        PendingDatabaseOperation operation,
+        string markerPath,
+        string activeDatabasePath)
+    {
+        if (!Enum.IsDefined(operation.Type))
+            throw new InvalidOperationException(
+                "Pending developer database operation type is unsupported.");
+        if (!Enum.IsDefined(operation.State))
+            throw new InvalidOperationException(
+                "Pending developer database operation state is unsupported.");
+        if (operation.CreatedUtc == default)
+            throw new InvalidOperationException(
+                "Pending developer database operation creation time is missing.");
+
+        var expectedActivePath = Path.GetFullPath(activeDatabasePath);
+        if (string.IsNullOrWhiteSpace(operation.ActiveDatabasePath) ||
+            !Path.IsPathFullyQualified(operation.ActiveDatabasePath) ||
+            !Path.GetFullPath(operation.ActiveDatabasePath).Equals(
+                expectedActivePath, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "The pending developer database operation targets a different active database.");
+        }
+
+        var markerFolder = Path.GetDirectoryName(markerPath)
+            ?? throw new InvalidOperationException("Pending operation folder is invalid.");
+        var expectedStagedPath = Path.GetFullPath(
+            Path.Combine(markerFolder, "pending-database-load.db"));
+        string? trustedStagedPath = null;
+
+        if (operation.Type == PendingDatabaseOperationType.Load)
+        {
+            if (string.IsNullOrWhiteSpace(operation.StagedDatabasePath) ||
+                !Path.IsPathFullyQualified(operation.StagedDatabasePath) ||
+                !Path.GetFullPath(operation.StagedDatabasePath).Equals(
+                    expectedStagedPath, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "The staged database path is missing or unexpected.");
+            }
+
+            trustedStagedPath = expectedStagedPath;
+            if (operation.State == PendingDatabaseOperationState.ExecutionRequired &&
+                !File.Exists(trustedStagedPath))
+            {
+                throw new InvalidOperationException("The staged database file is missing.");
+            }
+        }
+        else if (operation.StagedDatabasePath is not null)
+        {
+            throw new InvalidOperationException(
+                "A fresh-database operation cannot reference a staged database file.");
+        }
+
+        switch (operation.State)
+        {
+            case PendingDatabaseOperationState.ExecutionRequired:
+            case PendingDatabaseOperationState.ExecutionInProgress:
+                if (operation.PublishedDatabaseIdentity is not null ||
+                    operation.DatabaseReplacementPublished)
+                {
+                    throw new InvalidOperationException(
+                        "The pending operation publication state is inconsistent.");
+                }
+                break;
+            case PendingDatabaseOperationState.PublicationReadyForCleanup:
+                if (string.IsNullOrWhiteSpace(operation.PublishedDatabaseIdentity))
+                    throw new InvalidOperationException(
+                        "The pending operation has no published database identity.");
+                break;
+        }
+
+        return new(operation, trustedStagedPath);
+    }
+}
+
 internal sealed class PendingDatabaseOperationClaim : IDisposable
 {
     private readonly string markerPath;
     private readonly Action release;
     private readonly Action<PendingDatabaseOperationCleanupStep>? beforeCleanup;
     private readonly Action<PendingDatabaseOperationState>? beforeStatePersist;
+    private readonly string? stagedDatabasePath;
     private FileStream? stream;
     private FileStream? claimLock;
     private bool completed;
@@ -55,7 +192,7 @@ internal sealed class PendingDatabaseOperationClaim : IDisposable
         string markerPath,
         FileStream stream,
         FileStream claimLock,
-        PendingDatabaseOperation operation,
+        ValidatedPendingDatabaseOperation operation,
         Action release,
         Action<PendingDatabaseOperationCleanupStep>? beforeCleanup = null,
         Action<PendingDatabaseOperationState>? beforeStatePersist = null)
@@ -63,7 +200,8 @@ internal sealed class PendingDatabaseOperationClaim : IDisposable
         this.markerPath = markerPath;
         this.stream = stream;
         this.claimLock = claimLock;
-        Operation = operation;
+        Operation = operation.Operation;
+        stagedDatabasePath = operation.StagedDatabasePath;
         this.release = release;
         this.beforeCleanup = beforeCleanup;
         this.beforeStatePersist = beforeStatePersist;
@@ -74,16 +212,11 @@ internal sealed class PendingDatabaseOperationClaim : IDisposable
 
     internal string RequireStagedDatabasePath()
     {
-        if (string.IsNullOrWhiteSpace(Operation.StagedDatabasePath))
+        if (stagedDatabasePath is null)
             throw new InvalidOperationException("The staged database path is missing.");
-        var staged = Path.GetFullPath(Operation.StagedDatabasePath);
-        var expected = Path.Combine(
-            Path.GetDirectoryName(markerPath)
-                ?? throw new InvalidOperationException("Pending operation folder is invalid."),
-            "pending-database-load.db");
-        if (!staged.Equals(expected, StringComparison.OrdinalIgnoreCase) || !File.Exists(staged))
-            throw new InvalidOperationException("The staged database file is missing or unexpected.");
-        return staged;
+        if (!File.Exists(stagedDatabasePath))
+            throw new InvalidOperationException("The staged database file is missing.");
+        return stagedDatabasePath;
     }
 
     internal void BeginExecution()
@@ -130,10 +263,10 @@ internal sealed class PendingDatabaseOperationClaim : IDisposable
         }
 
         completed = true;
-        if (!string.IsNullOrWhiteSpace(Operation.StagedDatabasePath))
+        if (stagedDatabasePath is not null)
         {
             beforeCleanup?.Invoke(PendingDatabaseOperationCleanupStep.StagedDatabase);
-            File.Delete(Path.GetFullPath(Operation.StagedDatabasePath));
+            File.Delete(stagedDatabasePath);
         }
         beforeCleanup?.Invoke(PendingDatabaseOperationCleanupStep.Marker);
         File.Delete(markerPath);

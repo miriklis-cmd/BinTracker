@@ -337,6 +337,266 @@ public sealed class Task20RuntimeActivationTests
         Assert.Equal(publishedIdentity, WindowsFileIdentity.Get(f.DatabasePath));
     }
 
+    [Fact]
+    public async Task Fresh_marker_cannot_redirect_cleanup_outside_the_authorized_stage_artifact()
+    {
+        await using var f = await RuntimeFixture.CreateAsync();
+        using (await DatabaseSetup.InitializeAsync(f.Services))
+            await f.SeedOperationalDataAsync();
+        var originalIdentity = WindowsFileIdentity.Get(f.DatabasePath);
+        var protectedPath = Path.Combine(f.Root, "outside-control", "must-remain.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(protectedPath)!);
+        await File.WriteAllTextAsync(protectedPath, "protected evidence");
+        Directory.CreateDirectory(Path.GetDirectoryName(f.MarkerPath)!);
+        File.WriteAllText(f.MarkerPath, JsonSerializer.Serialize(new PendingDatabaseOperation(
+            PendingDatabaseOperationType.Fresh,
+            f.DatabasePath,
+            protectedPath,
+            null,
+            DateTime.UtcNow)));
+        var originalMarker = await File.ReadAllBytesAsync(f.MarkerPath);
+
+        StartupDatabaseException? failure = null;
+        StartupDatabaseSession? unexpectedSession = null;
+        try
+        {
+            unexpectedSession = await f.Coordinator().StartAsync();
+        }
+        catch (StartupDatabaseException ex)
+        {
+            failure = ex;
+        }
+        finally
+        {
+            unexpectedSession?.Dispose();
+        }
+
+        Assert.NotNull(failure);
+        Assert.Equal(StartupDatabasePhase.Classification, failure.Phase);
+        Assert.True(File.Exists(protectedPath));
+        Assert.Equal("protected evidence", await File.ReadAllTextAsync(protectedPath));
+        Assert.Equal(originalMarker, await File.ReadAllBytesAsync(f.MarkerPath));
+        Assert.Equal(originalIdentity, WindowsFileIdentity.Get(f.DatabasePath));
+        Assert.Equal(1, await f.ScalarAsync(
+            "SELECT COUNT(*) FROM Customers WHERE CustomerCode='NORMAL'"));
+    }
+
+    [Fact]
+    public async Task Publication_ready_marker_cannot_bypass_stage_location_validation()
+    {
+        await using var f = await RuntimeFixture.CreateAsync();
+        using (await DatabaseSetup.InitializeAsync(f.Services))
+            await f.SeedOperationalDataAsync();
+        var publishedIdentity = WindowsFileIdentity.Get(f.DatabasePath);
+        var protectedPath = Path.Combine(f.Root, "outside-control", "must-remain.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(protectedPath)!);
+        await File.WriteAllTextAsync(protectedPath, "protected evidence");
+        Directory.CreateDirectory(Path.GetDirectoryName(f.MarkerPath)!);
+        File.WriteAllText(f.MarkerPath, JsonSerializer.Serialize(new PendingDatabaseOperation(
+            PendingDatabaseOperationType.Load,
+            f.DatabasePath,
+            protectedPath,
+            null,
+            DateTime.UtcNow,
+            PendingDatabaseOperationState.PublicationReadyForCleanup,
+            publishedIdentity,
+            DatabaseReplacementPublished: true)));
+        var originalMarker = await File.ReadAllBytesAsync(f.MarkerPath);
+
+        StartupDatabaseException? failure = null;
+        StartupDatabaseSession? unexpectedSession = null;
+        try
+        {
+            unexpectedSession = await f.Coordinator().StartAsync();
+        }
+        catch (StartupDatabaseException ex)
+        {
+            failure = ex;
+        }
+        finally
+        {
+            unexpectedSession?.Dispose();
+        }
+
+        Assert.NotNull(failure);
+        Assert.Equal(StartupDatabasePhase.Classification, failure.Phase);
+        Assert.True(File.Exists(protectedPath));
+        Assert.Equal("protected evidence", await File.ReadAllTextAsync(protectedPath));
+        Assert.Equal(originalMarker, await File.ReadAllBytesAsync(f.MarkerPath));
+        Assert.Equal(publishedIdentity, WindowsFileIdentity.Get(f.DatabasePath));
+        Assert.Equal(1, await f.ScalarAsync(
+            "SELECT COUNT(*) FROM Customers WHERE CustomerCode='NORMAL'"));
+    }
+
+    [Fact]
+    public async Task Undefined_marker_operation_fails_before_marker_or_database_mutation()
+    {
+        await using var f = await RuntimeFixture.CreateAsync();
+        using (await DatabaseSetup.InitializeAsync(f.Services))
+            await f.SeedOperationalDataAsync();
+        var originalIdentity = WindowsFileIdentity.Get(f.DatabasePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(f.MarkerPath)!);
+        File.WriteAllText(f.MarkerPath, JsonSerializer.Serialize(new PendingDatabaseOperation(
+            (PendingDatabaseOperationType)99,
+            f.DatabasePath,
+            null,
+            null,
+            DateTime.UtcNow)));
+        var originalMarker = await File.ReadAllBytesAsync(f.MarkerPath);
+
+        var failure = await Assert.ThrowsAsync<StartupDatabaseException>(
+            () => f.Coordinator().StartAsync());
+
+        Assert.Equal(StartupDatabasePhase.Classification, failure.Phase);
+        Assert.Equal(originalMarker, await File.ReadAllBytesAsync(f.MarkerPath));
+        Assert.Equal(originalIdentity, WindowsFileIdentity.Get(f.DatabasePath));
+        Assert.Equal(1, await f.ScalarAsync(
+            "SELECT COUNT(*) FROM Customers WHERE CustomerCode='NORMAL'"));
+    }
+
+    [Fact]
+    public async Task Relative_traversal_marker_path_cannot_redirect_fresh_cleanup()
+    {
+        await using var f = await RuntimeFixture.CreateAsync();
+        using (await DatabaseSetup.InitializeAsync(f.Services))
+            await f.SeedOperationalDataAsync();
+        var originalIdentity = WindowsFileIdentity.Get(f.DatabasePath);
+        var protectedPath = Path.Combine(f.Root, "outside-control", "must-remain.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(protectedPath)!);
+        await File.WriteAllTextAsync(protectedPath, "protected evidence");
+        var relativePath = Path.GetRelativePath(Environment.CurrentDirectory, protectedPath);
+        Assert.False(Path.IsPathFullyQualified(relativePath));
+        Directory.CreateDirectory(Path.GetDirectoryName(f.MarkerPath)!);
+        File.WriteAllText(f.MarkerPath, JsonSerializer.Serialize(new PendingDatabaseOperation(
+            PendingDatabaseOperationType.Fresh,
+            f.DatabasePath,
+            relativePath,
+            null,
+            DateTime.UtcNow)));
+        var originalMarker = await File.ReadAllBytesAsync(f.MarkerPath);
+
+        var failure = await Assert.ThrowsAsync<StartupDatabaseException>(
+            () => f.Coordinator().StartAsync());
+
+        Assert.Equal(StartupDatabasePhase.Classification, failure.Phase);
+        Assert.True(File.Exists(protectedPath));
+        Assert.Equal(originalMarker, await File.ReadAllBytesAsync(f.MarkerPath));
+        Assert.Equal(originalIdentity, WindowsFileIdentity.Get(f.DatabasePath));
+    }
+
+    [Fact]
+    public async Task Missing_authorized_load_artifact_fails_before_marker_transition()
+    {
+        await using var f = await RuntimeFixture.CreateAsync();
+        using (await DatabaseSetup.InitializeAsync(f.Services))
+            await f.SeedOperationalDataAsync();
+        var originalIdentity = WindowsFileIdentity.Get(f.DatabasePath);
+        var expectedStagedPath = Path.Combine(
+            Path.GetDirectoryName(f.MarkerPath)!, "pending-database-load.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(f.MarkerPath)!);
+        File.WriteAllText(f.MarkerPath, JsonSerializer.Serialize(new PendingDatabaseOperation(
+            PendingDatabaseOperationType.Load,
+            f.DatabasePath,
+            expectedStagedPath,
+            null,
+            DateTime.UtcNow)));
+        var originalMarker = await File.ReadAllBytesAsync(f.MarkerPath);
+
+        var failure = await Assert.ThrowsAsync<StartupDatabaseException>(
+            () => f.Coordinator().StartAsync());
+
+        Assert.Equal(StartupDatabasePhase.Classification, failure.Phase);
+        Assert.Equal(originalMarker, await File.ReadAllBytesAsync(f.MarkerPath));
+        Assert.Equal(originalIdentity, WindowsFileIdentity.Get(f.DatabasePath));
+        Assert.Equal(1, await f.ScalarAsync(
+            "SELECT COUNT(*) FROM Customers WHERE CustomerCode='NORMAL'"));
+    }
+
+    [Fact]
+    public async Task Marker_for_different_active_database_fails_before_mutation()
+    {
+        await using var f = await RuntimeFixture.CreateAsync();
+        using (await DatabaseSetup.InitializeAsync(f.Services))
+            await f.SeedOperationalDataAsync();
+        var originalIdentity = WindowsFileIdentity.Get(f.DatabasePath);
+        var differentDatabase = Path.Combine(f.Root, "other", "BinTracker.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(f.MarkerPath)!);
+        File.WriteAllText(f.MarkerPath, JsonSerializer.Serialize(new PendingDatabaseOperation(
+            PendingDatabaseOperationType.Fresh,
+            differentDatabase,
+            null,
+            null,
+            DateTime.UtcNow)));
+        var originalMarker = await File.ReadAllBytesAsync(f.MarkerPath);
+
+        var failure = await Assert.ThrowsAsync<StartupDatabaseException>(
+            () => f.Coordinator().StartAsync());
+
+        Assert.Equal(StartupDatabasePhase.Classification, failure.Phase);
+        Assert.Equal(originalMarker, await File.ReadAllBytesAsync(f.MarkerPath));
+        Assert.Equal(originalIdentity, WindowsFileIdentity.Get(f.DatabasePath));
+    }
+
+    [Fact]
+    public async Task Malformed_ambiguous_or_extended_marker_fails_without_mutation()
+    {
+        await using var f = await RuntimeFixture.CreateAsync();
+        using (await DatabaseSetup.InitializeAsync(f.Services))
+            await f.SeedOperationalDataAsync();
+        var originalIdentity = WindowsFileIdentity.Get(f.DatabasePath);
+        var valid = JsonSerializer.Serialize(new PendingDatabaseOperation(
+            PendingDatabaseOperationType.Fresh,
+            f.DatabasePath,
+            null,
+            null,
+            DateTime.UtcNow));
+        string[] invalidMarkers =
+        [
+            "{",
+            valid.Insert(1, "\"Type\":1,"),
+            valid.Insert(1, "\"UnexpectedPath\":\"C:\\\\redirect.db\",")
+        ];
+
+        Directory.CreateDirectory(Path.GetDirectoryName(f.MarkerPath)!);
+        foreach (var marker in invalidMarkers)
+        {
+            await File.WriteAllTextAsync(f.MarkerPath, marker);
+            var originalMarker = await File.ReadAllBytesAsync(f.MarkerPath);
+
+            var failure = await Assert.ThrowsAsync<StartupDatabaseException>(
+                () => f.Coordinator().StartAsync());
+
+            Assert.Equal(StartupDatabasePhase.Classification, failure.Phase);
+            Assert.Equal(originalMarker, await File.ReadAllBytesAsync(f.MarkerPath));
+            Assert.Equal(originalIdentity, WindowsFileIdentity.Get(f.DatabasePath));
+        }
+    }
+
+    [Fact]
+    public async Task Legacy_five_field_fresh_marker_remains_recoverable()
+    {
+        await using var f = await RuntimeFixture.CreateAsync();
+        using (await DatabaseSetup.InitializeAsync(f.Services))
+            await f.SeedOperationalDataAsync();
+        Directory.CreateDirectory(Path.GetDirectoryName(f.MarkerPath)!);
+        await File.WriteAllTextAsync(f.MarkerPath, JsonSerializer.Serialize(new
+        {
+            Type = PendingDatabaseOperationType.Fresh,
+            ActiveDatabasePath = f.DatabasePath,
+            StagedDatabasePath = (string?)null,
+            AutomaticBackupPath = (string?)null,
+            CreatedUtc = DateTime.UtcNow
+        }));
+
+        using var session = await f.Coordinator().StartAsync();
+
+        Assert.True(session.IsReadyForActivatedHost);
+        Assert.False(File.Exists(f.MarkerPath));
+        Assert.Equal(17, await f.SchemaVersionAsync());
+        Assert.Equal(0, await f.ScalarAsync(
+            "SELECT COUNT(*) FROM Customers WHERE CustomerCode='NORMAL'"));
+    }
+
     private static async Task<string?> WritePendingOperationAsync(
         RuntimeFixture f, PendingDatabaseOperationType operationType)
     {

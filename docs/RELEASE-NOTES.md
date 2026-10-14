@@ -1,11 +1,18 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.12
+
+- Fixes BT-SH-002 at the single Data-owned pending developer database-operation marker reader. The configured active database and configured marker location now independently authorize the operation; marker text cannot select an arbitrary database or cleanup target.
+- Strictly rejects malformed/non-object, duplicate-field, unknown-field and missing-base-field JSON; undefined operation/state values; inconsistent publication state; active-path mismatch; Fresh with any staged path; Load with a non-absolute, redirected or missing execution-required stage.
+- Derives the sole Load artifact as `pending-database-load.db` beside the trusted marker and uses only that derived path for execution and cleanup. Publication-ready re-entry cannot bypass validation, while legitimate partial cleanup and interrupted-operation recovery semantics remain intact.
+- Preserves the existing marker field shape and backward-compatible defaults, database replacement/migration/backup sequencing, retained evidence, Services authorization and Task20/BT-ARCH-018 behavior. BT-SH-003..050 remain unchanged; Security Hardening is not complete.
+
 ## v0.5.0-alpha.11
 
 - Fixes BT-SH-001 across every current CSV export: Daily, Weekly Detail/Overview, Monthly, Outstanding and Movement History now submit structured raw cells to one shared serializer instead of duplicating local escaping helpers.
 - Text whose first content character after leading whitespace/control/Unicode-format characters is `=`, `+`, `-` or `@` is apostrophe-neutralized before normal comma/quote/CR/LF escaping. Typed numeric cells remain invariant and unchanged, including legitimate negative values.
 - Preserves report filters, displayed row/column order, totals, filenames, UTF-8 BOM output and export-audit behavior. PDF and on-screen reports are unchanged.
-- Pre-fix characterization passed 10/10 and proved the duplicated helpers emitted formula prefixes unchanged. Post-fix focused security/regression coverage passes 22/22; the finalized WinForms-focused project passes 40/40 and the five affected SQLite report regression classes pass 25/25. BT-SH-002..050 remain unchanged, and Security Hardening as a whole is not complete.
+- Pre-fix characterization passed 10/10 and proved the duplicated helpers emitted formula prefixes unchanged. Post-fix focused security/regression coverage passes 22/22; the finalized WinForms-focused project passes 40/40 and the five affected SQLite report regression classes pass 25/25. At that checkpoint BT-SH-002..050 were unchanged, and Security Hardening as a whole was not complete.
 
 ## v0.5.0-alpha.10
 
