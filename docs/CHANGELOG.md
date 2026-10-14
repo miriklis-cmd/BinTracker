@@ -4,7 +4,8 @@
 - Logout now preserves trusted prior-actor audit attribution without allowing cancellation/audit failure to retain user ID, username, display name, role, password-change state or login time. Repeated logout writes no duplicate logout audit.
 - Failed and cancelled login attempts remain anonymous; successful re-login installs only the new identity. Administrator-only Services reject immediately after logout, while ordinary authenticated login behavior remains unchanged.
 - Added focused lifecycle/security integration coverage. The pre-fix run reproduced six stale-session failures; the post-fix suite passes 8/8 and the adjacent authentication/authorization regression set passes 37/37.
-- Advanced Version/InformationalVersion from accepted alpha.12 to alpha.13 while retaining AssemblyVersion/FileVersion `0.5.0.0`. BT-SH-004..050 remain unchanged and the Security Hardening workstream remains open.
+- Advanced Version/InformationalVersion from accepted alpha.12 to alpha.13 while retaining AssemblyVersion/FileVersion `0.5.0.0`.
+- Reconciled BT-SH-004..050 against current alpha.13 source without production changes. Four later-work findings are now evidenced `FIXED`, two are `NOT-APPLICABLE`, eleven have concrete `POST-V1` rationales, and the 30 remaining v1 blockers are grouped into eight coherent implementation batches. Security Hardening remains open.
 
 ## v0.5.0-alpha.12 (15 October 2026)
 

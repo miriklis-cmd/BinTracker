@@ -41,7 +41,7 @@ Most important remaining items include:
 - dashboard operational pass;
 - Business Information branding expansion: logo + shared report/email output identity;
 - real Email/SMS reminder delivery;
-- remaining Security Hardening register findings after BT-SH-001..003 remediation;
+- the eight reconciled Security Hardening implementation batches after BT-SH-001..004/011/020/041 closure;
 - production backup/restore;
 - installer/deployment/security hardening.
 

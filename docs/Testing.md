@@ -1,5 +1,11 @@
 # BinTracker Automated Testing
 
+## BT-SH-004-P1 remaining-finding reconciliation — 15 October 2026
+
+This pass changed governance/status documentation only. It added no production code or tests and did not rerun the automated suite merely to duplicate existing evidence. The four newly recognized `FIXED` dispositions rely on current enforcement plus existing evidence: `AuditContractBoundaryTests` for persisted failed-login threshold/lock behavior (BT-SH-004); `UserAdministrationBoundaryTests` for the credential-free user DTO (BT-SH-011); `ImportExecutionSqliteTests` plus `SqliteMigrationTests` for database-arbitrated duplicate source hashes (BT-SH-020); and `ImportExecutionSqliteTests` plus `ExcelImportAnalysisTests` for the one-read content-document/fingerprint boundary (BT-SH-041). The Security register records the exact source path, reachability, evidence and residual gap for every BT-SH-004..050 finding.
+
+No manual/Windows behavior, full test suite, Release build, canonical BAT, package or deployment is claimed for this documentation-only reconciliation. `Audit-BinTracker.ps1` passes with 259 permanent requirement IDs, 27 Markdown files and configured contradiction guards; final `git diff --check` passes with only expected working-copy EOL notices. TEST REQUIRED: None. The 28 `CONFIRMED-V1` and 2 `REVIEW-V1` findings remain implementation/test work in eight later batches, so this entry is not evidence that those risks are remediated.
+
 ## BT-SH-003-P1 authenticated-session logout remediation — 15 October 2026
 
 Source tracing found one desktop authentication context: `AddBinTrackerServices` registers singleton `UserSession` as both itself and `IUserContext`, while `Program.RunApplication` holds one service scope across login/logout/login cycles. Login populated the object and Services read it for authorization. Logout only appended an audit event before the main window returned to the login dialog; none of the authenticated fields were cleared. Failed/cancelled login also left any earlier identity intact. There is no static/global second authentication truth, and future API composition is explicitly required to provide request-scoped `IUserContext` instead of the desktop session.
