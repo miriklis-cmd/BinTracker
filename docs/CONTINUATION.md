@@ -1,8 +1,18 @@
 # Active BinTracker Continuation Checkpoint
 
-## Active BT-ARCH-018-P1 alpha.10 exit-validation checkpoint — 14 October 2026
+## Active BT-ARCH-018-P2 post-acceptance checkpoint — 14 October 2026
 
-This is the only operative continuation section. `BT-ARCH-018-P1` is complete at `IMPLEMENTED-STATIC`: it implements, in order and without another broad audit, the four independently reviewed findings accepted from the completed BT-ARCH-018 Stage-A layer audit: F02 safe user-administration results, F01 Services authorization for developer database operations, F03 constrained audit authority and DTO results, then F04 use of Services-supplied report totals. Exit documentation, Release solution build, mechanical audit and diff checks are complete. This is not operator/canonical-BAT acceptance and is not authority to begin Security Hardening or later roadmap work before independent review and the operator-owned BAT.
+This is the only operative continuation section. BT-ARCH-018 Stage A and P1 are complete and accepted. Independent ChatGPT review found no blocking correction across F01–F04, and Jack/operator's exact-candidate canonical `Build-BinTracker.bat` passed at v0.5.0-alpha.10 under SDK 10.0.401: mechanical audit, restore and build passed with zero warnings/errors; 841/841 automated tests passed with zero failed/skipped; final result `BUILD SUCCESSFUL`. The accepted implementation is committed and pushed as `cd53f9ca19de1a10ea9ec375b63e294fdddfad23` on `origin/codex/movement-correction`.
+
+BT-ARCH-018 is `IMPLEMENTED-ACCEPTED` and its blocking architecture gate is closed. The previous independent-review/operator-BAT blocker is no longer active. Security Hardening is now the next safe workstream, beginning in register order with BT-SH-001. Security Hardening has not yet been implemented, and no BT-SH-001..050 disposition is changed by this documentation-only reconciliation.
+
+Repository entry reality for P2 was root `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`, branch `codex/movement-correction`, HEAD/upstream `cd53f9ca19de1a10ea9ec375b63e294fdddfad23`, divergence `0/0`, empty staging and clean tracked worktree. Version/InformationalVersion remains `0.5.0-alpha.10`; AssemblyVersion/FileVersion remain `0.5.0.0`. The unrelated intentional untracked paths remain `.codex-evidence/`, `BIN-LIN-IMP-03A-HANDOFF.tmp` and `codex-git.ps1`.
+
+The earlier canonical BAT covers the exact accepted implementation/current-document candidate represented by `cd53f9c`; it does not cover this later P2 documentation-only reconciliation. P2 changes no production code, tests, scripts, audit logic, version, database/configuration/recovery artifact or Security Hardening implementation. Its scoped validation is the mechanical audit plus `git diff --check`; no new BAT, automated suite, Release build, Windows acceptance, retained-data rehearsal or package is claimed.
+
+## Historical BT-ARCH-018-P1 alpha.10 exit-validation checkpoint — 14 October 2026
+
+This section was operative before the independent review and operator canonical BAT completed. At that checkpoint, `BT-ARCH-018-P1` was correctly recorded as `IMPLEMENTED-STATIC`: it implemented, in order and without another broad audit, the four independently reviewed findings accepted from the completed BT-ARCH-018 Stage-A layer audit: F02 safe user-administration results, F01 Services authorization for developer database operations, F03 constrained audit authority and DTO results, then F04 use of Services-supplied report totals. Exit documentation, Release solution build, mechanical audit and diff checks were complete; review/BAT acceptance was then still pending.
 
 ### Repository and governance reality at the stop
 

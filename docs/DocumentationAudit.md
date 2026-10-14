@@ -1,5 +1,16 @@
 # Documentation Audit Record
 
+## 14 October 2026 — BT-ARCH-018-P2 post-acceptance reconciliation
+
+- Documentation/evidence closure only. Production code, tests, build/audit scripts, version, database/configuration/recovery artifacts and Security Hardening implementation are unchanged.
+- Independent ChatGPT review of BT-ARCH-018-P1 passed with no blocking correction after checking F02 credential-free immutable user-administration results, F01 Administrator Services authority and denied-role no-side-effect behavior, F03 public DTO/query plus internal trusted audit seams and typed report-export intent, and F04 Services-owned totals with presentation-owned displayed order.
+- Jack/operator's exact-candidate `Build-BinTracker.bat` for v0.5.0-alpha.10 passed the mechanical audit, restore and build under SDK 10.0.401 with zero warnings/errors; 841/841 automated tests passed with zero failed/skipped and final result `BUILD SUCCESSFUL`. The accepted implementation is committed and pushed as `cd53f9ca19de1a10ea9ec375b63e294fdddfad23` on `origin/codex/movement-correction`.
+- The authority chain is now `BT-ARCH-018 -> accepted F01–F04 boundaries -> enforcing source -> focused tests -> independent review -> exact-candidate canonical BAT -> IMPLEMENTED-ACCEPTED`. The blocking architecture gate is closed and Security Hardening may begin with BT-SH-001; no BT-SH finding is fixed or otherwise changed by this reconciliation.
+- The earlier canonical BAT validates the exact implementation/current-document candidate represented by `cd53f9c`; it does not cover this later documentation-only reconciliation. No new canonical BAT, automated suite, Release build, Windows acceptance, retained-data rehearsal or package is claimed.
+- Current Architecture, Requirements/Acceptance, Roadmap/coverage, Testing/checklist, Known Issues, Technical Debt, Versioning, release notes and active continuation are reconciled. The prior P1 audit entry and changelog remain historical evidence of the then-pending checkpoint.
+- The mechanical audit passes at v0.5.0-alpha.10 with 259 permanent requirement IDs, 27 Markdown files and configured contradiction guards. Final `git diff --check` passes with line-ending notices only.
+- TEST REQUIRED: None for this documentation-only reconciliation. The mandatory mechanical audit and `git diff --check` are the scoped validation.
+
 ## 14 October 2026 — BT-ARCH-018-P1 exit reconciliation
 
 - Entry mechanically verified root `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`, branch `codex/movement-correction`, HEAD/upstream `3e21d695770820995ca72f860bd2849bce21fa26`, divergence `0/0`, empty staging and version/informational version `0.5.0-alpha.10` (assembly/file `0.5.0.0`) against the active continuation. Input/task validation passed for `BT-ARCH-018-P1`.

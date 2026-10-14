@@ -1,13 +1,13 @@
 # BinTracker Roadmap Coverage Matrix
 
-Audited: 13 October 2026
+Audited: 14 October 2026
 
 | Workstream | v1? | Roadmap status / gate |
 |---|---|---|
 | Excel Import safety/provenance | Yes | Core complete; transactional failure detail + cosmetic validation remain |
 | Reports | Yes | v0.4 milestone completed/acceptance-cleaned before the v0.5 correction/reversal milestone; Movement History is now an integrated responsive main-workspace page with authoritative persisted Movement ID, reversal badges and customer-code export naming; configured Container Type filters remain reconciled; bounded Item-7 real preview/print and the corrected Item-8 display/DPI matrix passed |
 | Batch Entry acceptance/recovery | Yes | post-add reset and recovery choice are operator-confirmed; edit/remove/Enter/Esc-navigation cleanup is implemented and pending focused smoke acceptance |
-| Movement Correction/Reversal | Yes | Correction semantics and Administrator review workflow/infobar/exact lineage detail implemented; bounded Task20 Windows/DPI acceptance complete; protected layer-delineation Stage A complete and P1 implemented-static, pending independent review/operator BAT closure |
+| Movement Correction/Reversal | Yes | Correction semantics and Administrator review workflow/infobar/exact lineage detail implemented; bounded Task20 Windows/DPI acceptance complete; protected layer-delineation Stage A and P1 accepted after independent review and an exact-candidate 841/841 operator BAT |
 | Security, Data Integrity & Code Quality Hardening | Yes — HARD GATE | Dedicated post-correction/pre-branding workstream; 50 external audit findings permanently tracked in SecurityHardeningRegister; per-build completeness/order gate and v1.0 unresolved-finding release block |
 | Business Information & Branding | Yes | Textual Default Report Header exists; logo + shared report/email branding remain |
 | Email/SMS Customer Communications | Yes | Google Workspace + Texto direction; reminder/send/history/audit workflow |
@@ -17,7 +17,7 @@ Audited: 13 October 2026
 | Backup/Restore | Yes | Manual + scheduled automatic + retention/recovery drill |
 | Security/Audit hardening | Yes | Authorization, audit-coverage matrix, secrets/logging |
 | Logical movement lineage | Required before v1 | Frozen roots/lines/full generations/restoration/projection/migration are normal schema17 runtime authority after BT-20-P2. BT-20-P3 supplies full native audit/history detail, BT-20-P4 supplies the separately sequenced Restore/RemainReversed UI, FIX2–FIX5 close startup/understanding/anchor/current-state defects, FIX6 reacquires the selected authoritative physical anchor after Restore, and FIX7 synchronizes Movement History date/report state plus immediate post-Restore and successful-correction history visibility. Alpha.9.6 passed a fresh exact-copy schema16-to17 rehearsal, canonical 811/811 gate, bounded FIX7-A/B/C/FIX6 acceptance, successful original-anchor correction/refresh and the item-2 mixed/ordering/repeated/later-action sequence through generation 7; the exact Batch #31 output-anchor/multi-window, DPI/report/detail/review remainder, packaging and full acceptance remain pending |
-| Whole-codebase layer audit | Protected pre-v1 gate | Stage A complete; alpha.10 P1 remediates accepted F01–F04 with credential-free DTOs, Services authorization/audit authority and Services-supplied report totals. Independent review and exact-candidate canonical BAT remain blocking before closure |
+| Whole-codebase layer audit | Protected pre-v1 gate | CLOSED — Stage A and alpha.10 P1 completed accepted F01–F04 with credential-free DTOs, Services authorization/audit authority and Services-supplied report totals; independent review and exact-candidate canonical BAT passed, and accepted commit `cd53f9ca19de1a10ea9ec375b63e294fdddfad23` unblocks Security Hardening |
 | PostgreSQL/API/Multi-computer | Post-v1 implementation | v1 preserves client/provider-neutral services, concurrency and idempotency; central host/provider/client delivery is post-v1 |
 | Installer/Upgrade | Yes | Production package and safe upgrade path |
 | Full per-build audit discipline | Always | Mandatory gate on every packaged build; includes all Markdown/current-state/version/roadmap reconciliation |
