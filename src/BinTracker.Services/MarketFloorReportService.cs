@@ -66,6 +66,7 @@ internal sealed class MarketFloorReportService(
     IAuditService audit,
     IBusinessInformationService businessInformation,
     IBusinessClock clock,
+    ICurrentAccountAuthorization authorization,
     IOperationalMovementProjectionAuthority? operationalProjection = null)
     : IMarketFloorReportService
 {
@@ -73,6 +74,7 @@ internal sealed class MarketFloorReportService(
         DateOnly date,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
         var customers = await db.Customers

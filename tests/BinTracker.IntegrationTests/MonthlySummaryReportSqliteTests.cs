@@ -22,6 +22,8 @@ public sealed class MonthlySummaryReportSqliteTests
             options => options.UseSqlite(connection));
         services.AddBinTrackerServices();
 
+        services.AddTestAuthenticatedUserContext();
+
         await using var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
 
@@ -83,6 +85,8 @@ public sealed class MonthlySummaryReportSqliteTests
         services.AddDbContextFactory<BinTrackerDbContext>(
             options => options.UseSqlite(connection));
         services.AddBinTrackerServices();
+
+        services.AddTestAuthenticatedUserContext();
 
         await using var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
@@ -151,6 +155,8 @@ public sealed class MonthlySummaryReportSqliteTests
             options => options.UseSqlite(connection));
         services.AddBinTrackerServices();
 
+        services.AddTestAuthenticatedUserContext();
+
         await using var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
 
@@ -192,6 +198,7 @@ public sealed class MonthlySummaryReportSqliteTests
         services.AddDbContextFactory<BinTrackerDbContext>(
             options => options.UseSqlite(connection));
         services.AddBinTrackerServices();
+        services.AddTestAuthenticatedUserContext();
 
         await using var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
@@ -297,6 +304,8 @@ public sealed class MonthlySummaryReportSqliteTests
             options => options.UseSqlite(connection));
         services.AddBinTrackerServices();
 
+        services.AddTestAuthenticatedUserContext();
+
         await using var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
         var factory = scope.ServiceProvider
@@ -351,6 +360,8 @@ public sealed class MonthlySummaryReportSqliteTests
         services.AddDbContextFactory<BinTrackerDbContext>(
             options => options.UseSqlite(connection));
         services.AddBinTrackerServices();
+
+        services.AddTestAuthenticatedUserContext();
 
         await using var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();

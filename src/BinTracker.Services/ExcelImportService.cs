@@ -318,8 +318,8 @@ public interface IExcelImportService
 }
 
 internal sealed class ExcelImportService(
-    IUserContext session,
-    IAuditService audit) : IExcelImportService
+    IAuditService audit,
+    ICurrentAccountAuthorization authorization) : IExcelImportService
 {
     private static readonly string[] ExpectedOperationalSheets =
     [
@@ -335,7 +335,7 @@ internal sealed class ExcelImportService(
         ImportSourceDocument source,
         CancellationToken cancellationToken = default)
     {
-        RequireAdmin();
+        await authorization.RequireAdministratorAsync(cancellationToken);
 
         if (source is null || source.Content.Length == 0)
             throw new ArgumentException("Choose an Excel workbook first.");
@@ -641,10 +641,4 @@ internal sealed class ExcelImportService(
             : CustomerType.Account;
     }
 
-    private void RequireAdmin()
-    {
-        if (session.Role != UserRole.Administrator)
-            throw new UnauthorizedAccessException(
-                "Administrator access is required to analyse or import Excel data.");
-    }
 }

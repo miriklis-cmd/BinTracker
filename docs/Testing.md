@@ -1,5 +1,17 @@
 # BinTracker Automated Testing
 
+## BT-SH-004-FIX1 non-Administrator startup correction — 15 October 2026
+
+Windows smoke passed Administrator login/reports and logout, then failed because successful Operator/Viewer login entered `MainForm.Shown` and unconditionally requested the Administrator review count. The service correctly threw `UnauthorizedAccessException`. MainForm now routes its combined Administrator review-bar/reminder startup work through the role-aware `AdministratorReviewStartup` seam; service authorization is unchanged.
+
+`AdministratorReviewStartupTests` pass 3/3, proving Administrator work runs once and Operator/Viewer work is never called. The direct Services regression passes 2/2, proving both non-Administrator roles remain denied from review-state and unreviewed-change queries. The compact `SecurityBatchACharacterizationTests` + `AuthenticationSessionLifecycleTests` + exact Administrator review workflow filter passes 25/25 with zero failed/skipped. Release solution build passes with zero warnings/errors. Windows Operator/Viewer startup retest and the full canonical BAT remain pending. TEST REQUIRED: Targeted Windows retest + Full canonical BAT.
+
+## BT-SH-004-P2 Batch A identity/session/read authorization — 15 October 2026
+
+Alpha.14 Batch A adds `SecurityBatchACharacterizationTests` for canonical username creation/login and duplicate denial, confusable/invisible rejection, ambiguous legacy collision denial, pre-database authentication bounds, anonymous audit/report denial, persisted role/deactivation/lock/missing/password-change revalidation, infrastructure failure propagation and Administrator self-reset invalidation including audit failure. The final focused class passes 14/14 with zero failed/skipped.
+
+A compact adjacent rerun of `AuthenticationSessionLifecycleTests`, `AuditContractBoundaryTests`, `DeveloperDatabaseToolsAuthorizationTests`, `UserAdministrationBoundaryTests` and `DailyMovementsReportSqliteTests` passes 25/25 with zero failed/skipped, covering BT-SH-003 logout regression plus normal authenticated audit/admin/report behavior. The earlier broader adjacent set remains valid unchanged-source evidence at 152/152. The Release solution build passes with zero warnings/errors, the mechanical audit passes at alpha.14 with 263 permanent IDs and 27 Markdown files, and `git diff --check` passes with expected line-ending notices only. This is source/focused automated/build/audit evidence; the operator-owned canonical BAT and manual Windows acceptance remain pending. TEST REQUIRED: Full.
+
 ## BT-SH-004-P1 remaining-finding reconciliation — 15 October 2026
 
 This pass changed governance/status documentation only. It added no production code or tests and did not rerun the automated suite merely to duplicate existing evidence. The four newly recognized `FIXED` dispositions rely on current enforcement plus existing evidence: `AuditContractBoundaryTests` for persisted failed-login threshold/lock behavior (BT-SH-004); `UserAdministrationBoundaryTests` for the credential-free user DTO (BT-SH-011); `ImportExecutionSqliteTests` plus `SqliteMigrationTests` for database-arbitrated duplicate source hashes (BT-SH-020); and `ImportExecutionSqliteTests` plus `ExcelImportAnalysisTests` for the one-read content-document/fingerprint boundary (BT-SH-041). The Security register records the exact source path, reachability, evidence and residual gap for every BT-SH-004..050 finding.

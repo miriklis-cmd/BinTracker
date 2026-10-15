@@ -31,7 +31,7 @@ public sealed class AuthenticationSessionLifecycleTests
         Assert.Equal(UserRole.Administrator, harness.Session.Role);
         Assert.Equal(Harness.UtcNow, harness.Session.LoginUtc);
         Assert.Same(harness.Session, harness.UserContext);
-        Assert.NotNull(harness.DeveloperDatabase.GetStatus());
+        Assert.NotNull(await harness.DeveloperDatabase.GetStatusAsync());
     }
 
     [Fact]
@@ -51,8 +51,8 @@ public sealed class AuthenticationSessionLifecycleTests
         await harness.Authentication.LogoutAsync();
 
         AssertAnonymous(harness.Session);
-        Assert.Throws<UnauthorizedAccessException>(() =>
-            harness.DeveloperDatabase.GetStatus());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            harness.DeveloperDatabase.GetStatusAsync());
         var logout = Assert.Single(await harness.GetAuditAsync("LOGOUT"));
         Assert.Equal(administrator.Id, logout.UserId);
         Assert.Equal(administrator.Username, logout.Username);
@@ -78,8 +78,8 @@ public sealed class AuthenticationSessionLifecycleTests
             "wrong-password"));
 
         AssertAnonymous(harness.Session);
-        Assert.Throws<UnauthorizedAccessException>(() =>
-            harness.DeveloperDatabase.GetStatus());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            harness.DeveloperDatabase.GetStatusAsync());
     }
 
     [Fact]
@@ -112,8 +112,8 @@ public sealed class AuthenticationSessionLifecycleTests
         Assert.Equal(@operator.DisplayName, harness.Session.DisplayName);
         Assert.Equal(UserRole.Operator, harness.Session.Role);
         Assert.False(harness.Session.MustChangePassword);
-        Assert.Throws<UnauthorizedAccessException>(() =>
-            harness.DeveloperDatabase.GetStatus());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            harness.DeveloperDatabase.GetStatusAsync());
     }
 
     [Fact]
@@ -153,8 +153,8 @@ public sealed class AuthenticationSessionLifecycleTests
             harness.Authentication.LogoutAsync(new CancellationToken(canceled: true)));
 
         AssertAnonymous(harness.Session);
-        Assert.Throws<UnauthorizedAccessException>(() =>
-            harness.DeveloperDatabase.GetStatus());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            harness.DeveloperDatabase.GetStatusAsync());
     }
 
     [Fact]
@@ -175,8 +175,8 @@ public sealed class AuthenticationSessionLifecycleTests
             "wrong-password"));
 
         AssertAnonymous(harness.Session);
-        Assert.Throws<UnauthorizedAccessException>(() =>
-            harness.DeveloperDatabase.GetStatus());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            harness.DeveloperDatabase.GetStatusAsync());
     }
 
     [Fact]
@@ -199,8 +199,8 @@ public sealed class AuthenticationSessionLifecycleTests
                 new CancellationToken(canceled: true)));
 
         AssertAnonymous(harness.Session);
-        Assert.Throws<UnauthorizedAccessException>(() =>
-            harness.DeveloperDatabase.GetStatus());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            harness.DeveloperDatabase.GetStatusAsync());
     }
 
     private static void AssertAnonymous(UserSession session)

@@ -450,6 +450,7 @@ public sealed class OutstandingReportSqliteTests
         services.AddDbContextFactory<BinTrackerDbContext>(
             options => options.UseSqlite(connection));
         services.AddBinTrackerServices();
+        services.AddTestAuthenticatedUserContext();
 
         var provider = services.BuildServiceProvider();
         var scope = provider.CreateAsyncScope();

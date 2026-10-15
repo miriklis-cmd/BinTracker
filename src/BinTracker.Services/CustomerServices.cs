@@ -59,10 +59,12 @@ internal sealed class CustomerService(
     IUserContext session,
     IAuditService audit,
     IBusinessClock clock,
+    ICurrentAccountAuthorization authorization,
     IOperationalMovementProjectionAuthority? operationalProjection = null) : ICustomerService
 {
     public async Task<IReadOnlyList<CustomerListRow>> SearchAsync(string? query, bool includeInactive, CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         var customers = db.Customers.AsNoTracking();
         if (!includeInactive) customers = customers.Where(x => x.IsActive);
@@ -131,6 +133,7 @@ internal sealed class CustomerService(
 
     public async Task<CustomerEditModel?> GetAsync(int id, CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         return await db.Customers.AsNoTracking().Where(x => x.Id == id).Select(x => new CustomerEditModel
         {
@@ -143,7 +146,7 @@ internal sealed class CustomerService(
 
     public async Task<int> SaveAsync(CustomerEditModel model, CancellationToken cancellationToken = default)
     {
-        RequireEditor();
+        await authorization.RequireOperationalAsync(cancellationToken);
         model.Name = model.Name.Trim();
         model.CustomerCode = (Clean(model.CustomerCode) ?? string.Empty).ToUpperInvariant();
         model.ContactName = Clean(model.ContactName);
@@ -252,7 +255,7 @@ internal sealed class CustomerService(
 
     public async Task SetActiveAsync(int id, bool active, CancellationToken cancellationToken = default)
     {
-        RequireEditor();
+        await authorization.RequireOperationalAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         var customer = await db.Customers.SingleAsync(x => x.Id == id, cancellationToken);
         if (customer.IsActive == active) return;
@@ -278,6 +281,7 @@ internal sealed class CustomerService(
 
     public async Task<IReadOnlyList<CustomerBalanceRow>> GetBalancesAsync(int customerId, CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         var types = await db.ContainerTypes.AsNoTracking().OrderBy(x => x.DisplayOrder).ThenBy(x => x.Name).ToListAsync(cancellationToken);
         Dictionary<int, int> sums;
@@ -302,6 +306,7 @@ internal sealed class CustomerService(
 
     public async Task<IReadOnlyList<CustomerMovementRow>> GetRecentMovementsAsync(int customerId, int limit = 100, CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         if (operationalProjection is null)
         {
@@ -351,6 +356,7 @@ internal sealed class CustomerService(
 
     public async Task<CustomerStatementData> GetStatementAsync(int customerId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         if (toDate < fromDate) throw new ArgumentException("Statement end date must be on or after the start date.");
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
@@ -447,12 +453,6 @@ internal sealed class CustomerService(
         }
 
         return new CustomerStatementData(customer.Id, customer.CustomerCode ?? string.Empty, customer.Name, fromDate, toDate, sections);
-    }
-
-    private void RequireEditor()
-    {
-        if (session.Role == UserRole.Viewer)
-            throw new UnauthorizedAccessException("Viewer accounts cannot change customer records.");
     }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

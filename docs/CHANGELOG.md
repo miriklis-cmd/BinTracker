@@ -1,3 +1,13 @@
+## v0.5.0-alpha.14 (15 October 2026)
+
+- Corrected the unaccepted candidate's Operator/Viewer post-login crash by preventing MainForm from invoking Administrator-only review startup work for non-Administrator roles; Services authorization remains unchanged and Windows retest is pending.
+- Completed Security Hardening Batch A: fixed BT-SH-008/017/018/019/022/028/032 with canonical bounded authentication usernames, shared Services current-account authorization, persisted account revalidation, anonymous report/audit denial and Administrator self-reset invalidation.
+- Bounded login username/password inputs before database or PBKDF2 work, canonicalized every newly created username and made ambiguous legacy canonical matches fail authentication closed without rewriting persisted identities or credentials.
+- Replaced cached/UI-only role checks at affected Services entry points with stable-ID account reload and policy evaluation. Missing, inactive, locked, password-change-required and undefined-role accounts are denied; desktop sessions are invalidated where appropriate, while infrastructure/cancellation failures propagate.
+- Kept BT-SH-040 open only for customer/container operational-identifier normalization and maxima in Batch C with BT-SH-039; no operational identifiers or accepted data were rewritten.
+- Added focused Batch-A characterization/regression coverage. Final focused coverage passes 14/14; a compact adjacent session/audit/admin/report rerun passes 25/25; unchanged-source broader adjacent evidence remains 152/152. Release builds with zero warnings/errors; the canonical operator BAT remains pending.
+- Advanced Version/InformationalVersion from alpha.13 to alpha.14 while retaining AssemblyVersion/FileVersion `0.5.0.0`.
+
 ## v0.5.0-alpha.13 (15 October 2026)
 
 - Fixed BT-SH-003 by making the desktop `UserSession` replace its complete authenticated state atomically and by clearing it before logout auditing or any new login attempt.

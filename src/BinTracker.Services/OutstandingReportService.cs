@@ -77,6 +77,7 @@ internal interface IOutstandingReportSnapshotParticipant
 
 internal sealed class OutstandingReportService(
     IDbContextFactory<BinTrackerDbContext> factory,
+    ICurrentAccountAuthorization authorization,
     IOperationalMovementProjectionAuthority? operationalProjection = null)
     : IOutstandingReportService, IOutstandingReportSnapshotParticipant
 {
@@ -84,6 +85,7 @@ internal sealed class OutstandingReportService(
         OutstandingReportQuery query,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         await using var db =
             await factory.CreateDbContextAsync(cancellationToken);
 

@@ -229,12 +229,14 @@ internal sealed class MovementService(
     IClientContext client,
     IInitialMovementLineageWriter initialLineageWriter,
     ISingleMovementResponseReceiptStore singleResponseReceipts,
+    ICurrentAccountAuthorization authorization,
     ITransactionalOperationalMovementProjectionAuthority? singleEntryProjection = null,
     IOperationalMovementProjectionAuthority? operationalProjection = null) : IMovementService
 {
     public async Task<IReadOnlyList<MovementCustomerOption>> GetActiveCustomersAsync(
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
         return await db.Customers
@@ -253,6 +255,7 @@ internal sealed class MovementService(
     public async Task<IReadOnlyList<MovementContainerOption>> GetActiveContainerTypesAsync(
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
         return await db.ContainerTypes
@@ -268,6 +271,7 @@ internal sealed class MovementService(
         string code,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         code = (code ?? string.Empty).Trim().ToUpperInvariant();
 
         if (code.Length == 0)
@@ -368,11 +372,7 @@ internal sealed class MovementService(
         SaveMovementBatchRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (!session.IsAuthenticated)
-            throw new UnauthorizedAccessException("You must be logged in to record movements.");
-
-        if (session.Role == UserRole.Viewer)
-            throw new UnauthorizedAccessException("Viewer accounts cannot record movements.");
+        await authorization.RequireOperationalAsync(cancellationToken);
 
         if (request.Lines is null || request.Lines.Count == 0)
             throw new ArgumentException("Add at least one movement before saving the batch.");
@@ -561,11 +561,7 @@ internal sealed class MovementService(
         SaveSingleMovementRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (!session.IsAuthenticated)
-            throw new UnauthorizedAccessException("You must be logged in to record movements.");
-
-        if (session.Role == UserRole.Viewer)
-            throw new UnauthorizedAccessException("Viewer accounts cannot record movements.");
+        await authorization.RequireOperationalAsync(cancellationToken);
 
         var businessDate = clock.Today;
         if (request.MovementDate > businessDate)
@@ -786,6 +782,7 @@ internal sealed class MovementService(
         DateOnly date,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
         if (operationalProjection is not null)

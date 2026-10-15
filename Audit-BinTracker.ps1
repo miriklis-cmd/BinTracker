@@ -319,14 +319,20 @@ $correctionServicePath = Join-Path $root "src\BinTracker.Services\MovementCorrec
 $correctionDialogPath = Join-Path $root "src\BinTracker.WinForms\MovementReversalDialog.cs"
 $movementHistoryPath = Join-Path $root "src\BinTracker.WinForms\MovementHistoryReportForm.cs"
 $migrationPath = Join-Path $root "src\BinTracker.Data\SqliteSchemaMigrations.cs"
-if (-not (Test-Path $correctionServicePath) -or -not (Test-Path $correctionDialogPath)) {
+$currentAccountAuthorizationPath = Join-Path $root "src\BinTracker.Services\CurrentAccountAuthorization.cs"
+if (-not (Test-Path $correctionServicePath) -or
+    -not (Test-Path $correctionDialogPath) -or
+    -not (Test-Path $currentAccountAuthorizationPath)) {
     Fail "BT-CORR source gate failed: correction service/dialog missing."
 }
 $correctionText = Get-Content -Raw $correctionServicePath
 $correctionDialogText = Get-Content -Raw $correctionDialogPath
 $correctionUiText = Get-Content -Raw $movementHistoryPath
 $migrationText = Get-Content -Raw $migrationPath
-if ($correctionText -notmatch 'session\.Role is not \(UserRole\.Administrator or UserRole\.Operator\)' -or
+$currentAccountAuthorizationText = Get-Content -Raw $currentAccountAuthorizationPath
+if ($correctionText -notmatch 'ICurrentAccountAuthorization authorization' -or
+    $correctionText -notmatch 'await authorization\.RequireOperationalAsync\(token\)' -or
+    $currentAccountAuthorizationText -notmatch '\[UserRole\.Administrator, UserRole\.Operator\]' -or
     $correctionText -notmatch 'original\.Source == MovementSource\.Adjustment' -or
     $correctionText -notmatch 'original\.Source == MovementSource\.ExcelImport \|\| original\.ImportRunId\.HasValue' -or
     $correctionText -notmatch 'Replace / Correct' -or

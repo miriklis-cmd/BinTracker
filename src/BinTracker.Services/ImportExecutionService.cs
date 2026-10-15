@@ -150,6 +150,7 @@ internal sealed class ImportExecutionService(
     IImportExecutionFailureInjector failureInjector,
     IBusinessClock clock,
     IClientContext client,
+    ICurrentAccountAuthorization authorization,
     IOperationalMovementProjectionAuthority? operationalProjection = null)
     : IImportExecutionService
 {
@@ -158,6 +159,7 @@ internal sealed class ImportExecutionService(
         DateOnly? cutoverDate = null,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAdministratorAsync(cancellationToken);
         var fingerprint = await FingerprintAsync(
             source,
             cancellationToken);
@@ -213,7 +215,7 @@ internal sealed class ImportExecutionService(
         ImportExecutionRequest request,
         CancellationToken cancellationToken = default)
     {
-        RequireAdministrator();
+        await authorization.RequireAdministratorAsync(cancellationToken);
 
         if (request.Mode != ImportExecutionMode.ReplacePreviousCutover ||
             !request.PreviousImportRunId.HasValue)
@@ -388,7 +390,7 @@ internal sealed class ImportExecutionService(
         ImportExecutionRequest request,
         CancellationToken cancellationToken = default)
     {
-        RequireAdministrator();
+        await authorization.RequireAdministratorAsync(cancellationToken);
 
         if (request.ClientOperationId == Guid.Empty)
             throw new ArgumentException("Client operation ID is required.");
@@ -1531,17 +1533,6 @@ internal sealed class ImportExecutionService(
             throw new InvalidOperationException(
                 "No reconciled Source balance rows are available to import.");
         }
-    }
-
-    private void RequireAdministrator()
-    {
-        if (!session.IsAuthenticated)
-            throw new UnauthorizedAccessException(
-                "You must be logged in to import Excel data.");
-
-        if (session.Role != UserRole.Administrator)
-            throw new UnauthorizedAccessException(
-                "Only administrators can import Excel data.");
     }
 
     private static async Task<ImportSourceFingerprint> FingerprintAsync(

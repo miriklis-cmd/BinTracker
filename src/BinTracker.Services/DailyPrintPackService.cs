@@ -20,6 +20,7 @@ internal sealed class DailyPrintPackService(
     IAuditService audit,
     IBusinessInformationService businessInformation,
     IBusinessClock clock,
+    ICurrentAccountAuthorization authorization,
     IDbContextFactory<BinTrackerDbContext>? factory = null,
     IOperationalMovementProjectionAuthority? operationalProjection = null) : IDailyPrintPackService
 {
@@ -27,6 +28,7 @@ internal sealed class DailyPrintPackService(
         DateOnly date,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         var today = clock.Today;
         var reportDate = date > today ? today : date;
 

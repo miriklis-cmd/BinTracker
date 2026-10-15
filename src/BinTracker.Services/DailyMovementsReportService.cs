@@ -83,6 +83,7 @@ internal interface IDailyMovementsReportSnapshotParticipant
 internal sealed class DailyMovementsReportService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IBusinessClock clock,
+    ICurrentAccountAuthorization authorization,
     IOperationalMovementProjectionAuthority? operationalProjection = null)
     : IDailyMovementsReportService, IDailyMovementsReportSnapshotParticipant
 {
@@ -90,6 +91,7 @@ internal sealed class DailyMovementsReportService(
         DailyMovementsReportQuery query,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         var reportDate = ClampReportDate(query.ReportDate);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         return await QueryCoreAsync(query, reportDate, db, false, cancellationToken);

@@ -318,6 +318,7 @@ public sealed class Slice1OperationalOutputCharacterizationTests
             services.AddDbContextFactory<BinTrackerDbContext>(options =>
                 options.UseSqlite(connection));
             services.AddBinTrackerServices();
+            services.AddTestAuthenticatedUserContext();
 
             var provider = services.BuildServiceProvider();
             var factory = provider.GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();

@@ -156,13 +156,15 @@ public interface IMovementHistoryReportService
 internal sealed class MovementHistoryReportService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IBusinessClock clock,
-    IMovementMutationWriter mutationWriter)
+    IMovementMutationWriter mutationWriter,
+    ICurrentAccountAuthorization authorization)
     : IMovementHistoryReportService
 {
     public async Task<MovementHistoryReportResult> QueryAsync(
         MovementHistoryReportQuery query,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         var today = clock.Today;
 
         var requestedStart = query.StartDate > today

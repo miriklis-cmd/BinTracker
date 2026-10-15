@@ -13,13 +13,15 @@ public interface IOutstandingReportPdfService
 
 internal sealed class OutstandingReportPdfService(
     IAuditService audit,
-    IBusinessInformationService businessInformation)
+    IBusinessInformationService businessInformation,
+    ICurrentAccountAuthorization authorization)
     : IOutstandingReportPdfService
 {
     public async Task<byte[]> BuildPdfAsync(
         OutstandingReportResult result,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         var business = await businessInformation.GetAsync(cancellationToken);
         QuestPDF.Settings.License = LicenseType.Community;
         using var output = new MemoryStream();

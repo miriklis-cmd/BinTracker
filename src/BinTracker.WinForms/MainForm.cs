@@ -134,7 +134,13 @@ public sealed class MainForm : BinTrackerForm
         Build();
         audit.AdministratorReviewStateChanged += Audit_AdministratorReviewStateChanged;
         FormClosing += MainForm_FormClosing;
-        Shown += async (_, _) => { await RefreshAdministratorReviewBarAsync(); await NotifyUnreviewedMovementChangesAsync(); };
+        Shown += async (_, _) => await AdministratorReviewStartup.RunAsync(
+            session.Role,
+            async () =>
+            {
+                await RefreshAdministratorReviewBarAsync();
+                await NotifyUnreviewedMovementChangesAsync();
+            });
         ShowDashboard();
         Shown += async (_, _) => await HandleRecoveredBatchAsync();
     }
@@ -1549,4 +1555,17 @@ private async Task<bool> ConfirmCanLeaveActiveCustomerAsync() =>
         }
     }
 
+}
+
+internal static class AdministratorReviewStartup
+{
+    public static async Task RunAsync(
+        UserRole role,
+        Func<Task> administratorWork)
+    {
+        ArgumentNullException.ThrowIfNull(administratorWork);
+
+        if (role == UserRole.Administrator)
+            await administratorWork();
+    }
 }

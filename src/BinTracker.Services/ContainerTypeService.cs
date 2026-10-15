@@ -43,9 +43,9 @@ public interface IContainerTypeService
 
 internal sealed class ContainerTypeService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    IUserContext session,
     IAuditService audit,
     IBusinessClock clock,
+    ICurrentAccountAuthorization authorization,
     IOperationalMovementProjectionAuthority? operationalProjection = null) : IContainerTypeService
 {
     public async Task<IReadOnlyList<ContainerTypeListRow>> SearchAsync(
@@ -53,6 +53,7 @@ internal sealed class ContainerTypeService(
         bool includeInactive,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         var query = db.ContainerTypes.AsNoTracking();
 
@@ -79,6 +80,7 @@ internal sealed class ContainerTypeService(
 
     public async Task<ContainerTypeEditModel?> GetAsync(int id, CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         var item = await db.ContainerTypes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return null;
@@ -117,7 +119,7 @@ internal sealed class ContainerTypeService(
 
     public async Task<int> SaveAsync(ContainerTypeEditModel model, CancellationToken cancellationToken = default)
     {
-        RequireAdmin();
+        await authorization.RequireAdministratorAsync(cancellationToken);
         var name = model.Name.Trim();
         var nameKey = ContainerTypeNameKey.Normalize(name);
         var shortCode = model.ShortCode.Trim().ToUpperInvariant();
@@ -213,7 +215,7 @@ internal sealed class ContainerTypeService(
 
     public async Task SetActiveAsync(int id, bool active, CancellationToken cancellationToken = default)
     {
-        RequireAdmin();
+        await authorization.RequireAdministratorAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         var entity = await db.ContainerTypes.SingleAsync(x => x.Id == id, cancellationToken);
         if (entity.IsActive == active) return;
@@ -251,12 +253,6 @@ internal sealed class ContainerTypeService(
         while (await db.ContainerTypes.AnyAsync(x => x.SystemCode == code, cancellationToken))
             code = $"{baseCode}_{suffix++}";
         return code;
-    }
-
-    private void RequireAdmin()
-    {
-        if (session.Role != UserRole.Administrator)
-            throw new UnauthorizedAccessException("Administrator access is required to manage container types.");
     }
 
     private static object Snapshot(ContainerType x) => new

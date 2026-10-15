@@ -13,11 +13,11 @@ public sealed class DeveloperDatabaseToolsAuthorizationTests
         var data = new RecordingDeveloperDatabaseService();
         var service = new DeveloperDatabaseToolsService(
             data,
-            new TestUserContext(authenticated: true, UserRole.Administrator));
+            new TestAuthorization(authenticated: true, UserRole.Administrator));
 
         Assert.Equal(
             new DeveloperDatabaseToolsStatus("active.db", "backups", PendingRestart: true),
-            service.GetStatus());
+            await service.GetStatusAsync());
         await service.BackupAsync("chosen-backup.db");
         Assert.Equal("automatic-load-backup.db", await service.StageLoadAsync("chosen-source.db"));
         Assert.Equal("automatic-fresh-backup.db", await service.StageFreshAsync());
@@ -39,9 +39,10 @@ public sealed class DeveloperDatabaseToolsAuthorizationTests
         var data = new RecordingDeveloperDatabaseService();
         var service = new DeveloperDatabaseToolsService(
             data,
-            new TestUserContext(authenticated, role));
+            new TestAuthorization(authenticated, role));
 
-        Assert.Throws<UnauthorizedAccessException>(() => service.GetStatus());
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            service.GetStatusAsync());
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             service.BackupAsync("denied-backup.db"));
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
@@ -100,14 +101,30 @@ public sealed class DeveloperDatabaseToolsAuthorizationTests
         }
     }
 
-    private sealed class TestUserContext(bool authenticated, UserRole role) : IUserContext
+    private sealed class TestAuthorization(bool authenticated, UserRole role) : ICurrentAccountAuthorization
     {
-        public string SessionId { get; } = "test-session";
-        public int? UserId { get; } = authenticated ? 17 : null;
-        public string Username { get; } = authenticated ? "test-user" : "anonymous";
-        public string DisplayName { get; } = authenticated ? "Test User" : "Not signed in";
-        public UserRole Role { get; } = role;
-        public bool MustChangePassword => false;
-        public bool IsAuthenticated { get; } = authenticated;
+        public Task<AuthorizedUser> RequireAuthenticatedAsync(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return authenticated
+                ? Task.FromResult(new AuthorizedUser(17, "test-user", "Test User", role))
+                : Task.FromException<AuthorizedUser>(
+                    new UnauthorizedAccessException("Authentication is required."));
+        }
+
+        public Task<AuthorizedUser> RequireCredentialChangeAsync(
+            CancellationToken cancellationToken = default) =>
+            RequireAuthenticatedAsync(cancellationToken);
+
+        public async Task<AuthorizedUser> RequireAnyRoleAsync(
+            IReadOnlyCollection<UserRole> roles,
+            CancellationToken cancellationToken = default)
+        {
+            var user = await RequireAuthenticatedAsync(cancellationToken);
+            if (!roles.Contains(user.Role))
+                throw new UnauthorizedAccessException("Administrator access is required.");
+            return user;
+        }
     }
 }

@@ -37,12 +37,13 @@ public interface IBusinessInformationService
 
 internal sealed class BusinessInformationService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    IUserContext session,
-    IAuditService audit) : IBusinessInformationService
+    IAuditService audit,
+    ICurrentAccountAuthorization authorization) : IBusinessInformationService
 {
     public async Task<BusinessInformation> GetAsync(
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
         var settings = await db.ApplicationSettings
@@ -66,9 +67,7 @@ internal sealed class BusinessInformationService(
         BusinessInformation information,
         CancellationToken cancellationToken = default)
     {
-        if (session.Role != UserRole.Administrator)
-            throw new UnauthorizedAccessException(
-                "Administrator access is required to edit Business Information.");
+        await authorization.RequireAdministratorAsync(cancellationToken);
 
         Validate(information);
 

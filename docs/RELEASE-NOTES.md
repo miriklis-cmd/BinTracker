@@ -1,5 +1,14 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.14
+
+- Corrects the manual-smoke Operator/Viewer post-login crash: MainForm no longer invokes Administrator review startup queries for non-Administrator roles. Administrator review reminders remain functional, and direct non-Administrator service access remains denied. Targeted Windows retest is pending.
+- Completes Security Hardening Batch A at the static/focused-automated evidence level. BT-SH-008/017/018/019/022/028/032 are fixed through canonical bounded authentication identity, one shared Services authorization policy, persisted current-account revalidation, anonymous read/audit denial and Administrator self-reset session invalidation.
+- New usernames use one provider-neutral NFKC/lower-invariant ASCII identity with bounded login/password/display-name inputs. Existing ambiguous canonical username matches fail authentication closed without rewriting stable IDs or credential material.
+- Every protected Services workflow revalidates the stable current account for the desktop host. Missing, inactive, locked, password-change-required or invalid-role state signs out and denies; role/name changes refresh before authorization, and infrastructure/cancellation failures do not continue the protected operation. Future hosts still provide request-scoped `IUserContext` semantics.
+- BT-SH-040's authentication-username scope is closed. Customer/container operational identifiers remain a distinct Batch C decision with BT-SH-039 and are not silently normalized or migrated by this release.
+- Focused Batch-A coverage passes 14/14, and a compact adjacent session/audit/admin/report rerun passes 25/25 with zero failed/skipped. The unchanged-source adjacent regression evidence remains 152/152. The Release build passes with zero warnings/errors; the operator-owned canonical `Build-BinTracker.bat` remains required.
+
 ## v0.5.0-alpha.13
 
 - Fixes BT-SH-003 at the desktop authentication lifecycle boundary. `UserSession` now holds one atomically replaced authentication snapshot, and logout clears it before awaiting the logout audit so audit failure/cancellation cannot preserve the prior identity or role.

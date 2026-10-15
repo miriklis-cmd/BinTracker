@@ -13,10 +13,12 @@ internal sealed class CustomerStatementReportService(
     ICustomerService customers,
     IAuditService audit,
     IBusinessInformationService businessInformation,
-    IBusinessClock clock) : ICustomerStatementReportService
+    IBusinessClock clock,
+    ICurrentAccountAuthorization authorization) : ICustomerStatementReportService
 {
     public async Task<byte[]> BuildPdfAsync(int customerId, DateOnly fromDate, DateOnly toDate, CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         var data = await customers.GetStatementAsync(customerId, fromDate, toDate, cancellationToken);
         var business = await businessInformation.GetAsync(cancellationToken);
         QuestPDF.Settings.License = LicenseType.Community;

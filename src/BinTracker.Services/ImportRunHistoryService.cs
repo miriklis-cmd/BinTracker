@@ -89,14 +89,14 @@ public interface IImportRunHistoryService
 
 internal sealed class ImportRunHistoryService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    IUserContext session)
+    ICurrentAccountAuthorization authorization)
     : IImportRunHistoryService
 {
     public async Task<IReadOnlyList<ImportRunHistoryRow>> GetRunsAsync(
         int limit = 500,
         CancellationToken cancellationToken = default)
     {
-        RequireAdministrator();
+        await authorization.RequireAdministratorAsync(cancellationToken);
 
         await using var db =
             await factory.CreateDbContextAsync(cancellationToken);
@@ -123,7 +123,7 @@ internal sealed class ImportRunHistoryService(
         long importRunId,
         CancellationToken cancellationToken = default)
     {
-        RequireAdministrator();
+        await authorization.RequireAdministratorAsync(cancellationToken);
 
         await using var db =
             await factory.CreateDbContextAsync(cancellationToken);
@@ -239,13 +239,4 @@ internal sealed class ImportRunHistoryService(
             movements);
     }
 
-    private void RequireAdministrator()
-    {
-        if (!session.IsAuthenticated ||
-            session.Role != UserRole.Administrator)
-        {
-            throw new UnauthorizedAccessException(
-                "Administrator access is required to view Import Run history.");
-        }
-    }
 }

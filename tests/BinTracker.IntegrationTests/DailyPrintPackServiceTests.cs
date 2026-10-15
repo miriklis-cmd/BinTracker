@@ -117,7 +117,7 @@ public sealed class DailyPrintPackServiceTests
     }
 
     [Fact]
-    public async Task Delegated_cancellation_propagates_without_business_lookup_or_audit()
+    public async Task Cancellation_at_authorization_boundary_prevents_downstream_work()
     {
         var today = new DateOnly(2026, 9, 8);
         var calls = new List<string>();
@@ -136,8 +136,8 @@ public sealed class DailyPrintPackServiceTests
             provider.GetRequiredService<IDailyPrintPackService>()
                 .BuildPdfAsync(today, cancellation.Token));
 
-        Assert.Equal(cancellation.Token, Assert.Single(outstanding.Queries).Token);
-        Assert.Equal(cancellation.Token, Assert.Single(daily.Queries).Token);
+        Assert.Empty(outstanding.Queries);
+        Assert.Empty(daily.Queries);
         Assert.Empty(business.Tokens);
         Assert.Empty(audit.Writes);
     }
@@ -187,6 +187,7 @@ public sealed class DailyPrintPackServiceTests
         services.AddDbContextFactory<BinTrackerDbContext>(
             options => options.UseSqlite(connection));
         services.AddBinTrackerServices();
+        services.AddTestAuthenticatedUserContext();
         await using var provider = services.BuildServiceProvider();
         var factory = provider.GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
 
@@ -242,6 +243,7 @@ public sealed class DailyPrintPackServiceTests
         var services = new ServiceCollection();
         services.AddSingleton(clock);
         services.AddBinTrackerBusinessServices();
+        services.AddTestAuthenticatedUserContext();
         services.AddSingleton(outstanding);
         services.AddSingleton(daily);
         services.AddSingleton(audit);

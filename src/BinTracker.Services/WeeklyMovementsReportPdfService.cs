@@ -15,7 +15,8 @@ public interface IWeeklyMovementsReportPdfService
 
 internal sealed class WeeklyMovementsReportPdfService(
     IAuditService audit,
-    IBusinessInformationService businessInformation)
+    IBusinessInformationService businessInformation,
+    ICurrentAccountAuthorization authorization)
     : IWeeklyMovementsReportPdfService
 {
     public async Task<byte[]> BuildPdfAsync(
@@ -24,6 +25,7 @@ internal sealed class WeeklyMovementsReportPdfService(
         bool includeNotes = false,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         var business = await businessInformation.GetAsync(cancellationToken);
         QuestPDF.Settings.License = LicenseType.Community;
         using var output = new MemoryStream();

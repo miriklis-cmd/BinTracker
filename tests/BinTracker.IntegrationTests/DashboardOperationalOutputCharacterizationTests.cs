@@ -129,6 +129,7 @@ public sealed class DashboardOperationalOutputCharacterizationTests
             services.AddDbContextFactory<BinTrackerDbContext>(options =>
                 options.UseSqlite(connection));
             services.AddBinTrackerServices();
+            services.AddTestAuthenticatedUserContext();
             var provider = services.BuildServiceProvider();
             var factory = provider.GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
             await using var db = await factory.CreateDbContextAsync();

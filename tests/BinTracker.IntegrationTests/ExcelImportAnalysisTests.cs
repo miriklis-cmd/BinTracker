@@ -160,13 +160,43 @@ public sealed class ExcelImportAnalysisTests
             (IExcelImportService)Activator.CreateInstance(
                 typeof(IExcelImportService).Assembly
                     .GetType("BinTracker.Services.ExcelImportService")!,
-                session,
-                audit)!;
+                audit,
+                new TestAuthorization(session))!;
 
         public Task<ExcelImportAnalysis> AnalyzeAsync(
             ImportSourceDocument source,
             CancellationToken cancellationToken = default) =>
             inner.AnalyzeAsync(source, cancellationToken);
+
+        private sealed class TestAuthorization(UserSession session) :
+            ICurrentAccountAuthorization
+        {
+            public Task<AuthorizedUser> RequireAuthenticatedAsync(
+                CancellationToken cancellationToken = default) =>
+                RequireAnyRoleAsync(Enum.GetValues<UserRole>(), cancellationToken);
+
+            public Task<AuthorizedUser> RequireCredentialChangeAsync(
+                CancellationToken cancellationToken = default) =>
+                RequireAuthenticatedAsync(cancellationToken);
+
+            public Task<AuthorizedUser> RequireAnyRoleAsync(
+                IReadOnlyCollection<UserRole> roles,
+                CancellationToken cancellationToken = default)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!session.IsAuthenticated || !session.UserId.HasValue ||
+                    !roles.Contains(session.Role))
+                {
+                    throw new UnauthorizedAccessException();
+                }
+
+                return Task.FromResult(new AuthorizedUser(
+                    session.UserId.Value,
+                    session.Username,
+                    session.DisplayName,
+                    session.Role));
+            }
+        }
     }
 
     private sealed class TestBusinessClock : IBusinessClock

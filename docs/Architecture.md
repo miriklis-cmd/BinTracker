@@ -1,6 +1,6 @@
 # BinTracker Architecture
 
-Current baseline: **v0.5.0-alpha.13**
+Current baseline: **v0.5.0-alpha.14**
 
 ## Display and DPI boundary
 
@@ -45,6 +45,10 @@ R6: companion leases coordinate participating BinTracker processes only, not old
 `AddBinTrackerServices()` is the current desktop composition and adds the local session, client identity, authentication adapter and crash-draft storage before registering business services.
 
 The desktop `UserSession` owns one atomically replaced authentication snapshot. `AuthenticationService` clears that snapshot before a logout audit and before every new login attempt, so audit failure/cancellation, failed login and cancelled login cannot retain a prior user ID, name, role, password-change flag or login time. Logout audit attribution uses the captured prior actor through the existing internal authentication-audit seam. A later successful login replaces the anonymous snapshot with only the new identity. This mutable process-lifetime adapter is desktop-only; a future API continues to supply request-scoped `IUserContext` and does not inherit it.
+
+`ICurrentAccountAuthorization` is the application-boundary authority for authenticated, operational and Administrator workflows. In desktop composition it reloads the stable user ID from provider-neutral persistence at each Services workflow boundary, refreshes current username/display/role, and denies/signs out a missing, inactive, locked, invalid-role or password-change-required account. The credential-change workflow uses a narrow variant that permits only the required password change while still revalidating existence/active/lock state. Infrastructure/cancellation failure propagates and the requested workflow does not continue. A future API supplies equivalent current request-scoped account semantics; no client receives EF state or database credentials.
+
+Authentication usernames have a distinct provider-neutral security-identifier policy: new values normalize with NFKC, lowercase invariantly, contain 3-64 ASCII letters/digits/`.`/`_`/`-`, and begin/end alphanumerically. Login accepts a bounded legacy comparison identity up to 100 characters, rejects invisible/control/format/private/surrogate/unassigned text, and fails closed if retained rows produce more than one canonical match. New canonical values continue to use the exact database unique index for concurrent-create arbitration. Customer/container codes are operational identifiers and remain a separate Batch C normalization decision.
 
 - `IUserContext` carries authenticated user identity and role.
 - `IBusinessClock` supplies UTC and configured business-local time/date.

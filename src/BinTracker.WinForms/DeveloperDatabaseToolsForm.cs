@@ -37,7 +37,7 @@ public sealed class DeveloperDatabaseToolsForm : BinTrackerForm
         Font = new Font("Segoe UI", 10F);
 
         Build();
-        RefreshStatus();
+        Shown += async (_, _) => await RefreshStatusAsync();
     }
 
     private void Build()
@@ -325,9 +325,9 @@ public sealed class DeveloperDatabaseToolsForm : BinTrackerForm
         Close();
     }
 
-    private void RefreshStatus()
+    private async Task RefreshStatusAsync()
     {
-        var value = service.GetStatus();
+        var value = await service.GetStatusAsync();
         activeDatabase.Text = value.ActiveDatabasePath;
         status.Text = value.PendingRestart
             ? "A database switch is staged and will apply on restart."

@@ -23,6 +23,7 @@ public sealed class BalanceServiceSqliteTests
             options.UseSqlite(connection));
 
         services.AddBinTrackerServices();
+        services.AddTestAuthenticatedUserContext();
 
         await using var provider = services.BuildServiceProvider();
 
@@ -132,6 +133,7 @@ public sealed class BalanceServiceSqliteTests
             options.UseSqlite(connection));
 
         services.AddBinTrackerServices();
+        services.AddTestAuthenticatedUserContext();
 
         await using var provider = services.BuildServiceProvider();
 

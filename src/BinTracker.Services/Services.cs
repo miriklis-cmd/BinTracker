@@ -48,6 +48,32 @@ public sealed class UserSession(IBusinessClock clock) : IUserContext
             clock.UtcNow));
     }
 
+    internal void RefreshAuthorization(UserAccount user)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        while (true)
+        {
+            var current = Volatile.Read(ref state);
+            if (current.UserId != user.Id)
+                return;
+
+            var updated = current with
+            {
+                Username = user.Username,
+                DisplayName = user.DisplayName,
+                Role = user.Role,
+                MustChangePassword = user.MustChangePassword
+            };
+            if (ReferenceEquals(
+                    Interlocked.CompareExchange(ref state, updated, current),
+                    current))
+            {
+                return;
+            }
+        }
+    }
+
     internal AuthenticatedUserSession? SignOut()
     {
         var prior = Interlocked.Exchange(ref state, AnonymousState);
@@ -367,6 +393,7 @@ public static class NativeMovementChangeComparison
 internal sealed class AuditService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IUserContext session,
+    ICurrentAccountAuthorization authorization,
     IBusinessClock clock,
     IClientContext client,
     IMovementMutationWriter mutationWriter) : IAuditService, IAuditAppender, IAuthenticationAuditAppender
@@ -435,6 +462,7 @@ internal sealed class AuditService(
 
     public async Task<IReadOnlyList<AuditEventSummary>> GetRecentAsync(int limit = 500, CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAdministratorAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         return await db.AuditEvents.AsNoTracking()
             .OrderByDescending(x => x.TimestampUtc)
@@ -454,7 +482,7 @@ internal sealed class AuditService(
     public async Task<IReadOnlyList<AuditTrailRow>> GetAuditTrailAsync(AuditReviewFilter filter = AuditReviewFilter.All,
         int limit = 500, CancellationToken cancellationToken = default)
     {
-        if (session.Role != UserRole.Administrator) throw new UnauthorizedAccessException("Administrator access is required.");
+        await authorization.RequireAdministratorAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         var query = db.AuditEvents.AsNoTracking();
         query = filter switch
@@ -473,7 +501,7 @@ internal sealed class AuditService(
 
     public async Task<AdministratorReviewState> GetAdministratorReviewStateAsync(CancellationToken cancellationToken = default)
     {
-        if (session.Role != UserRole.Administrator) return new(0);
+        await authorization.RequireAdministratorAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         return new(await db.AuditEvents.CountAsync(
             x => x.RequiresAdministratorReview && x.ReviewedUtc == null, cancellationToken));
@@ -481,7 +509,7 @@ internal sealed class AuditService(
 
     public async Task<IReadOnlyList<PendingMovementChangeAuditEvent>> GetUnreviewedMovementChangesAsync(CancellationToken cancellationToken = default)
     {
-        if (session.Role != UserRole.Administrator) throw new UnauthorizedAccessException("Administrator access is required.");
+        await authorization.RequireAdministratorAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         return await db.AuditEvents.AsNoTracking()
             .Where(x => x.RequiresAdministratorReview && x.ReviewedUtc == null)
@@ -499,8 +527,7 @@ internal sealed class AuditService(
 
     public async Task MarkMovementChangesReviewedAsync(IReadOnlyCollection<long> auditEventIds, CancellationToken cancellationToken = default)
     {
-        if (session.Role != UserRole.Administrator || !session.UserId.HasValue)
-            throw new UnauthorizedAccessException("Administrator access is required.");
+        var actor = await authorization.RequireAdministratorAsync(cancellationToken);
         if (auditEventIds.Count == 0) return;
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         await using var tx = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -526,17 +553,17 @@ internal sealed class AuditService(
         var reviewedAt = clock.UtcNow;
         foreach (var item in events)
         {
-            item.ReviewedUtc = reviewedAt; item.ReviewedByUserId = session.UserId;
-            item.ReviewedByUsername = session.Username;
+            item.ReviewedUtc = reviewedAt; item.ReviewedByUserId = actor.UserId;
+            item.ReviewedByUsername = actor.Username;
         }
-        db.AuditEvents.Add(new AuditEvent { TimestampUtc = reviewedAt, UserId = session.UserId,
-            Username = session.Username, Action = "MOVEMENT_CHANGE_REVIEWED", EntityType = "AuditEvent",
+        db.AuditEvents.Add(new AuditEvent { TimestampUtc = reviewedAt, UserId = actor.UserId,
+            Username = actor.Username, Action = "MOVEMENT_CHANGE_REVIEWED", EntityType = "AuditEvent",
             EntityId = string.Join(",", events.Select(x => x.Id)),
             Description = string.Join(" ", events.OrderBy(x => x.Id).Select(x =>
-                $"Administrator {session.Username} reviewed {AuditActionDisplay.Label(x.Action).ToLowerInvariant()} " +
+                $"Administrator {actor.Username} reviewed {AuditActionDisplay.Label(x.Action).ToLowerInvariant()} " +
                 $"#{x.EntityId} performed by {x.Username} (audit event #{x.Id}).")),
             BeforeValues = JsonSerializer.Serialize(events.Select(x => new { x.Id, x.Action, x.Username })),
-            AfterValues = JsonSerializer.Serialize(new { ReviewedAt = reviewedAt, ReviewedBy = session.Username }),
+            AfterValues = JsonSerializer.Serialize(new { ReviewedAt = reviewedAt, ReviewedBy = actor.Username }),
             ComputerName = client.DeviceName, SessionId = session.SessionId, Succeeded = true });
         await db.SaveChangesAsync(cancellationToken); await tx.CommitAsync(cancellationToken);
         AdministratorReviewStateChanged?.Invoke(this, await GetAdministratorReviewStateAsync(cancellationToken));
@@ -544,7 +571,7 @@ internal sealed class AuditService(
 
     public async Task<IReadOnlyList<MovementBatchAuditLine>> GetMovementBatchDetailAsync(int batchId, CancellationToken cancellationToken = default)
     {
-        if (session.Role != UserRole.Administrator) throw new UnauthorizedAccessException("Administrator access is required.");
+        await authorization.RequireAdministratorAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         return await db.BinMovements.AsNoTracking().Where(x => x.MovementBatchId == batchId)
             .OrderBy(x => x.Id).Select(x => new MovementBatchAuditLine(x.Id, batchId, x.MovementDate,
@@ -554,7 +581,7 @@ internal sealed class AuditService(
 
     public async Task<MovementChangeAuditDetail?> GetMovementChangeDetailAsync(long auditEventId, CancellationToken cancellationToken = default)
     {
-        if (session.Role != UserRole.Administrator) throw new UnauthorizedAccessException("Administrator access is required.");
+        await authorization.RequireAdministratorAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var requestedEvent = await db.AuditEvents.AsNoTracking().SingleOrDefaultAsync(x => x.Id == auditEventId, cancellationToken);
@@ -704,7 +731,8 @@ internal sealed class AuthenticationService(
     UserSession session,
     IAuditAppender audit,
     IAuthenticationAuditAppender authenticationAudit,
-    IBusinessClock clock) : IAuthenticationService
+    IBusinessClock clock,
+    ICurrentAccountAuthorization authorization) : IAuthenticationService
 {
     public async Task<bool> HasUsersAsync(CancellationToken cancellationToken = default)
     {
@@ -714,7 +742,7 @@ internal sealed class AuthenticationService(
 
     public async Task CreateInitialAdministratorAsync(string username, string displayName, string password, CancellationToken cancellationToken = default)
     {
-        username = username.Trim();
+        username = SecurityIdentifierPolicy.CanonicalizeNewUsername(username);
         displayName = displayName.Trim();
         ValidateCredentials(username, displayName, password);
 
@@ -750,9 +778,30 @@ internal sealed class AuthenticationService(
         // user can never survive a return to the login screen.
         session.SignOut();
 
-        username = username.Trim();
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!SecurityIdentifierPolicy.IsPasswordWithinRequestBounds(password) ||
+            !SecurityIdentifierPolicy.TryGetUsernameComparisonKey(username, out var usernameKey))
+        {
+            return false;
+        }
+
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var user = await db.UserAccounts.SingleOrDefaultAsync(x => x.Username == username, cancellationToken);
+        var identities = await db.UserAccounts.AsNoTracking()
+            .Select(user => new { user.Id, user.Username })
+            .ToListAsync(cancellationToken);
+        var matches = identities
+            .Where(identity =>
+                SecurityIdentifierPolicy.TryGetUsernameComparisonKey(identity.Username, out var key) &&
+                string.Equals(key, usernameKey, StringComparison.Ordinal))
+            .Select(identity => identity.Id)
+            .ToArray();
+        if (matches.Length > 1)
+            throw new InvalidOperationException(
+                "Multiple accounts have the same canonical username. Authentication is blocked until the data conflict is resolved.");
+
+        var user = matches.Length == 0
+            ? null
+            : await db.UserAccounts.SingleAsync(item => item.Id == matches[0], cancellationToken);
 
         if (user is not null && user.IsLocked)
         {
@@ -760,7 +809,7 @@ internal sealed class AuthenticationService(
                 "LOGIN_BLOCKED_LOCKED",
                 "Session",
                 null,
-                $"Login blocked because account '{username}' is locked.",
+                $"Login blocked because account '{user.Username}' is locked.",
                 user.Id,
                 user.Username,
                 succeeded: false,
@@ -812,9 +861,9 @@ internal sealed class AuthenticationService(
                 "LOGIN_FAILED",
                 "Session",
                 null,
-                $"Failed login attempt for username '{username}'.",
+                $"Failed login attempt for username '{usernameKey}'.",
                 user?.Id,
-                string.IsNullOrWhiteSpace(username) ? "unknown" : username,
+                usernameKey,
                 succeeded: false,
                 cancellationToken: cancellationToken);
 
@@ -869,13 +918,16 @@ internal sealed class AuthenticationService(
         string newPassword,
         CancellationToken cancellationToken = default)
     {
-        if (!session.UserId.HasValue)
-            throw new UnauthorizedAccessException("You must be logged in to change your password.");
+        var actor = await authorization.RequireCredentialChangeAsync(cancellationToken);
 
+        if (!SecurityIdentifierPolicy.IsPasswordWithinRequestBounds(currentPassword))
+            throw new ArgumentException(
+                $"Current password must be no more than {SecurityIdentifierPolicy.MaximumPasswordLength} characters.",
+                nameof(currentPassword));
         PasswordPolicy.Validate(newPassword);
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var user = await db.UserAccounts.SingleAsync(x => x.Id == session.UserId.Value, cancellationToken);
+        var user = await db.UserAccounts.SingleAsync(x => x.Id == actor.UserId, cancellationToken);
 
         if (!PasswordSecurity.Verify(currentPassword, user.PasswordHash, user.PasswordSalt))
             throw new InvalidOperationException("The current password is incorrect.");
@@ -934,8 +986,12 @@ internal sealed class AuthenticationService(
 
     private static void ValidateCredentials(string username, string displayName, string password)
     {
-        if (username.Length < 3) throw new ArgumentException("Username must be at least 3 characters.");
+        if (username.Length is < SecurityIdentifierPolicy.MinimumUsernameLength or > SecurityIdentifierPolicy.MaximumUsernameLength)
+            throw new ArgumentException("Username length is invalid.");
         if (displayName.Length < 2) throw new ArgumentException("Display name is required.");
+        if (displayName.Length > SecurityIdentifierPolicy.MaximumDisplayNameLength)
+            throw new ArgumentException(
+                $"Display name must be no more than {SecurityIdentifierPolicy.MaximumDisplayNameLength} characters.");
         PasswordPolicy.Validate(password);
     }
 }
@@ -964,11 +1020,12 @@ internal sealed class UserService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IUserContext session,
     IAuditService audit,
-    IBusinessClock clock) : IUserService
+    IBusinessClock clock,
+    ICurrentAccountAuthorization authorization) : IUserService
 {
     public async Task<IReadOnlyList<UserAdministrationUser>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
-        RequireAdmin();
+        await authorization.RequireAdministratorAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         return await db.UserAccounts.AsNoTracking()
             .OrderBy(x => x.Username)
@@ -986,20 +1043,24 @@ internal sealed class UserService(
 
     public async Task CreateUserAsync(string username, string displayName, string password, UserRole role, CancellationToken cancellationToken = default)
     {
-        RequireAdmin();
-        username = username.Trim(); displayName = displayName.Trim();
-        if (username.Length < 3) throw new ArgumentException("Username must be at least 3 characters.");
+        var actor = await authorization.RequireAdministratorAsync(cancellationToken);
+        username = SecurityIdentifierPolicy.CanonicalizeNewUsername(username);
+        displayName = displayName.Trim();
         if (displayName.Length < 2) throw new ArgumentException("Display name is required.");
+        if (displayName.Length > SecurityIdentifierPolicy.MaximumDisplayNameLength)
+            throw new ArgumentException(
+                $"Display name must be no more than {SecurityIdentifierPolicy.MaximumDisplayNameLength} characters.");
         PasswordPolicy.Validate(password);
+        if (!Enum.IsDefined(role)) throw new ArgumentException("User role is invalid.", nameof(role));
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        if (await db.UserAccounts.AnyAsync(x => x.Username == username, cancellationToken))
+        if (await HasCanonicalUsernameAsync(db, username, cancellationToken))
             throw new InvalidOperationException("That username already exists.");
         var (hash, salt) = PasswordSecurity.Hash(password);
         var user = new UserAccount
         {
             Username=username, DisplayName=displayName, PasswordHash=hash, PasswordSalt=salt,
-            Role=role, IsActive=true, MustChangePassword=true, CreatedUtc=clock.UtcNow, CreatedByUserId=session.UserId
+            Role=role, IsActive=true, MustChangePassword=true, CreatedUtc=clock.UtcNow, CreatedByUserId=actor.UserId
         };
         db.UserAccounts.Add(user);
         try
@@ -1009,8 +1070,7 @@ internal sealed class UserService(
         catch (DbUpdateException)
         {
             await using var verify = await factory.CreateDbContextAsync(cancellationToken);
-            if (await verify.UserAccounts.AsNoTracking()
-                    .AnyAsync(x => x.Username == username, cancellationToken))
+            if (await HasCanonicalUsernameAsync(verify, username, cancellationToken))
             {
                 throw new InvalidOperationException("That username already exists.");
             }
@@ -1024,8 +1084,8 @@ internal sealed class UserService(
 
     public async Task SetActiveAsync(int userId, bool active, CancellationToken cancellationToken = default)
     {
-        RequireAdmin();
-        if (session.UserId == userId && !active) throw new InvalidOperationException("You cannot deactivate your own account.");
+        var actor = await authorization.RequireAdministratorAsync(cancellationToken);
+        if (actor.UserId == userId && !active) throw new InvalidOperationException("You cannot deactivate your own account.");
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         var user = await db.UserAccounts.AsNoTracking()
             .SingleAsync(x => x.Id == userId, cancellationToken);
@@ -1046,7 +1106,7 @@ internal sealed class UserService(
         string temporaryPassword,
         CancellationToken cancellationToken = default)
     {
-        RequireAdmin();
+        var actor = await authorization.RequireAdministratorAsync(cancellationToken);
         PasswordPolicy.Validate(temporaryPassword);
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
@@ -1066,12 +1126,21 @@ internal sealed class UserService(
                     .SetProperty(x => x.LockedUtc, (DateTime?)null),
                 cancellationToken);
 
-        await audit.WriteAsync(
-            "PASSWORD_RESET_BY_ADMIN",
-            "UserAccount",
-            user.Id.ToString(),
-            $"Administrator reset the password for '{user.Username}'. User must change it at next login.",
-            cancellationToken: cancellationToken);
+        var selfReset = actor.UserId == userId;
+        try
+        {
+            await audit.WriteAsync(
+                "PASSWORD_RESET_BY_ADMIN",
+                "UserAccount",
+                user.Id.ToString(),
+                $"Administrator reset the password for '{user.Username}'. User must change it at next login.",
+                cancellationToken: cancellationToken);
+        }
+        finally
+        {
+            if (selfReset && session is UserSession desktopSession)
+                desktopSession.SignOut();
+        }
     }
 
     public async Task SetLockedAsync(
@@ -1079,9 +1148,9 @@ internal sealed class UserService(
         bool locked,
         CancellationToken cancellationToken = default)
     {
-        RequireAdmin();
+        var actor = await authorization.RequireAdministratorAsync(cancellationToken);
 
-        if (session.UserId == userId && locked)
+        if (actor.UserId == userId && locked)
             throw new InvalidOperationException("You cannot lock your own account.");
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
@@ -1123,9 +1192,10 @@ internal sealed class UserService(
         UserRole role,
         CancellationToken cancellationToken = default)
     {
-        RequireAdmin();
+        var actor = await authorization.RequireAdministratorAsync(cancellationToken);
+        if (!Enum.IsDefined(role)) throw new ArgumentException("User role is invalid.", nameof(role));
 
-        if (session.UserId == userId && role != UserRole.Administrator)
+        if (actor.UserId == userId && role != UserRole.Administrator)
             throw new InvalidOperationException(
                 "You cannot remove your own Administrator role while you are signed in.");
 
@@ -1153,14 +1223,17 @@ internal sealed class UserService(
             cancellationToken: cancellationToken);
     }
 
-    private void RequireAdmin()
+    private static async Task<bool> HasCanonicalUsernameAsync(
+        BinTrackerDbContext db,
+        string username,
+        CancellationToken cancellationToken)
     {
-        if (!session.IsAuthenticated ||
-            !session.UserId.HasValue ||
-            session.Role != UserRole.Administrator)
-        {
-            throw new UnauthorizedAccessException("Administrator access is required.");
-        }
+        var identities = await db.UserAccounts.AsNoTracking()
+            .Select(user => user.Username)
+            .ToListAsync(cancellationToken);
+        return identities.Any(existing =>
+            SecurityIdentifierPolicy.TryGetUsernameComparisonKey(existing, out var key) &&
+            string.Equals(key, username, StringComparison.Ordinal));
     }
 }
 
@@ -1169,6 +1242,10 @@ public static class PasswordPolicy
 {
     public static void Validate(string password)
     {
+        ArgumentNullException.ThrowIfNull(password);
+        if (password.Length > SecurityIdentifierPolicy.MaximumPasswordLength)
+            throw new ArgumentException(
+                $"Password must be no more than {SecurityIdentifierPolicy.MaximumPasswordLength} characters.");
         if (password.Length < 10)
             throw new ArgumentException("Password must be at least 10 characters.");
 
@@ -1207,12 +1284,18 @@ internal static class PasswordSecurity
     private const int Iterations = 210_000;
     public static (string Hash, string Salt) Hash(string password)
     {
+        if (!SecurityIdentifierPolicy.IsPasswordWithinRequestBounds(password))
+            throw new ArgumentException(
+                $"Password must be no more than {SecurityIdentifierPolicy.MaximumPasswordLength} characters.",
+                nameof(password));
         var salt = RandomNumberGenerator.GetBytes(32);
         var hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, Iterations, HashAlgorithmName.SHA256, 32);
         return (Convert.ToBase64String(hash), Convert.ToBase64String(salt));
     }
     public static bool Verify(string password, string expectedHash, string salt)
     {
+        if (!SecurityIdentifierPolicy.IsPasswordWithinRequestBounds(password))
+            return false;
         try
         {
             var actual = Rfc2898DeriveBytes.Pbkdf2(password, Convert.FromBase64String(salt), Iterations, HashAlgorithmName.SHA256, 32);
@@ -1230,10 +1313,12 @@ public interface IBalanceService
 internal sealed class BalanceService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IBusinessClock clock,
+    ICurrentAccountAuthorization authorization,
     IOperationalMovementProjectionAuthority? operationalProjection = null) : IBalanceService
 {
     public async Task<IReadOnlyList<BalanceRow>> GetBalancesAsync(CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
         List<(int CustomerId, int ContainerTypeId, int Balance)> totals;
@@ -1320,6 +1405,7 @@ public static class ServiceSetup
         this IServiceCollection services)
     {
         services.TryAddSingleton<IBusinessClock, ConfiguredBusinessClock>();
+        services.AddScoped<ICurrentAccountAuthorization, CurrentAccountAuthorization>();
         services.AddScoped<AuditService>();
         services.AddScoped<IAuditService>(provider =>
             provider.GetRequiredService<AuditService>());

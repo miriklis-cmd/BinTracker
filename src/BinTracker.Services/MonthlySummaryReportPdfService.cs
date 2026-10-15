@@ -13,13 +13,15 @@ public interface IMonthlySummaryReportPdfService
 
 internal sealed class MonthlySummaryReportPdfService(
     IAuditService audit,
-    IBusinessInformationService businessInformation)
+    IBusinessInformationService businessInformation,
+    ICurrentAccountAuthorization authorization)
     : IMonthlySummaryReportPdfService
 {
     public async Task<byte[]> BuildPdfAsync(
         MonthlySummaryReportResult result,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         var business =
             await businessInformation.GetAsync(cancellationToken);
 

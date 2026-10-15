@@ -78,12 +78,14 @@ public interface IReportExportAuditService
 }
 
 internal sealed class ReportExportAuditService(
-    IAuditAppender audit) : IReportExportAuditService
+    IAuditAppender audit,
+    ICurrentAccountAuthorization authorization) : IReportExportAuditService
 {
-    public Task RecordCsvExportAsync(
+    public async Task RecordCsvExportAsync(
         CsvReportExportAuditIntent intent,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         ArgumentNullException.ThrowIfNull(intent);
         if (intent.RowCount < 0)
             throw new ArgumentOutOfRangeException(nameof(intent), "CSV row count cannot be negative.");
@@ -95,7 +97,7 @@ internal sealed class ReportExportAuditService(
                 nameof(intent));
         }
 
-        return intent switch
+        await (intent switch
         {
             DailyMovementsCsvExportAuditIntent daily => audit.AppendAsync(
                 "DAILY_MOVEMENTS_CSV_EXPORTED",
@@ -170,7 +172,7 @@ internal sealed class ReportExportAuditService(
             _ => throw new ArgumentException(
                 "Unsupported CSV report export audit intent.",
                 nameof(intent))
-        };
+        });
     }
 
     private Task RecordWeeklyAsync(

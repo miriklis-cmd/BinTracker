@@ -1,6 +1,6 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.5.0-alpha.13**
+Current baseline: **v0.5.0-alpha.14**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
@@ -169,9 +169,13 @@ Provenance tags:
 | BT-SEC-002 | v1 | IMPLEMENTED-STATIC | Login/logout, failed-login lockout/unlock and password change/reset flows. Desktop logout atomically clears the authenticated `UserSession` before audit work, and every new login attempt starts unauthenticated so failure/cancellation cannot retain an earlier identity or role. | CURRENT-DOC,HIST-BUILD,CODE |
 | BT-SEC-003 | v1 | IMPLEMENTED-STATIC | Password fields start masked and eye controls reveal/re-hide passwords consistently. | HIST-BUILD,CODE |
 | BT-SEC-004 | v1 | IMPLEMENTED-STATIC | Viewer/read-only roles cannot perform prohibited movement/admin writes. | CURRENT-DOC,HIST-BUILD,CODE |
-| BT-SEC-005 | v1 | PLANNED-V1 | Full authorization review across every write/admin action before v1. | CURRENT-DOC |
+| BT-SEC-005 | v1 | IMPLEMENTED-STATIC | Public Services workflows enforce one authenticated/current-account policy: ordinary reads require authentication, operational writes require Administrator or Operator, and administrative/audit/import/developer workflows require Administrator. UI visibility is never authority. | CURRENT-DOC,CODE,TEST |
 | BT-SEC-006 | v1 | PLANNED-V1 | Secrets/credential storage review before Email/SMS provider configuration. | CURRENT-DOC |
 | BT-SEC-007 | v1 | PLANNED-V1 | Support-safe error logging must not leak passwords, secrets or customer-sensitive data. | CURRENT-DOC |
+| BT-SEC-012 | v1 | IMPLEMENTED-STATIC | New authentication usernames use one provider-neutral NFKC/invariant-lower canonical identity, 3-64 ASCII letters/digits/`.`/`_`/`-` with alphanumeric endpoints. Creation persists that canonical value and database uniqueness arbitrates races; bounded legacy comparison ambiguity fails login closed without rewriting identity or credentials. | USER-REQUEST,CURRENT-DOC,CODE,TEST |
+| BT-SEC-013 | v1 | IMPLEMENTED-STATIC | Authentication request bounds are enforced before disproportionate work: login username input is at most 100 UTF-16 code units, passwords at most 256, new usernames at most 64 and user display names at most 150. Password strength minima remain unchanged. | USER-REQUEST,CURRENT-DOC,CODE,TEST |
+| BT-SEC-014 | v1 | IMPLEMENTED-STATIC | Desktop Services authorization reloads the stable current user from persistence at workflow boundaries. Missing, inactive, locked, invalid-role or password-change-required state denies and signs out; current role reduction applies before policy evaluation; infrastructure/cancellation failure propagates without continuing protected work. Future request hosts must supply equivalent current request-scoped semantics. | USER-REQUEST,CURRENT-DOC,CODE,TEST |
+| BT-SEC-015 | v1 | IMPLEMENTED-STATIC | An Administrator resetting their own password cannot retain the elevated desktop session: persisted password-reset/`MustChangePassword` state is followed by sign-out even if the separate audit append fails. Multi-session target revocation remains post-v1 BT-SH-031. | USER-REQUEST,CURRENT-DOC,CODE,TEST |
 | BT-AUD-001 | v1 | IMPLEMENTED-STATIC | Maintain explicit audit-coverage matrix across security, admin, customer, movement, import, report, communications and production actions. | CHAT-SURFACED,CURRENT-DOC |
 | BT-AUD-002 | v1 | IMPLEMENTED-STATIC | PDF report generation is audited for all implemented report types. | CURRENT-DOC,CODE |
 | BT-AUD-003 | v1 | IMPLEMENTED-ACCEPTED | CSV export is audited for Outstanding, Daily, Weekly, Movement History and Monthly Summary. | CHAT-SURFACED,CURRENT-DOC,CODE |

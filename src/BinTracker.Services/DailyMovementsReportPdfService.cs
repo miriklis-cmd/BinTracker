@@ -14,7 +14,8 @@ public interface IDailyMovementsReportPdfService
 
 internal sealed class DailyMovementsReportPdfService(
     IAuditService audit,
-    IBusinessInformationService businessInformation)
+    IBusinessInformationService businessInformation,
+    ICurrentAccountAuthorization authorization)
     : IDailyMovementsReportPdfService
 {
     public async Task<byte[]> BuildPdfAsync(
@@ -22,6 +23,7 @@ internal sealed class DailyMovementsReportPdfService(
         bool includeNotes = false,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         var business =
             await businessInformation.GetAsync(cancellationToken);
 

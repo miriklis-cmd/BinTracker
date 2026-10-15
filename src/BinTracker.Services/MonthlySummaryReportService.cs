@@ -56,6 +56,7 @@ public interface IMonthlySummaryReportService
 internal sealed class MonthlySummaryReportService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IBusinessClock clock,
+    ICurrentAccountAuthorization authorization,
     IOperationalMovementProjectionAuthority? operationalProjection = null)
     : IMonthlySummaryReportService
 {
@@ -63,6 +64,7 @@ internal sealed class MonthlySummaryReportService(
         MonthlySummaryReportQuery query,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         var today = clock.Today;
         var requested = query.Month > today ? today : query.Month;
 

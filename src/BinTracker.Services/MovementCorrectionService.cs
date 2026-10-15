@@ -293,10 +293,12 @@ public interface IMovementCorrectionService
 internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbContext> factory,
     IUserContext session, IBusinessClock clock, IClientContext client,
     IMovementMutationWriter mutationWriter,
-    TransactionAuditAppender transactionAuditAppender) : IMovementCorrectionService
+    TransactionAuditAppender transactionAuditAppender,
+    ICurrentAccountAuthorization authorization) : IMovementCorrectionService
 {
     public async Task<MovementCorrectionDetail?> GetAsync(long id, CancellationToken token = default)
     {
+        await authorization.RequireAuthenticatedAsync(token);
         await using var db = await factory.CreateDbContextAsync(token);
         return await db.BinMovements.AsNoTracking().Where(x => x.Id == id).Select(x =>
             new MovementCorrectionDetail(x.Id, x.MovementDate, x.CustomerId,
@@ -308,6 +310,7 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
 
     public async Task<MovementBatchCorrectionDetail?> GetBatchAsync(int id, CancellationToken token = default)
     {
+        await authorization.RequireAuthenticatedAsync(token);
         var nativePreview = mutationWriter.IsEnabled
             ? await PreviewLogicalForBatchAsync(id, token)
             : null;
@@ -338,22 +341,24 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
             lines);
     }
 
-    public Task<LogicalMovementMutationPreview?> PreviewLogicalAsync(
+    public async Task<LogicalMovementMutationPreview?> PreviewLogicalAsync(
         LogicalMovementBatchId logicalMovementBatchId, CancellationToken token = default)
     {
+        await authorization.RequireAuthenticatedAsync(token);
         if (logicalMovementBatchId.Value <= 0)
             throw new ArgumentOutOfRangeException(nameof(logicalMovementBatchId));
-        return PreviewLogicalCoreAsync(
+        return await PreviewLogicalCoreAsync(
             (_, _) => Task.FromResult<PreviewResolution?>(
                 new PreviewResolution(logicalMovementBatchId, null)), token);
     }
 
-    public Task<LogicalMovementMutationPreview?> PreviewLogicalForMovementAsync(
+    public async Task<LogicalMovementMutationPreview?> PreviewLogicalForMovementAsync(
         long movementId, CancellationToken token = default)
     {
+        await authorization.RequireAuthenticatedAsync(token);
         if (movementId <= 0)
             throw new ArgumentOutOfRangeException(nameof(movementId));
-        return PreviewLogicalCoreAsync(async (db, cancellationToken) =>
+        return await PreviewLogicalCoreAsync(async (db, cancellationToken) =>
         {
             var rootId = await mutationWriter.FindRootByMovementAsync(
                 db, movementId, cancellationToken);
@@ -361,12 +366,13 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
         }, token);
     }
 
-    public Task<LogicalMovementMutationPreview?> PreviewLogicalForBatchAsync(
+    public async Task<LogicalMovementMutationPreview?> PreviewLogicalForBatchAsync(
         int movementBatchId, CancellationToken token = default)
     {
+        await authorization.RequireAuthenticatedAsync(token);
         if (movementBatchId <= 0)
             throw new ArgumentOutOfRangeException(nameof(movementBatchId));
-        return PreviewLogicalCoreAsync(async (db, cancellationToken) =>
+        return await PreviewLogicalCoreAsync(async (db, cancellationToken) =>
         {
             var anchor = await mutationWriter.FindRootByBatchAsync(
                 db, movementBatchId, cancellationToken);
@@ -379,7 +385,7 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
     public async Task<ReverseMovementResult> ReverseAsync(ReverseMovementRequest request, CancellationToken token = default)
     {
         RejectLegacyMutationIfNativeEnabled();
-        Authorize("reverse");
+        await authorization.RequireOperationalAsync(token);
         var reason = Reason(request.Reason, "reversal");
         OperationId(request.ClientOperationId);
         await using var db = await factory.CreateDbContextAsync(token);
@@ -435,7 +441,8 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
     public async Task<MovementCorrectionResult> CorrectBatchAsync(CorrectBatchRequest request, CancellationToken token = default)
     {
         RejectLegacyMutationIfNativeEnabled();
-        Authorize("correct"); OperationId(request.ClientOperationId);
+        await authorization.RequireOperationalAsync(token);
+        OperationId(request.ClientOperationId);
         var reason = Reason(request.Reason, "correction");
         if (request.CorrectedDate > clock.Today)
             throw new ArgumentException("Corrected batch date cannot be in the future.");
@@ -585,13 +592,9 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
     {
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(command.Mutation);
-        Authorize(command.Mutation.Kind switch
-        {
-            MovementMutationKind.Correct => "correct",
-            MovementMutationKind.Reverse => "reverse",
-            MovementMutationKind.Restore => "restore",
-            _ => throw new ArgumentOutOfRangeException(nameof(command))
-        });
+        if (!Enum.IsDefined(command.Mutation.Kind))
+            throw new ArgumentOutOfRangeException(nameof(command));
+        var actor = await authorization.RequireOperationalAsync(token);
         if (!mutationWriter.IsEnabled)
             throw new LogicalMovementMutationException(LogicalMovementMutationFailure.SchemaUnavailable,
                 "Logical movement mutation execution requires activated schema-17 composition.");
@@ -599,8 +602,7 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
         if (command.LogicalMovementBatchId.Value <= 0 || command.ExpectedGeneration.Value < 0)
             throw new ArgumentException("A valid logical root and expected generation are required.", nameof(command));
 
-        var actorUserId = session.UserId ?? throw new InvalidOperationException(
-            "You must be signed in to change a logical movement.");
+        var actorUserId = actor.UserId;
         var requestJson = CanonicalLogicalRequest(command);
         var intent = new MovementMutationOperationIntent(command.ClientOperationId,
             command.LogicalMovementBatchId, command.ExpectedGeneration,
@@ -745,7 +747,7 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
     {
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(command.Decisions);
-        Authorize("restore");
+        await authorization.RequireOperationalAsync(token);
         OperationId(command.ClientOperationId);
         if (command.LogicalMovementBatchId.Value <= 0 || command.ExpectedGeneration.Value < 0)
             throw new ArgumentException("A valid logical root and expected generation are required.", nameof(command));
@@ -1069,8 +1071,9 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
         int? customerId, int? containerId, int? quantity, string? reference, string? notes,
         string reason, string fingerprint, CancellationToken token)
     {
-        Authorize("correct"); OperationId(id);
-        var actorUserId = session.UserId ?? throw new InvalidOperationException("You must be signed in to correct a movement.");
+        var actor = await authorization.RequireOperationalAsync(token);
+        OperationId(id);
+        var actorUserId = actor.UserId;
         await using var db = await factory.CreateDbContextAsync(token);
         var retry = await CorrectionRetry(db, id, fingerprint, token);
         if (retry is not null) return retry;
@@ -1155,13 +1158,6 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
             throw;
         }
         return Result(operation);
-    }
-
-    private void Authorize(string verb)
-    {
-        if (!session.IsAuthenticated) throw new InvalidOperationException($"You must be signed in to {verb} a movement.");
-        if (session.Role is not (UserRole.Administrator or UserRole.Operator))
-            throw new UnauthorizedAccessException($"Only Administrators and Operators can {verb} ordinary operational movements.");
     }
 
     private void RejectLegacyMutationIfNativeEnabled()

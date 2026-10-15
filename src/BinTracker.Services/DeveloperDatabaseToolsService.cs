@@ -15,7 +15,8 @@ public sealed record DeveloperDatabaseToolsStatus(
 
 public interface IDeveloperDatabaseToolsService
 {
-    DeveloperDatabaseToolsStatus GetStatus();
+    Task<DeveloperDatabaseToolsStatus> GetStatusAsync(
+        CancellationToken cancellationToken = default);
     Task BackupAsync(string destinationPath, CancellationToken cancellationToken = default);
     Task<string> StageLoadAsync(string sourcePath, CancellationToken cancellationToken = default);
     Task<string> StageFreshAsync(CancellationToken cancellationToken = default);
@@ -23,11 +24,12 @@ public interface IDeveloperDatabaseToolsService
 
 internal sealed class DeveloperDatabaseToolsService(
     IDeveloperDatabaseService dataService,
-    IUserContext userContext) : IDeveloperDatabaseToolsService
+    ICurrentAccountAuthorization authorization) : IDeveloperDatabaseToolsService
 {
-    public DeveloperDatabaseToolsStatus GetStatus()
+    public async Task<DeveloperDatabaseToolsStatus> GetStatusAsync(
+        CancellationToken cancellationToken = default)
     {
-        RequireAdministrator();
+        await authorization.RequireAdministratorAsync(cancellationToken);
         var status = dataService.GetStatus();
         return new(
             status.ActiveDatabasePath,
@@ -35,36 +37,26 @@ internal sealed class DeveloperDatabaseToolsService(
             status.PendingRestart);
     }
 
-    public Task BackupAsync(
+    public async Task BackupAsync(
         string destinationPath,
         CancellationToken cancellationToken = default)
     {
-        RequireAdministrator();
-        return dataService.BackupAsync(destinationPath, cancellationToken);
+        await authorization.RequireAdministratorAsync(cancellationToken);
+        await dataService.BackupAsync(destinationPath, cancellationToken);
     }
 
-    public Task<string> StageLoadAsync(
+    public async Task<string> StageLoadAsync(
         string sourcePath,
         CancellationToken cancellationToken = default)
     {
-        RequireAdministrator();
-        return dataService.StageLoadAsync(sourcePath, cancellationToken);
+        await authorization.RequireAdministratorAsync(cancellationToken);
+        return await dataService.StageLoadAsync(sourcePath, cancellationToken);
     }
 
-    public Task<string> StageFreshAsync(
+    public async Task<string> StageFreshAsync(
         CancellationToken cancellationToken = default)
     {
-        RequireAdministrator();
-        return dataService.StageFreshAsync(cancellationToken);
-    }
-
-    private void RequireAdministrator()
-    {
-        if (!userContext.IsAuthenticated ||
-            !userContext.UserId.HasValue ||
-            userContext.Role != UserRole.Administrator)
-        {
-            throw new UnauthorizedAccessException("Administrator access is required.");
-        }
+        await authorization.RequireAdministratorAsync(cancellationToken);
+        return await dataService.StageFreshAsync(cancellationToken);
     }
 }

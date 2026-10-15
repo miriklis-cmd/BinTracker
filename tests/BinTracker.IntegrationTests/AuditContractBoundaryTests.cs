@@ -39,7 +39,9 @@ public sealed class AuditContractBoundaryTests
     public async Task Structured_csv_export_intents_fix_action_entity_and_payload_shape()
     {
         var appender = new RecordingAuditAppender();
-        var service = new ReportExportAuditService(appender);
+        var service = new ReportExportAuditService(
+            appender,
+            new AllowingAuthorization());
 
         CsvReportExportAuditIntent[] intents =
         [
@@ -123,6 +125,25 @@ public sealed class AuditContractBoundaryTests
             .GetProperty("Context");
         Assert.Equal("OUT", historyContext.GetProperty("Direction").GetString());
         Assert.Equal("Batch", historyContext.GetProperty("Source").GetString());
+    }
+
+    private sealed class AllowingAuthorization : ICurrentAccountAuthorization
+    {
+        private static readonly AuthorizedUser User =
+            new(1, "admin", "Administrator", UserRole.Administrator);
+
+        public Task<AuthorizedUser> RequireAuthenticatedAsync(
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(User);
+
+        public Task<AuthorizedUser> RequireCredentialChangeAsync(
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(User);
+
+        public Task<AuthorizedUser> RequireAnyRoleAsync(
+            IReadOnlyCollection<UserRole> roles,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(User);
     }
 
     [Fact]

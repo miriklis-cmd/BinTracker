@@ -233,7 +233,8 @@ public sealed class MarketFloorReportSqliteTests
         public IMarketFloorReportService Service { get; }
         public IMovementCorrectionService Corrections { get; }
 
-        public static async Task<Harness> CreateAsync(UserRole? signedInRole = null)
+        public static async Task<Harness> CreateAsync(
+            UserRole signedInRole = UserRole.Viewer)
         {
             var connection = new SqliteConnection("Data Source=:memory:");
             await connection.OpenAsync();
@@ -249,21 +250,18 @@ public sealed class MarketFloorReportSqliteTests
             {
                 await db.Database.EnsureCreatedAsync();
                 await DatabaseSetup.InitializeSqliteAsync(db);
-                if (signedInRole is { } role)
+                var user = new UserAccount
                 {
-                    var user = new UserAccount
-                    {
-                        Username = "market-floor-user",
-                        DisplayName = "Market Floor User",
-                        PasswordHash = "x",
-                        PasswordSalt = "x",
-                        Role = role,
-                        IsActive = true
-                    };
-                    db.Add(user);
-                    await db.SaveChangesAsync();
-                    provider.GetRequiredService<UserSession>().SignIn(user);
-                }
+                    Username = "market-floor-user",
+                    DisplayName = "Market Floor User",
+                    PasswordHash = "x",
+                    PasswordSalt = "x",
+                    Role = signedInRole,
+                    IsActive = true
+                };
+                db.Add(user);
+                await db.SaveChangesAsync();
+                provider.GetRequiredService<UserSession>().SignIn(user);
             }
 
             return new(connection, provider, factory);

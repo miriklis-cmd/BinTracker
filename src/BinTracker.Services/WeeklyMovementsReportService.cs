@@ -74,6 +74,7 @@ public interface IWeeklyMovementsReportService
 internal sealed class WeeklyMovementsReportService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IBusinessClock clock,
+    ICurrentAccountAuthorization authorization,
     IOperationalMovementProjectionAuthority? operationalProjection = null)
     : IWeeklyMovementsReportService
 {
@@ -81,6 +82,7 @@ internal sealed class WeeklyMovementsReportService(
         WeeklyMovementsReportQuery query,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         var today = clock.Today;
         var selectedDate = query.WeekStart > today
             ? today

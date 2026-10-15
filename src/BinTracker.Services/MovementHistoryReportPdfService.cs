@@ -15,7 +15,8 @@ public interface IMovementHistoryReportPdfService
 
 internal sealed class MovementHistoryReportPdfService(
     IAuditService audit,
-    IBusinessInformationService businessInformation)
+    IBusinessInformationService businessInformation,
+    ICurrentAccountAuthorization authorization)
     : IMovementHistoryReportPdfService
 {
     public async Task<byte[]> BuildPdfAsync(
@@ -23,6 +24,7 @@ internal sealed class MovementHistoryReportPdfService(
         bool includeNotes = false,
         CancellationToken cancellationToken = default)
     {
+        await authorization.RequireAuthenticatedAsync(cancellationToken);
         var business =
             await businessInformation.GetAsync(cancellationToken);
 
