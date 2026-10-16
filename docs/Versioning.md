@@ -100,7 +100,7 @@ Hard rule: **maximum two numeric components after `alpha`** for the new scheme.
 
 `0.5.0-alpha.14` is the next feature/development increment for the reconciled Security Hardening Batch A. It implements canonical bounded authentication identity, current-account revalidation and uniform Services authorization without overwriting alpha.13 session-lifecycle evidence. Batch B and later hardening remain separately governed by the Security register.
 
-`0.5.0-alpha.15` is the next feature/development increment for Security Hardening Batch B. It closes BT-SH-006/030 with Data-owned transactional mutation/audit consistency without overwriting accepted alpha.14 identity/authorization evidence. Batch C and later hardening remain separately governed by the Security register.
+`0.5.0-alpha.15` is the accepted Security Hardening Batch B increment. It closes BT-SH-006/030 with Data-owned transactional mutation/audit consistency without overwriting accepted alpha.14 identity/authorization evidence. The final accepted checkpoint passed the operator BAT at 264 permanent IDs and 901/901 tests; later BT-ARCH-018-P4 governed-file edits require a fresh exact-candidate BAT before Git write. Batch C and later hardening remain separately governed by the Security register.
 
 Do not create forms such as:
 

@@ -39,13 +39,15 @@ See `KNOWN-ISSUES.md` and `docs/Roadmap.md`.
 
 Most important remaining items include:
 
-- Batch Entry operator acceptance for edit/remove/Enter/Esc navigation cleanup and unfinished-batch recovery;
+- Batch Entry edit/remove/Enter/Esc interaction smoke; Continue/Save/Discard recovery is accepted, while Security Batch E must add BT-BATCH-012 stable-user-ID owner isolation;
 - dashboard operational pass;
 - Business Information branding expansion: logo + shared report/email output identity;
 - real Email/SMS reminder delivery;
 - the six remaining Security Hardening batches after Batches A/B closed transactional audit consistency and split the residual operational-identifier scope of BT-SH-040 into Batch C;
 - production backup/restore;
-- installer/deployment/security hardening.
+- the unresolved BT-AUD-006 Audit search/filter/export release decision and commercial-v1 activation decision;
+- BT-REL-013 third-party/commercial-release compliance review, required notices/material and package validation;
+- installer/deployment and final release hardening.
 
 ## Excel Import
 

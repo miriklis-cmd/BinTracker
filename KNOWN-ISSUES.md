@@ -10,7 +10,7 @@ R7 deterministic interleavings now prove coherent snapshots across Dashboard att
 
 Normal activated whole-root correction safely blocks any current Reversed line. The alpha.9 Restore/RemainReversed dialog collects an explicit disposition for every reversed permanent line and applies all Restore choices through one separately sequenced atomic logical mutation. Alpha.9.6 passed the protected Batch #30 FIX6 continuation plus bounded FIX7-A/B/C Windows re-smoke, and Items 2–7 passed their bounded mutation, concurrency, forensic-detail, Administrator-review, corrected-report and real PDF preview/print acceptance. Alpha.9.10 then passed its 827/827 canonical gate and the complete Item-8 surface matrix at Windows 11 1920×1080/150% plus a separate 1920×1080/100% PC. The bounded Task20 acceptance inventory is complete. BT-ARCH-018 Stage A identified four accepted layer violations and alpha.10 implements their bounded remediation. Independent review and the exact-candidate 841/841 operator BAT passed; commit `cd53f9ca19de1a10ea9ec375b63e294fdddfad23` closes that protected architecture gate. Security Hardening has completed three remediation passes and the comprehensive remaining-finding reconciliation described below.
 
-BT-SH-001 is fixed in alpha.11: every current report CSV path uses one protected serializer that neutralizes formula-leading text while retaining typed numeric output and established CSV/report ordering. BT-SH-002 is fixed in alpha.12: the Data-owned pending-operation reader validates the complete marker before transition, derives the only authorized staged artifact from trusted configuration and never deletes a marker-supplied path. BT-SH-003 is fixed in alpha.13: desktop logout and every new login attempt atomically clear the prior authenticated session before audit or credential work can fail/cancel, so stale identity and Administrator authority cannot survive the return to login. BT-SH-004-P1 reconciled all later findings. Alpha.14 Batch A fixes BT-SH-008/017/018/019/022/028/032 through canonical bounded usernames, uniform Services authorization and persisted current-account revalidation. Alpha.15 Batch B fixes BT-SH-006/030 by committing affected customer/container/business-information/user and authentication state with required audit evidence in one Data-owned transaction. BT-SH-040's authentication scope is closed, but customer/container operational-identifier normalization remains in Batch C. Current totals are 16 `FIXED`, 20 `CONFIRMED-V1`, 1 `REVIEW-V1`, 11 `POST-V1` and 2 `NOT-APPLICABLE`; Batch C is the next implementation batch only after alpha.15 Git/master closure.
+BT-SH-001 is fixed in alpha.11: every current report CSV path uses one protected serializer that neutralizes formula-leading text while retaining typed numeric output and established CSV/report ordering. BT-SH-002 is fixed in alpha.12: the Data-owned pending-operation reader validates the complete marker before transition, derives the only authorized staged artifact from trusted configuration and never deletes a marker-supplied path. BT-SH-003 is fixed in alpha.13: desktop logout and every new login attempt atomically clear the prior authenticated session before audit or credential work can fail/cancel, so stale identity and Administrator authority cannot survive the return to login. BT-SH-004-P1 reconciled all later findings. Alpha.14 Batch A fixes BT-SH-008/017/018/019/022/028/032 through canonical bounded usernames, uniform Services authorization and persisted current-account revalidation. Alpha.15 Batch B fixes BT-SH-006/030 by committing affected customer/container/business-information/user and authentication state with required audit evidence in one Data-owned transaction. BT-SH-040's authentication scope is closed, but customer/container operational-identifier normalization remains in Batch C. Current totals are 16 `FIXED`, 20 `CONFIRMED-V1`, 1 `REVIEW-V1`, 11 `POST-V1` and 2 `NOT-APPLICABLE`; Batch C is next after the BT-ARCH-018-P4 repository-truth reconciliation closes.
 
 Current release: **v0.5.0-alpha.15**
 
@@ -31,9 +31,9 @@ The alpha.9.2 canonical gate passed 795/795 automated tests with zero failures/s
 ### Reports catalogue is incomplete
 **Area:** Reports
 
-Market Floor, Customer Statement, Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Monthly Summary and Daily Print Pack are implemented. Monthly Summary and Daily Print Pack still require final operator acceptance/real-world print validation before the Reporting milestone closes.
+Market Floor, Customer Statement, Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Monthly Summary and Daily Print Pack are implemented. Monthly Summary and Daily Print Pack operator acceptance passed; BT-RPT-009/010 and BT-MF-006 remain explicit release decisions/validation rather than reopening those accepted workflows.
 
-The Daily Print Pack cross-section snapshot gap is active in normal schema17 runtime: both delegated numerical sections and their customer/container metadata share one read transaction. Deterministic concurrency evidence remains green. Real-print and Windows/operator acceptance are not implied.
+The Daily Print Pack cross-section snapshot gap is closed in normal schema17 runtime: both delegated numerical sections and their customer/container metadata share one read transaction. Deterministic concurrency evidence remains green, and bounded real preview/print plus Windows/operator acceptance passed.
 
 ### Dashboard is still the first-pass operational dashboard
 **Area:** Dashboard
@@ -53,7 +53,7 @@ Customer reminder preferences and the `ReminderDelivery` persistence model exist
 ### Movement correction/reversal bounded Task20 acceptance is complete
 - Alpha.9.10 completed the bounded Items 1–8 Windows/operator inventory, including correction/disposition dialogs, native Administrator review and forensic drill-through, real concurrent multi-window stale-state handling, and the required 1920x1080/150% plus larger-effective-workspace DPI matrix.
 - Opening Adjustment and Excel Import generic correction/reversal remain blocked as required.
-- Broader permanent BT-CORR-033 and BT-HIST-008/009 acceptance, actual production-database recovery, and general candidate/release UI regression retain their own statuses; bounded Task20 completion does not promote them.
+- BT-CORR-033 and BT-HIST-008/009 are accepted from the complete criterion/evidence reconciliation. Actual production-database recovery and general candidate/release UI regression retain their own statuses.
 **Area:** Movements / Audit
 
 ### Container display order permits duplicate priorities
@@ -69,7 +69,7 @@ Developer Database Backup/Load/Fresh tools are for testing only. A production-sa
 ### Batch Entry recovery/polish requires operator smoke acceptance
 **Area:** Batch Entry
 
-Batch Entry recovery is operator-confirmed for Continue/Save/Discard, but the current persisted draft format is installation-scoped and can surface one signed-in user's unfinished draft to another user on the same installation. BT-BATCH-012 is a v1 blocker requiring stable persisted user-ID ownership, owner-only Continue/Save/Discard and fail-closed enforcement below WinForms; Administrator role does not bypass ownership. The owner's existing crash/restart recovery and separate role authorization for committing a batch remain unchanged. v0.5.0-alpha.1.1 fixes the separate stale asynchronous edit-state race (Esc/Clear could be followed by a late row-load that resurrected Update Line), makes Clear Batch fully reset the editor even with zero draft rows, and aligns recovery-dialog actions consistently. Focused Windows smoke acceptance remains pending.
+Batch Entry Continue/Save/Discard crash/restart recovery is implemented and operator-confirmed. The remaining security gap is ownership: the current persisted draft format is installation-scoped and can surface one signed-in user's unfinished draft to another user on the same installation. Security Batch E fixes BT-SH-012 and implements BT-BATCH-012's stable persisted user-ID ownership, owner-only Continue/Save/Discard and fail-closed enforcement below WinForms; Administrator role does not bypass ownership. The owner's accepted recovery and separate role authorization for committing a batch remain unchanged. Remaining Enter/add/update/remove/Esc interaction smoke is tracked separately from recovery and ownership.
 
 ### Multi-computer production use is not supported yet
 **Area:** Deployment
@@ -87,7 +87,7 @@ The Zahos/BIG search/list-detail synchronization bug is fixed but should remain 
 ### Audit Trail search/filter/export is not implemented
 **Area:** Administration / Audit
 
-Audit persistence is available and remains authoritative, but the Administrator Audit Trail screen does not yet provide practical search/filter/export. This is logged as lower-priority post-v1 usability work (BT-AUD-006).
+Audit persistence is available and remains authoritative, but the Administrator Audit Trail screen does not yet provide general search, multi-field filtering or CSV export. BT-AUD-006 remains `NEEDS-CONFIRMATION`: v1 versus post-v1 release scope requires an explicit product decision.
 
 ## Cosmetic / deferred
 

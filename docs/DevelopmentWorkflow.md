@@ -221,6 +221,10 @@ Operator-provided BAT output is candidate-level mechanical evidence only for the
 
 This policy does not weaken characterization-before-change, frozen architecture/roadmap compliance, security/audit gates, migration safety, backup/recovery truthfulness, provider-neutral business semantics, version consistency, zero-warning and zero-failure/zero-skip canonical acceptance, independent review before commit, Git-write restrictions, continuity/context-compaction gates, retained-database rehearsal or Windows/operator acceptance. If efficiency and correctness conflict, correctness wins.
 
+### Normal development branch
+
+Normal BinTracker development uses `master`. A feature/topic branch is optional and is created only for deliberate operator-chosen isolation or parallel work. Closure of any separate branch must explicitly record reviewed reintegration or ref equality with `master` before unrelated new work begins, and the operative `docs/CONTINUATION.md` must reflect the reconciled branch and refs. Using or omitting a topic branch does not weaken canonical BAT, independent-review, staging, commit or push gates.
+
 ## Implementation passes
 
 For each meaningful BinTracker change:
@@ -307,7 +311,7 @@ A build is **not complete** merely because code was changed or static checks pas
 
 ## Local SDK and MSBuild worker policy
 
-BinTracker targets `net8.0` / `net8.0-windows`, but the local build SDK is not pinned to .NET 8. The development machine currently has .NET SDK 10.0.400 installed and that SDK can build the project's .NET 8 target frameworks.
+BinTracker targets `net8.0` / `net8.0-windows`, but the local build SDK is not pinned to .NET 8. The current accepted operator evidence used .NET SDK 10.0.401 to build the project's .NET 8 target frameworks.
 
 Do not add a restrictive `global.json` unless the required SDK is first confirmed installed on the development machine.
 

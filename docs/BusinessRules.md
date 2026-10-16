@@ -317,7 +317,7 @@ Important security, master-data and movement changes create audit events.
 - Administrator and Operator may correct eligible ordinary Manual/Batch movements; Viewer may not. Routine correction is effective immediately and has no approval queue.
 - Correction preserves the original, creates an opposite neutraliser dated on the original date, and creates the corrected replacement dated on the corrected operational date. This removes the wrong-period report effect and applies it in the right period.
 - Explicit schema16 operational views suppress correction-consumed originals/neutralisers and show the corrected replacement. Normal schema17 runtime preserves that accepted result through validated current-generation projection. Movement History/Audit always retain complete evidence.
-- Alpha.8 whole-batch correction remains safely limited to one persisted `MovementBatchId`. Planned logical-root correction supersedes that limitation only through BT-CORR-018..033; the current guard must not be removed independently.
+- Alpha.8 compatibility correction remains safely limited to one persisted `MovementBatchId`. Normal schema17 runtime supersedes that limitation through accepted BT-CORR-018..033 logical-root authority; the legacy guard must not be removed independently.
 - Movement History action availability is computed from the actual selected typed movement after every load/sort and selection change. Reverse and Correct Selected share the ordinary-movement eligibility basis; displayed selection and logical action state must agree.
 - In whole-batch correction, changing the proposed date or direction away from the persisted value automatically selects that correction field, and returning it to the persisted value automatically clears the field. Operators may untick a changed field; its selection is recalculated only when that proposed value changes again. A checked field with its persisted value is not a change; the UI and service reject a request with no semantic date/direction change before any neutraliser, replacement, correction record or audit event is created.
 - One database-unique neutraliser per original arbitrates reverse/correct races. Client operation identity makes an identical retry idempotent and rejects different payload reuse.
@@ -327,7 +327,7 @@ Important security, master-data and movement changes create audit events.
 - While any such reviews remain outstanding, Administrator sessions must retain a non-blocking navigation-wide reminder with the live outstanding count and direct pending-review action. It disappears at zero, is invisible to other roles, supplements the login popup and never changes the immediate operational effectiveness of Operator changes.
 - View Batch Detail is unavailable unless the selected audit event has authoritative persisted MovementBatch detail. Audit event types without an authoritative supported detail surface must not offer a knowingly invalid detail action.
 
-## Frozen logical correction rules (planned v1)
+## Frozen logical correction rules (implemented and accepted)
 
 - Every eligible ordinary original has one stable logical root and permanent logical line. Physical batches are immutable persistence evidence, not continuing lineage identity; roots/lines never merge or split.
 - Each substantive correction/reversal/restoration advances the root generation and writes one full state decision for every permanent line. Active means one effective movement; Reversed means last effective plus terminal reversal.

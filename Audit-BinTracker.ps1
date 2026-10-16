@@ -108,8 +108,17 @@ foreach ($row in $reqRows) {
     if ($allowedScopes -notcontains $row.Scope) { Fail "Invalid requirement scope for $($row.Id): $($row.Scope)" }
     if ($allowedStatuses -notcontains $row.Status) { Fail "Invalid requirement status for $($row.Id): $($row.Status)" }
 }
-$mustHaveIds = @('BT-REL-001','BT-RPT-003','BT-RPT-018','BT-RPT-019','BT-RPT-020','BT-RPT-021','BT-UI-014','BT-UI-015','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-IMP-022','BT-CORR-001','BT-CORR-007','BT-CORR-008','BT-CORR-009','BT-CORR-010','BT-CORR-011','BT-CORR-012','BT-CORR-013','BT-CORR-014','BT-CORR-015','BT-CORR-018','BT-CORR-019','BT-CORR-021','BT-CORR-024','BT-CORR-029','BT-CORR-030','BT-CORR-031','BT-CORR-032','BT-CORR-033','BT-AUD-013','BT-AUD-015','BT-AUD-016','BT-AUD-017','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-HIST-006','BT-HIST-007','BT-HIST-008','BT-HIST-009','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-OPS-011','BT-OPS-012','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015','BT-ARCH-016','BT-ARCH-017','BT-ARCH-018')
+$mustHaveIds = @('BT-REL-001','BT-REL-013','BT-RPT-003','BT-RPT-018','BT-RPT-019','BT-RPT-020','BT-RPT-021','BT-UI-014','BT-UI-015','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-IMP-022','BT-CORR-001','BT-CORR-007','BT-CORR-008','BT-CORR-009','BT-CORR-010','BT-CORR-011','BT-CORR-012','BT-CORR-013','BT-CORR-014','BT-CORR-015','BT-CORR-018','BT-CORR-019','BT-CORR-021','BT-CORR-024','BT-CORR-029','BT-CORR-030','BT-CORR-031','BT-CORR-032','BT-CORR-033','BT-AUD-013','BT-AUD-015','BT-AUD-016','BT-AUD-017','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-HIST-006','BT-HIST-007','BT-HIST-008','BT-HIST-009','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-OPS-011','BT-OPS-012','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015','BT-ARCH-016','BT-ARCH-017','BT-ARCH-018')
 foreach ($id in $mustHaveIds) { if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost mandatory ID: $id" } }
+
+$releaseCompliance = $reqRows | Where-Object Id -eq 'BT-REL-013'
+if ($releaseCompliance.Scope -ne 'v1' -or $releaseCompliance.Status -ne 'PLANNED-V1') {
+    Fail 'BT-REL-013 must remain a planned v1 release/productisation compliance gate until the real review occurs.'
+}
+$coverageMatrix = Get-Content -Raw -LiteralPath 'docs/RoadmapCoverageMatrix.md'
+foreach ($term in @('BT-REL-013','Third-party/commercial release compliance','QuestPDF','SQLite/native','SBOM')) {
+    if ($coverageMatrix -notmatch [regex]::Escape($term)) { Fail "Roadmap coverage lost BT-REL-013 governed scope: $term" }
+}
 
 # Permanent central-service / concurrency portability gate (BT-ARCH-008..015).
 $servicesSource = Get-Content -Raw -LiteralPath 'src/BinTracker.Services/Services.cs'
@@ -162,6 +171,50 @@ foreach ($check in $staleChecks) {
     if ((Get-Content -Raw -LiteralPath $check.Path).Contains($check.Text)) { Fail "$($check.Path) retains $($check.Why)." }
 }
 
+# Narrow current-state contradiction guards from BT-ARCH-018-P3. These checks
+# protect explicit operative phrases only; they do not attempt semantic or legal proof.
+$continuation = Get-Content -Raw -LiteralPath 'docs/CONTINUATION.md'
+$operativeContinuation = ($continuation -split '(?m)^## (?:Superseded|Historical) ', 2)[0]
+foreach ($term in @('Active development is on `master`','02b47d01bd0c27c1046f5652bc892d807cc6b90b','divergence `0/0`','Master reintegration is complete','264 permanent requirement IDs','901/901','BUILD SUCCESSFUL','fresh exact-candidate canonical BAT')) {
+    if ($operativeContinuation -notmatch [regex]::Escape($term)) { Fail "Operative continuation lost current alpha.15/P4 truth: $term" }
+}
+foreach ($obsolete in @('active development is on `codex/movement-correction`','origin/master` remains the old','fast-forward master','master reconciliation is complete','final alpha.15 Git/merge closure requires')) {
+    if ($operativeContinuation -match [regex]::Escape($obsolete)) { Fail "Operative continuation retains obsolete branch/closure claim: $obsolete" }
+}
+if ($operativeContinuation -match '69bce02b820987bc9d966c3e725496d383f42440') {
+    Fail 'Operative continuation must not present the pre-reintegration Batch-B ref as current HEAD.'
+}
+
+foreach ($ruleText in @($agentRules, $workflowRules)) {
+    foreach ($term in @('Normal BinTracker development uses `master`','feature/topic branch is optional','reintegrat','docs/CONTINUATION.md')) {
+        if ($ruleText -notmatch [regex]::Escape($term)) { Fail "Normal-master branch governance lost required term: $term" }
+    }
+}
+
+$sequencingDocuments = @('docs/RequirementsAcceptanceRegister.md','docs/Roadmap.md','docs/RoadmapCoverageMatrix.md','TEST-CHECKLIST.md','docs/CONTINUATION.md','docs/FunctionalSpecification.md','docs/SecurityHardeningRegister.md')
+foreach ($path in $sequencingDocuments) {
+    $text = Get-Content -Raw -LiteralPath $path
+    if ($text -notmatch 'BT-BATCH-012' -or $text -notmatch 'Batch E') { Fail "$path lost the BT-SH-012/BT-BATCH-012 Batch E relationship." }
+}
+foreach ($path in @('docs/RequirementsAcceptanceRegister.md','docs/Roadmap.md','docs/RoadmapCoverageMatrix.md','TEST-CHECKLIST.md')) {
+    $text = Get-Content -Raw -LiteralPath $path
+    if ($text -match 'BT-BATCH-012.{0,80}(second post-hardening|after Communications)' -or
+        $text -match '(after Communications|Communications first).{0,80}BT-BATCH-012') {
+        Fail "$path schedules BT-BATCH-012 as a separate post-Communications implementation instead of Security Batch E."
+    }
+}
+
+$explicitStaleCurrentClaims = @(
+    @{ Path='docs/RoadmapCoverageMatrix.md'; Text='the exact Batch #31 output-anchor/multi-window, DPI/report/detail/review remainder, packaging and full acceptance remain pending' },
+    @{ Path='docs/AuditCoverage.md'; Text='Healthy native evidence returns the controlled no-detail result pending the next full native Audit/History milestone.' },
+    @{ Path='KNOWN-ISSUES.md'; Text='Monthly Summary and Daily Print Pack still require final operator acceptance' },
+    @{ Path='TECH-DEBT.md'; Text='seven fixed findings and 30 remaining v1 blockers' },
+    @{ Path='TECH-DEBT.md'; Text='uses a local `$error` diagnostic variable' }
+)
+foreach ($check in $explicitStaleCurrentClaims) {
+    if ((Get-Content -Raw -LiteralPath $check.Path).Contains($check.Text)) { Fail "$($check.Path) retains a deterministic stale current-state claim: $($check.Text)" }
+}
+
 # Security/Data Integrity/Code Quality hard gate.
 $securityRegisterPath = 'docs/SecurityHardeningRegister.md'
 if (-not (Test-Path -LiteralPath $securityRegisterPath)) { Fail 'Security hardening finding register is missing.' }
@@ -177,6 +230,24 @@ $allowedSecurityDispositions = @('CONFIRMED-V1','REVIEW-V1','POST-V1','NOT-APPLI
 foreach ($match in $securityRows) {
     $disposition = $match.Groups[2].Value
     if ($allowedSecurityDispositions -notcontains $disposition) { Fail "Invalid security finding disposition for $($match.Groups[1].Value): $disposition" }
+}
+$securityCounts = @{}
+foreach ($disposition in $allowedSecurityDispositions) {
+    $securityCounts[$disposition] = @($securityRows | Where-Object { $_.Groups[2].Value -eq $disposition }).Count
+}
+if ($securityCounts['FIXED'] -ne 16 -or $securityCounts['CONFIRMED-V1'] -ne 20 -or
+    $securityCounts['REVIEW-V1'] -ne 1 -or $securityCounts['POST-V1'] -ne 11 -or
+    $securityCounts['NOT-APPLICABLE'] -ne 2) {
+    Fail "Security disposition totals must be 16 FIXED / 20 CONFIRMED-V1 / 1 REVIEW-V1 / 11 POST-V1 / 2 NOT-APPLICABLE."
+}
+$securityBlockers = $securityCounts['CONFIRMED-V1'] + $securityCounts['REVIEW-V1']
+$coverageSecuritySummary = (Get-Content -Raw -LiteralPath 'docs/RoadmapCoverageMatrix.md').Replace('`', '')
+$debtSecuritySummary = (Get-Content -Raw -LiteralPath 'TECH-DEBT.md').Replace('`', '')
+$expectedSecurityTotals = "$($securityCounts['FIXED']) FIXED, $($securityCounts['CONFIRMED-V1']) CONFIRMED-V1, $($securityCounts['REVIEW-V1']) REVIEW-V1, $($securityCounts['POST-V1']) POST-V1 and $($securityCounts['NOT-APPLICABLE']) NOT-APPLICABLE"
+foreach ($summary in @($coverageSecuritySummary, $debtSecuritySummary)) {
+    if ($summary -notmatch [regex]::Escape($expectedSecurityTotals)) { Fail 'Current security summary disagrees with computed disposition totals.' }
+    if ($summary -notmatch [regex]::Escape("$securityBlockers") -or $summary -notmatch 'block') { Fail 'Current security summary disagrees with the computed v1-blocker count.' }
+    if ($summary -notmatch 'Batch C' -or $summary -notmatch 'BT-ARCH-018-P4') { Fail 'Current security summary must name Batch C as next after BT-ARCH-018-P4 closure.' }
 }
 foreach ($id in @('BT-SEC-008','BT-SEC-009','BT-SEC-010','BT-SEC-011')) {
     if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost security hard-gate requirement: $id" }

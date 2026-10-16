@@ -79,6 +79,8 @@ Use `git diff --check` before handoff. For a governance-only change, do not spen
 
 Follow `docs/Versioning.md`; do not invent a scheme or silently replace an already delivered/tested candidate when a corrective increment is required. Keep governed surfaces consistent, but do not bump for an unaccepted small source edit unless the established release workflow requires it.
 
+Normal BinTracker development uses `master`. A feature/topic branch is optional and is used only when the operator deliberately chooses isolation or parallel work. If a separate branch is used, its closure must explicitly record reviewed reintegration or ref equality with `master` before unrelated new work begins, and the operative `docs/CONTINUATION.md` must be updated to the reconciled branch/ref state. Branch choice never weakens the canonical BAT, independent-review, staging, commit or push gates.
+
 Commits are recoverable checkpoints, not acceptance declarations. Prefer coherent checkpoints for substantial work, accurately recording static validation and pending acceptance, but **never commit or push without explicit user instruction**. Do not merge, rebase, reset, force-push, rewrite history, modify `origin/master`, discard unrelated work, or alter user changes without explicit authorization.
 
 Do not terminate the user's running BinTracker process merely because build output is locked. A materially equivalent isolated temporary-output compile may support focused validation and must be reported as such; it never replaces the canonical gate. Ask the user to close the app if the canonical build/package gate requires unlocked output.

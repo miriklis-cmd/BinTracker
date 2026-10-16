@@ -209,7 +209,7 @@ public sealed class MovementMutationWriteConflictException(
 }
 
 /// <summary>
-/// Dormant SQLite realization of a trusted provider-neutral mutation plan. The
+/// Active SQLite realization of a trusted provider-neutral mutation plan. The
 /// service owns the supplied context, transaction, SaveChanges and commit.
 /// </summary>
 internal sealed class SqliteMovementMutationWriter(

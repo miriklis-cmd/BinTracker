@@ -1,12 +1,18 @@
 # BinTracker Automated Testing
 
-## BT-SH-004-P3 Batch B transactional mutation/audit consistency — 16 October 2026
+## BT-ARCH-018-P4 repository-truth reconciliation — 17 October 2026
+
+The accepted alpha.15 checkpoint on `master` at `02b47d01bd0c27c1046f5652bc892d807cc6b90b` passed the final operator canonical BAT under SDK 10.0.401: 264 permanent IDs, 27 Markdown files, restore/build success, 901/901 tests passed, 0 failed, 0 skipped and `BUILD SUCCESSFUL`. BT-ARCH-018-P3 then completed the semantic audit and found no new layer regression.
+
+P4 changes only governed documentation, `Audit-BinTracker.ps1` deterministic governance guards and two stale XML comments; it changes no runtime behavior, schema or version. In-task evidence is prompt/audit-script self-validation as applicable, the mechanical audit and `git diff --check`. The prior BAT became historical exact-candidate evidence after the first P4 edit. TEST REQUIRED: Full operator canonical BAT after independent review of the exact final P4 candidate.
+
+## Historical BT-SH-004-P3 Batch B transactional mutation/audit consistency — 16 October 2026
 
 The affected business/authentication workflows previously saved authoritative state through one context and appended required audit through another. A deterministic SQLite trigger that aborts `AuditEvents` inserts reproduced all six sampled half-commits: customer/container/user creates and business-information updates remained persisted; failed-login count advanced; and successful-login `LastLoginUtc` persisted even though the service call failed. The pre-fix focused result was 0/6 passing.
 
 Alpha.15 adds a Data-owned `PersistenceTransactionRunner` and internal provider-neutral `ITransactionalAudit` composition around the existing `TransactionAuditAppender`. The final focused class passes 11/11 with zero failed/skipped: mutation/audit success, forced audit rollback, threshold lockout, successful-login state, actor attribution, stale-revision/no-false-audit and own-password rollback. Successful login publishes `UserSession` only after commit; self-reset still signs out in `finally` while its database mutation now rolls back with failed audit.
 
-Adjacent `TransactionAuditAppenderTests`, `SecurityBatchACharacterizationTests`, `AuthenticationSessionLifecycleTests`, `UserAdministrationBoundaryTests`, `AuditContractBoundaryTests`, `MultiUserReadinessSqliteTests` and `Slice1OperationalOutputCharacterizationTests` pass 45/45 with zero failed/skipped. The exact requested Release solution build passes with zero warnings/errors. Jack/operator then ran the canonical BAT against the unchanged Batch-B production/test source under .NET SDK 10.0.401: the mechanical audit passed at the pre-BT-BATCH-P1 governed state with 263 permanent IDs and 27 Markdown files, restore/build passed and all 901/901 automated tests passed with 0 failed, 0 skipped; final result `BUILD SUCCESSFUL`. BT-BATCH-P1 subsequently changed governed documentation only and raised the inventory to 264 permanent IDs. That real source-candidate BAT remains evidence, but final Git/merge closure requires one fresh canonical BAT against the documentation-final 264-ID candidate. TEST REQUIRED: Full operator canonical BAT.
+Adjacent `TransactionAuditAppenderTests`, `SecurityBatchACharacterizationTests`, `AuthenticationSessionLifecycleTests`, `UserAdministrationBoundaryTests`, `AuditContractBoundaryTests`, `MultiUserReadinessSqliteTests` and `Slice1OperationalOutputCharacterizationTests` pass 45/45 with zero failed/skipped. The exact requested Release solution build passes with zero warnings/errors. Jack/operator first ran the canonical BAT against the unchanged Batch-B production/test source under .NET SDK 10.0.401 at the pre-BT-BATCH-P1 263-ID state; later final alpha.15 exact-candidate evidence at 264 IDs/901 tests is recorded above. This paragraph is historical implementation evidence, not the current P4 gate.
 
 ## BT-SH-004-FIX1 non-Administrator startup correction — 15 October 2026
 
@@ -699,7 +705,7 @@ Manually export CSV from Outstanding Containers, Daily Movements, Weekly Movemen
 Build acceptance includes running `Build-BinTracker.bat` repeatedly from a normal Windows developer shell.
 
 Verify:
-- the header reports the actually resolved compatible installed SDK (currently 10.0.400 on the development PC);
+- the header reports the actually resolved compatible installed SDK (10.0.401 in the accepted alpha.15 operator evidence);
 - stale build-server shutdown does not block the build;
 - restore/build/test complete with MSBuild server/node reuse disabled;
 - the build no longer intermittently reports MSB4242 SDK Resolver Failure / worker node shutdown under normal use;

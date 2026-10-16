@@ -78,7 +78,7 @@ internal sealed class NoInitialMovementLineageFailureInjector : IInitialMovement
 }
 
 /// <summary>
-/// Dormant SQLite schema-17 implementation. The caller owns the supplied
+/// Active SQLite schema-17 implementation. The caller owns the supplied
 /// context, transaction, SaveChanges boundaries and transaction completion.
 /// </summary>
 internal sealed class SqliteInitialMovementLineageWriter(

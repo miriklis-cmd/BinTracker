@@ -1,10 +1,10 @@
 # Technical Debt
 
-## Frozen logical-lineage delivery (pre-v1 blocking)
+## Accepted logical-lineage architecture and residual operations work
 
-- Alpha.8 whole-batch eligibility safely rejects partial lineage through physical MovementBatch. Deliver BT-CORR-018..033 as one coherent migration/service/projection/UI change; never bypass the guard piecemeal.
-- BT-20-P2 activates the reviewed R1/R2/R3/EF/R7 components in normal runtime, BT-20-P3 completes native Audit/History detail and BT-20-P4 implements the separately sequenced Restore/RemainReversed UI. The bounded Task20 acceptance inventory is complete through alpha.9.10 Item 8: the canonical gate passed 827/827, the complete matrix passed at 1920×1080/150% and on a separate 1920×1080/100% PC, and final read-only integrity/FKs and domain counts remained clean. The protected layer audit is closed; the Security register now records seven fixed findings and 30 remaining v1 blockers. Bounded evidence does not silently promote the wider permanent lineage rows.
-- BT-ARCH-018 Stage A completed the protected whole-codebase layer audit. Alpha.10 implements the four independently accepted findings: credential-free user-list DTOs, Services authorization for developer database mutations, constrained internal/public audit seams and Services-owned report totals. Independent review passed and the exact-candidate canonical BAT passed 841/841 with zero warnings/errors or failed/skipped tests; accepted commit `cd53f9ca19de1a10ea9ec375b63e294fdddfad23` closes this gate. Alpha.11 through alpha.13 fix BT-SH-001..003; BT-SH-004-P1 then reconciles the remaining findings into eight implementation batches, with Batch A identity/session/read authorization next and 30 findings still blocking v1.
+- Alpha.8's physical-batch partial-lineage guard is retained only as schema16 compatibility; normal schema17 runtime uses the accepted logical-lineage authority and must never regress to physical MovementBatch identity.
+- BT-20-P2/P3/P4 and the corrective passes delivered normal lineage composition, native Audit/History detail and Restore/RemainReversed UI. The complete Task20 acceptance inventory passed through alpha.9.10 Item 8, including 827/827 canonical automation, the 1920×1080/150% and separate 1920×1080/100% matrices, and clean final integrity/FKs/domain counts. BT-CORR-018..033 are reconciled individually to accepted/static status; completed lineage is no longer a current implementation blocker. The distinct stopped-client recovery route BT-OPS-012 and production Backup/Restore remain planned.
+- BT-ARCH-018 Stage A and alpha.10 closed the protected whole-codebase layer audit and its four accepted remediations. Security Batches A and B are complete. Current security totals are 16 `FIXED`, 20 `CONFIRMED-V1`, 1 `REVIEW-V1`, 11 `POST-V1` and 2 `NOT-APPLICABLE`: 21 findings still block v1, and Batch C is next after BT-ARCH-018-P4 closes.
 - PostgreSQL/API/portal/handheld/WinUI delivery remains post-v1. v1 debt closure is clean boundaries/provider-neutral semantics, not speculative infrastructure.
 
 Engineering improvements that are not currently user-facing defects. Product work belongs in `docs/Roadmap.md`; active defects/limitations belong in `KNOWN-ISSUES.md`.
@@ -92,8 +92,6 @@ Engineering improvements that are not currently user-facing defects. Product wor
 - Define installer/update signing and upgrade rollback strategy.
 
 ## Testing
-
-- `Test-BinTrackerCodexPrompt.ps1` uses a local `$error` diagnostic variable that collides case-insensitively with PowerShell's automatic `$Error` collection and can mask the intended invalid-input diagnostic. Input validation still returns the correct failing exit code; repair the diagnostic separately without broadening BT-20-FIX1.
 
 - Keep the Import failure-injection seam test-only/no-op in production; use it for deterministic transaction-boundary regression tests rather than exposing runtime failure controls.
 - Continue the regression rule: when a real defect is found, add a reproducing automated test where practical.
@@ -242,7 +240,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Local build SDK selection
 
-- BinTracker targets .NET 8 but currently uses a compatible installed SDK as the build host (10.0.400 on the development PC). The invalid alpha.23.3 restrictive `global.json` pin was removed. If deterministic pinning is introduced later, standardise/install the selected SDK on developer/CI machines first and test the failure path.
+- BinTracker targets .NET 8 and the accepted alpha.15 operator gate resolved compatible installed SDK 10.0.401. The invalid alpha.23.3 restrictive `global.json` pin was removed. If deterministic pinning is introduced later, standardise/install the selected SDK on developer/CI machines first and test the failure path.
 
 
 ## Build SDK policy correction
