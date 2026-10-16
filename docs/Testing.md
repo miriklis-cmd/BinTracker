@@ -1,5 +1,13 @@
 # BinTracker Automated Testing
 
+## BT-SH-004-P3 Batch B transactional mutation/audit consistency — 16 October 2026
+
+The affected business/authentication workflows previously saved authoritative state through one context and appended required audit through another. A deterministic SQLite trigger that aborts `AuditEvents` inserts reproduced all six sampled half-commits: customer/container/user creates and business-information updates remained persisted; failed-login count advanced; and successful-login `LastLoginUtc` persisted even though the service call failed. The pre-fix focused result was 0/6 passing.
+
+Alpha.15 adds a Data-owned `PersistenceTransactionRunner` and internal provider-neutral `ITransactionalAudit` composition around the existing `TransactionAuditAppender`. The final focused class passes 11/11 with zero failed/skipped: mutation/audit success, forced audit rollback, threshold lockout, successful-login state, actor attribution, stale-revision/no-false-audit and own-password rollback. Successful login publishes `UserSession` only after commit; self-reset still signs out in `finally` while its database mutation now rolls back with failed audit.
+
+Adjacent `TransactionAuditAppenderTests`, `SecurityBatchACharacterizationTests`, `AuthenticationSessionLifecycleTests`, `UserAdministrationBoundaryTests`, `AuditContractBoundaryTests`, `MultiUserReadinessSqliteTests` and `Slice1OperationalOutputCharacterizationTests` pass 45/45 with zero failed/skipped. The exact requested Release solution build passes with zero warnings/errors, and the mechanical audit passes at alpha.15 with 263 permanent IDs, 27 Markdown files and configured contradiction guards. Final diff evidence is recorded at handoff. The operator-owned canonical BAT remains pending. TEST REQUIRED: Full.
+
 ## BT-SH-004-FIX1 non-Administrator startup correction — 15 October 2026
 
 Windows smoke passed Administrator login/reports and logout, then failed because successful Operator/Viewer login entered `MainForm.Shown` and unconditionally requested the Administrator review count. The service correctly threw `UnauthorizedAccessException`. MainForm now routes its combined Administrator review-bar/reminder startup work through the role-aware `AdministratorReviewStartup` seam; service authorization is unchanged.

@@ -57,7 +57,7 @@ public interface ICustomerService
 internal sealed class CustomerService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IUserContext session,
-    IAuditService audit,
+    ITransactionalAudit transactionalAudit,
     IBusinessClock clock,
     ICurrentAccountAuthorization authorization,
     IOperationalMovementProjectionAuthority? operationalProjection = null) : ICustomerService
@@ -161,68 +161,61 @@ internal sealed class CustomerService(
         if (model.Name.Length < 2)
             throw new ArgumentException("Customer name is required.");
 
-        await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        // Customer codes are business identifiers and are unique irrespective of case.
-        // This deliberately treats "Albury", "ALBURY" and "albury" as the same code.
         var normalisedCode = model.CustomerCode.ToUpperInvariant();
-        if (await db.Customers.AnyAsync(
-                x => x.Id != model.Id &&
-                     x.CustomerCode != null &&
-                     x.CustomerCode.ToUpper() == normalisedCode,
-                cancellationToken))
-            throw new InvalidOperationException(
-                $"Customer code '{model.CustomerCode}' already exists. Customer codes are not case-sensitive.");
-
-        if (model.Id == 0)
-        {
-            var entity = new Customer
-            {
-                CustomerCode=model.CustomerCode, Name=model.Name, CustomerType=model.CustomerType, ContactName=model.ContactName,
-                Phone=model.Phone, MobileNumber=model.MobileNumber, Email=model.Email, Address=model.Address,
-                Notes=model.Notes, IsActive=true, AllowEmailReminders=model.AllowEmailReminders,
-                AllowSmsReminders=model.AllowSmsReminders, ReminderOptOut=model.ReminderOptOut,
-                CreatedUtc=clock.UtcNow, UpdatedUtc=clock.UtcNow,
-                CreatedByUserId=session.UserId, UpdatedByUserId=session.UserId
-            };
-            db.Customers.Add(entity);
-            try
-            {
-                await db.SaveChangesAsync(cancellationToken);
-            }
-            catch (DbUpdateException)
-            {
-                await using var verify =
-                    await factory.CreateDbContextAsync(cancellationToken);
-
-                if (await verify.Customers.AsNoTracking().AnyAsync(
-                        x =>
-                            x.CustomerCode != null &&
-                            x.CustomerCode.ToUpper() == normalisedCode,
-                        cancellationToken))
-                {
-                    throw new InvalidOperationException(
-                        $"Customer code '{model.CustomerCode}' already exists. Customer codes are not case-sensitive.");
-                }
-
-                throw;
-            }
-
-            await audit.WriteAsync("CUSTOMER_CREATED", "Customer", entity.Id.ToString(),
-                $"Customer '{entity.CustomerCode} - {entity.Name}' created.", after: Snapshot(entity), cancellationToken:cancellationToken);
-            return entity.Id;
-        }
-
-        var customer = await db.Customers.SingleAsync(x => x.Id == model.Id, cancellationToken);
-        db.Entry(customer).Property(x => x.Revision).OriginalValue = model.Revision;
-        var before = Snapshot(customer);
-        customer.CustomerCode=model.CustomerCode; customer.Name=model.Name; customer.CustomerType=model.CustomerType; customer.ContactName=model.ContactName;
-        customer.Phone=model.Phone; customer.MobileNumber=model.MobileNumber; customer.Email=model.Email;
-        customer.Address=model.Address; customer.Notes=model.Notes;
-        customer.AllowEmailReminders=model.AllowEmailReminders; customer.AllowSmsReminders=model.AllowSmsReminders;
-        customer.ReminderOptOut=model.ReminderOptOut; customer.UpdatedUtc=clock.UtcNow; customer.UpdatedByUserId=session.UserId; customer.Revision++;
         try
         {
-            await db.SaveChangesAsync(cancellationToken);
+            return await transactionalAudit.ExecuteAsync(async (scope, token) =>
+            {
+                var db = scope.Db;
+                // Customer codes are business identifiers and are unique irrespective of case.
+                // This deliberately treats "Albury", "ALBURY" and "albury" as the same code.
+                if (await db.Customers.AnyAsync(
+                        x => x.Id != model.Id &&
+                             x.CustomerCode != null &&
+                             x.CustomerCode.ToUpper() == normalisedCode,
+                        token))
+                    throw new InvalidOperationException(
+                        $"Customer code '{model.CustomerCode}' already exists. Customer codes are not case-sensitive.");
+
+                if (model.Id == 0)
+                {
+                    var entity = new Customer
+                    {
+                        CustomerCode=model.CustomerCode, Name=model.Name, CustomerType=model.CustomerType, ContactName=model.ContactName,
+                        Phone=model.Phone, MobileNumber=model.MobileNumber, Email=model.Email, Address=model.Address,
+                        Notes=model.Notes, IsActive=true, AllowEmailReminders=model.AllowEmailReminders,
+                        AllowSmsReminders=model.AllowSmsReminders, ReminderOptOut=model.ReminderOptOut,
+                        CreatedUtc=clock.UtcNow, UpdatedUtc=clock.UtcNow,
+                        CreatedByUserId=session.UserId, UpdatedByUserId=session.UserId
+                    };
+                    db.Customers.Add(entity);
+                    await db.SaveChangesAsync(token);
+                    scope.Append(
+                        "CUSTOMER_CREATED",
+                        "Customer",
+                        entity.Id.ToString(),
+                        $"Customer '{entity.CustomerCode} - {entity.Name}' created.",
+                        after: Snapshot(entity));
+                    return entity.Id;
+                }
+
+                var customer = await db.Customers.SingleAsync(x => x.Id == model.Id, token);
+                db.Entry(customer).Property(x => x.Revision).OriginalValue = model.Revision;
+                var before = Snapshot(customer);
+                customer.CustomerCode=model.CustomerCode; customer.Name=model.Name; customer.CustomerType=model.CustomerType; customer.ContactName=model.ContactName;
+                customer.Phone=model.Phone; customer.MobileNumber=model.MobileNumber; customer.Email=model.Email;
+                customer.Address=model.Address; customer.Notes=model.Notes;
+                customer.AllowEmailReminders=model.AllowEmailReminders; customer.AllowSmsReminders=model.AllowSmsReminders;
+                customer.ReminderOptOut=model.ReminderOptOut; customer.UpdatedUtc=clock.UtcNow; customer.UpdatedByUserId=session.UserId; customer.Revision++;
+                scope.Append(
+                    "CUSTOMER_UPDATED",
+                    "Customer",
+                    customer.Id.ToString(),
+                    $"Customer '{customer.CustomerCode} - {customer.Name}' updated.",
+                    before: before,
+                    after: Snapshot(customer));
+                return customer.Id;
+            }, cancellationToken);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -247,36 +240,39 @@ internal sealed class CustomerService(
 
             throw;
         }
-
-        await audit.WriteAsync("CUSTOMER_UPDATED", "Customer", customer.Id.ToString(),
-            $"Customer '{customer.CustomerCode} - {customer.Name}' updated.", before:before, after:Snapshot(customer), cancellationToken:cancellationToken);
-        return customer.Id;
     }
 
     public async Task SetActiveAsync(int id, bool active, CancellationToken cancellationToken = default)
     {
         await authorization.RequireOperationalAsync(cancellationToken);
-        await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var customer = await db.Customers.SingleAsync(x => x.Id == id, cancellationToken);
-        if (customer.IsActive == active) return;
-        var before = customer.IsActive;
-        customer.IsActive = active;
-        customer.UpdatedUtc = clock.UtcNow;
-        customer.UpdatedByUserId = session.UserId;
-        customer.Revision++;
         try
         {
-            await db.SaveChangesAsync(cancellationToken);
+            await transactionalAudit.ExecuteAsync(async (scope, token) =>
+            {
+                var customer = await scope.Db.Customers
+                    .SingleAsync(x => x.Id == id, token);
+                if (customer.IsActive == active)
+                    return false;
+                var before = customer.IsActive;
+                customer.IsActive = active;
+                customer.UpdatedUtc = clock.UtcNow;
+                customer.UpdatedByUserId = session.UserId;
+                customer.Revision++;
+                scope.Append(
+                    active ? "CUSTOMER_ACTIVATED" : "CUSTOMER_DEACTIVATED",
+                    "Customer",
+                    id.ToString(),
+                    $"Customer '{customer.CustomerCode} - {customer.Name}' {(active ? "reactivated" : "deactivated")}.",
+                    before: new { IsActive = before },
+                    after: new { customer.IsActive });
+                return true;
+            }, cancellationToken);
         }
         catch (DbUpdateConcurrencyException)
         {
             throw new InvalidOperationException(
                 "This customer was changed by another user while its active status was being updated. Reload and try again.");
         }
-
-        await audit.WriteAsync(active ? "CUSTOMER_ACTIVATED" : "CUSTOMER_DEACTIVATED", "Customer", id.ToString(),
-            $"Customer '{customer.CustomerCode} - {customer.Name}' {(active ? "reactivated" : "deactivated")}.",
-            before:new { IsActive=before }, after:new { customer.IsActive }, cancellationToken:cancellationToken);
     }
 
     public async Task<IReadOnlyList<CustomerBalanceRow>> GetBalancesAsync(int customerId, CancellationToken cancellationToken = default)

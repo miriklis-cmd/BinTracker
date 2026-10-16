@@ -43,7 +43,7 @@ public interface IContainerTypeService
 
 internal sealed class ContainerTypeService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    IAuditService audit,
+    ITransactionalAudit transactionalAudit,
     IBusinessClock clock,
     ICurrentAccountAuthorization authorization,
     IOperationalMovementProjectionAuthority? operationalProjection = null) : IContainerTypeService
@@ -129,48 +129,63 @@ internal sealed class ContainerTypeService(
         if (shortCode.Any(ch => !char.IsLetterOrDigit(ch) && ch != '_' && ch != '-'))
             throw new ArgumentException("Short code can contain letters, numbers, hyphen and underscore only.");
 
-        await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        if (await db.ContainerTypes.AnyAsync(
-                x => x.Id != model.Id && x.NameKey == nameKey,
-                cancellationToken))
-            throw new InvalidOperationException("A container type with that name already exists.");
-        if (await db.ContainerTypes.AnyAsync(x => x.Id != model.Id && x.ShortCode.ToUpper() == shortCode, cancellationToken))
-            throw new InvalidOperationException("A container type with that short code already exists.");
-
-        ContainerType entity;
-        object? before = null;
-        if (model.Id == 0)
-        {
-            entity = new ContainerType
-            {
-                SystemCode = await CreateSystemCodeAsync(db, shortCode, cancellationToken),
-                CreatedUtc = clock.UtcNow
-            };
-            db.ContainerTypes.Add(entity);
-        }
-        else
-        {
-            entity = await db.ContainerTypes.SingleAsync(x => x.Id == model.Id, cancellationToken);
-            db.Entry(entity).Property(x => x.Revision).OriginalValue = model.Revision;
-            before = Snapshot(entity);
-            // SystemCode is intentionally immutable after creation.
-        }
-
-        entity.Name = name;
-        entity.NameKey = nameKey;
-        entity.ShortCode = shortCode;
-        entity.Description = Clean(model.Description);
-        entity.Notes = Clean(model.Notes);
-        entity.DisplayOrder = Math.Max(0, model.DisplayOrder);
-        entity.IsActive = model.IsActive;
-        entity.IsSpecialFloorReportContainer = model.IsSpecialFloorReportContainer;
-        entity.DashboardColour = Clean(model.DashboardColour);
-        entity.UpdatedUtc = clock.UtcNow;
-        if (model.Id != 0) entity.Revision++;
-
         try
         {
-            await db.SaveChangesAsync(cancellationToken);
+            return await transactionalAudit.ExecuteAsync(async (scope, token) =>
+            {
+                var db = scope.Db;
+                if (await db.ContainerTypes.AnyAsync(
+                        x => x.Id != model.Id && x.NameKey == nameKey,
+                        token))
+                    throw new InvalidOperationException("A container type with that name already exists.");
+                if (await db.ContainerTypes.AnyAsync(
+                        x => x.Id != model.Id && x.ShortCode.ToUpper() == shortCode,
+                        token))
+                    throw new InvalidOperationException("A container type with that short code already exists.");
+
+                ContainerType entity;
+                object? before = null;
+                if (model.Id == 0)
+                {
+                    entity = new ContainerType
+                    {
+                        SystemCode = await CreateSystemCodeAsync(db, shortCode, token),
+                        CreatedUtc = clock.UtcNow
+                    };
+                    db.ContainerTypes.Add(entity);
+                }
+                else
+                {
+                    entity = await db.ContainerTypes.SingleAsync(x => x.Id == model.Id, token);
+                    db.Entry(entity).Property(x => x.Revision).OriginalValue = model.Revision;
+                    before = Snapshot(entity);
+                    // SystemCode is intentionally immutable after creation.
+                }
+
+                entity.Name = name;
+                entity.NameKey = nameKey;
+                entity.ShortCode = shortCode;
+                entity.Description = Clean(model.Description);
+                entity.Notes = Clean(model.Notes);
+                entity.DisplayOrder = Math.Max(0, model.DisplayOrder);
+                entity.IsActive = model.IsActive;
+                entity.IsSpecialFloorReportContainer = model.IsSpecialFloorReportContainer;
+                entity.DashboardColour = Clean(model.DashboardColour);
+                entity.UpdatedUtc = clock.UtcNow;
+                if (model.Id != 0) entity.Revision++;
+
+                // Obtain the generated identifier before constructing the audit;
+                // the Data-owned transaction still prevents either write committing alone.
+                await db.SaveChangesAsync(token);
+                scope.Append(
+                    model.Id == 0 ? "CONTAINER_TYPE_CREATED" : "CONTAINER_TYPE_UPDATED",
+                    "ContainerType",
+                    entity.Id.ToString(),
+                    $"Container type '{entity.Name}' {(model.Id == 0 ? "created" : "updated")}.",
+                    before: before,
+                    after: Snapshot(entity));
+                return entity.Id;
+            }, cancellationToken);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -200,48 +215,39 @@ internal sealed class ContainerTypeService(
 
             throw;
         }
-
-        await audit.WriteAsync(
-            model.Id == 0 ? "CONTAINER_TYPE_CREATED" : "CONTAINER_TYPE_UPDATED",
-            "ContainerType",
-            entity.Id.ToString(),
-            $"Container type '{entity.Name}' {(model.Id == 0 ? "created" : "updated")}.",
-            before: before,
-            after: Snapshot(entity),
-            cancellationToken: cancellationToken);
-
-        return entity.Id;
     }
 
     public async Task SetActiveAsync(int id, bool active, CancellationToken cancellationToken = default)
     {
         await authorization.RequireAdministratorAsync(cancellationToken);
-        await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var entity = await db.ContainerTypes.SingleAsync(x => x.Id == id, cancellationToken);
-        if (entity.IsActive == active) return;
-
-        var before = entity.IsActive;
-        entity.IsActive = active;
-        entity.UpdatedUtc = clock.UtcNow;
-        entity.Revision++;
         try
         {
-            await db.SaveChangesAsync(cancellationToken);
+            await transactionalAudit.ExecuteAsync(async (scope, token) =>
+            {
+                var entity = await scope.Db.ContainerTypes
+                    .SingleAsync(x => x.Id == id, token);
+                if (entity.IsActive == active)
+                    return false;
+
+                var before = entity.IsActive;
+                entity.IsActive = active;
+                entity.UpdatedUtc = clock.UtcNow;
+                entity.Revision++;
+                scope.Append(
+                    active ? "CONTAINER_TYPE_ACTIVATED" : "CONTAINER_TYPE_DEACTIVATED",
+                    "ContainerType",
+                    entity.Id.ToString(),
+                    $"Container type '{entity.Name}' {(active ? "activated" : "deactivated")}.",
+                    before: new { IsActive = before },
+                    after: new { entity.IsActive });
+                return true;
+            }, cancellationToken);
         }
         catch (DbUpdateConcurrencyException)
         {
             throw new InvalidOperationException(
                 "This container type was changed by another user while its active status was being updated. Reload and try again.");
         }
-
-        await audit.WriteAsync(
-            active ? "CONTAINER_TYPE_ACTIVATED" : "CONTAINER_TYPE_DEACTIVATED",
-            "ContainerType",
-            entity.Id.ToString(),
-            $"Container type '{entity.Name}' {(active ? "activated" : "deactivated")}.",
-            before: new { IsActive = before },
-            after: new { entity.IsActive },
-            cancellationToken: cancellationToken);
     }
 
     private async Task<string> CreateSystemCodeAsync(BinTrackerDbContext db, string shortCode, CancellationToken cancellationToken)

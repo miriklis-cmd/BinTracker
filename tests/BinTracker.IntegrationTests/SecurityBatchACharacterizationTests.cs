@@ -233,7 +233,7 @@ public sealed class SecurityBatchACharacterizationTests
     }
 
     [Fact]
-    public async Task Self_reset_audit_failure_still_revokes_session_after_persistence()
+    public async Task Self_reset_audit_failure_revokes_session_and_rolls_back_credentials()
     {
         await using var harness = await Harness.CreateAsync();
         var administrator = await harness.AddUserAsync(
@@ -242,23 +242,23 @@ public sealed class SecurityBatchACharacterizationTests
             UserRole.Administrator);
         var session = harness.Get<UserSession>();
         session.SignIn(administrator);
-        var service = new UserService(
-            harness.Factory,
-            session,
-            new FailingAuditService(),
-            new FixedClock(),
-            new CurrentAccountAuthorization(harness.Factory, session));
+        await harness.FailAuditWritesAsync();
+        var service = harness.Get<IUserService>();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<DbUpdateException>(() =>
             service.ResetPasswordAsync(administrator.Id, "Temporary!42"));
 
         Assert.False(session.IsAuthenticated);
         await using var db = await harness.Factory.CreateDbContextAsync();
         var persisted = await db.UserAccounts.AsNoTracking()
             .SingleAsync(item => item.Id == administrator.Id);
-        Assert.True(persisted.MustChangePassword);
-        Assert.True(PasswordSecurity.Verify(
+        Assert.False(persisted.MustChangePassword);
+        Assert.False(PasswordSecurity.Verify(
             "Temporary!42",
+            persisted.PasswordHash,
+            persisted.PasswordSalt));
+        Assert.True(PasswordSecurity.Verify(
+            "CorrectHorse!42",
             persisted.PasswordHash,
             persisted.PasswordSalt));
     }
@@ -276,7 +276,7 @@ public sealed class SecurityBatchACharacterizationTests
             factory,
             session,
             audit,
-            audit,
+            new NoOpTransactionalAudit(),
             clock,
             new CurrentAccountAuthorization(factory, session));
 
@@ -335,6 +335,15 @@ public sealed class SecurityBatchACharacterizationTests
             scope.ServiceProvider.GetRequiredService<T>();
 
         public IDbContextFactory<BinTrackerDbContext> Factory => factory;
+
+        public async Task FailAuditWritesAsync()
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText =
+                "CREATE TRIGGER fail_audit_insert BEFORE INSERT ON AuditEvents " +
+                "BEGIN SELECT RAISE(ABORT, 'forced audit failure'); END;";
+            await command.ExecuteNonQueryAsync();
+        }
 
         public async Task<UserAccount> AddUserAsync(
             string username,
@@ -436,57 +445,12 @@ public sealed class SecurityBatchACharacterizationTests
             Task.CompletedTask;
     }
 
-    private sealed class FailingAuditService : IAuditService, IAuditAppender
+    private sealed class NoOpTransactionalAudit : ITransactionalAudit
     {
-        public event EventHandler<AdministratorReviewState>? AdministratorReviewStateChanged
-        {
-            add { }
-            remove { }
-        }
-
-        public Task AppendAsync(
-            string action,
-            string entityType,
-            string? entityId,
-            string description,
-            bool succeeded = true,
-            object? before = null,
-            object? after = null,
+        public Task<TResult> ExecuteAsync<TResult>(
+            Func<TransactionalAuditScope, CancellationToken, Task<TResult>> operation,
             CancellationToken cancellationToken = default) =>
-            throw new InvalidOperationException("Simulated audit persistence failure.");
-
-        public Task<IReadOnlyList<AuditEventSummary>> GetRecentAsync(
-            int limit = 500,
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public Task<IReadOnlyList<AuditTrailRow>> GetAuditTrailAsync(
-            AuditReviewFilter filter = AuditReviewFilter.All,
-            int limit = 500,
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public Task<AdministratorReviewState> GetAdministratorReviewStateAsync(
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public Task<IReadOnlyList<PendingMovementChangeAuditEvent>> GetUnreviewedMovementChangesAsync(
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public Task MarkMovementChangesReviewedAsync(
-            IReadOnlyCollection<long> auditEventIds,
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public Task<IReadOnlyList<MovementBatchAuditLine>> GetMovementBatchDetailAsync(
-            int batchId,
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public Task<MovementChangeAuditDetail?> GetMovementChangeDetailAsync(
-            long auditEventId,
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
+            throw new InvalidOperationException("Transactional persistence was not expected.");
     }
+
 }

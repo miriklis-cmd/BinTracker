@@ -1,3 +1,10 @@
+## v0.5.0-alpha.15 (16 October 2026)
+
+- Fixed BT-SH-006 and BT-SH-030 by replacing separate master/user/auth mutation and required-audit commits with one Data-owned transaction boundary using the existing `TransactionAuditAppender`.
+- Covered business-information save; customer/container create, update and activation; user create, activation, password reset, lock and role; initial-administrator creation; own-password change; failed-login increment/lock; and successful-login state. Successful login publishes `UserSession` only after commit; self-reset still invalidates its desktop session on failure.
+- Added deterministic audit-insert failure, success pairing, threshold lockout, actor-attribution, stale-revision/no-false-audit and password rollback tests. Preserved public provider-neutral contracts, database-side failed-login concurrency, role checks and alpha.14 authorization behavior.
+- Advanced Version/InformationalVersion from alpha.14 to alpha.15 while retaining AssemblyVersion/FileVersion `0.5.0.0`. The operator canonical BAT remains pending.
+
 ## v0.5.0-alpha.14 (15 October 2026)
 
 - Corrected the unaccepted candidate's Operator/Viewer post-login crash by preventing MainForm from invoking Administrator-only review startup work for non-Administrator roles; Services authorization remains unchanged and Windows retest is pending.

@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.5.0-alpha.14**
+Current planning baseline: **v0.5.0-alpha.15**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -26,15 +26,10 @@ The discussion must cover:
 
 Only implement after a preferred direction is agreed. Dashboard is intentionally allowed its own milestone because experimentation may materially change scope.
 
-2. **Dashboard operational pass** — validate metrics, add actionable drill-through and recent/container activity.
-3. **Email/SMS reminder delivery** — business rules, providers, templates, retries and delivery history.
-4. **Movement correction/reversal** — controlled audited reversal/correction workflow.
-5. **Production operations** — Backup/Restore, hardening, installer/upgrade and production acceptance.
-
-The remaining importer failure-detail message and deferred Review cosmetics can be handled alongside these phases without reopening the completed core import safety work.
+This design gate applies when Dashboard is reached in the authoritative current execution order below. It does not move Dashboard ahead of Communications, user-scoped draft ownership, Container Type ordering or Branding. The remaining importer failure-detail message and deferred Review cosmetics can be handled alongside the applicable phases without reopening the completed core import safety work.
 
 
-## Current execution order — audited 16 August 2026
+## Current execution order — revised 16 October 2026
 
 This order is the authoritative pre-v1 sequence. `v0.5.0-alpha.1` began the clean milestone scheme with Movement Correction/Reversal; later milestone numbers remain scope-driven.
 
@@ -44,18 +39,19 @@ This order is the authoritative pre-v1 sequence. `v0.5.0-alpha.1` began the clea
 4. **Logical movement-lineage implementation and acceptance** — implement frozen BT-CORR-018..033/BT-HIST-008..009 architecture, per-database preflight/backup, migration, services, reporting, WinForms integration and Batch #30 adversarial acceptance. Do not remove the physical-batch guard independently.
 5. **Whole-codebase layer delineation audit — HARD GATE** — Stage A completed the protected audit; alpha.10 P1 implemented the four accepted findings, passed independent ChatGPT review and passed the exact-candidate canonical BAT at 841/841 with zero warnings/errors or failed/skipped tests. The accepted implementation is commit `cd53f9ca19de1a10ea9ec375b63e294fdddfad23`; this gate is closed.
 6. **Security, Data Integrity & Code Quality Hardening — HARD GATE** — remediate/disposition every protected security finding before branding/communications and v1. The lineage and layer-audit items above are protected completion gates within Movement Correction/Reversal, not intervening feature work.
-7. **Deterministic configurable Container Type ordering** — design duplicate-order handling and reorder UX without hard-coded container priorities.
-8. **Business Information & Branding** — logo, shared header/branding and generated-output source.
-9. **Email, SMS & Customer Communications** — Google Workspace email + Texto SMS, reminders, templates, history/retries/audit.
-10. **Dashboard** — mandatory design discussion before code; future clients remain comparison context only.
-11. **Customer operational analytics/polish** — sorting, lifetime totals and statement integration.
-12. **Production Backup / Restore / Recovery** — user backup, validated restore, scheduling/retention and recovery drill; the earlier lineage migration backup is a blocking safety gate, not a substitute.
-13. **Final security, audit & reliability release review** — authorization/audit matrices, secrets, logging, restart, integrity, Release and DPI.
-14. **Installer / upgrade / deployment** — Windows package, safe upgrades, signing and production configuration.
-15. **Full v1 acceptance / regression** — fresh install/database/import/balances/lineage/reports/communications/branding/dashboard/backup/restart/upgrade.
-16. **v1.0 production release** — accepted replacement for the daily Excel workflow.
+7. **Email, SMS & Customer Communications** — the first user-facing feature after Security Hardening: Google Workspace email + Texto SMS, manual Customer sends, bulk/automatic reminders, preferences/opt-out, templates, delivery history, retry/duplicate protection, audit, outstanding snapshot and the statement attachment/link decision.
+8. **User-scoped unsaved Batch Entry recovery/ownership** — implement BT-BATCH-012 so persisted unfinished drafts are owned by stable persisted user ID and fail closed across users below WinForms.
+9. **Deterministic configurable Container Type ordering** — design duplicate-order handling and reorder UX without hard-coded container priorities.
+10. **Business Information & Branding** — logo, shared header/branding and generated-output source.
+11. **Dashboard** — mandatory design discussion before code; future clients remain comparison context only.
+12. **Customer operational analytics/polish** — sorting, lifetime totals and statement integration.
+13. **Production Backup / Restore / Recovery** — user backup, validated restore, scheduling/retention and recovery drill; the earlier lineage migration backup is a blocking safety gate, not a substitute.
+14. **Final security, audit & reliability release review** — authorization/audit matrices, secrets, logging, restart, integrity, Release and DPI.
+15. **Installer / upgrade / deployment** — Windows package, safe upgrades, signing and production configuration.
+16. **Full v1 acceptance / regression** — fresh install/database/import/balances/lineage/reports/communications/branding/dashboard/backup/restart/upgrade.
+17. **v1.0 production release** — accepted replacement for the daily Excel workflow.
 
-Post-v1 remains separate: **authenticated API + PostgreSQL central deployment**, Windows UI v2 / WinUI 3 evaluation, customer portal, handheld/mobile clients, barcode scanning, multiple depots and Custom Report Designer. Pre-v1 preserves boundaries/semantics only; it does not implement those clients/providers.
+Licensing/activation is already permanently tracked as post-v1 requirement BT-PV1-009, not as a v1 milestone, so it is not inserted into this pre-v1 order. Post-v1 remains separate: **authenticated API + PostgreSQL central deployment**, licensing/activation and commercial support tooling, Windows UI v2 / WinUI 3 evaluation, customer portal, handheld/mobile clients, barcode scanning, multiple depots and Custom Report Designer. Pre-v1 preserves boundaries/semantics only; it does not implement those clients/providers.
 
 ## Priority 0 — close data-integrity risks before more features
 
@@ -204,7 +200,7 @@ Retained Batch #30 stays protected from mutation/deletion in the retained source
 
 The bounded pre-IMP-07 lifecycle correction keeps actual migration publication strict to the frozen `MigrationBaseline` output while making schema-17 `AlreadyComplete` validation use separate structural/current-health checks that accept valid native `Initial` roots and reject malformed current lineage. It changes no lineage semantics, migration registration or runtime authority.
 
-Unified Correct/Reverse/Restore execution, root-CAS/idempotency/provider translation, corrected activity/PositionAsOf, all prepared consumers, Import reconciliation, Task 19's shared Print Pack snapshot, native Audit/History detail and the separately sequenced Restore/RemainReversed UI are now normal post-readiness behavior. Broader activated-system automated gates, fresh exact-copy retained migration/backup rehearsal, bounded FIX7-A/B/C, the FIX6 Batch #30 regression check, successful original-anchor correction/refresh and the bounded Task20 acceptance inventory have passed. Alpha.9.10 closed Item 8 on Windows 11 at 1920×1080/150% and on a separate 1920×1080/100% PC after its canonical 827/827 gate; final read-only integrity/FKs and domain counts remained clean and unchanged. BT-ARCH-018 Stage A and alpha.10 P1 are complete and accepted without reopening Task20: independent review passed and the exact-candidate operator BAT passed 841/841. Security Hardening Batch A is complete at the alpha.14 static/automated-evidence level: BT-SH-008/017/018/019/022/028/032 are fixed, while BT-SH-040 retains only its Batch C operational-identifier scope. Packaging/deployment, actual production-database mutation/recovery and alternative-provider acceptance are not silently implied.
+Unified Correct/Reverse/Restore execution, root-CAS/idempotency/provider translation, corrected activity/PositionAsOf, all prepared consumers, Import reconciliation, Task 19's shared Print Pack snapshot, native Audit/History detail and the separately sequenced Restore/RemainReversed UI are now normal post-readiness behavior. Broader activated-system automated gates, fresh exact-copy retained migration/backup rehearsal, bounded FIX7-A/B/C, the FIX6 Batch #30 regression check, successful original-anchor correction/refresh and the bounded Task20 acceptance inventory have passed. Alpha.9.10 closed Item 8 on Windows 11 at 1920×1080/150% and on a separate 1920×1080/100% PC after its canonical 827/827 gate; final read-only integrity/FKs and domain counts remained clean and unchanged. BT-ARCH-018 Stage A and alpha.10 P1 are complete and accepted without reopening Task20: independent review passed and the exact-candidate operator BAT passed 841/841. Security Hardening Batch A is complete at alpha.14 and Batch B is complete at the alpha.15 static/focused-automated-evidence level: BT-SH-006/030 now share one mutation/audit commit boundary, while BT-SH-040 retains only its Batch C operational-identifier scope. Packaging/deployment, actual production-database mutation/recovery and alternative-provider acceptance are not silently implied.
 
 The whole-codebase layer delineation audit at execution step 5 and its four accepted alpha.10 remediations are complete and accepted. Independent review and the exact-candidate canonical BAT have passed; the architecture closure gate no longer blocks Security Hardening. No Security Hardening finding is fixed by that closure.
 
@@ -242,9 +238,23 @@ Implementation is deliberately split into controlled batches: security boundarie
 
 The repository audit must fail if the register disappears, loses an audit finding, contains an invalid disposition, or if this workstream is moved behind Branding/Communications. A v1.0 release must additionally fail while any accepted v1 finding remains unresolved.
 
-BT-SH-001 is fixed at the alpha.11 static/focused-evidence checkpoint: all current report CSV exports use one structured cell serializer that neutralizes formula-leading text, including whitespace/control/format-prefix bypasses, while retaining typed numeric output and existing columns/order. BT-SH-002 is fixed at the alpha.12 static/focused-evidence checkpoint: the pending developer database-operation marker is fully validated at its sole Data reader before transition, replacement or cleanup, and only trusted configured/derived paths can influence database execution or staged-artifact deletion. BT-SH-003 is fixed at the alpha.13 static/focused-evidence checkpoint: the singleton desktop session atomically becomes anonymous before logout audit work and before any new login attempt, so stale user/role authority cannot survive failure or cancellation. The alpha.13 `BT-SH-004-P1` current-source reconciliation closed BT-SH-004, 011, 020 and 041 as already fixed, rejected BT-SH-023 and 046 as inapplicable to accepted current contracts, and organized the remaining work into eight authority-aligned batches. Alpha.14 `BT-SH-004-P2` completes Batch A by fixing BT-SH-008/017/018/019/022/028/032 through canonical bounded authentication identity, uniform Services authorization, persisted current-account revalidation and self-reset invalidation. BT-SH-040 retains only customer/container operational-identifier normalization in Batch C. Current totals are 14 `FIXED`, 22 `CONFIRMED-V1`, 1 `REVIEW-V1`, 11 `POST-V1` and 2 `NOT-APPLICABLE`; Batch B is next, and the Security register remains authoritative for exact membership, rationale and evidence.
+BT-SH-001 is fixed at the alpha.11 static/focused-evidence checkpoint: all current report CSV exports use one structured cell serializer that neutralizes formula-leading text, including whitespace/control/format-prefix bypasses, while retaining typed numeric output and existing columns/order. BT-SH-002 is fixed at the alpha.12 static/focused-evidence checkpoint: the pending developer database-operation marker is fully validated at its sole Data reader before transition, replacement or cleanup, and only trusted configured/derived paths can influence database execution or staged-artifact deletion. BT-SH-003 is fixed at the alpha.13 static/focused-evidence checkpoint: the singleton desktop session atomically becomes anonymous before logout audit work and before any new login attempt, so stale user/role authority cannot survive failure or cancellation. The alpha.13 `BT-SH-004-P1` current-source reconciliation closed BT-SH-004, 011, 020 and 041 as already fixed, rejected BT-SH-023 and 046 as inapplicable to accepted current contracts, and organized the remaining work into eight authority-aligned batches. Alpha.14 `BT-SH-004-P2` completes Batch A by fixing BT-SH-008/017/018/019/022/028/032 through canonical bounded authentication identity, uniform Services authorization, persisted current-account revalidation and self-reset invalidation. Alpha.15 `BT-SH-004-P3` completes Batch B by fixing BT-SH-006/030 with one Data-owned commit/rollback boundary for each affected authoritative mutation plus required audit. BT-SH-040 retains only customer/container operational-identifier normalization in Batch C. Current totals are 16 `FIXED`, 20 `CONFIRMED-V1`, 1 `REVIEW-V1`, 11 `POST-V1` and 2 `NOT-APPLICABLE`; Batch C is next, and the Security register remains authoritative for exact membership, rationale and evidence.
 
-### 5B. Business Information & Branding
+### 5B. Email, SMS & Customer Communications — first post-hardening feature
+
+This is the first user-facing feature milestone after the Security Hardening gate closes. Its complete scope remains Google Workspace email, Texto SMS, manual send from Customer, automatic/bulk reminders, customer preferences and opt-out, templates, delivery history, retry/duplicate protection, audit, the relevant outstanding snapshot and the statement attachment/link decision. No later feature milestone may begin first.
+
+### 5C. User-scoped unsaved Batch Entry recovery/ownership — second post-hardening feature
+
+BT-BATCH-012 is the second feature milestone after Security Hardening, immediately after Communications and before Container Type ordering. Every persisted unfinished draft must be owned by stable persisted user ID. Only that authenticated owner may Continue, Save or Discard it; another user, including an Administrator, must neither see it as their recoverable work nor operate on it. Missing, invalid or ambiguous ownership fails closed. Existing owner crash/restart recovery and independent role authorization for committing a batch remain unchanged.
+
+This provider-neutral invariant is deliberately established in v1 before post-v1 multi-user/API/central-SQL work. Retrofitting workstation-scoped drafts after concurrent users exist would complicate authority, recovery, concurrency, takeover, audit, conflict handling and persisted-draft migration. This does not move API, PostgreSQL or another central-provider implementation into v1; any future Administrator takeover must be separately designed, explicit and audited.
+
+### 5D. Deterministic configurable Container Type ordering
+
+This is the third feature milestone after Security Hardening. Define duplicate-order handling and reorder UX without hard-coded container priorities.
+
+### 5E. Business Information & Branding
 
 This is a **pre-v1 milestone**, not a post-v1 idea.
 
@@ -255,9 +265,11 @@ This is a **pre-v1 milestone**, not a post-v1 idea.
 - [ ] Decide how business name, trading name, logo and custom header coexist without duplicate-looking output.
 - [ ] Leave room for richer HTML email header/signature treatment without creating a second branding system.
 
-## Priority 2 — communications
+## Priority 2 — communications specification
 
 ### 6. Email, SMS & Customer Communications
+
+Execution position is governed by the current order above and section 5B: this is the first feature after Security Hardening. This detailed section records scope and does not defer Communications behind Branding.
 
 Groundwork already exists:
 

@@ -1,16 +1,18 @@
 # BinTracker Roadmap Coverage Matrix
 
-Audited: 15 October 2026
+Audited: 16 October 2026
 
 | Workstream | v1? | Roadmap status / gate |
 |---|---|---|
 | Excel Import safety/provenance | Yes | Core complete; transactional failure detail + cosmetic validation remain |
 | Reports | Yes | v0.4 milestone completed/acceptance-cleaned before the v0.5 correction/reversal milestone; Movement History is now an integrated responsive main-workspace page with authoritative persisted Movement ID, reversal badges and customer-code export naming; configured Container Type filters remain reconciled; bounded Item-7 real preview/print and the corrected Item-8 display/DPI matrix passed |
-| Batch Entry acceptance/recovery | Yes | post-add reset and recovery choice are operator-confirmed; edit/remove/Enter/Esc-navigation cleanup is implemented and pending focused smoke acceptance |
 | Movement Correction/Reversal | Yes | Correction semantics and Administrator review workflow/infobar/exact lineage detail implemented; bounded Task20 Windows/DPI acceptance complete; protected layer-delineation Stage A and P1 accepted after independent review and an exact-candidate 841/841 operator BAT |
-| Security, Data Integrity & Code Quality Hardening | Yes — HARD GATE | All 50 findings remain permanently tracked. Alpha.14 Batch A fixes BT-SH-008/017/018/019/022/028/032 and closes BT-SH-040's authentication scope; customer/container operational identifiers remain with Batch C. Current totals are 14 FIXED, 22 CONFIRMED-V1, 1 REVIEW-V1, 11 POST-V1 and 2 NOT-APPLICABLE. The 23 unresolved v1 blockers remain across seven batches; Batch B is next. The per-build completeness/order gate and v1.0 unresolved-finding block remain. |
-| Business Information & Branding | Yes | Textual Default Report Header exists; logo + shared report/email branding remain |
-| Email/SMS Customer Communications | Yes | Google Workspace + Texto direction; reminder/send/history/audit workflow |
+| Security, Data Integrity & Code Quality Hardening | Yes — HARD GATE | All 50 findings remain permanently tracked. Alpha.14 Batch A fixes BT-SH-008/017/018/019/022/028/032 and closes BT-SH-040's authentication scope; alpha.15 Batch B fixes BT-SH-006/030 with transactional state/audit consistency. Customer/container operational identifiers remain with Batch C. Current totals are 16 FIXED, 20 CONFIRMED-V1, 1 REVIEW-V1, 11 POST-V1 and 2 NOT-APPLICABLE. The 21 unresolved v1 blockers remain across six batches; Batch C is next. The per-build completeness/order gate and v1.0 unresolved-finding block remain. |
+| Email/SMS Customer Communications | Yes — first post-hardening feature | Google Workspace + Texto direction; manual Customer send, bulk/automatic reminders, preferences/opt-out, templates, delivery history, retries/duplicate protection, audit, outstanding snapshot and statement attachment/link decision |
+| User-scoped unsaved Batch Entry ownership | Yes — second post-hardening feature | BT-BATCH-012 is a v1 blocker: stable persisted user-ID ownership; owner-only Continue/Save/Discard; Administrator does not bypass; invalid ownership fails closed below WinForms. Existing owner recovery and separate commit-role authorization remain |
+| Batch Entry acceptance/recovery | Yes | Existing post-add reset and owner recovery choices are operator-confirmed; edit/remove/Enter/Esc-navigation cleanup is implemented and pending focused smoke acceptance. Current persisted recovery remains cross-user until BT-BATCH-012 is implemented |
+| Deterministic configurable Container Type ordering | Yes — third post-hardening feature | Define duplicate-order handling and reorder UX without hard-coded container priorities |
+| Business Information & Branding | Yes — fourth post-hardening feature | Textual Default Report Header exists; logo + shared report/email branding remain |
 | Dashboard | Yes | Design discussion mandatory before coding |
 | Forecasting/ML | Hook/design now; modelling later | Discuss hooks during Dashboard; do not fake prediction without useful history |
 | Customer operational analytics | Yes | Sorting, lifetime OUT/IN, statement workflow |
@@ -26,6 +28,9 @@ Audited: 15 October 2026
 | Customer portal | Post-v1 | Explicit candidate |
 | Barcode scanning | Post-v1 | Explicit candidate |
 | Multiple depots | Post-v1 | Explicit candidate |
+| Licensing/activation | Post-v1 | Permanently tracked as BT-PV1-009; not a v1 execution milestone |
+
+After Security Hardening closes, the authoritative v1 feature order is: Communications; BT-BATCH-012 user-scoped draft ownership; Container Type ordering; Business Information & Branding; Dashboard; customer operational analytics/polish; Production Backup/Restore/Recovery. Final security/audit/reliability review, installer/upgrade/deployment, full v1 acceptance and v1.0 release then follow. Post-v1 API/central-provider implementation remains post-v1.
 
 ## Development acceptance rules
 

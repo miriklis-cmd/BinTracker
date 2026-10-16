@@ -37,7 +37,7 @@ public interface IBusinessInformationService
 
 internal sealed class BusinessInformationService(
     IDbContextFactory<BinTrackerDbContext> factory,
-    IAuditService audit,
+    ITransactionalAudit transactionalAudit,
     ICurrentAccountAuthorization authorization) : IBusinessInformationService
 {
     public async Task<BusinessInformation> GetAsync(
@@ -71,45 +71,62 @@ internal sealed class BusinessInformationService(
 
         Validate(information);
 
-        await using var db = await factory.CreateDbContextAsync(cancellationToken);
-
-        var settings = await db.ApplicationSettings
-            .SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
-
-        if (settings is null)
-        {
-            settings = new ApplicationSettings { Id = 1 };
-            db.ApplicationSettings.Add(settings);
-        }
-        else
-        {
-            db.Entry(settings).Property(x => x.Revision).OriginalValue =
-                information.Revision;
-        }
-
-        var before = new
-        {
-            settings.BusinessName,
-            settings.TradingName,
-            settings.Abn,
-            settings.Address,
-            settings.Phone,
-            settings.Email,
-            settings.DefaultReportHeader
-        };
-
-        settings.BusinessName = Clean(information.BusinessName);
-        settings.TradingName = Clean(information.TradingName);
-        settings.Abn = Clean(information.Abn);
-        settings.Address = Clean(information.Address);
-        settings.Phone = Clean(information.Phone);
-        settings.Email = Clean(information.Email);
-        settings.DefaultReportHeader = Clean(information.DefaultReportHeader);
-        settings.Revision++;
-
         try
         {
-            await db.SaveChangesAsync(cancellationToken);
+            await transactionalAudit.ExecuteAsync(async (scope, token) =>
+            {
+                var settings = await scope.Db.ApplicationSettings
+                    .SingleOrDefaultAsync(x => x.Id == 1, token);
+
+                if (settings is null)
+                {
+                    settings = new ApplicationSettings { Id = 1 };
+                    scope.Db.ApplicationSettings.Add(settings);
+                }
+                else
+                {
+                    scope.Db.Entry(settings).Property(x => x.Revision).OriginalValue =
+                        information.Revision;
+                }
+
+                var before = new
+                {
+                    settings.BusinessName,
+                    settings.TradingName,
+                    settings.Abn,
+                    settings.Address,
+                    settings.Phone,
+                    settings.Email,
+                    settings.DefaultReportHeader
+                };
+
+                settings.BusinessName = Clean(information.BusinessName);
+                settings.TradingName = Clean(information.TradingName);
+                settings.Abn = Clean(information.Abn);
+                settings.Address = Clean(information.Address);
+                settings.Phone = Clean(information.Phone);
+                settings.Email = Clean(information.Email);
+                settings.DefaultReportHeader = Clean(information.DefaultReportHeader);
+                settings.Revision++;
+
+                scope.Append(
+                    "BUSINESS_INFORMATION_UPDATED",
+                    "ApplicationSettings",
+                    "1",
+                    "Business Information was updated.",
+                    before: before,
+                    after: new
+                    {
+                        settings.BusinessName,
+                        settings.TradingName,
+                        settings.Abn,
+                        settings.Address,
+                        settings.Phone,
+                        settings.Email,
+                        settings.DefaultReportHeader
+                    });
+                return true;
+            }, cancellationToken);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -117,23 +134,6 @@ internal sealed class BusinessInformationService(
                 "Business Information was changed by another user after you opened it. Reload the latest values and try again.");
         }
 
-        await audit.WriteAsync(
-            "BUSINESS_INFORMATION_UPDATED",
-            "ApplicationSettings",
-            "1",
-            "Business Information was updated.",
-            before: before,
-            after: new
-            {
-                settings.BusinessName,
-                settings.TradingName,
-                settings.Abn,
-                settings.Address,
-                settings.Phone,
-                settings.Email,
-                settings.DefaultReportHeader
-            },
-            cancellationToken: cancellationToken);
     }
 
     private static BusinessInformation Empty() =>

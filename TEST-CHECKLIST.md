@@ -2,7 +2,7 @@
 
 Task 19's shared-snapshot prerequisite was reviewed/canonically verified at commit `930f2c77b1df7cd4629be2faff662750431854fe`; BT-20-P2 now includes that authority in normal schema17 composition. Windows/operator real preview/print and retained-database acceptance remain separate.
 
-Current baseline: **v0.5.0-alpha.14**
+Current baseline: **v0.5.0-alpha.15**
 
 This is the practical operator/release checklist. `docs/RequirementsAcceptanceRegister.md` remains the authoritative implementation/status ledger; historical candidate detail belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`.
 
@@ -24,6 +24,8 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 - [S] BT-SH-003 atomically replaces the desktop `UserSession` with anonymous state before logout auditing and before each new login attempt. Focused integration coverage proves stale identity/Administrator authority cannot survive logout, audit cancellation, failed/cancelled login or repeated logout, while successful login/re-login and trusted logout attribution remain intact. Future API request-scoped `IUserContext` semantics are unchanged.
 
 - [S] BT-SH-004-P2 completes alpha.14 Batch A: BT-SH-008/017/018/019/022/028/032 are `FIXED`, and BT-SH-040's authentication-username scope is closed while its distinct customer/container operational-identifier scope remains `CONFIRMED-V1` in Batch C. BT-SH-004-FIX1 corrects the manual-smoke non-Administrator startup crash by skipping Administrator review startup work for Operator/Viewer while preserving direct Services denial; targeted automated evidence passes and Windows non-admin retest remains required. This is static/automated evidence, not manual acceptance or completion of Batch B and later work.
+
+- [S] BT-SH-004-P3 completes alpha.15 Batch B: BT-SH-006/030 are `FIXED` at source/focused-automated evidence level. A Data-owned transaction runner and the existing transaction audit appender commit affected customer, container, business-information, user-administration, initial-administrator, own-password and login state with required audit evidence as one unit. Deterministic audit-insert failure tests prove rollback; successful login publishes the desktop session only after commit. Full operator BAT acceptance remains required.
 
 - [A] BT-ARCH-018-P1 remediates the four accepted layer-audit findings: user administration lists a credential-free immutable Services DTO; developer database mutations require an authenticated Administrator in a Services facade before unchanged Data mechanics; public audit queries return DTOs while only internal Services appenders may write and CSV exports submit bounded typed intent; Monthly Summary and Movement History preserve displayed row order while retaining Services-supplied totals. Independent ChatGPT review passed with no blocking correction, and Jack/operator's exact-candidate canonical BAT passed audit/build with zero warnings/errors and 841/841 tests with none failed/skipped under SDK 10.0.401. Commit `cd53f9ca19de1a10ea9ec375b63e294fdddfad23` is the accepted implementation; the architecture gate is closed. No Windows UI acceptance or Security Hardening remediation is implied.
 
@@ -75,6 +77,8 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 - [S] Batch pending Current/With Draft preview is implemented; no separate manual acceptance is claimed.
 - [R] Batch Enter/add/update/remove/Esc transitions never duplicate or resurrect a stale selected row; Dashboard navigation/highlight and retained draft remain correct.
 - [R] Crash/close recovery offers Continue Batch / Save Batch / Discard Batch in order; Save/Discard/Clear remove persisted state.
+- [P] BT-BATCH-012 persists stable user-ID ownership below WinForms: after User A persists a draft and logs out, User B cannot Continue, Save, Discard or see it as their recoverable work; User A can recover the same draft after login.
+- [P] BT-BATCH-012 rejects username/display-name substitution, Administrator bypass and malformed/missing ownership; Save Batch role authorization remains independent and owner crash/restart recovery remains intact.
 - [R] Cancellation/late async loads cannot restore Update Line after Esc/Clear.
 - [S] After schema17 readiness, normal eligible Single/Batch saves atomically create complete generation-zero lineage or nothing; native Single also persists its typed response receipt. Windows/operator acceptance remains pending.
 
@@ -141,10 +145,11 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 
 ## Remaining pre-v1 product and release gates
 
+- [P] After Security Hardening closes, implement Google Workspace email + Texto SMS Communications first, then BT-BATCH-012 user-scoped draft ownership, before Container Type ordering, Branding, Dashboard, analytics and Backup/Restore.
 - [P] Dashboard design discussion precedes implementation; then validate KPIs, attention/drill-through, activity, summaries, charts/ageing and display layouts.
 - [P] Google Workspace email + Texto SMS delivery, templates, secure settings, manual/automatic sends, opt-out, history, retry/idempotency and audit.
 - [P] Production user-facing Backup/Restore, scheduled retention and recovery drill (separate from pre-lineage migration safety).
-- [P] Complete the seven remaining Security/Data Integrity/Code Quality batches. Batch B transactional mutation/audit consistency is next; 22 `CONFIRMED-V1` and 1 `REVIEW-V1` findings still block v1, including BT-SH-040's Batch C operational-identifier residual.
+- [P] Complete the six remaining Security/Data Integrity/Code Quality batches. Batch C validation, identifiers and arithmetic is next; 20 `CONFIRMED-V1` and 1 `REVIEW-V1` findings still block v1, including BT-SH-040's operational-identifier residual.
 - [P] Installer/upgrade/deployment acceptance and full v1 production regression.
 
 ## Current manual acceptance floor

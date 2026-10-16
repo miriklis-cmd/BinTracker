@@ -1,6 +1,6 @@
 # BinTracker Architecture
 
-Current baseline: **v0.5.0-alpha.14**
+Current baseline: **v0.5.0-alpha.15**
 
 ## Display and DPI boundary
 
@@ -25,6 +25,8 @@ The layer boundary is a hard rule:
 - WinForms owns presentation only and submits stable IDs/user intent. Future web/phone/other clients must consume the same application semantics without knowing or caring which database provider is underneath. Another suitable SQL provider must be possible without rewriting lineage, reporting, import, authorization, idempotency, concurrency or correction semantics.
 
 Task 19's review correction keeps `IOutstandingReportService` and `IDailyMovementsReportService` as query/result-only public contracts. Two internal Services participant interfaces, implemented explicitly by the existing internal report classes, may continue using `BinTrackerDbContext` because they are non-client-facing internal composition under the existing BT-ARCH-004 Services/Data boundary. The reports continue using their one existing implementation; Data's projection authority retains ownership and database-specific mechanics of this shared read transaction. Integration-test wrappers access these internal participants through a test-only friend assembly, not public application APIs. This documentation clarification requires no implementation change; do not reopen the shared-snapshot implementation without a concrete defect or expand it into a whole-codebase persistence refactor or runtime registration change.
+
+Security Hardening Batch B applies the same boundary to ordinary audited mutations. Internal Services orchestration supplies provider-neutral state-change and audit intent through `ITransactionalAudit`; Data's `PersistenceTransactionRunner` owns begin/commit/rollback and the existing `TransactionAuditAppender` attaches the required `AuditEvent` to that caller-owned context. Customer, container, business-information, user-administration, initial-administrator, own-password and state-changing login outcomes therefore commit state plus required audit together or roll back together. Public application contracts expose none of the context/transaction machinery, no generic repository was introduced, and no SQLite-specific rule defines success.
 
 ## Host composition and request context
 

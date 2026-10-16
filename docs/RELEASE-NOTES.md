@@ -1,5 +1,12 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.15
+
+- Fixed BT-SH-006/030 for the affected customer, container, business-information, user-administration and authentication workflows: authoritative state plus required audit now commits in one Data-owned transaction or neither persists.
+- Failed-login increments/threshold lock state and successful-login `LastLoginUtc`/counter reset now share their transaction with required authentication audit. Infrastructure/audit failure propagates without masquerading as invalid credentials, and successful desktop session state is published only after commit.
+- Reused the established caller-transaction `TransactionAuditAppender`, added a narrow Data transaction runner, and kept internal Services orchestration provider-neutral. No public service contract exposes EF/transactions, no SQLite API moved into Services and no generic repository was introduced.
+- Deterministic pre-fix audit-insert failure coverage reproduced six half-commits (0/6 passing). Post-fix Batch-B coverage passes 11/11; adjacent transaction-audit/authentication/session/user/concurrency/slice coverage passes 45/45. Release build, source audit and final diff evidence are recorded separately; the operator-owned canonical BAT remains required.
+
 ## v0.5.0-alpha.14
 
 - Corrects the manual-smoke Operator/Viewer post-login crash: MainForm no longer invokes Administrator review startup queries for non-Administrator roles. Administrator review reminders remain functional, and direct non-Administrator service access remains denied. Targeted Windows retest is pending.

@@ -1,6 +1,6 @@
 # Versioning
 
-BinTracker currently uses semantic pre-release version `0.5.0-alpha.14`.
+BinTracker currently uses semantic pre-release version `0.5.0-alpha.15`.
 
 ## Single source of truth
 
@@ -9,7 +9,7 @@ The release version is defined in the repository root:
 `Directory.Build.props`
 
 ```xml
-<Version>0.5.0-alpha.14</Version>
+<Version>0.5.0-alpha.15</Version>
 ```
 
 The same value is used by:
@@ -99,6 +99,8 @@ Hard rule: **maximum two numeric components after `alpha`** for the new scheme.
 `0.5.0-alpha.13` is the next feature/development increment for BT-SH-003. It makes desktop logout and new-login attempts atomically clear authenticated `UserSession` state without overwriting accepted alpha.12 marker-hardening evidence. BT-SH-004 and later findings remain separately governed in register order.
 
 `0.5.0-alpha.14` is the next feature/development increment for the reconciled Security Hardening Batch A. It implements canonical bounded authentication identity, current-account revalidation and uniform Services authorization without overwriting alpha.13 session-lifecycle evidence. Batch B and later hardening remain separately governed by the Security register.
+
+`0.5.0-alpha.15` is the next feature/development increment for Security Hardening Batch B. It closes BT-SH-006/030 with Data-owned transactional mutation/audit consistency without overwriting accepted alpha.14 identity/authorization evidence. Batch C and later hardening remain separately governed by the Security register.
 
 Do not create forms such as:
 

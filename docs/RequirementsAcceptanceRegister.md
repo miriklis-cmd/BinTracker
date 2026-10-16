@@ -1,8 +1,12 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.5.0-alpha.14**
+Current baseline: **v0.5.0-alpha.15**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
+
+## V1 post-hardening sequencing decision — 16 October 2026
+
+After Security Hardening closes, Email, SMS & Customer Communications is the first feature milestone and BT-BATCH-012 user-scoped unsaved Batch Entry ownership is second. Container Type ordering, Business Information & Branding, Dashboard, customer operational analytics/polish and Production Backup/Restore/Recovery follow in that order. Final security/audit/reliability review, installer/upgrade/deployment, full v1 acceptance and v1.0 release remain after those feature milestones. BT-PV1-009 licensing/activation and authenticated API/central-provider implementation retain their post-v1 scope.
 
 ## Historical lineage prerequisite evidence (superseded by BT-20-P2 composition)
 
@@ -262,6 +266,9 @@ Provenance tags:
 | BT-BATCH-009 | v1 | IMPLEMENTED-ACCEPTED | Successful Add to Batch clears customer/quantity/reference/notes/customer preview and returns focus to Customer; pending-grid rebinding must not auto-select/reload the just-added row; movement date, batch direction and container type intentionally carry forward for rapid entry. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-BATCH-010 | v1 | IMPLEMENTED-STATIC | Unsaved Batch Entry draft lines/date/direction are persisted atomically under LocalApplicationData after changes; successful Save Batch/Clear Batch removes the recovery file. | CHAT-SURFACED,CURRENT-DOC,CODE,TEST |
 | BT-BATCH-011 | v1 | IMPLEMENTED-STATIC | A persisted draft loaded after process restart/normal close/crash/power loss is not silently resumed: BinTracker presents Continue Batch / Save Batch / Discard Batch, in that visual order, with draft date, direction, line count, total quantity and last-saved time. Discard requires confirmation; failed recovery-save retains the draft. Same-process navigation/logout drafts do not trigger the recovery prompt. | CHAT-SURFACED,CURRENT-DOC,CODE,TEST |
+| BT-BATCH-012 | v1 | PLANNED-V1 | Every persisted unsaved Batch Entry draft carries an owning stable persisted user ID. Only that authenticated owner may Continue, Save or Discard it; logout never transfers ownership, a different user must not see it as their recoverable work, and Viewer/Operator/Administrator role alone never grants access or Administrator bypass. Missing, invalid or ambiguous owner identity fails closed below WinForms. The owner retains normal crash/restart recovery. Draft ownership does not grant otherwise-missing permission to commit a batch. Any future Administrator takeover/recovery is a separately designed, explicit and audited workflow. The persisted provider-neutral ownership invariant is established in v1 before post-v1 multi-user/API/central-SQL implementation. | USER-REQUEST,CURRENT-DOC,DECISION-RECORDED |
+
+BT-BATCH-012 future acceptance must prove: User A persists an unfinished draft and logs out; User B cannot Continue, Save, Discard or see it as their recoverable work; User A later recovers the same draft; stable persisted user ID rather than username/display text controls ownership; Administrator does not bypass ownership; missing/malformed ownership fails closed; ordinary batch-save role authorization remains independently enforced; and owner crash/restart recovery remains intact.
 
 ## Excel import / migration
 

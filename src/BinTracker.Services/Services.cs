@@ -442,21 +442,19 @@ internal sealed class AuditService(
         CancellationToken cancellationToken)
     {
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        db.AuditEvents.Add(new AuditEvent
-        {
-            TimestampUtc = clock.UtcNow,
-            UserId = actorUserId,
-            Username = actorUsername,
-            Action = action,
-            EntityType = entityType,
-            EntityId = entityId,
-            Description = description,
-            BeforeValues = before is null ? null : JsonSerializer.Serialize(before),
-            AfterValues = after is null ? null : JsonSerializer.Serialize(after),
-            ComputerName = client.DeviceName,
-            SessionId = session.SessionId,
-            Succeeded = succeeded
-        });
+        db.AuditEvents.Add(TrustedAuditEventFactory.Create(
+            action,
+            entityType,
+            entityId,
+            description,
+            actorUserId,
+            actorUsername,
+            succeeded,
+            before,
+            after,
+            clock,
+            client,
+            session.SessionId));
         await db.SaveChangesAsync(cancellationToken);
     }
 
@@ -729,8 +727,8 @@ public interface IAuthenticationService
 internal sealed class AuthenticationService(
     IDbContextFactory<BinTrackerDbContext> factory,
     UserSession session,
-    IAuditAppender audit,
     IAuthenticationAuditAppender authenticationAudit,
+    ITransactionalAudit transactionalAudit,
     IBusinessClock clock,
     ICurrentAccountAuthorization authorization) : IAuthenticationService
 {
@@ -746,29 +744,31 @@ internal sealed class AuthenticationService(
         displayName = displayName.Trim();
         ValidateCredentials(username, displayName, password);
 
-        await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        if (await db.UserAccounts.AnyAsync(cancellationToken))
-            throw new InvalidOperationException("The initial administrator has already been created.");
-
         var (hash, salt) = PasswordSecurity.Hash(password);
-        var user = new UserAccount
+        await transactionalAudit.ExecuteAsync(async (scope, token) =>
         {
-            Username = username,
-            DisplayName = displayName,
-            PasswordHash = hash,
-            PasswordSalt = salt,
-            Role = UserRole.Administrator,
-            IsActive = true,
-            CreatedUtc = clock.UtcNow
-        };
-        db.UserAccounts.Add(user);
-        await db.SaveChangesAsync(cancellationToken);
-        await authenticationAudit.AppendAuthenticationEventAsync(
-            "USER_CREATED", "UserAccount", user.Id.ToString(),
-            $"Initial administrator '{username}' created.",
-            user.Id, user.Username,
-            after: new { user.Username, user.DisplayName, user.Role },
-            cancellationToken: cancellationToken);
+            if (await scope.Db.UserAccounts.AnyAsync(token))
+                throw new InvalidOperationException("The initial administrator has already been created.");
+
+            var user = new UserAccount
+            {
+                Username = username,
+                DisplayName = displayName,
+                PasswordHash = hash,
+                PasswordSalt = salt,
+                Role = UserRole.Administrator,
+                IsActive = true,
+                CreatedUtc = clock.UtcNow
+            };
+            scope.Db.UserAccounts.Add(user);
+            await scope.Db.SaveChangesAsync(token);
+            scope.AppendAuthentication(
+                "USER_CREATED", "UserAccount", user.Id.ToString(),
+                $"Initial administrator '{username}' created.",
+                user.Id, user.Username,
+                after: new { user.Username, user.DisplayName, user.Role });
+            return true;
+        }, cancellationToken);
     }
 
     public async Task<bool> LoginAsync(string username, string password, CancellationToken cancellationToken = default)
@@ -785,131 +785,136 @@ internal sealed class AuthenticationService(
             return false;
         }
 
-        await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var identities = await db.UserAccounts.AsNoTracking()
-            .Select(user => new { user.Id, user.Username })
-            .ToListAsync(cancellationToken);
-        var matches = identities
-            .Where(identity =>
-                SecurityIdentifierPolicy.TryGetUsernameComparisonKey(identity.Username, out var key) &&
-                string.Equals(key, usernameKey, StringComparison.Ordinal))
-            .Select(identity => identity.Id)
-            .ToArray();
-        if (matches.Length > 1)
-            throw new InvalidOperationException(
-                "Multiple accounts have the same canonical username. Authentication is blocked until the data conflict is resolved.");
-
-        var user = matches.Length == 0
-            ? null
-            : await db.UserAccounts.SingleAsync(item => item.Id == matches[0], cancellationToken);
-
-        if (user is not null && user.IsLocked)
+        var result = await transactionalAudit.ExecuteAsync(async (scope, token) =>
         {
-            await authenticationAudit.AppendAuthenticationEventAsync(
-                "LOGIN_BLOCKED_LOCKED",
-                "Session",
-                null,
-                $"Login blocked because account '{user.Username}' is locked.",
-                user.Id,
-                user.Username,
-                succeeded: false,
-                cancellationToken: cancellationToken);
+            var db = scope.Db;
+            var identities = await db.UserAccounts.AsNoTracking()
+                .Select(user => new { user.Id, user.Username })
+                .ToListAsync(token);
+            var matches = identities
+                .Where(identity =>
+                    SecurityIdentifierPolicy.TryGetUsernameComparisonKey(identity.Username, out var key) &&
+                    string.Equals(key, usernameKey, StringComparison.Ordinal))
+                .Select(identity => identity.Id)
+                .ToArray();
+            if (matches.Length > 1)
+                throw new InvalidOperationException(
+                    "Multiple accounts have the same canonical username. Authentication is blocked until the data conflict is resolved.");
 
-            throw new InvalidOperationException(
-                "This account is locked after too many failed login attempts. Ask an administrator to unlock it.");
-        }
+            var user = matches.Length == 0
+                ? null
+                : await db.UserAccounts.SingleAsync(item => item.Id == matches[0], token);
 
-        var valid = user is not null &&
-                    user.IsActive &&
-                    PasswordSecurity.Verify(password, user.PasswordHash, user.PasswordSalt);
-
-        if (!valid)
-        {
-            if (user is not null && user.IsActive)
+            if (user is not null && user.IsLocked)
             {
-                var settings = await db.ApplicationSettings.AsNoTracking()
-                    .SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
-                var maximum = Math.Max(1, settings?.MaxFailedLoginAttempts ?? 5);
-
-                // Atomic set-based update prevents simultaneous remote login
-                // attempts from losing failed-attempt increments.
-                await db.UserAccounts
-                    .Where(x => x.Id == user.Id && x.IsActive && !x.IsLocked)
-                    .ExecuteUpdateAsync(
-                        setters => setters.SetProperty(
-                            x => x.FailedLoginCount,
-                            x => x.FailedLoginCount + 1),
-                        cancellationToken);
-
-                await db.UserAccounts
-                    .Where(x =>
-                        x.Id == user.Id &&
-                        !x.IsLocked &&
-                        x.FailedLoginCount >= maximum)
-                    .ExecuteUpdateAsync(
-                        setters => setters
-                            .SetProperty(x => x.IsLocked, true)
-                            .SetProperty(x => x.LockedUtc, clock.UtcNow),
-                        cancellationToken);
-
-                user = await db.UserAccounts
-                    .AsNoTracking()
-                    .SingleAsync(x => x.Id == user.Id, cancellationToken);
-            }
-
-            await authenticationAudit.AppendAuthenticationEventAsync(
-                "LOGIN_FAILED",
-                "Session",
-                null,
-                $"Failed login attempt for username '{usernameKey}'.",
-                user?.Id,
-                usernameKey,
-                succeeded: false,
-                cancellationToken: cancellationToken);
-
-            if (user?.IsLocked == true)
-            {
-                await authenticationAudit.AppendAuthenticationEventAsync(
-                    "ACCOUNT_LOCKED",
-                    "UserAccount",
-                    user.Id.ToString(),
-                    $"User '{user.Username}' locked after repeated failed login attempts.",
+                scope.AppendAuthentication(
+                    "LOGIN_BLOCKED_LOCKED",
+                    "Session",
+                    null,
+                    $"Login blocked because account '{user.Username}' is locked.",
                     user.Id,
                     user.Username,
-                    succeeded: false,
-                    cancellationToken: cancellationToken);
+                    succeeded: false);
+                return new LoginAttemptResult(user, Locked: true, Succeeded: false);
             }
 
-            return false;
-        }
+            var valid = user is not null &&
+                        user.IsActive &&
+                        PasswordSecurity.Verify(password, user.PasswordHash, user.PasswordSalt);
 
-        var loginUtc = clock.UtcNow;
-        var loginUpdated = await db.UserAccounts
-            .Where(x => x.Id == user!.Id && x.IsActive && !x.IsLocked)
-            .ExecuteUpdateAsync(
-                setters => setters
-                    .SetProperty(x => x.LastLoginUtc, loginUtc)
-                    .SetProperty(x => x.FailedLoginCount, 0)
-                    .SetProperty(x => x.LockedUtc, (DateTime?)null),
-                cancellationToken);
+            if (!valid)
+            {
+                if (user is not null && user.IsActive)
+                {
+                    var settings = await db.ApplicationSettings.AsNoTracking()
+                        .SingleOrDefaultAsync(x => x.Id == 1, token);
+                    var maximum = Math.Max(1, settings?.MaxFailedLoginAttempts ?? 5);
 
-        if (loginUpdated != 1)
+                    // The database expression remains the concurrent increment
+                    // arbiter; the surrounding transaction couples it to audit.
+                    await db.UserAccounts
+                        .Where(x => x.Id == user.Id && x.IsActive && !x.IsLocked)
+                        .ExecuteUpdateAsync(
+                            setters => setters.SetProperty(
+                                x => x.FailedLoginCount,
+                                x => x.FailedLoginCount + 1),
+                            token);
+
+                    await db.UserAccounts
+                        .Where(x =>
+                            x.Id == user.Id &&
+                            !x.IsLocked &&
+                            x.FailedLoginCount >= maximum)
+                        .ExecuteUpdateAsync(
+                            setters => setters
+                                .SetProperty(x => x.IsLocked, true)
+                                .SetProperty(x => x.LockedUtc, clock.UtcNow),
+                            token);
+
+                    user = await db.UserAccounts
+                        .AsNoTracking()
+                        .SingleAsync(x => x.Id == user.Id, token);
+                }
+
+                scope.AppendAuthentication(
+                    "LOGIN_FAILED",
+                    "Session",
+                    null,
+                    $"Failed login attempt for username '{usernameKey}'.",
+                    user?.Id,
+                    usernameKey,
+                    succeeded: false);
+
+                if (user?.IsLocked == true)
+                {
+                    scope.AppendAuthentication(
+                        "ACCOUNT_LOCKED",
+                        "UserAccount",
+                        user.Id.ToString(),
+                        $"User '{user.Username}' locked after repeated failed login attempts.",
+                        user.Id,
+                        user.Username,
+                        succeeded: false);
+                }
+
+                return new LoginAttemptResult(user, Locked: false, Succeeded: false);
+            }
+
+            var loginUtc = clock.UtcNow;
+            var loginUpdated = await db.UserAccounts
+                .Where(x => x.Id == user!.Id && x.IsActive && !x.IsLocked)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(x => x.LastLoginUtc, loginUtc)
+                        .SetProperty(x => x.FailedLoginCount, 0)
+                        .SetProperty(x => x.LockedUtc, (DateTime?)null),
+                    token);
+
+            if (loginUpdated != 1)
+                throw new InvalidOperationException(
+                    "This account changed while you were signing in. Please try again.");
+
+            user = await db.UserAccounts
+                .AsNoTracking()
+                .SingleAsync(x => x.Id == user!.Id, token);
+            scope.AppendAuthentication(
+                "LOGIN_SUCCEEDED",
+                "Session",
+                session.SessionId,
+                $"{user.DisplayName} logged in.",
+                user.Id,
+                user.Username);
+            return new LoginAttemptResult(user, Locked: false, Succeeded: true);
+        }, cancellationToken);
+
+        if (result.Locked)
             throw new InvalidOperationException(
-                "This account changed while you were signing in. Please try again.");
+                "This account is locked after too many failed login attempts. Ask an administrator to unlock it.");
 
-        user = await db.UserAccounts
-            .AsNoTracking()
-            .SingleAsync(x => x.Id == user!.Id, cancellationToken);
+        if (!result.Succeeded)
+            return false;
 
-        session.SignIn(user);
-
-        await audit.AppendAsync(
-            "LOGIN_SUCCEEDED",
-            "Session",
-            session.SessionId,
-            $"{user.DisplayName} logged in.",
-            cancellationToken: cancellationToken);
-
+        session.SignIn(result.User!);
         return true;
     }
 
@@ -926,44 +931,47 @@ internal sealed class AuthenticationService(
                 nameof(currentPassword));
         PasswordPolicy.Validate(newPassword);
 
-        await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var user = await db.UserAccounts.SingleAsync(x => x.Id == actor.UserId, cancellationToken);
-
-        if (!PasswordSecurity.Verify(currentPassword, user.PasswordHash, user.PasswordSalt))
-            throw new InvalidOperationException("The current password is incorrect.");
-
-        if (PasswordSecurity.Verify(newPassword, user.PasswordHash, user.PasswordSalt))
-            throw new InvalidOperationException("The new password must be different from the current password.");
-
         var (hash, salt) = PasswordSecurity.Hash(newPassword);
-        var changed = await db.UserAccounts
-            .Where(x =>
-                x.Id == user.Id &&
-                x.PasswordHash == user.PasswordHash &&
-                x.PasswordSalt == user.PasswordSalt)
-            .ExecuteUpdateAsync(
-                setters => setters
-                    .SetProperty(x => x.PasswordHash, hash)
-                    .SetProperty(x => x.PasswordSalt, salt)
-                    .SetProperty(x => x.MustChangePassword, false)
-                    .SetProperty(x => x.PasswordChangedUtc, clock.UtcNow)
-                    .SetProperty(x => x.FailedLoginCount, 0)
-                    .SetProperty(x => x.IsLocked, false)
-                    .SetProperty(x => x.LockedUtc, (DateTime?)null),
-                cancellationToken);
+        await transactionalAudit.ExecuteAsync(async (scope, token) =>
+        {
+            var user = await scope.Db.UserAccounts
+                .SingleAsync(x => x.Id == actor.UserId, token);
 
-        if (changed != 1)
-            throw new InvalidOperationException(
-                "Your account credentials changed while this request was in progress. Sign in again and retry the password change.");
+            if (!PasswordSecurity.Verify(currentPassword, user.PasswordHash, user.PasswordSalt))
+                throw new InvalidOperationException("The current password is incorrect.");
+
+            if (PasswordSecurity.Verify(newPassword, user.PasswordHash, user.PasswordSalt))
+                throw new InvalidOperationException("The new password must be different from the current password.");
+
+            var changed = await scope.Db.UserAccounts
+                .Where(x =>
+                    x.Id == user.Id &&
+                    x.PasswordHash == user.PasswordHash &&
+                    x.PasswordSalt == user.PasswordSalt)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(x => x.PasswordHash, hash)
+                        .SetProperty(x => x.PasswordSalt, salt)
+                        .SetProperty(x => x.MustChangePassword, false)
+                        .SetProperty(x => x.PasswordChangedUtc, clock.UtcNow)
+                        .SetProperty(x => x.FailedLoginCount, 0)
+                        .SetProperty(x => x.IsLocked, false)
+                        .SetProperty(x => x.LockedUtc, (DateTime?)null),
+                    token);
+
+            if (changed != 1)
+                throw new InvalidOperationException(
+                    "Your account credentials changed while this request was in progress. Sign in again and retry the password change.");
+
+            scope.Append(
+                "PASSWORD_CHANGED",
+                "UserAccount",
+                user.Id.ToString(),
+                $"User '{user.Username}' changed their password.");
+            return true;
+        }, cancellationToken);
 
         session.PasswordChanged();
-
-        await audit.AppendAsync(
-            "PASSWORD_CHANGED",
-            "UserAccount",
-            user.Id.ToString(),
-            $"User '{user.Username}' changed their password.",
-            cancellationToken: cancellationToken);
     }
 
     public async Task LogoutAsync(CancellationToken cancellationToken = default)
@@ -994,6 +1002,11 @@ internal sealed class AuthenticationService(
                 $"Display name must be no more than {SecurityIdentifierPolicy.MaximumDisplayNameLength} characters.");
         PasswordPolicy.Validate(password);
     }
+
+    private sealed record LoginAttemptResult(
+        UserAccount? User,
+        bool Locked,
+        bool Succeeded);
 }
 
 public interface IUserService
@@ -1019,7 +1032,7 @@ public sealed record UserAdministrationUser(
 internal sealed class UserService(
     IDbContextFactory<BinTrackerDbContext> factory,
     IUserContext session,
-    IAuditService audit,
+    ITransactionalAudit transactionalAudit,
     IBusinessClock clock,
     ICurrentAccountAuthorization authorization) : IUserService
 {
@@ -1053,19 +1066,28 @@ internal sealed class UserService(
         PasswordPolicy.Validate(password);
         if (!Enum.IsDefined(role)) throw new ArgumentException("User role is invalid.", nameof(role));
 
-        await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        if (await HasCanonicalUsernameAsync(db, username, cancellationToken))
-            throw new InvalidOperationException("That username already exists.");
         var (hash, salt) = PasswordSecurity.Hash(password);
-        var user = new UserAccount
-        {
-            Username=username, DisplayName=displayName, PasswordHash=hash, PasswordSalt=salt,
-            Role=role, IsActive=true, MustChangePassword=true, CreatedUtc=clock.UtcNow, CreatedByUserId=actor.UserId
-        };
-        db.UserAccounts.Add(user);
         try
         {
-            await db.SaveChangesAsync(cancellationToken);
+            await transactionalAudit.ExecuteAsync(async (scope, token) =>
+            {
+                if (await HasCanonicalUsernameAsync(scope.Db, username, token))
+                    throw new InvalidOperationException("That username already exists.");
+                var user = new UserAccount
+                {
+                    Username=username, DisplayName=displayName, PasswordHash=hash, PasswordSalt=salt,
+                    Role=role, IsActive=true, MustChangePassword=true, CreatedUtc=clock.UtcNow, CreatedByUserId=actor.UserId
+                };
+                scope.Db.UserAccounts.Add(user);
+                await scope.Db.SaveChangesAsync(token);
+                scope.Append(
+                    "USER_CREATED",
+                    "UserAccount",
+                    user.Id.ToString(),
+                    $"User '{username}' created with role {role}.",
+                    after: new { user.Username, user.DisplayName, user.Role });
+                return user.Id;
+            }, cancellationToken);
         }
         catch (DbUpdateException)
         {
@@ -1077,28 +1099,31 @@ internal sealed class UserService(
 
             throw;
         }
-
-        await audit.WriteAsync("USER_CREATED", "UserAccount", user.Id.ToString(),
-            $"User '{username}' created with role {role}.", after: new { user.Username, user.DisplayName, user.Role }, cancellationToken:cancellationToken);
     }
 
     public async Task SetActiveAsync(int userId, bool active, CancellationToken cancellationToken = default)
     {
         var actor = await authorization.RequireAdministratorAsync(cancellationToken);
         if (actor.UserId == userId && !active) throw new InvalidOperationException("You cannot deactivate your own account.");
-        await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var user = await db.UserAccounts.AsNoTracking()
-            .SingleAsync(x => x.Id == userId, cancellationToken);
-        var before = user.IsActive;
-
-        await db.UserAccounts
-            .Where(x => x.Id == userId)
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(x => x.IsActive, active),
-                cancellationToken);
-
-        await audit.WriteAsync(active ? "USER_ACTIVATED" : "USER_DEACTIVATED", "UserAccount", user.Id.ToString(),
-            $"User '{user.Username}' {(active ? "activated" : "deactivated")}.", before:new { IsActive=before }, after:new { IsActive=active }, cancellationToken:cancellationToken);
+        await transactionalAudit.ExecuteAsync(async (scope, token) =>
+        {
+            var user = await scope.Db.UserAccounts.AsNoTracking()
+                .SingleAsync(x => x.Id == userId, token);
+            var before = user.IsActive;
+            await scope.Db.UserAccounts
+                .Where(x => x.Id == userId)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(x => x.IsActive, active),
+                    token);
+            scope.Append(
+                active ? "USER_ACTIVATED" : "USER_DEACTIVATED",
+                "UserAccount",
+                user.Id.ToString(),
+                $"User '{user.Username}' {(active ? "activated" : "deactivated")}.",
+                before: new { IsActive = before },
+                after: new { IsActive = active });
+            return true;
+        }, cancellationToken);
     }
 
     public async Task ResetPasswordAsync(
@@ -1109,32 +1134,33 @@ internal sealed class UserService(
         var actor = await authorization.RequireAdministratorAsync(cancellationToken);
         PasswordPolicy.Validate(temporaryPassword);
 
-        await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var user = await db.UserAccounts.SingleAsync(x => x.Id == userId, cancellationToken);
-
         var (hash, salt) = PasswordSecurity.Hash(temporaryPassword);
-        await db.UserAccounts
-            .Where(x => x.Id == userId)
-            .ExecuteUpdateAsync(
-                setters => setters
-                    .SetProperty(x => x.PasswordHash, hash)
-                    .SetProperty(x => x.PasswordSalt, salt)
-                    .SetProperty(x => x.MustChangePassword, true)
-                    .SetProperty(x => x.PasswordChangedUtc, clock.UtcNow)
-                    .SetProperty(x => x.FailedLoginCount, 0)
-                    .SetProperty(x => x.IsLocked, false)
-                    .SetProperty(x => x.LockedUtc, (DateTime?)null),
-                cancellationToken);
-
         var selfReset = actor.UserId == userId;
         try
         {
-            await audit.WriteAsync(
-                "PASSWORD_RESET_BY_ADMIN",
-                "UserAccount",
-                user.Id.ToString(),
-                $"Administrator reset the password for '{user.Username}'. User must change it at next login.",
-                cancellationToken: cancellationToken);
+            await transactionalAudit.ExecuteAsync(async (scope, token) =>
+            {
+                var user = await scope.Db.UserAccounts
+                    .SingleAsync(x => x.Id == userId, token);
+                await scope.Db.UserAccounts
+                    .Where(x => x.Id == userId)
+                    .ExecuteUpdateAsync(
+                        setters => setters
+                            .SetProperty(x => x.PasswordHash, hash)
+                            .SetProperty(x => x.PasswordSalt, salt)
+                            .SetProperty(x => x.MustChangePassword, true)
+                            .SetProperty(x => x.PasswordChangedUtc, clock.UtcNow)
+                            .SetProperty(x => x.FailedLoginCount, 0)
+                            .SetProperty(x => x.IsLocked, false)
+                            .SetProperty(x => x.LockedUtc, (DateTime?)null),
+                        token);
+                scope.Append(
+                    "PASSWORD_RESET_BY_ADMIN",
+                    "UserAccount",
+                    user.Id.ToString(),
+                    $"Administrator reset the password for '{user.Username}'. User must change it at next login.");
+                return true;
+            }, cancellationToken);
         }
         finally
         {
@@ -1153,38 +1179,40 @@ internal sealed class UserService(
         if (actor.UserId == userId && locked)
             throw new InvalidOperationException("You cannot lock your own account.");
 
-        await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var user = await db.UserAccounts.AsNoTracking()
-            .SingleAsync(x => x.Id == userId, cancellationToken);
-
-        if (locked)
+        await transactionalAudit.ExecuteAsync(async (scope, token) =>
         {
-            await db.UserAccounts
-                .Where(x => x.Id == userId)
-                .ExecuteUpdateAsync(
-                    setters => setters
-                        .SetProperty(x => x.IsLocked, true)
-                        .SetProperty(x => x.LockedUtc, clock.UtcNow),
-                    cancellationToken);
-        }
-        else
-        {
-            await db.UserAccounts
-                .Where(x => x.Id == userId)
-                .ExecuteUpdateAsync(
-                    setters => setters
-                        .SetProperty(x => x.IsLocked, false)
-                        .SetProperty(x => x.LockedUtc, (DateTime?)null)
-                        .SetProperty(x => x.FailedLoginCount, 0),
-                    cancellationToken);
-        }
+            var user = await scope.Db.UserAccounts.AsNoTracking()
+                .SingleAsync(x => x.Id == userId, token);
 
-        await audit.WriteAsync(
-            locked ? "ACCOUNT_LOCKED_BY_ADMIN" : "ACCOUNT_UNLOCKED",
-            "UserAccount",
-            user.Id.ToString(),
-            $"Administrator {(locked ? "locked" : "unlocked")} user '{user.Username}'.",
-            cancellationToken: cancellationToken);
+            if (locked)
+            {
+                await scope.Db.UserAccounts
+                    .Where(x => x.Id == userId)
+                    .ExecuteUpdateAsync(
+                        setters => setters
+                            .SetProperty(x => x.IsLocked, true)
+                            .SetProperty(x => x.LockedUtc, clock.UtcNow),
+                        token);
+            }
+            else
+            {
+                await scope.Db.UserAccounts
+                    .Where(x => x.Id == userId)
+                    .ExecuteUpdateAsync(
+                        setters => setters
+                            .SetProperty(x => x.IsLocked, false)
+                            .SetProperty(x => x.LockedUtc, (DateTime?)null)
+                            .SetProperty(x => x.FailedLoginCount, 0),
+                        token);
+            }
+
+            scope.Append(
+                locked ? "ACCOUNT_LOCKED_BY_ADMIN" : "ACCOUNT_UNLOCKED",
+                "UserAccount",
+                user.Id.ToString(),
+                $"Administrator {(locked ? "locked" : "unlocked")} user '{user.Username}'.");
+            return true;
+        }, cancellationToken);
     }
 
     public async Task SetRoleAsync(
@@ -1199,28 +1227,28 @@ internal sealed class UserService(
             throw new InvalidOperationException(
                 "You cannot remove your own Administrator role while you are signed in.");
 
-        await using var db = await factory.CreateDbContextAsync(cancellationToken);
-        var user = await db.UserAccounts.AsNoTracking()
-            .SingleAsync(x => x.Id == userId, cancellationToken);
+        await transactionalAudit.ExecuteAsync(async (scope, token) =>
+        {
+            var user = await scope.Db.UserAccounts.AsNoTracking()
+                .SingleAsync(x => x.Id == userId, token);
+            var before = user.Role;
+            if (before == role)
+                return false;
 
-        var before = user.Role;
-        if (before == role)
-            return;
-
-        await db.UserAccounts
-            .Where(x => x.Id == userId)
-            .ExecuteUpdateAsync(
-                setters => setters.SetProperty(x => x.Role, role),
-                cancellationToken);
-
-        await audit.WriteAsync(
-            "USER_ROLE_CHANGED",
-            "UserAccount",
-            user.Id.ToString(),
-            $"User '{user.Username}' role changed from {before} to {role}.",
-            before: new { Role = before },
-            after: new { Role = role },
-            cancellationToken: cancellationToken);
+            await scope.Db.UserAccounts
+                .Where(x => x.Id == userId)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(x => x.Role, role),
+                    token);
+            scope.Append(
+                "USER_ROLE_CHANGED",
+                "UserAccount",
+                user.Id.ToString(),
+                $"User '{user.Username}' role changed from {before} to {role}.",
+                before: new { Role = before },
+                after: new { Role = role });
+            return true;
+        }, cancellationToken);
     }
 
     private static async Task<bool> HasCanonicalUsernameAsync(
@@ -1446,6 +1474,8 @@ public static class ServiceSetup
             DormantSingleMovementResponseReceiptStore>();
         services.TryAddScoped<IMovementMutationWriter, DormantMovementMutationWriter>();
         services.TryAddScoped<TransactionAuditAppender>();
+        services.TryAddScoped<PersistenceTransactionRunner>();
+        services.AddScoped<ITransactionalAudit, TransactionalAudit>();
         services.AddScoped<IMovementService, MovementService>();
         services.AddScoped<IMovementCorrectionService, MovementCorrectionService>();
         return services;

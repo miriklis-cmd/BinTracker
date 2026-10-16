@@ -1,4 +1,4 @@
-# BinTracker v0.5.0-alpha.14
+# BinTracker v0.5.0-alpha.15
 
 BinTracker is a .NET 8 Windows desktop application for tracking reusable container movements, customer/container balances, operational reporting and audited business activity.
 
@@ -7,6 +7,7 @@ BinTracker is a .NET 8 Windows desktop application for tracking reusable contain
 - Local authentication, roles and user administration.
 - Authoritative logout/session clearing before audit or later login attempts.
 - Canonical bounded authentication usernames and persisted current-account revalidation at Services boundaries.
+- Transactional business/authentication mutation and required-audit persistence for Batch-B workflows.
 - Append-only audit trail.
 - Customer management with Account / Cash-COD classification.
 - Configurable Container Types.
@@ -42,7 +43,7 @@ Most important remaining items include:
 - dashboard operational pass;
 - Business Information branding expansion: logo + shared report/email output identity;
 - real Email/SMS reminder delivery;
-- the seven remaining Security Hardening batches after Batch A closed seven findings and split the residual operational-identifier scope of BT-SH-040 into Batch C;
+- the six remaining Security Hardening batches after Batches A/B closed transactional audit consistency and split the residual operational-identifier scope of BT-SH-040 into Batch C;
 - production backup/restore;
 - installer/deployment/security hardening.
 
