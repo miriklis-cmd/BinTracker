@@ -3,7 +3,7 @@
 - Fixed BT-SH-006 and BT-SH-030 by replacing separate master/user/auth mutation and required-audit commits with one Data-owned transaction boundary using the existing `TransactionAuditAppender`.
 - Covered business-information save; customer/container create, update and activation; user create, activation, password reset, lock and role; initial-administrator creation; own-password change; failed-login increment/lock; and successful-login state. Successful login publishes `UserSession` only after commit; self-reset still invalidates its desktop session on failure.
 - Added deterministic audit-insert failure, success pairing, threshold lockout, actor-attribution, stale-revision/no-false-audit and password rollback tests. Preserved public provider-neutral contracts, database-side failed-login concurrency, role checks and alpha.14 authorization behavior.
-- Advanced Version/InformationalVersion from alpha.14 to alpha.15 while retaining AssemblyVersion/FileVersion `0.5.0.0`. The operator canonical BAT remains pending.
+- Advanced Version/InformationalVersion from alpha.14 to alpha.15 while retaining AssemblyVersion/FileVersion `0.5.0.0`. The operator canonical BAT for the unchanged Batch-B production/test source passed under SDK 10.0.401: its pre-BT-BATCH-P1 audit found 263 permanent IDs, restore/build passed and all 901/901 tests passed with none failed/skipped (`BUILD SUCCESSFUL`). BT-BATCH-P1 later changed governed documentation only and raised the inventory to 264 IDs, so final Git/merge closure requires one fresh canonical BAT against the documentation-final candidate.
 
 ## v0.5.0-alpha.14 (15 October 2026)
 
