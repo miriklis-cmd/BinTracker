@@ -197,7 +197,23 @@ When Codex introduces or changes a state transition, transaction, migration, rep
 5. Independent ChatGPT verifies the BAT output against the candidate/diff as canonical mechanical evidence.
 6. No staging, commit or push occurs unless the canonical BAT passes.
 
-A successful BAT must establish the script's source/mechanical audit, restore and build passes; zero compiler warnings/errors; every UnitTest and IntegrationTest passing; and zero failed/skipped tests. Any source or documentation change after a successful BAT invalidates that evidence and requires Jack to rerun the BAT. Codex may run the BAT only when explicitly instructed for a specific reason, such as the operator being unable to run it; it must not run BAT merely to duplicate operator evidence.
+A successful BAT must establish the script's source/mechanical audit, restore and build passes; zero compiler warnings/errors; every UnitTest and IntegrationTest passing; and zero failed/skipped tests. A candidate-defining change after a successful BAT invalidates that evidence and requires Jack to rerun the BAT. Codex may run the BAT only when explicitly instructed for a specific reason, such as the operator being unable to run it; it must not run BAT merely to duplicate operator evidence.
+
+#### Post-acceptance evidence bookkeeping exception
+
+A **candidate-defining change** is any change to production/source code, tests, dependencies, build/audit/package scripts, version, requirement/status, architecture/business/security semantics, roadmap/release sequence or scope, acceptance meaning, or product behavior. It invalidates prior BAT evidence.
+
+The sole exception is **POST-ACCEPTANCE EVIDENCE BOOKKEEPING**, and every condition below is mandatory:
+
+1. Only the operative section of `docs/CONTINUATION.md` and one append-only evidence entry in `docs/DocumentationAudit.md` change.
+2. The new text records only the already-completed BAT result, BAT-tested candidate identity, resulting commit SHA, push/ref equality, and clean/known-untracked repository state.
+3. No requirement, status, sequencing, semantics, source, test, script, version, package/release scope, acceptance meaning or product behavior changes.
+4. Every candidate-defining file is byte-identical to the BAT-tested candidate.
+5. The bookkeeping diff is mechanically constrained to the two allowed files and locations. When invoking the exception on an uncommitted bookkeeping diff, the operative continuation must contain the exact declaration `Mode: POST-ACCEPTANCE EVIDENCE BOOKKEEPING` so the audit can apply its narrow whitelist.
+6. `Audit-BinTracker.ps1` and `git diff --check` pass on the bookkeeping diff.
+7. The bookkeeping entry and commit explicitly state: `The bookkeeping commit itself was not BAT-tested.`
+
+This exception cannot correct substance, reinterpret evidence, promote or demote status, change sequencing/scope, or make any candidate-defining edit. Any such need starts a new candidate and requires a fresh BAT.
 
 During implementation prefer focused tests. Codex must not routinely run full UnitTests, full IntegrationTests and then BAT in the same pass when BAT will repeat both suites. A broader/full suite remains justified for unusually broad impact, focused evidence suggesting cross-cutting risk, composition/DI/startup changes affecting many consumers, an explicit repository pre-BAT requirement, or a fix after broad evidence that needs wider regression confirmation. Otherwise leave the canonical full suites to the operator-run BAT.
 
@@ -215,7 +231,7 @@ By default, Codex does not use its reasoning window for final Git-state capture,
 
 Codex still performs reasonable self-checking and must not knowingly return an inconsistent candidate, but it does not replace deep independent adversarial review. Keep the handoff concise and evidence-focused: repository state, change/reason, focused characterization/validation, changed-file inventory, limitations, unexpected findings, excluded scope and session ID/JSONL path. Do not repeat mechanically derivable facts unless they explain a risk or decision.
 
-Operator-provided BAT output is candidate-level mechanical evidence only for the exact source/document state on which it ran. Independent ChatGPT must compare it with the repository/diff and review candidate; any later candidate-file change requires another BAT run.
+Operator-provided BAT output is candidate-level mechanical evidence only for the exact candidate-defining state on which it ran. Independent ChatGPT must compare it with the repository/diff and review candidate; any later candidate-defining change requires another BAT run. The narrowly controlled post-acceptance evidence-bookkeeping exception above records closure facts without redefining the tested candidate.
 
 ### No weakening
 
@@ -245,7 +261,7 @@ For each meaningful BinTracker change:
 
 ## Build gate
 
-`Build-BinTracker.bat` is the mandatory canonical local gate and is Jack/operator-run by default against the exact final uncommitted candidate. Codex runs it only under explicit task-specific instruction. It must return failure when audit, restore, compilation or automated tests fail; a misleading success banner is itself a release-blocking defect. Any later candidate-file change invalidates the result and requires a rerun before Git write.
+`Build-BinTracker.bat` is the mandatory canonical local gate and is Jack/operator-run by default against the exact final uncommitted candidate. Codex runs it only under explicit task-specific instruction. It must return failure when audit, restore, compilation or automated tests fail; a misleading success banner is itself a release-blocking defect. Any later candidate-defining change invalidates the result and requires a rerun before Git write. Only the exact post-acceptance evidence-bookkeeping exception above may follow a BAT without invalidating it.
 
 ## Documentation discipline
 

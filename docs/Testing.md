@@ -1,10 +1,12 @@
 # BinTracker Automated Testing
 
-## BT-ARCH-018-P4 repository-truth reconciliation — 17 October 2026
+## BT-ARCH-018-P6 governance/evidence reconciliation — 18 October 2026
 
-The accepted alpha.15 checkpoint on `master` at `02b47d01bd0c27c1046f5652bc892d807cc6b90b` passed the final operator canonical BAT under SDK 10.0.401: 264 permanent IDs, 27 Markdown files, restore/build success, 901/901 tests passed, 0 failed, 0 skipped and `BUILD SUCCESSFUL`. BT-ARCH-018-P3 then completed the semantic audit and found no new layer regression.
+BT-ARCH-018-P4's exact candidate passed the operator canonical BAT under SDK 10.0.402: 265 permanent IDs across 27 Markdown files, restore/build success, 901/901 tests passed, 0 failed, 0 skipped and `BUILD SUCCESSFUL`. It was committed/pushed as `9f2e6b6cafea699a778cbdb800c2e4474aa3a59a`; `master` equals `origin/master`, while both retired `codex/movement-correction` refs remain at `02b47d01bd0c27c1046f5652bc892d807cc6b90b`, one commit behind.
 
-P4 changes only governed documentation, `Audit-BinTracker.ps1` deterministic governance guards and two stale XML comments; it changes no runtime behavior, schema or version. In-task evidence is prompt/audit-script self-validation as applicable, the mechanical audit and `git diff --check`. The prior BAT became historical exact-candidate evidence after the first P4 edit. TEST REQUIRED: Full operator canonical BAT after independent review of the exact final P4 candidate.
+P5 found three unsupported full-acceptance claims. BT-CORR-022 has automated mixed/multiple-line proof, but the recorded operator path used one Reversed line. BT-BATCH-010/011 have a historical general Continue/Save/Discard confirmation, but no explicit record covers every persistence, removal, failure and same-process clause. P6 therefore returns those permanent rows to `IMPLEMENTED-STATIC` without changing their implementation or tests and reconciles the checklist at the same evidence level.
+
+P6 also separates candidate-defining changes from the sole `POST-ACCEPTANCE EVIDENCE BOOKKEEPING` exception. The exception can change only the operative continuation and one append-only Documentation Audit entry to record already-completed BAT/commit/push/ref facts; it cannot alter requirements, statuses, sequencing, semantics, source, tests, scripts, version, release scope, acceptance meaning or behavior, and its bookkeeping commit must say it was not BAT-tested. P6 itself changes governance, the audit script and permanent statuses, so it is candidate-defining. TEST REQUIRED: Full operator canonical BAT after independent review of the exact final P6 candidate.
 
 ## Historical BT-SH-004-P3 Batch B transactional mutation/audit consistency — 16 October 2026
 
@@ -12,7 +14,7 @@ The affected business/authentication workflows previously saved authoritative st
 
 Alpha.15 adds a Data-owned `PersistenceTransactionRunner` and internal provider-neutral `ITransactionalAudit` composition around the existing `TransactionAuditAppender`. The final focused class passes 11/11 with zero failed/skipped: mutation/audit success, forced audit rollback, threshold lockout, successful-login state, actor attribution, stale-revision/no-false-audit and own-password rollback. Successful login publishes `UserSession` only after commit; self-reset still signs out in `finally` while its database mutation now rolls back with failed audit.
 
-Adjacent `TransactionAuditAppenderTests`, `SecurityBatchACharacterizationTests`, `AuthenticationSessionLifecycleTests`, `UserAdministrationBoundaryTests`, `AuditContractBoundaryTests`, `MultiUserReadinessSqliteTests` and `Slice1OperationalOutputCharacterizationTests` pass 45/45 with zero failed/skipped. The exact requested Release solution build passes with zero warnings/errors. Jack/operator first ran the canonical BAT against the unchanged Batch-B production/test source under .NET SDK 10.0.401 at the pre-BT-BATCH-P1 263-ID state; later final alpha.15 exact-candidate evidence at 264 IDs/901 tests is recorded above. This paragraph is historical implementation evidence, not the current P4 gate.
+Adjacent `TransactionAuditAppenderTests`, `SecurityBatchACharacterizationTests`, `AuthenticationSessionLifecycleTests`, `UserAdministrationBoundaryTests`, `AuditContractBoundaryTests`, `MultiUserReadinessSqliteTests` and `Slice1OperationalOutputCharacterizationTests` pass 45/45 with zero failed/skipped. The exact requested Release solution build passes with zero warnings/errors. Jack/operator first ran the canonical BAT against the unchanged Batch-B production/test source under .NET SDK 10.0.401 at the pre-BT-BATCH-P1 263-ID state; the later pre-P4 alpha.15 checkpoint passed at 264 IDs/901 tests. This paragraph is historical implementation evidence, not the current P6 gate.
 
 ## BT-SH-004-FIX1 non-Administrator startup correction — 15 October 2026
 

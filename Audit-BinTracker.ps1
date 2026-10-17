@@ -78,6 +78,15 @@ foreach ($term in @('BT-<roadmap-id>-P<n>','BT-<roadmap-id>-FIX<n>',
         Fail "Codex anti-drift governance text is missing required term: $term"
     }
 }
+foreach ($ruleText in @($agentRules, $workflowRules)) {
+    foreach ($term in @('candidate-defining change','POST-ACCEPTANCE EVIDENCE BOOKKEEPING',
+            'only the operative section of `docs/CONTINUATION.md`','append-only evidence entry',
+            'candidate-defining file is byte-identical','bookkeeping commit itself was not BAT-tested')) {
+        if ($ruleText -notmatch [regex]::Escape($term)) {
+            Fail "Post-acceptance bookkeeping governance lost required term: $term"
+        }
+    }
+}
 foreach ($term in @('Mandatory post-compaction repository re-anchor','Authority precedence',
         'Status-promotion gate','Semantic-drift exit reconciliation',
         'Independent adversarial review and JSONL evidence','Coherent major-pass sizing')) {
@@ -171,18 +180,84 @@ foreach ($check in $staleChecks) {
     if ((Get-Content -Raw -LiteralPath $check.Path).Contains($check.Text)) { Fail "$($check.Path) retains $($check.Why)." }
 }
 
-# Narrow current-state contradiction guards from BT-ARCH-018-P3. These checks
-# protect explicit operative phrases only; they do not attempt semantic or legal proof.
+# Narrow current-state contradiction guards from BT-ARCH-018-P3/P5. These checks
+# protect explicit operative/ref facts only; they do not attempt semantic or legal proof.
 $continuation = Get-Content -Raw -LiteralPath 'docs/CONTINUATION.md'
 $operativeContinuation = ($continuation -split '(?m)^## (?:Superseded|Historical) ', 2)[0]
-foreach ($term in @('Active development is on `master`','02b47d01bd0c27c1046f5652bc892d807cc6b90b','divergence `0/0`','Master reintegration is complete','264 permanent requirement IDs','901/901','BUILD SUCCESSFUL','fresh exact-candidate canonical BAT')) {
-    if ($operativeContinuation -notmatch [regex]::Escape($term)) { Fail "Operative continuation lost current alpha.15/P4 truth: $term" }
+$continuationRef = [regex]::Match($operativeContinuation, 'Active development is on `(?<branch>[^`]+)` at HEAD/upstream `(?<head>[0-9a-f]{40})`, divergence `(?<ahead>\d+)/(?<behind>\d+)`')
+if (-not $continuationRef.Success) {
+    Fail 'Operative continuation must state the active branch, full HEAD/upstream SHA and divergence.'
 }
-foreach ($obsolete in @('active development is on `codex/movement-correction`','origin/master` remains the old','fast-forward master','master reconciliation is complete','final alpha.15 Git/merge closure requires')) {
+$actualBranch = (& git branch --show-current).Trim()
+$actualHead = (& git rev-parse HEAD).Trim()
+$actualUpstream = (& git rev-parse '@{upstream}').Trim()
+$actualDivergence = ((& git rev-list --left-right --count 'HEAD...@{upstream}') -split '\s+')
+if ($LASTEXITCODE -ne 0 -or $actualDivergence.Count -lt 2) { Fail 'Unable to establish current Git branch/ref truth.' }
+if ($continuationRef.Groups['branch'].Value -ne $actualBranch -or
+    $continuationRef.Groups['head'].Value -ne $actualHead -or
+    $actualUpstream -ne $actualHead -or
+    [int]$continuationRef.Groups['ahead'].Value -ne [int]$actualDivergence[0] -or
+    [int]$continuationRef.Groups['behind'].Value -ne [int]$actualDivergence[1]) {
+    Fail 'Operative continuation branch/HEAD/upstream/divergence does not match current Git refs.'
+}
+if ($operativeContinuation -notmatch [regex]::Escape('TEST REQUIRED:')) { Fail 'Operative continuation must state the current test requirement.' }
+foreach ($obsolete in @('active development is on `codex/movement-correction`','origin/master` remains the old','fast-forward master','master reconciliation is complete','final alpha.15 Git/merge closure requires','P4 remains uncommitted','No P4 BAT pass')) {
     if ($operativeContinuation -match [regex]::Escape($obsolete)) { Fail "Operative continuation retains obsolete branch/closure claim: $obsolete" }
 }
 if ($operativeContinuation -match '69bce02b820987bc9d966c3e725496d383f42440') {
     Fail 'Operative continuation must not present the pre-reintegration Batch-B ref as current HEAD.'
+}
+
+# When the exceptional bookkeeping mode is explicitly declared, constrain the
+# uncommitted diff mechanically. Semantic truth and byte identity with the BAT
+# candidate still require human review; regex is not used to pretend otherwise.
+$bookkeepingDeclaration = 'Mode: POST-ACCEPTANCE EVIDENCE BOOKKEEPING'
+if ($operativeContinuation -match [regex]::Escape($bookkeepingDeclaration)) {
+    $changedPaths = @(& git diff --name-only HEAD --) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique
+    $allowedBookkeepingPaths = @('docs/CONTINUATION.md','docs/DocumentationAudit.md')
+    foreach ($path in $changedPaths) {
+        if ($allowedBookkeepingPaths -notcontains ($path -replace '\\','/')) {
+            Fail "Post-acceptance bookkeeping diff changes non-whitelisted path: $path"
+        }
+    }
+    if ($changedPaths.Count -gt 0) {
+        foreach ($requiredPath in $allowedBookkeepingPaths) {
+            if ($changedPaths -notcontains $requiredPath) { Fail "Post-acceptance bookkeeping diff must change both allowed evidence files: $requiredPath" }
+        }
+        if ($operativeContinuation -notmatch [regex]::Escape('The bookkeeping commit itself was not BAT-tested.')) {
+            Fail 'Post-acceptance bookkeeping continuation must disclaim BAT coverage of the bookkeeping commit.'
+        }
+
+        $baseContinuation = ((& git show 'HEAD:docs/CONTINUATION.md') -join "`n")
+        $baseContinuationParts = [regex]::Split($baseContinuation, '(?m)(?=^## (?:Superseded|Historical) )', 2)
+        $currentContinuationParts = [regex]::Split(($continuation -replace "`r`n","`n"), '(?m)(?=^## (?:Superseded|Historical) )', 2)
+        if ($baseContinuationParts.Count -ne 2 -or $currentContinuationParts.Count -ne 2) {
+            Fail 'Post-acceptance bookkeeping requires one operative CONTINUATION section followed by historical content.'
+        }
+        $baseHistorical = $baseContinuationParts[1].TrimEnd()
+        $currentHistorical = $currentContinuationParts[1].TrimEnd()
+        if ($baseHistorical -ne $currentHistorical) { Fail 'Post-acceptance bookkeeping modified historical CONTINUATION content.' }
+
+        $auditHeader = '# Documentation Audit Record'
+        $baseAudit = (((& git show 'HEAD:docs/DocumentationAudit.md') -join "`n").TrimEnd())
+        $currentAudit = ((Get-Content -Raw -LiteralPath 'docs/DocumentationAudit.md') -replace "`r`n","`n").TrimEnd()
+        if (-not ($baseAudit.StartsWith($auditHeader) -and $currentAudit.StartsWith($auditHeader))) {
+            Fail 'Post-acceptance bookkeeping requires the governed DocumentationAudit heading.'
+        }
+        $baseAuditBody = $baseAudit.Substring($auditHeader.Length).TrimStart()
+        $currentAuditBody = $currentAudit.Substring($auditHeader.Length).TrimStart()
+        $newAuditText = $null
+        if ($currentAuditBody.EndsWith($baseAuditBody)) {
+            $newAuditText = $currentAuditBody.Substring(0, $currentAuditBody.Length - $baseAuditBody.Length)
+        } elseif ($currentAuditBody.StartsWith($baseAuditBody)) {
+            $newAuditText = $currentAuditBody.Substring($baseAuditBody.Length)
+        } else {
+            Fail 'Post-acceptance bookkeeping must add one evidence entry without altering existing DocumentationAudit content.'
+        }
+        if ([regex]::Matches($newAuditText, '(?m)^## ').Count -ne 1) {
+            Fail 'Post-acceptance bookkeeping must add exactly one DocumentationAudit evidence entry.'
+        }
+    }
 }
 
 foreach ($ruleText in @($agentRules, $workflowRules)) {
@@ -209,7 +284,16 @@ $explicitStaleCurrentClaims = @(
     @{ Path='docs/AuditCoverage.md'; Text='Healthy native evidence returns the controlled no-detail result pending the next full native Audit/History milestone.' },
     @{ Path='KNOWN-ISSUES.md'; Text='Monthly Summary and Daily Print Pack still require final operator acceptance' },
     @{ Path='TECH-DEBT.md'; Text='seven fixed findings and 30 remaining v1 blockers' },
-    @{ Path='TECH-DEBT.md'; Text='uses a local `$error` diagnostic variable' }
+    @{ Path='TECH-DEBT.md'; Text='uses a local `$error` diagnostic variable' },
+    @{ Path='TEST-CHECKLIST.md'; Text='one fresh exact-P4-candidate BAT is required before Git write' },
+    @{ Path='KNOWN-ISSUES.md'; Text='Batch C is next after the BT-ARCH-018-P4 repository-truth reconciliation closes' },
+    @{ Path='TECH-DEBT.md'; Text='Batch C is next after BT-ARCH-018-P4 closes' },
+    @{ Path='docs/CHANGELOG.md'; Text='P4 later changes governed files and therefore requires a fresh exact-candidate BAT before Git write' },
+    @{ Path='docs/RELEASE-NOTES.md'; Text='The later P4 governance candidate requires its own exact-candidate BAT before Git write' },
+    @{ Path='docs/Roadmap.md'; Text='P4 requires a new exact-candidate BAT after its edits' },
+    @{ Path='docs/RoadmapCoverageMatrix.md'; Text='Batch C is next after BT-ARCH-018-P4 closes' },
+    @{ Path='docs/SecurityHardeningRegister.md'; Text='Because P4 later changes governed files, one fresh exact-P4-candidate BAT is required before Git write' },
+    @{ Path='docs/Versioning.md'; Text='later BT-ARCH-018-P4 governed-file edits require a fresh exact-candidate BAT before Git write' }
 )
 foreach ($check in $explicitStaleCurrentClaims) {
     if ((Get-Content -Raw -LiteralPath $check.Path).Contains($check.Text)) { Fail "$($check.Path) retains a deterministic stale current-state claim: $($check.Text)" }
@@ -247,7 +331,7 @@ $expectedSecurityTotals = "$($securityCounts['FIXED']) FIXED, $($securityCounts[
 foreach ($summary in @($coverageSecuritySummary, $debtSecuritySummary)) {
     if ($summary -notmatch [regex]::Escape($expectedSecurityTotals)) { Fail 'Current security summary disagrees with computed disposition totals.' }
     if ($summary -notmatch [regex]::Escape("$securityBlockers") -or $summary -notmatch 'block') { Fail 'Current security summary disagrees with the computed v1-blocker count.' }
-    if ($summary -notmatch 'Batch C' -or $summary -notmatch 'BT-ARCH-018-P4') { Fail 'Current security summary must name Batch C as next after BT-ARCH-018-P4 closure.' }
+    if ($summary -notmatch 'Batch C') { Fail 'Current security summary must name Batch C as the next security batch.' }
 }
 foreach ($id in @('BT-SEC-008','BT-SEC-009','BT-SEC-010','BT-SEC-011')) {
     if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost security hard-gate requirement: $id" }
