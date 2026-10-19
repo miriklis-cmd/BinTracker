@@ -183,7 +183,12 @@ foreach ($check in $staleChecks) {
 # Narrow current-state contradiction guards from BT-ARCH-018-P3/P5. These checks
 # protect explicit operative/ref facts only; they do not attempt semantic or legal proof.
 $continuation = Get-Content -Raw -LiteralPath 'docs/CONTINUATION.md'
-$operativeContinuation = ($continuation -split '(?m)^## (?:Superseded|Historical) ', 2)[0]
+$continuationBoundaryRegex = [regex]::new('(?m)(?=^## (?:Superseded|Historical) )')
+$continuationParts = $continuationBoundaryRegex.Split(($continuation -replace "`r`n","`n"), 2)
+if ($continuationParts.Count -ne 2) {
+    Fail 'CONTINUATION split characterization requires exactly one operative prefix and one historical suffix.'
+}
+$operativeContinuation = $continuationParts[0]
 $continuationRef = [regex]::Match($operativeContinuation, 'Active development is on `(?<branch>[^`]+)` at HEAD/upstream `(?<head>[0-9a-f]{40})`, divergence `(?<ahead>\d+)/(?<behind>\d+)`')
 if (-not $continuationRef.Success) {
     Fail 'Operative continuation must state the active branch, full HEAD/upstream SHA and divergence.'
@@ -229,8 +234,8 @@ if ($operativeContinuation -match [regex]::Escape($bookkeepingDeclaration)) {
         }
 
         $baseContinuation = ((& git show 'HEAD:docs/CONTINUATION.md') -join "`n")
-        $baseContinuationParts = [regex]::Split($baseContinuation, '(?m)(?=^## (?:Superseded|Historical) )', 2)
-        $currentContinuationParts = [regex]::Split(($continuation -replace "`r`n","`n"), '(?m)(?=^## (?:Superseded|Historical) )', 2)
+        $baseContinuationParts = $continuationBoundaryRegex.Split($baseContinuation, 2)
+        $currentContinuationParts = $continuationParts
         if ($baseContinuationParts.Count -ne 2 -or $currentContinuationParts.Count -ne 2) {
             Fail 'Post-acceptance bookkeeping requires one operative CONTINUATION section followed by historical content.'
         }
