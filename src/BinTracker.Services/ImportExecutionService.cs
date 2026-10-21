@@ -64,7 +64,7 @@ public sealed record ImportReplacementDifference(
     int PreviousNetEffect,
     int ProposedNetEffect)
 {
-    public int Difference => ProposedNetEffect - PreviousNetEffect;
+    public int Difference => QuantityMath.Subtract(ProposedNetEffect, PreviousNetEffect);
 }
 
 public sealed record ImportReplacementComparison(
@@ -85,7 +85,7 @@ public sealed record ImportCorrectionChangeSnapshot(
     int PreviousNetEffect,
     int CorrectedNetEffect)
 {
-    public int Difference => CorrectedNetEffect - PreviousNetEffect;
+    public int Difference => QuantityMath.Subtract(CorrectedNetEffect, PreviousNetEffect);
 }
 
 public sealed record ImportOpeningReconciliationSnapshot(
@@ -215,7 +215,9 @@ internal sealed class ImportExecutionService(
         ImportExecutionRequest request,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
         await authorization.RequireAdministratorAsync(cancellationToken);
+        ValidateRequestEnums(request);
 
         if (request.Mode != ImportExecutionMode.ReplacePreviousCutover ||
             !request.PreviousImportRunId.HasValue)
@@ -304,10 +306,8 @@ internal sealed class ImportExecutionService(
                     CustomerCode = g.First().CustomerCode,
                     ContainerTypeId = g.First().ContainerTypeId,
                     Container = g.First().Container,
-                    Net = g.Sum(x =>
-                        x.MovementType == MovementType.Out
-                            ? x.Quantity
-                            : -x.Quantity)
+                    Net = QuantityMath.SumSigned(
+                        g, x => x.Quantity, x => x.MovementType == MovementType.Out)
                 },
                 StringComparer.OrdinalIgnoreCase);
 
@@ -340,10 +340,11 @@ internal sealed class ImportExecutionService(
                     CustomerCode = g.First().Row.CustomerCode,
                     ContainerTypeId = g.First().ContainerTypeId,
                     Container = g.First().Row.Container,
-                    Net = g.Sum(x =>
-                        (x.Row.OpeningAdjustment ?? 0) +
-                        x.Row.ExcelOut -
-                        x.Row.ExcelIn)
+                    Net = QuantityMath.Sum(g.Select(x =>
+                        QuantityMath.SumToInt32(
+                            x.Row.OpeningAdjustment ?? 0,
+                            x.Row.ExcelOut,
+                            -(long)x.Row.ExcelIn)))
                 },
                 StringComparer.OrdinalIgnoreCase);
 
@@ -390,7 +391,9 @@ internal sealed class ImportExecutionService(
         ImportExecutionRequest request,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
         await authorization.RequireAdministratorAsync(cancellationToken);
+        ValidateRequestEnums(request);
 
         if (request.ClientOperationId == Guid.Empty)
             throw new ArgumentException("Client operation ID is required.");
@@ -608,8 +611,8 @@ internal sealed class ImportExecutionService(
                     g.Key.ContainerTypeId,
                     Balance = g.Sum(x =>
                         x.MovementType == MovementType.Out
-                            ? x.Quantity
-                            : -x.Quantity)
+                            ? (long)x.Quantity
+                            : -(long)x.Quantity)
                 })
                 .ToListAsync(cancellationToken);
 
@@ -619,7 +622,7 @@ internal sealed class ImportExecutionService(
                     string.Empty,
                     x.ContainerTypeId,
                     string.Empty,
-                    x.Balance))
+                    QuantityMath.ToInt32(x.Balance)))
                 .ToList();
         }
         else
@@ -657,9 +660,10 @@ internal sealed class ImportExecutionService(
                     .GroupBy(x => (x.CustomerId, x.ContainerTypeId))
                     .ToDictionary(
                         x => x.Key,
-                        x => x.Sum(movement => movement.MovementType == MovementType.Out
-                            ? (long)movement.Quantity
-                            : -movement.Quantity));
+                        x => x.Aggregate(0L, (total, movement) => checked(total +
+                            (movement.MovementType == MovementType.Out
+                                ? movement.Quantity
+                                : -(long)movement.Quantity))));
 
             currentBalances = ProjectedBalancesExcluding(
                 projected?.Positions ?? [],
@@ -882,12 +886,24 @@ internal sealed class ImportExecutionService(
                     $"Customer '{row.CustomerCode}' needs a valid proposed name.");
             }
 
+            MasterDataLimits.RequireMaximum(
+                customerCode, MasterDataLimits.CustomerCode, nameof(Customer.CustomerCode));
+            MasterDataLimits.RequireMaximum(
+                name, MasterDataLimits.CustomerName, nameof(Customer.Name));
+            ProviderNeutralValidation.RequireDefined(row.DetectedType, nameof(row.DetectedType));
+
             if (!existingCodes.Add(customerCode))
             {
                 throw new InvalidOperationException(
                     $"Customer code '{customerCode}' already exists. " +
                     "Return to Review and resolve the customer match.");
             }
+
+            var notes =
+                $"Created by Excel import run #{run.Id} " +
+                $"from '{fingerprint.FileName}'.";
+            MasterDataLimits.RequireMaximum(
+                notes, MasterDataLimits.CustomerNotes, nameof(Customer.Notes));
 
             var customer = new Customer
             {
@@ -899,9 +915,7 @@ internal sealed class ImportExecutionService(
                 UpdatedUtc = now,
                 CreatedByUserId = session.UserId,
                 UpdatedByUserId = session.UserId,
-                Notes =
-                    $"Created by Excel import run #{run.Id} " +
-                    $"from '{fingerprint.FileName}'."
+                Notes = notes
             };
 
             db.Customers.Add(customer);
@@ -928,10 +942,8 @@ internal sealed class ImportExecutionService(
                 })
                 .ToDictionary(
                     g => (g.Key.CustomerId, g.Key.ContainerTypeId),
-                    g => g.Sum(x =>
-                        x.MovementType == MovementType.Out
-                            ? x.Quantity
-                            : -x.Quantity));
+                    g => QuantityMath.SumSigned(
+                        g, x => x.Quantity, x => x.MovementType == MovementType.Out));
 
             var proposedEffects = reconciliation.Rows
                 .Where(x => x.IsReady)
@@ -957,10 +969,10 @@ internal sealed class ImportExecutionService(
                     {
                         CustomerId = customerId,
                         ContainerTypeId = x.ContainerTypeId.Value,
-                        Net =
-                            x.OpeningAdjustment.Value +
-                            x.ExcelOut -
-                            x.ExcelIn
+                        Net = QuantityMath.SumToInt32(
+                            x.OpeningAdjustment.Value,
+                            x.ExcelOut,
+                            -(long)x.ExcelIn)
                     };
                 })
                 .GroupBy(x => new
@@ -970,7 +982,7 @@ internal sealed class ImportExecutionService(
                 })
                 .ToDictionary(
                     g => (g.Key.CustomerId, g.Key.ContainerTypeId),
-                    g => g.Sum(x => x.Net));
+                    g => QuantityMath.Sum(g.Select(x => x.Net)));
 
             var effectKeys = previousEffects.Keys
                 .Concat(proposedEffects.Keys)
@@ -1195,7 +1207,7 @@ internal sealed class ImportExecutionService(
                     Source = MovementSource.Adjustment,
                     CustomerId = customerId,
                     ContainerTypeId = item.ContainerTypeId.Value,
-                    Quantity = Math.Abs(adjustment),
+                    Quantity = QuantityMath.Absolute(adjustment),
                     ImportRunId = run.Id,
                     ReferenceNumber = commonReference,
                     Notes =
@@ -1371,8 +1383,8 @@ internal sealed class ImportExecutionService(
                     g.Key.ContainerTypeId,
                     Balance = g.Sum(x =>
                         x.MovementType == MovementType.Out
-                            ? x.Quantity
-                            : -x.Quantity)
+                            ? (long)x.Quantity
+                            : -(long)x.Quantity)
                 })
                 .ToListAsync(cancellationToken);
 
@@ -1382,7 +1394,7 @@ internal sealed class ImportExecutionService(
                     string.Empty,
                     x.ContainerTypeId,
                     string.Empty,
-                    x.Balance))
+                    QuantityMath.ToInt32(x.Balance)))
                 .ToList();
         }
         else if (request.CutoverDate == DateOnly.MinValue)
@@ -1407,9 +1419,10 @@ internal sealed class ImportExecutionService(
                 .GroupBy(x => new { x.CustomerId, x.ContainerTypeId })
                 .ToDictionary(
                     x => (x.Key.CustomerId, x.Key.ContainerTypeId),
-                    x => x.Sum(movement => movement.MovementType == MovementType.Out
-                        ? (long)movement.Quantity
-                        : -movement.Quantity));
+                    x => x.Aggregate(0L, (total, movement) => checked(total +
+                        (movement.MovementType == MovementType.Out
+                            ? movement.Quantity
+                            : -(long)movement.Quantity))));
 
             balances = ProjectedBalancesExcluding(
                 projected.Positions,
@@ -1556,6 +1569,20 @@ internal sealed class ImportExecutionService(
             Convert.ToHexString(hash),
             source.Length,
             source.ClientLastWriteUtc);
+    }
+
+    private static void ValidateRequestEnums(ImportExecutionRequest request)
+    {
+        ProviderNeutralValidation.RequireDefined(request.Mode, nameof(request.Mode));
+        ArgumentNullException.ThrowIfNull(request.Mappings);
+        ArgumentNullException.ThrowIfNull(request.CustomerDecisions);
+        ArgumentNullException.ThrowIfNull(request.ExistingCustomerDecisions);
+        foreach (var mapping in request.Mappings)
+            ProviderNeutralValidation.RequireDefined(mapping.Role, nameof(mapping.Role));
+        foreach (var decision in request.CustomerDecisions.Values)
+            ProviderNeutralValidation.RequireDefined(decision.Action, nameof(decision.Action));
+        foreach (var decision in request.ExistingCustomerDecisions.Values)
+            ProviderNeutralValidation.RequireDefined(decision.Action, nameof(decision.Action));
     }
 
     private static string BuildRequestFingerprint(ImportExecutionRequest request, string sourceSha256)

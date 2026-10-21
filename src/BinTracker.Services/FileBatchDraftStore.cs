@@ -49,6 +49,12 @@ public sealed class FileBatchDraftStore : IBatchDraftStore
             var json = File.ReadAllText(filePath);
             var stored = JsonSerializer.Deserialize<StoredDraft>(json, jsonOptions);
 
+            if (stored is not null && !Enum.IsDefined(stored.MovementType))
+            {
+                QuarantineUnreadableDraft();
+                return null;
+            }
+
             if (stored is null ||
                 (stored.SchemaVersion != 1 && stored.SchemaVersion != CurrentSchemaVersion) ||
                 stored.Lines.Count == 0)
@@ -75,6 +81,7 @@ public sealed class FileBatchDraftStore : IBatchDraftStore
     public void Save(DraftMovementBatch draft)
     {
         ArgumentNullException.ThrowIfNull(draft);
+        ProviderNeutralValidation.RequireDefined(draft.MovementType, nameof(draft.MovementType));
 
         if (!draft.HasLines)
         {

@@ -118,6 +118,12 @@ public static class ExcelImportReviewPlanner
         IReadOnlyCollection<ImportWorksheetMapping> mappings,
         IReadOnlyCollection<CustomerListRow> existingCustomers)
     {
+        ArgumentNullException.ThrowIfNull(analysis);
+        ArgumentNullException.ThrowIfNull(mappings);
+        ArgumentNullException.ThrowIfNull(existingCustomers);
+        foreach (var mapping in mappings)
+            ProviderNeutralValidation.RequireDefined(mapping.Role, nameof(mapping.Role));
+
         var sourceSheets = mappings
             .Where(x => x.Role == ImportWorksheetRole.Source)
             .Select(x => x.Worksheet)
@@ -283,7 +289,10 @@ public sealed record ImportSnapshotCandidate(
 {
     public int? CalculatedTotal =>
         BroughtForward.HasValue || Out.HasValue || In.HasValue
-            ? (BroughtForward ?? 0) + (Out ?? 0) - (In ?? 0)
+            ? QuantityMath.SumToInt32(
+                BroughtForward ?? 0,
+                Out ?? 0,
+                -(long)(In ?? 0))
             : null;
 
     public bool TotalMatches =>
@@ -618,7 +627,7 @@ internal sealed class ExcelImportService(
         if (!int.TryParse(digits, out var parsed))
             return null;
 
-        return credit ? -Math.Abs(parsed) : parsed;
+        return credit ? QuantityMath.Negate(QuantityMath.Absolute(parsed)) : parsed;
     }
 
     private static bool LooksLikeSectionHeading(string value)

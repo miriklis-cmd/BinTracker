@@ -34,7 +34,7 @@ public sealed record OutstandingReportRow(
         Balance > 0
             ? $"{Balance:N0} OUT"
             : Balance < 0
-                ? $"{Math.Abs(Balance):N0} CREDIT"
+                ? $"{QuantityMath.Absolute(Balance):N0} CREDIT"
                 : "Even";
 }
 
@@ -85,7 +85,9 @@ internal sealed class OutstandingReportService(
         OutstandingReportQuery query,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(query);
         await authorization.RequireAuthenticatedAsync(cancellationToken);
+        ProviderNeutralValidation.RequireDefined(query.BalanceFilter, nameof(query.BalanceFilter));
         await using var db =
             await factory.CreateDbContextAsync(cancellationToken);
 
@@ -97,7 +99,9 @@ internal sealed class OutstandingReportService(
         BinTrackerDbContext db,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(db);
+        ProviderNeutralValidation.RequireDefined(query.BalanceFilter, nameof(query.BalanceFilter));
         if (db.Database.CurrentTransaction is null ||
             operationalProjection is not ITransactionalOperationalMovementProjectionAuthority)
             throw new InvalidOperationException("A transaction-participating projection is required.");
@@ -136,13 +140,14 @@ internal sealed class OutstandingReportService(
                     g.Key.ContainerTypeId,
                     Balance = g.Sum(x =>
                         x.MovementType == MovementType.Out
-                            ? x.Quantity
-                            : -x.Quantity),
+                            ? (long)x.Quantity
+                            : -(long)x.Quantity),
                     LastMovementDate = g.Max(x => x.MovementDate)
                 })
                 .ToListAsync(cancellationToken);
             totals = rawTotals
-                .Select(x => (x.CustomerId, x.ContainerTypeId, x.Balance, x.LastMovementDate))
+                .Select(x => (x.CustomerId, x.ContainerTypeId,
+                    Balance: QuantityMath.ToInt32(x.Balance), x.LastMovementDate))
                 .ToList();
         }
         else
@@ -269,10 +274,10 @@ internal sealed class OutstandingReportService(
                 g.Key.ContainerTypeId,
                 g.Key.ContainerType,
                 g.Key.ContainerDisplayOrder,
-                g.Where(x => x.Balance > 0)
-                    .Sum(x => x.Balance),
-                g.Where(x => x.Balance < 0)
-                    .Sum(x => Math.Abs(x.Balance)),
+                QuantityMath.Sum(g.Where(x => x.Balance > 0)
+                    .Select(x => x.Balance)),
+                QuantityMath.Sum(g.Where(x => x.Balance < 0)
+                    .Select(x => QuantityMath.Absolute(x.Balance))),
                 g.Count()))
             .OrderBy(x => x.DisplayOrder)
             .ThenBy(x => x.ContainerType, StringComparer.OrdinalIgnoreCase)

@@ -214,15 +214,14 @@ internal sealed class MarketFloorReportService(
 
                 // Opening adjustments are bookkeeping/cutover position,
                 // not physical movements for the market-floor daily columns.
-                var bfwd = rows
-                    .Where(x =>
+                var bfwdRows = rows.Where(x =>
                         x.MovementDate < date ||
                         (x.MovementDate == date &&
-                         x.Source == MovementSource.Adjustment))
-                    .Sum(x =>
-                        x.MovementType == MovementType.Out
-                            ? x.Quantity
-                            : -x.Quantity);
+                         x.Source == MovementSource.Adjustment));
+                var bfwd = QuantityMath.SumSigned(
+                    bfwdRows,
+                    x => x.Quantity,
+                    x => x.MovementType == MovementType.Out);
 
                 var day = rows
                     .Where(x =>
@@ -230,15 +229,15 @@ internal sealed class MarketFloorReportService(
                         x.Source != MovementSource.Adjustment)
                     .ToList();
 
-                var outs = day
+                var outs = QuantityMath.Sum(day
                     .Where(x => x.MovementType == MovementType.Out)
-                    .Sum(x => x.Quantity);
+                    .Select(x => x.Quantity));
 
-                var ins = day
+                var ins = QuantityMath.Sum(day
                     .Where(x => x.MovementType == MovementType.In)
-                    .Sum(x => x.Quantity);
+                    .Select(x => x.Quantity));
 
-                var total = bfwd + outs - ins;
+                var total = QuantityMath.SumToInt32(bfwd, outs, -(long)ins);
 
                 reverse.Add(new MarketFloorReverseRow(
                     customer.Id,
@@ -307,7 +306,8 @@ internal sealed class MarketFloorReportService(
             {
                 g.Key.CustomerId,
                 g.Key.ContainerTypeId,
-                Balance = g.Sum(x => x.MovementType == MovementType.Out ? x.Quantity : -x.Quantity)
+                Balance = QuantityMath.SumSigned(
+                    g, x => x.Quantity, x => x.MovementType == MovementType.Out)
             })
             .Where(x => x.Balance != 0)
             .Select(x => new MarketFloorSpecialRow(
@@ -597,7 +597,7 @@ internal sealed class MarketFloorReportService(
 
                 FrontCell(
                     table,
-                    $"{Math.Abs(item.Total)}\u00A0CREDIT",
+                    $"{QuantityMath.Absolute(item.Total)}\u00A0CREDIT",
                     layout);
             }
         });
@@ -633,7 +633,7 @@ internal sealed class MarketFloorReportService(
 
                     var text = item.Balance > 0
                         ? $"{item.Balance} {ShortContainerName(item.Container)}"
-                        : $"{Math.Abs(item.Balance)} {ShortContainerName(item.Container)}\u00A0CREDIT";
+                        : $"{QuantityMath.Absolute(item.Balance)} {ShortContainerName(item.Container)}\u00A0CREDIT";
 
                     FrontCell(table, text, layout);
                 }
@@ -883,7 +883,7 @@ internal sealed class MarketFloorReportService(
     }
 
     private static string FormatTotal(int value) =>
-        value < 0 ? $"{Math.Abs(value)}\u00A0CREDIT" : value.ToString();
+        value < 0 ? $"{QuantityMath.Absolute(value)}\u00A0CREDIT" : value.ToString();
 
     private static string ShortContainerName(string name) =>
         name.Replace(" Pallet", string.Empty, StringComparison.OrdinalIgnoreCase)

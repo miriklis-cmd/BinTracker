@@ -108,6 +108,50 @@ public sealed class BatchDraftTests
     }
 
     [Fact]
+    public void File_store_quarantines_draft_with_undefined_movement_type()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"BinTrackerTests-{Guid.NewGuid():N}");
+        var path = Path.Combine(directory, "batch-entry-draft.json");
+
+        try
+        {
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(path,
+                """
+                {
+                  "SchemaVersion": 2,
+                  "MovementDate": "2026-08-18",
+                  "MovementType": 99,
+                  "Lines": [
+                    {
+                      "CustomerId": 1,
+                      "CustomerCode": "ALBURY",
+                      "CustomerName": "Albury",
+                      "ContainerTypeId": 1,
+                      "ContainerTypeName": "Blue Bin",
+                      "Quantity": 20,
+                      "Reference": null,
+                      "Notes": null
+                    }
+                  ],
+                  "SavedAtUtc": "2026-08-18T00:00:00+00:00"
+                }
+                """);
+
+            var restored = new FileBatchDraftStore(path).Load();
+
+            Assert.Null(restored);
+            Assert.False(File.Exists(path));
+            Assert.Single(Directory.GetFiles(directory, "batch-entry-draft.json.corrupt-*"));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Clearing_persisted_draft_removes_recovery_file()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"BinTrackerTests-{Guid.NewGuid():N}");

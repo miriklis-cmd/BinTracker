@@ -359,6 +359,154 @@ public sealed class ImportExecutionSqliteTests
     }
 
     [Fact]
+    public async Task Representable_net_succeeds_and_unrepresentable_adjustment_rolls_back_all_state()
+    {
+        var validFile = Path.Combine(
+            Path.GetTempPath(),
+            $"bintracker-import-cancelled-overflow-{Guid.NewGuid():N}.xlsx");
+        var overflowFile = Path.Combine(
+            Path.GetTempPath(),
+            $"bintracker-import-unrepresentable-{Guid.NewGuid():N}.xlsx");
+        await File.WriteAllBytesAsync(validFile, "cancelled-overflow-input"u8.ToArray());
+        await File.WriteAllBytesAsync(overflowFile, "unrepresentable-input"u8.ToArray());
+
+        try
+        {
+            await using var connection = new SqliteConnection("Data Source=:memory:");
+            await connection.OpenAsync();
+
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<BinTrackerDbContext>(
+                options => options.UseSqlite(connection));
+            services.AddBinTrackerServices();
+
+            await using var provider = services.BuildServiceProvider();
+            await using var scope = provider.CreateAsyncScope();
+            var factory = scope.ServiceProvider
+                .GetRequiredService<IDbContextFactory<BinTrackerDbContext>>();
+
+            int validCustomerId;
+            int overflowCustomerId;
+            await using (var db = await factory.CreateDbContextAsync())
+            {
+                await db.Database.EnsureCreatedAsync();
+                await DatabaseSetup.InitializeSqliteAsync(db);
+                var admin = new UserAccount
+                {
+                    Username = "overflow-admin",
+                    DisplayName = "Overflow Administrator",
+                    PasswordHash = "x",
+                    PasswordSalt = "x",
+                    Role = UserRole.Administrator,
+                    IsActive = true
+                };
+                var validCustomer = new Customer
+                {
+                    CustomerCode = "VALID-NET",
+                    Name = "Valid Net Customer",
+                    CustomerType = CustomerType.Account
+                };
+                var overflowCustomer = new Customer
+                {
+                    CustomerCode = "OVERFLOW",
+                    Name = "Overflow Customer",
+                    CustomerType = CustomerType.Account
+                };
+                db.AddRange(admin, validCustomer, overflowCustomer);
+                await db.SaveChangesAsync();
+                validCustomerId = validCustomer.Id;
+                overflowCustomerId = overflowCustomer.Id;
+                scope.ServiceProvider.GetRequiredService<UserSession>().SignIn(admin);
+            }
+
+            var service = scope.ServiceProvider.GetRequiredService<IImportExecutionService>();
+            var validSource = await SourceAsync(validFile);
+            var validPreflight = await service.PreflightAsync(validSource);
+            var validResult = await service.ExecuteAsync(new ImportExecutionRequest(
+                validSource,
+                validPreflight.Source.Sha256,
+                Analysis(new ImportSnapshotCandidate(
+                    "Update Account", "Valid-Net", CustomerType.Account, null,
+                    Out: 1, In: 1, BroughtForward: int.MaxValue,
+                    ExcelTotal: int.MaxValue, SourceRow: "12")),
+                [new ImportWorksheetMapping(
+                    "Update Account", ImportWorksheetRole.Source, "")],
+                new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
+                new Dictionary<string, ImportCustomerDecision>(StringComparer.OrdinalIgnoreCase),
+                new Dictionary<string, ImportExistingCustomerDecision>(
+                    StringComparer.OrdinalIgnoreCase)
+                {
+                    ["Valid-Net"] = new(
+                        "Valid-Net",
+                        ImportExistingCustomerDecisionAction.AcceptMatch,
+                        validCustomerId,
+                        "VALID-NET",
+                        "Valid Net Customer")
+                },
+                new DateOnly(2026, 8, 13),
+                ClientOperationId: Guid.NewGuid()));
+
+            await using (var verifyValid = await factory.CreateDbContextAsync())
+            {
+                var net = await verifyValid.BinMovements
+                    .Where(x => x.ImportRunId == validResult.ImportRunId)
+                    .SumAsync(x => x.MovementType == MovementType.Out
+                        ? (long)x.Quantity
+                        : -(long)x.Quantity);
+                Assert.Equal(int.MaxValue, net);
+            }
+
+            var overflowSource = await SourceAsync(overflowFile);
+            var overflowPreflight = await service.PreflightAsync(overflowSource);
+            var overflowRequest = new ImportExecutionRequest(
+                overflowSource,
+                overflowPreflight.Source.Sha256,
+                Analysis(new ImportSnapshotCandidate(
+                    "Update Account", "Overflow", CustomerType.Account, null,
+                    Out: 1, In: 1, BroughtForward: int.MinValue,
+                    ExcelTotal: int.MinValue, SourceRow: "13")),
+                [new ImportWorksheetMapping(
+                    "Update Account", ImportWorksheetRole.Source, "")],
+                new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
+                new Dictionary<string, ImportCustomerDecision>(StringComparer.OrdinalIgnoreCase),
+                new Dictionary<string, ImportExistingCustomerDecision>(
+                    StringComparer.OrdinalIgnoreCase)
+                {
+                    ["Overflow"] = new(
+                        "Overflow",
+                        ImportExistingCustomerDecisionAction.AcceptMatch,
+                        overflowCustomerId,
+                        "OVERFLOW",
+                        "Overflow Customer")
+                },
+                new DateOnly(2026, 8, 14),
+                ClientOperationId: Guid.NewGuid());
+
+            await Assert.ThrowsAsync<OverflowException>(() =>
+                service.ExecuteAsync(overflowRequest));
+
+            await using var verify = await factory.CreateDbContextAsync();
+            Assert.Single(await verify.ImportRuns.ToListAsync());
+            Assert.Equal(3, await verify.BinMovements.CountAsync());
+            Assert.Empty(await verify.MovementBatches.ToListAsync());
+            Assert.Single(await verify.AuditEvents
+                .Where(x => x.Action == "EXCEL_IMPORT_COMPLETED")
+                .ToListAsync());
+            Assert.DoesNotContain(await verify.ImportRuns.ToListAsync(),
+                x => x.SourceFileName == Path.GetFileName(overflowFile));
+            Assert.Equal(2, await verify.Customers.CountAsync());
+            Assert.Equal(1, await verify.UserAccounts.CountAsync());
+        }
+        finally
+        {
+            if (File.Exists(validFile))
+                File.Delete(validFile);
+            if (File.Exists(overflowFile))
+                File.Delete(overflowFile);
+        }
+    }
+
+    [Fact]
     public async Task Import_provenance_is_relational_and_non_import_movements_remain_unlinked()
     {
         await using var connection =

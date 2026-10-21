@@ -24,6 +24,20 @@ public sealed class ImportCustomerDecisionPlannerTests
         Assert.Equal(ImportCustomerDecisionAction.Create, result["NEWCO"].Action);
     }
 
+    [Fact]
+    public void Undefined_existing_decision_is_rejected()
+    {
+        var existing = new Dictionary<string, ImportCustomerDecision>
+        {
+            ["NEWCO"] = new("NEWCO", "New Company", (ImportCustomerDecisionAction)99)
+        };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            ImportCustomerDecisionPlanner.MergeDefaults(Plan("NEWCO"), existing));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            ImportCustomerDecisionPlanner.CreateCount(existing));
+    }
+
     private static ImportReviewPlan Plan(string code) => new([
         new ImportCustomerReviewRow(code, CustomerType.Account, "Update Account", "", "", ImportCustomerReviewStatus.New, null, "", null, CustomerMatchKind.None, "No match")
     ], 1, 1, 0, 0);

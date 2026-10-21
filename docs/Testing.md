@@ -1,5 +1,17 @@
 # BinTracker Automated Testing
 
+## BT-SH-004-FIX1 Batch C arithmetic correction — 21 October 2026
+
+Independent review found that checked `int` arithmetic can reject an aggregate whose temporary mathematical value crosses an `int` boundary even though its final established `int` result is representable. The recovered candidate already accumulated the identified Market Floor and reconciliation totals in `long` before one checked output conversion. FIX1 completed the bounded inspection by moving `ImportSnapshotCandidate.CalculatedTotal` to the same final-boundary rule; it remains an `int?` contract and a genuinely unrepresentable final total throws. No DTO, persistence type, grouping, ordering, filtering, correction or provider contract changed.
+
+Focused regression evidence passes 28/28 unit tests across import analysis/review/reconciliation and 19/19 integration tests across Market Floor, import execution/history and workbook analysis, with zero failed/skipped. Boundary coverage includes a temporary value above `int.MaxValue`, a temporary value below `int.MinValue`, exact ordinary results, genuinely unrepresentable final values and an import failure after transactional writes have begun. That import failure leaves the earlier committed control import intact while adding no failed ImportRun, movement or completion audit. `docs/BusinessRules.md` contains exactly one `## Container Types` heading and retains every substantive rule; the reported duplicate was not present in the recovered candidate.
+
+## Historical BT-SH-004-P4 Batch C validation, identifiers and arithmetic — 20 October 2026
+
+The original defects were characterized before production correction: undefined public/service input enums, missing customer/container maxima, unknown report filters and Market Floor overflow reproduced red. Alpha.16 now rejects undefined mutation/report/import/planner enum values before branching or writes, quarantines an undefined persisted draft direction, enforces shared provider-neutral master-data maxima without changing accepted Unicode operational identifiers, and uses checked/long quantity arithmetic across report, balance, import, correction and projection paths.
+
+After interruption recovery, the newly identified draft-enum case failed 0/1 before its correction and passed afterward. The final focused unit filter passes 58/58; the report/import/Batch-C integration filter passes 64/64; and the adjacent operational-projection/balance/Single-entry integration filter passes 83/83, all with zero failed/skipped. Final Release build/audit/diff evidence is recorded in the active continuation. These are automated/static evidence only; independent review and Jack/operator's exact-candidate canonical BAT remain required.
+
 ## BT-ARCH-018-P6 governance/evidence reconciliation — 18 October 2026
 
 BT-ARCH-018-P4's exact candidate passed the operator canonical BAT under SDK 10.0.402: 265 permanent IDs across 27 Markdown files, restore/build success, 901/901 tests passed, 0 failed, 0 skipped and `BUILD SUCCESSFUL`. It was committed/pushed as `9f2e6b6cafea699a778cbdb800c2e4474aa3a59a`; `master` equals `origin/master`, while both retired `codex/movement-correction` refs remain at `02b47d01bd0c27c1046f5652bc892d807cc6b90b`, one commit behind.

@@ -1,3 +1,4 @@
+using BinTracker.Core;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -132,7 +133,7 @@ internal sealed class CustomerStatementReportService(
     private static string Position(int balance) => balance switch
     {
         > 0 => $"{balance} OUT",
-        < 0 => $"{Math.Abs(balance)} CREDIT",
+        < 0 => $"{QuantityMath.Absolute(balance)} CREDIT",
         _ => "Even"
     };
 

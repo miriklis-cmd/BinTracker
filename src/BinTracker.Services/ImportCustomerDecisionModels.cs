@@ -1,3 +1,5 @@
+using BinTracker.Core;
+
 namespace BinTracker.Services;
 
 public enum ImportCustomerDecisionAction
@@ -18,6 +20,11 @@ public static class ImportCustomerDecisionPlanner
         ImportReviewPlan review,
         IReadOnlyDictionary<string, ImportCustomerDecision> existing)
     {
+        ArgumentNullException.ThrowIfNull(review);
+        ArgumentNullException.ThrowIfNull(existing);
+        foreach (var decision in existing.Values)
+            ProviderNeutralValidation.RequireDefined(decision.Action, nameof(decision.Action));
+
         var result = new Dictionary<string, ImportCustomerDecision>(existing, StringComparer.OrdinalIgnoreCase);
         var newCodes = review.Customers
             .Where(x => x.Status == ImportCustomerReviewStatus.New)
@@ -37,11 +44,22 @@ public static class ImportCustomerDecisionPlanner
     }
 
     public static int UnconfirmedCount(IReadOnlyDictionary<string, ImportCustomerDecision> decisions) =>
-        decisions.Values.Count(x => x.Action == ImportCustomerDecisionAction.Unconfirmed);
+        Validated(decisions).Count(x => x.Action == ImportCustomerDecisionAction.Unconfirmed);
 
     public static int CreateCount(IReadOnlyDictionary<string, ImportCustomerDecision> decisions) =>
-        decisions.Values.Count(x => x.Action == ImportCustomerDecisionAction.Create);
+        Validated(decisions).Count(x => x.Action == ImportCustomerDecisionAction.Create);
 
     public static int SkipCount(IReadOnlyDictionary<string, ImportCustomerDecision> decisions) =>
-        decisions.Values.Count(x => x.Action == ImportCustomerDecisionAction.Skip);
+        Validated(decisions).Count(x => x.Action == ImportCustomerDecisionAction.Skip);
+
+    private static IEnumerable<ImportCustomerDecision> Validated(
+        IReadOnlyDictionary<string, ImportCustomerDecision> decisions)
+    {
+        ArgumentNullException.ThrowIfNull(decisions);
+        foreach (var decision in decisions.Values)
+        {
+            ProviderNeutralValidation.RequireDefined(decision.Action, nameof(decision.Action));
+            yield return decision;
+        }
+    }
 }

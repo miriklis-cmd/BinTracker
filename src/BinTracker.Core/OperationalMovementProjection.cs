@@ -93,7 +93,7 @@ public sealed class ProjectedOperationalMovement
     public string? ReferenceNumber { get; }
     public string? Notes { get; }
     public string? CreatedBy { get; }
-    public long SignedQuantity => MovementType == MovementType.Out ? Quantity : -Quantity;
+    public long SignedQuantity => MovementType == MovementType.Out ? Quantity : -(long)Quantity;
 }
 
 public sealed record OperationalMovementPosition(int CustomerId, int ContainerTypeId, long Quantity);
@@ -238,7 +238,7 @@ internal static class OperationalMovementProjectionSemantics
         var positions = scope.IsPositionAsOf
             ? filtered.GroupBy(x => new { x.CustomerId, x.ContainerTypeId })
                 .Select(x => new OperationalMovementPosition(x.Key.CustomerId, x.Key.ContainerTypeId,
-                    x.Sum(movement => movement.SignedQuantity)))
+                    x.Aggregate(0L, (total, movement) => checked(total + movement.SignedQuantity))))
                 .OrderBy(x => x.CustomerId).ThenBy(x => x.ContainerTypeId).ToList()
             : [];
         return new(scope, new ReadOnlyCollection<ProjectedOperationalMovement>(filtered),

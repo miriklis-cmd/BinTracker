@@ -7,7 +7,7 @@ namespace BinTracker.Services;
 public sealed record CustomerListRow(int Id, string Name, string CustomerCode, CustomerType CustomerType, bool IsActive, int NetBalance);
 public sealed record CustomerBalanceRow(string ContainerType, int Balance)
 {
-    public string Position => Balance > 0 ? $"{Balance} OUT" : Balance < 0 ? $"{Math.Abs(Balance)} CREDIT" : "Even";
+    public string Position => Balance > 0 ? $"{Balance} OUT" : Balance < 0 ? $"{QuantityMath.Absolute(Balance)} CREDIT" : "Even";
 }
 public sealed record CustomerMovementRow(DateOnly Date, string Direction, string ContainerType, int Quantity, string? Reference, string? CreatedBy);
 public sealed record CustomerStatementMovement(DateOnly Date, string Direction, int Quantity, int RunningBalance, string? Reference);
@@ -94,11 +94,24 @@ internal sealed class CustomerService(
             .ThenBy(x => x.Name);
         if (operationalProjection is null)
         {
-            return await orderedCustomers
+            var rows = await orderedCustomers
                 .Select(x => new CustomerListRow(
-                    x.Id, x.Name, x.CustomerCode ?? string.Empty, x.CustomerType, x.IsActive,
-                    x.Movements.Sum(m => m.MovementType == MovementType.Out ? m.Quantity : -m.Quantity)))
+                    x.Id, x.Name, x.CustomerCode ?? string.Empty, x.CustomerType, x.IsActive, 0))
                 .ToListAsync(cancellationToken);
+            var balances = await db.BinMovements.AsNoTracking()
+                .GroupBy(x => x.CustomerId)
+                .Select(g => new
+                {
+                    CustomerId = g.Key,
+                    Balance = g.Sum(m => m.MovementType == MovementType.Out
+                        ? (long)m.Quantity
+                        : -(long)m.Quantity)
+                })
+                .ToDictionaryAsync(x => x.CustomerId, x => x.Balance, cancellationToken);
+            return rows.Select(x => x with
+            {
+                NetBalance = QuantityMath.ToInt32(balances.GetValueOrDefault(x.Id))
+            }).ToList();
         }
 
         if (operationalProjection is not
@@ -146,6 +159,7 @@ internal sealed class CustomerService(
 
     public async Task<int> SaveAsync(CustomerEditModel model, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(model);
         await authorization.RequireOperationalAsync(cancellationToken);
         model.Name = model.Name.Trim();
         model.CustomerCode = (Clean(model.CustomerCode) ?? string.Empty).ToUpperInvariant();
@@ -160,6 +174,15 @@ internal sealed class CustomerService(
             throw new ArgumentException("Customer code is required.");
         if (model.Name.Length < 2)
             throw new ArgumentException("Customer name is required.");
+        ProviderNeutralValidation.RequireDefined(model.CustomerType, nameof(model.CustomerType));
+        MasterDataLimits.RequireMaximum(model.CustomerCode, MasterDataLimits.CustomerCode, nameof(model.CustomerCode));
+        MasterDataLimits.RequireMaximum(model.Name, MasterDataLimits.CustomerName, nameof(model.Name));
+        MasterDataLimits.RequireOptionalMaximum(model.ContactName, MasterDataLimits.CustomerContactName, nameof(model.ContactName));
+        MasterDataLimits.RequireOptionalMaximum(model.Phone, MasterDataLimits.CustomerPhone, nameof(model.Phone));
+        MasterDataLimits.RequireOptionalMaximum(model.MobileNumber, MasterDataLimits.CustomerMobileNumber, nameof(model.MobileNumber));
+        MasterDataLimits.RequireOptionalMaximum(model.Email, MasterDataLimits.CustomerEmail, nameof(model.Email));
+        MasterDataLimits.RequireOptionalMaximum(model.Address, MasterDataLimits.CustomerAddress, nameof(model.Address));
+        MasterDataLimits.RequireOptionalMaximum(model.Notes, MasterDataLimits.CustomerNotes, nameof(model.Notes));
 
         var normalisedCode = model.CustomerCode.ToUpperInvariant();
         try
@@ -283,10 +306,11 @@ internal sealed class CustomerService(
         Dictionary<int, int> sums;
         if (operationalProjection is null)
         {
-            sums = await db.BinMovements.AsNoTracking().Where(x => x.CustomerId == customerId)
+            var legacySums = await db.BinMovements.AsNoTracking().Where(x => x.CustomerId == customerId)
                 .GroupBy(x => x.ContainerTypeId)
-                .Select(g => new { ContainerTypeId=g.Key, Balance=g.Sum(x => x.MovementType == MovementType.Out ? x.Quantity : -x.Quantity) })
+                .Select(g => new { ContainerTypeId=g.Key, Balance=g.Sum(x => x.MovementType == MovementType.Out ? (long)x.Quantity : -(long)x.Quantity) })
                 .ToDictionaryAsync(x => x.ContainerTypeId, x => x.Balance, cancellationToken);
+            sums = legacySums.ToDictionary(x => x.Key, x => QuantityMath.ToInt32(x.Value));
         }
         else
         {
@@ -378,13 +402,17 @@ internal sealed class CustomerService(
             foreach (var type in containerTypes)
             {
                 var typed = all.Where(x => x.ContainerTypeId == type.Id).ToList();
-                var opening = typed.Where(x => x.MovementDate < fromDate)
-                    .Sum(x => x.MovementType == MovementType.Out ? x.Quantity : -x.Quantity);
+                var opening = QuantityMath.SumSigned(
+                    typed.Where(x => x.MovementDate < fromDate),
+                    x => x.Quantity,
+                    x => x.MovementType == MovementType.Out);
                 var running = opening;
                 var movements = new List<CustomerStatementMovement>();
                 foreach (var movement in typed.Where(x => x.MovementDate >= fromDate))
                 {
-                    running += movement.MovementType == MovementType.Out ? movement.Quantity : -movement.Quantity;
+                    running = movement.MovementType == MovementType.Out
+                        ? QuantityMath.Add(running, movement.Quantity)
+                        : QuantityMath.Subtract(running, movement.Quantity);
                     var direction = movement.Source == MovementSource.Adjustment
                         ? (movement.MovementType == MovementType.Out
                             ? "Opening adjustment (OUT)"

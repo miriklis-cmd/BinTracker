@@ -1,6 +1,6 @@
 # BinTracker Roadmap
 
-Current planning baseline: **v0.5.0-alpha.15**
+Current planning baseline: **v0.5.0-alpha.16**
 
 This roadmap tracks work that is still relevant. Completed alpha-by-alpha history belongs in `docs/CHANGELOG.md`, not here.
 
@@ -41,7 +41,7 @@ Batch Entry Continue/Save/Discard recovery is implemented. The historical genera
 
 ### Current hard gate
 
-- **Security, Data Integrity & Code Quality Hardening — HARD GATE**: complete Batches C–H. BT-ARCH-018-P4 is closed at pushed commit `9f2e6b6`; Batch C is next after the current P6 governance correction passes its required canonical BAT. Batch E fixes BT-SH-012 and simultaneously implements the complete BT-BATCH-012 stable-user-ID ownership invariant; BT-BATCH-012 is not a separate post-Communications milestone. Security remains blocking through Batch H and the later final release review.
+- **Security, Data Integrity & Code Quality Hardening — HARD GATE**: complete Batches D–H. Batch C is implemented in the alpha.16 candidate; independent review and the operator-owned canonical BAT remain before closure. Batch E fixes BT-SH-012 and simultaneously implements the complete BT-BATCH-012 stable-user-ID ownership invariant; BT-BATCH-012 is not a separate post-Communications milestone. Security remains blocking through Batch H and the later final release review.
 
 ### Post-hardening v1 features
 
@@ -246,7 +246,7 @@ Implementation is deliberately split into controlled batches: security boundarie
 
 The repository audit must fail if the register disappears, loses an audit finding, contains an invalid disposition, or if this workstream is moved behind Branding/Communications. A v1.0 release must additionally fail while any accepted v1 finding remains unresolved.
 
-BT-SH-001 is fixed at the alpha.11 static/focused-evidence checkpoint: all current report CSV exports use one structured cell serializer that neutralizes formula-leading text, including whitespace/control/format-prefix bypasses, while retaining typed numeric output and existing columns/order. BT-SH-002 is fixed in alpha.12; BT-SH-003 in alpha.13; the remaining reconciliation closed BT-SH-004/011/020/041 and rejected BT-SH-023/046 as inapplicable. Alpha.14 Batch A fixed BT-SH-008/017/018/019/022/028/032; alpha.15 Batch B fixed BT-SH-006/030. BT-SH-040 retains only customer/container operational-identifier normalization in Batch C. Current totals are 16 `FIXED`, 20 `CONFIRMED-V1`, 1 `REVIEW-V1`, 11 `POST-V1` and 2 `NOT-APPLICABLE`; P4 is closed and Batch C is next after the current P6 governance correction passes its required canonical BAT. The Security register remains authoritative for exact membership, rationale and evidence.
+BT-SH-001 is fixed at the alpha.11 static/focused-evidence checkpoint: all current report CSV exports use one structured cell serializer that neutralizes formula-leading text, including whitespace/control/format-prefix bypasses, while retaining typed numeric output and existing columns/order. BT-SH-002 is fixed in alpha.12; BT-SH-003 in alpha.13; the remaining reconciliation closed BT-SH-004/011/020/041 and rejected BT-SH-023/046 as inapplicable. Alpha.14 Batch A fixed BT-SH-008/017/018/019/022/028/032; alpha.15 Batch B fixed BT-SH-006/030; alpha.16 Batch C fixes BT-SH-015/016/039/040/044. Current totals are 21 `FIXED`, 15 `CONFIRMED-V1`, 1 `REVIEW-V1`, 11 `POST-V1` and 2 `NOT-APPLICABLE`; 16 findings remain blocking across Batches D–H. The Security register remains authoritative for exact membership, rationale and evidence.
 
 ### 5B. Email, SMS & Customer Communications — first post-hardening feature
 

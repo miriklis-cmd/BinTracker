@@ -1,5 +1,14 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.16
+
+- Completes Security Hardening Batch C at static/focused-automated evidence level: BT-SH-015/016/039/040/044 are `FIXED`; totals are 21 FIXED, 15 CONFIRMED-V1, 1 REVIEW-V1, 11 POST-V1 and 2 NOT-APPLICABLE.
+- Rejects undefined mutation, report, import/planner and persisted-draft enum inputs before misleading branching or writes. Daily, Weekly, Monthly, Movement History, Outstanding and Audit filters fail closed rather than returning false no-data.
+- Centralizes customer/container field maxima in provider-neutral Core and applies them in Services and EF metadata. Customer/container operational identifiers retain accepted Unicode plus established trim/invariant-uppercase behavior; no compatibility normalization, transliteration or retained-data rewrite is introduced.
+- Replaces unchecked quantity, balance, net, running-total and report arithmetic with long aggregation and checked operations/conversions. Overflow now fails closed, including the prior Market Floor wraparound.
+- Applies checked conversion only at established final `int` boundaries, so offsetting terms may cross the int range temporarily without rejecting a representable Market Floor or import/reconciliation result; genuinely unrepresentable final or persisted values still fail atomically.
+- Focused automated tests and the Release solution build pass with zero warnings/errors. Independent review and Jack/operator's exact-candidate canonical BAT remain required; no Windows/manual behavior is claimed.
+
 ## v0.5.0-alpha.15
 
 - Reconciles the accepted alpha.15 repository truth without changing product behavior or version: BT-ARCH-018-P4's exact candidate passed under SDK 10.0.402 with 265 permanent IDs across 27 Markdown files and 901/901 tests, 0 failed/skipped, then was committed/pushed as `9f2e6b6`; `master` equals `origin/master` and the retired development refs remain at `02b47d0`, one commit behind.

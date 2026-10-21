@@ -1,3 +1,12 @@
+## v0.5.0-alpha.16 (20 October 2026)
+
+- Completed Security Hardening Batch C in source: BT-SH-015/016/039/040/044 now fail closed on undefined public/service enum inputs, arithmetic overflow, oversize master data and invalid report filters.
+- Added provider-neutral `MasterDataLimits`, enum guards and checked quantity helpers; applied them across customer/container mutation, reports, balances, import/reconciliation, correction, Single/Batch entry and operational projection paths.
+- Preserved accepted Unicode customer/container identifiers under the existing trim/invariant-uppercase rules without compatibility normalization, transliteration or retained-data migration.
+- Added focused boundary/no-write/overflow/Unicode regression coverage, including invalid persisted draft direction quarantine and the prior Market Floor wraparound.
+- Corrected the remaining import snapshot calculated-total boundary to accumulate in `long` and narrow only the final established `int` result; focused report/planner/import regressions cover both cancelled intermediate range crossings and atomic failure for a genuinely unrepresentable persisted adjustment.
+- Advanced Version/InformationalVersion from alpha.15 to alpha.16 while retaining AssemblyVersion/FileVersion `0.5.0.0`. Independent review and the operator-owned canonical BAT remain pending.
+
 ## v0.5.0-alpha.15 (16 October 2026)
 
 - Reconciled accepted P3 repository truth on 17 October without a version or runtime change: promoted only the specified permanent requirement rows, retained BT-AUD-010/CORR-026/CORR-031 at mixed/static status, and recorded BT-AUD-006 as unresolved.

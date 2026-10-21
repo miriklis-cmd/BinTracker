@@ -217,7 +217,7 @@ public static class MovementCorrectionSelection
         return new(
             selectedPhysicalBatchId,
             lines.Length,
-            lines.Sum(x => x.Quantity),
+            QuantityMath.Sum(lines.Select(x => x.Quantity)),
             dates[0],
             directions[0],
             IsEligible: true,
@@ -230,9 +230,14 @@ public static class MovementCorrectionSelection
         bool changeDate,
         DateOnly proposedDate,
         bool changeDirection,
-        MovementType proposedDirection) => new(
+        MovementType proposedDirection)
+    {
+        ProviderNeutralValidation.RequireDefined(persistedDirection, nameof(persistedDirection));
+        ProviderNeutralValidation.RequireDefined(proposedDirection, nameof(proposedDirection));
+        return new(
             changeDate && proposedDate != persistedDate ? proposedDate : null,
             changeDirection && proposedDirection != persistedDirection ? proposedDirection : null);
+    }
 
     public static MovementCorrectionSelections Resolve(
         MovementCorrectionDetail movement,
@@ -318,7 +323,7 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
         var row = await db.MovementBatches.AsNoTracking().Where(x => x.Id == id).Select(x => new
         {
             x.Id, x.MovementDate, x.MovementType, Count = x.Movements.Count,
-            Total = x.Movements.Sum(m => m.Quantity),
+            Total = x.Movements.Sum(m => (long)m.Quantity),
             Eligible = x.Movements.All(m => (m.Source == MovementSource.Manual || m.Source == MovementSource.Batch) &&
                 m.ImportRunId == null && m.ReversesMovementId == null && m.CorrectedByMovementId == null)
         }).SingleOrDefaultAsync(token);
@@ -333,7 +338,7 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
         if (lines.Length != row.Count || lines.Any(x => x.MovementBatchId != row.Id))
             throw new InvalidOperationException(
                 $"Persisted movement batch #{row.Id} changed while its correction detail was loading. Reload and try again.");
-        return new(row.Id, row.Count, row.Total, row.MovementDate,
+        return new(row.Id, row.Count, QuantityMath.ToInt32(row.Total), row.MovementDate,
             row.MovementType,
             mutationWriter.IsEnabled
                 ? nativePreview?.IsWholeRootCorrectionEligible == true
@@ -384,6 +389,7 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
 
     public async Task<ReverseMovementResult> ReverseAsync(ReverseMovementRequest request, CancellationToken token = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
         RejectLegacyMutationIfNativeEnabled();
         await authorization.RequireOperationalAsync(token);
         var reason = Reason(request.Reason, "reversal");
@@ -424,7 +430,9 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
 
     public Task<MovementCorrectionResult> CorrectAsync(CorrectMovementRequest request, CancellationToken token = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
         RejectLegacyMutationIfNativeEnabled();
+        ProviderNeutralValidation.RequireDefined(request.Direction, nameof(request.Direction));
         if (request.MovementDate == default || request.CustomerId <= 0 || request.ContainerTypeId <= 0 || request.Quantity <= 0)
             throw new InvalidOperationException("Corrected date, customer, container type and a positive quantity are required.");
         if (request.MovementDate > clock.Today)
@@ -440,7 +448,9 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
 
     public async Task<MovementCorrectionResult> CorrectBatchAsync(CorrectBatchRequest request, CancellationToken token = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
         RejectLegacyMutationIfNativeEnabled();
+        ProviderNeutralValidation.RequireDefined(request.CorrectedDirection, nameof(request.CorrectedDirection));
         await authorization.RequireOperationalAsync(token);
         OperationId(request.ClientOperationId);
         var reason = Reason(request.Reason, "correction");
@@ -1137,7 +1147,7 @@ internal sealed class MovementCorrectionService(IDbContextFactory<BinTrackerDbCo
                 kind == MovementCorrectionKind.WholeBatch ? "MovementBatch" : "BinMovement",
                 (originalBatchId ?? originals[0].Id).ToString(),
                 kind == MovementCorrectionKind.WholeBatch
-                    ? $"Batch #{originalBatchId} corrected in full: {triples.Count} lines, {originals.Sum(x => x.Quantity)} containers. Reason: {reason}"
+                    ? $"Batch #{originalBatchId} corrected in full: {triples.Count} lines, {QuantityMath.Sum(originals.Select(x => x.Quantity))} containers. Reason: {reason}"
                     : $"Movement #{originals[0].Id} corrected by replacement. Reason: {reason}",
                 originals.Select(Snap).ToArray(), triples.Select(t => new { t.Original.Id,
                     NeutralisingMovementId = t.Neutral.Id, ReplacementMovementId = t.Replacement.Id,

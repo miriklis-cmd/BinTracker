@@ -21,7 +21,7 @@ public sealed record MonthlySummaryReportRow(
     int OutQuantity,
     int InQuantity)
 {
-    public int NetQuantity => OutQuantity - InQuantity;
+    public int NetQuantity => QuantityMath.Subtract(OutQuantity, InQuantity);
 }
 
 public sealed record MonthlySummaryContainerTotal(
@@ -31,7 +31,7 @@ public sealed record MonthlySummaryContainerTotal(
     int OutQuantity,
     int InQuantity)
 {
-    public int NetQuantity => OutQuantity - InQuantity;
+    public int NetQuantity => QuantityMath.Subtract(OutQuantity, InQuantity);
 }
 
 public sealed record MonthlySummaryReportResult(
@@ -41,9 +41,9 @@ public sealed record MonthlySummaryReportResult(
     IReadOnlyList<MonthlySummaryReportRow> Rows,
     IReadOnlyList<MonthlySummaryContainerTotal> ContainerTotals)
 {
-    public int OutQuantity => Rows.Sum(x => x.OutQuantity);
-    public int InQuantity => Rows.Sum(x => x.InQuantity);
-    public int NetQuantity => OutQuantity - InQuantity;
+    public int OutQuantity => QuantityMath.Sum(Rows.Select(x => x.OutQuantity));
+    public int InQuantity => QuantityMath.Sum(Rows.Select(x => x.InQuantity));
+    public int NetQuantity => QuantityMath.Subtract(OutQuantity, InQuantity);
 }
 
 public interface IMonthlySummaryReportService
@@ -64,7 +64,9 @@ internal sealed class MonthlySummaryReportService(
         MonthlySummaryReportQuery query,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(query);
         await authorization.RequireAuthenticatedAsync(cancellationToken);
+        ProviderNeutralValidation.RequireDefined(query.Source, nameof(query.Source));
         var today = clock.Today;
         var requested = query.Month > today ? today : query.Month;
 
@@ -158,10 +160,10 @@ internal sealed class MonthlySummaryReportService(
                 g.Key.ContainerTypeId,
                 g.Key.ContainerType,
                 g.Key.ContainerDisplayOrder,
-                g.Where(x => x.Direction == MovementType.Out)
-                    .Sum(x => x.Quantity),
-                g.Where(x => x.Direction == MovementType.In)
-                    .Sum(x => x.Quantity)))
+                QuantityMath.Sum(g.Where(x => x.Direction == MovementType.Out)
+                    .Select(x => x.Quantity)),
+                QuantityMath.Sum(g.Where(x => x.Direction == MovementType.In)
+                    .Select(x => x.Quantity))))
             .OrderBy(x => x.CustomerCode, StringComparer.OrdinalIgnoreCase)
             .ThenBy(x => x.ContainerDisplayOrder)
             .ToList();
@@ -177,8 +179,8 @@ internal sealed class MonthlySummaryReportService(
                 g.Key.ContainerTypeId,
                 g.Key.ContainerType,
                 g.Key.ContainerDisplayOrder,
-                g.Sum(x => x.OutQuantity),
-                g.Sum(x => x.InQuantity)))
+                QuantityMath.Sum(g.Select(x => x.OutQuantity)),
+                QuantityMath.Sum(g.Select(x => x.InQuantity))))
             .OrderBy(x => x.DisplayOrder)
             .ThenBy(x => x.ContainerType, StringComparer.OrdinalIgnoreCase)
             .ToList();

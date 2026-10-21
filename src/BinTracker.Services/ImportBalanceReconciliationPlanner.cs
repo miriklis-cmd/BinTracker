@@ -1,3 +1,5 @@
+using BinTracker.Core;
+
 namespace BinTracker.Services;
 
 public enum ImportBalanceReconciliationStatus
@@ -73,6 +75,20 @@ public static class ImportBalanceReconciliationPlanner
         IReadOnlyDictionary<string, ImportCustomerDecision>? customerDecisions = null,
         IReadOnlyDictionary<string, ImportExistingCustomerDecision>? existingCustomerDecisions = null)
     {
+        ArgumentNullException.ThrowIfNull(analysis);
+        ArgumentNullException.ThrowIfNull(mappings);
+        ArgumentNullException.ThrowIfNull(customerReview);
+        ArgumentNullException.ThrowIfNull(containerTypes);
+        ArgumentNullException.ThrowIfNull(currentBalances);
+        foreach (var mapping in mappings)
+            ProviderNeutralValidation.RequireDefined(mapping.Role, nameof(mapping.Role));
+        if (customerDecisions is not null)
+            foreach (var decision in customerDecisions.Values)
+                ProviderNeutralValidation.RequireDefined(decision.Action, nameof(decision.Action));
+        if (existingCustomerDecisions is not null)
+            foreach (var decision in existingCustomerDecisions.Values)
+                ProviderNeutralValidation.RequireDefined(decision.Action, nameof(decision.Action));
+
         var sourceSheets = mappings
             .Where(x => x.Role == ImportWorksheetRole.Source)
             .Select(x => x.Worksheet)
@@ -213,13 +229,13 @@ public static class ImportBalanceReconciliationPlanner
 
             var outQuantity = snapshot.Out ?? 0;
             var inQuantity = snapshot.In ?? 0;
-            var openingAdjustment =
-                snapshot.BroughtForward.Value - currentBalance;
-            var projected =
-                currentBalance +
-                openingAdjustment +
-                outQuantity -
-                inQuantity;
+            var openingAdjustment = QuantityMath.Subtract(
+                snapshot.BroughtForward.Value, currentBalance);
+            var projected = QuantityMath.SumToInt32(
+                currentBalance,
+                openingAdjustment,
+                outQuantity,
+                -(long)inQuantity);
             var target =
                 snapshot.ExcelTotal ??
                 snapshot.CalculatedTotal;

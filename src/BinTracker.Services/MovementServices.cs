@@ -88,7 +88,7 @@ public sealed class DraftMovementBatch(IBusinessClock clock)
     public MovementType MovementType { get; set; } = MovementType.In;
     public List<DraftMovementLine> Lines { get; } = [];
 
-    public int TotalQuantity => Lines.Sum(x => x.Quantity);
+    public int TotalQuantity => QuantityMath.Sum(Lines.Select(x => x.Quantity));
     public bool HasLines => Lines.Count > 0;
 
     public void Clear()
@@ -186,14 +186,17 @@ public sealed class ApplicationState
 
 public static class MovementPositionMath
 {
-    public static int Apply(int openingBalance, MovementType movementType, int quantity) =>
-        movementType == MovementType.Out
-            ? openingBalance + quantity
-            : openingBalance - quantity;
+    public static int Apply(int openingBalance, MovementType movementType, int quantity)
+    {
+        ProviderNeutralValidation.RequireDefined(movementType, nameof(movementType));
+        return movementType == MovementType.Out
+            ? QuantityMath.Add(openingBalance, quantity)
+            : QuantityMath.Subtract(openingBalance, quantity);
+    }
 
     public static string Format(int balance) =>
         balance > 0 ? $"{balance} OUT" :
-        balance < 0 ? $"{Math.Abs(balance)} CREDIT" :
+        balance < 0 ? $"{QuantityMath.Absolute(balance)} CREDIT" :
         "Even";
 }
 
@@ -285,7 +288,7 @@ internal sealed class MovementService(
             if (customer is null)
                 return null;
             var containerTypes = await ActiveContainerTypesAsync(db, cancellationToken);
-            var balances = await db.BinMovements
+            var rawBalances = await db.BinMovements
                 .AsNoTracking()
                 .Where(x => x.CustomerId == customer.Id)
                 .GroupBy(x => x.ContainerTypeId)
@@ -294,13 +297,15 @@ internal sealed class MovementService(
                     ContainerTypeId = g.Key,
                     Balance = g.Sum(x =>
                         x.MovementType == MovementType.Out
-                            ? x.Quantity
-                            : -x.Quantity)
+                            ? (long)x.Quantity
+                            : -(long)x.Quantity)
                 })
                 .ToDictionaryAsync(
                     x => x.ContainerTypeId,
                     x => x.Balance,
                     cancellationToken);
+            var balances = rawBalances.ToDictionary(
+                x => x.Key, x => QuantityMath.ToInt32(x.Value));
 
             return CustomerSummary(customer, containerTypes, balances);
         }
@@ -372,7 +377,9 @@ internal sealed class MovementService(
         SaveMovementBatchRequest request,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
         await authorization.RequireOperationalAsync(cancellationToken);
+        ProviderNeutralValidation.RequireDefined(request.MovementType, nameof(request.MovementType));
 
         if (request.Lines is null || request.Lines.Count == 0)
             throw new ArgumentException("Add at least one movement before saving the batch.");
@@ -521,7 +528,7 @@ internal sealed class MovementService(
                 cancellationToken);
         }
 
-        var totalQuantity = request.Lines.Sum(x => x.Quantity);
+        var totalQuantity = QuantityMath.Sum(request.Lines.Select(x => x.Quantity));
         var direction = request.MovementType == MovementType.In
             ? "IN (Returned)"
             : "OUT (Taken)";
@@ -561,7 +568,9 @@ internal sealed class MovementService(
         SaveSingleMovementRequest request,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
         await authorization.RequireOperationalAsync(cancellationToken);
+        ProviderNeutralValidation.RequireDefined(request.MovementType, nameof(request.MovementType));
 
         var businessDate = clock.Today;
         if (request.MovementDate > businessDate)
@@ -633,8 +642,8 @@ internal sealed class MovementService(
                     x.ContainerTypeId == request.ContainerTypeId)
                 .SumAsync(
                     x => x.MovementType == MovementType.Out
-                        ? x.Quantity
-                        : -x.Quantity,
+                        ? (long)x.Quantity
+                        : -(long)x.Quantity,
                     cancellationToken);
 
         var movement = new BinMovement
@@ -735,7 +744,7 @@ internal sealed class MovementService(
         else
         {
             newBalance = MovementPositionMath.Apply(
-                openingBalance,
+                QuantityMath.ToInt32(openingBalance),
                 request.MovementType,
                 request.Quantity);
         }
@@ -834,16 +843,16 @@ internal sealed class MovementService(
             .AsNoTracking()
             .Where(x => x.MovementDate == date)
             .GroupBy(x => x.MovementType)
-            .Select(g => new { Type = g.Key, Quantity = g.Sum(x => x.Quantity) })
+            .Select(g => new { Type = g.Key, Quantity = g.Sum(x => (long)x.Quantity) })
             .ToListAsync(cancellationToken);
 
-        var returned = today
+        var returned = QuantityMath.ToInt32(today
             .Where(x => x.Type == MovementType.In)
-            .Sum(x => x.Quantity);
+            .Aggregate(0L, (total, x) => checked(total + x.Quantity)));
 
-        var taken = today
+        var taken = QuantityMath.ToInt32(today
             .Where(x => x.Type == MovementType.Out)
-            .Sum(x => x.Quantity);
+            .Aggregate(0L, (total, x) => checked(total + x.Quantity)));
 
         var positions = await db.BinMovements
             .AsNoTracking()
@@ -853,14 +862,14 @@ internal sealed class MovementService(
                 g.Key.CustomerId,
                 Balance = g.Sum(x =>
                     x.MovementType == MovementType.Out
-                        ? x.Quantity
-                        : -x.Quantity)
+                        ? (long)x.Quantity
+                        : -(long)x.Quantity)
             })
             .ToListAsync(cancellationToken);
 
-        var outstanding = positions
+        var outstanding = QuantityMath.ToInt32(positions
             .Where(x => x.Balance > 0)
-            .Sum(x => x.Balance);
+            .Aggregate(0L, (total, x) => checked(total + x.Balance)));
 
         var settings = await db.ApplicationSettings
             .AsNoTracking()
@@ -948,7 +957,7 @@ internal sealed class MovementService(
         return new SaveMovementBatchResult(
             existing.Id,
             persistedLines.Count,
-            persistedLines.Sum(x => x.Quantity));
+            QuantityMath.Sum(persistedLines.Select(x => x.Quantity)));
     }
 
     private sealed record MatchingSingleMovement(
@@ -1012,11 +1021,11 @@ internal sealed class MovementService(
                 x.ContainerTypeId == existing.ContainerTypeId)
             .SumAsync(
                 x => x.MovementType == MovementType.Out
-                    ? x.Quantity
-                    : -x.Quantity,
+                    ? (long)x.Quantity
+                    : -(long)x.Quantity,
                 cancellationToken);
 
-        return new SaveSingleMovementResult(existing.Id, balance);
+        return new SaveSingleMovementResult(existing.Id, QuantityMath.ToInt32(balance));
     }
 
     private async Task<SaveSingleMovementResult> GetNativeSingleReplayAsync(

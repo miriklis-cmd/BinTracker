@@ -40,6 +40,22 @@ public sealed class ImportExistingCustomerDecisionPlannerTests
             result["CLAMMS"].Action);
     }
 
+    [Fact]
+    public void Undefined_existing_decision_is_rejected()
+    {
+        var existing = new Dictionary<string, ImportExistingCustomerDecision>
+        {
+            ["CLAMMS"] = new(
+                "CLAMMS", (ImportExistingCustomerDecisionAction)99, 7,
+                "CLAMMS", "Clamms Seafood")
+        };
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            ImportExistingCustomerDecisionPlanner.MergeDefaults(Plan(), existing));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            ImportExistingCustomerDecisionPlanner.ConfirmedCount(existing));
+    }
+
     private static ImportReviewPlan Plan() =>
         new(
             [

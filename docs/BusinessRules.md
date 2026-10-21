@@ -19,11 +19,15 @@ This document records application behaviour independently of implementation deta
 ## Customers
 
 - Customer codes are unique case-insensitively.
+- Customer codes retain the established trim plus invariant-uppercase behavior and may contain accepted Unicode operational text; they are not authentication identities and are not compatibility-normalized or transliterated. Customer code/name/contact/phone/mobile/email/address/notes maxima are respectively 50/200/150/50/50/200/500/2000 UTF-16 code units and are rejected before persistence when exceeded.
 - Positive balances mean the customer owes containers.
 - Negative balances mean CREDIT.
 - Historical records remain valid when customers are deactivated.
 
 ## Container Types
+
+- Container names and short codes retain the established trim behavior; short/system codes retain invariant-uppercase behavior and accepted Unicode letters/digits. No compatibility normalization, transliteration or retained-data rewrite is applied.
+- Container name/short code/system code/description/notes/dashboard-colour maxima are respectively 100/30/50/500/2000/50 UTF-16 code units and are rejected before persistence when exceeded.
 
 - Container Types are master data.
 - Display Order controls operational selection ordering.
@@ -151,6 +155,7 @@ Important security, master-data and movement changes create audit events.
 
 ## Interactive report sorting and printing
 
+- Undefined report-filter enum values are invalid input and fail closed; they must never be represented as a truthful empty report. Quantity, balance, net and running-total arithmetic uses checked operations at existing `int` contracts and fails closed on overflow rather than wrapping.
 - Interactive report columns must sort according to their underlying data type. Numeric positions/quantities sort numerically, never lexicographically by formatted text.
 - Outstanding Containers PDF generation is a printable snapshot of the current on-screen dataset and therefore follows the operator's current grid row order/sort.
 - Changing grid sort order is presentation only; it does not modify movement history, balances or stored report data.

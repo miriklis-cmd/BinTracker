@@ -49,7 +49,7 @@ public sealed record WeeklyMovementSummaryRow(
     int OutQuantity,
     int InQuantity)
 {
-    public int NetQuantity => OutQuantity - InQuantity;
+    public int NetQuantity => QuantityMath.Subtract(OutQuantity, InQuantity);
 }
 
 public sealed record WeeklyMovementsReportResult(
@@ -59,9 +59,9 @@ public sealed record WeeklyMovementsReportResult(
     IReadOnlyList<WeeklyMovementReportRow> Rows,
     IReadOnlyList<WeeklyMovementSummaryRow> Summary)
 {
-    public int OutQuantity => Rows.Where(x => x.Direction == MovementType.Out).Sum(x => x.Quantity);
-    public int InQuantity => Rows.Where(x => x.Direction == MovementType.In).Sum(x => x.Quantity);
-    public int NetQuantity => OutQuantity - InQuantity;
+    public int OutQuantity => QuantityMath.Sum(Rows.Where(x => x.Direction == MovementType.Out).Select(x => x.Quantity));
+    public int InQuantity => QuantityMath.Sum(Rows.Where(x => x.Direction == MovementType.In).Select(x => x.Quantity));
+    public int NetQuantity => QuantityMath.Subtract(OutQuantity, InQuantity);
 }
 
 public interface IWeeklyMovementsReportService
@@ -82,7 +82,9 @@ internal sealed class WeeklyMovementsReportService(
         WeeklyMovementsReportQuery query,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(query);
         await authorization.RequireAuthenticatedAsync(cancellationToken);
+        ProviderNeutralValidation.RequireDefined(query.Source, nameof(query.Source));
         var today = clock.Today;
         var selectedDate = query.WeekStart > today
             ? today
@@ -204,8 +206,8 @@ internal sealed class WeeklyMovementsReportService(
             .Select(g => new WeeklyMovementSummaryRow(
                 g.Key.CustomerId, g.Key.CustomerCode, g.Key.CustomerName,
                 g.Key.ContainerTypeId, g.Key.ContainerType, g.Key.ContainerDisplayOrder,
-                g.Where(x => x.Direction == MovementType.Out).Sum(x => x.Quantity),
-                g.Where(x => x.Direction == MovementType.In).Sum(x => x.Quantity)))
+                QuantityMath.Sum(g.Where(x => x.Direction == MovementType.Out).Select(x => x.Quantity)),
+                QuantityMath.Sum(g.Where(x => x.Direction == MovementType.In).Select(x => x.Quantity))))
             .OrderBy(x => x.CustomerCode, StringComparer.OrdinalIgnoreCase)
             .ThenBy(x => x.ContainerDisplayOrder)
             .ToList();

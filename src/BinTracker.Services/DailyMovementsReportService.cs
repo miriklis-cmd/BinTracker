@@ -56,12 +56,12 @@ public sealed record DailyMovementsReportResult(
     IReadOnlyList<DailyContainerMovementTotal> ContainerTotals)
 {
     public int OutQuantity =>
-        Rows.Where(x => x.Direction == MovementType.Out)
-            .Sum(x => x.Quantity);
+        QuantityMath.Sum(Rows.Where(x => x.Direction == MovementType.Out)
+            .Select(x => x.Quantity));
 
     public int InQuantity =>
-        Rows.Where(x => x.Direction == MovementType.In)
-            .Sum(x => x.Quantity);
+        QuantityMath.Sum(Rows.Where(x => x.Direction == MovementType.In)
+            .Select(x => x.Quantity));
 }
 
 public interface IDailyMovementsReportService
@@ -91,7 +91,9 @@ internal sealed class DailyMovementsReportService(
         DailyMovementsReportQuery query,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(query);
         await authorization.RequireAuthenticatedAsync(cancellationToken);
+        ValidateQuery(query);
         var reportDate = ClampReportDate(query.ReportDate);
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         return await QueryCoreAsync(query, reportDate, db, false, cancellationToken);
@@ -102,7 +104,9 @@ internal sealed class DailyMovementsReportService(
         BinTrackerDbContext db,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(db);
+        ValidateQuery(query);
         if (db.Database.CurrentTransaction is null ||
             operationalProjection is not ITransactionalOperationalMovementProjectionAuthority)
             throw new InvalidOperationException("A transaction-participating projection is required.");
@@ -113,6 +117,12 @@ internal sealed class DailyMovementsReportService(
     {
         var today = clock.Today;
         return date > today ? today : date;
+    }
+
+    private static void ValidateQuery(DailyMovementsReportQuery query)
+    {
+        ProviderNeutralValidation.RequireDefined(query.Direction, nameof(query.Direction));
+        ProviderNeutralValidation.RequireDefined(query.Source, nameof(query.Source));
     }
 
     private async Task<DailyMovementsReportResult> QueryCoreAsync(
@@ -241,10 +251,10 @@ internal sealed class DailyMovementsReportService(
                 g.Key.ContainerTypeId,
                 g.Key.ContainerType,
                 g.Key.ContainerDisplayOrder,
-                g.Where(x => x.Direction == MovementType.Out)
-                    .Sum(x => x.Quantity),
-                g.Where(x => x.Direction == MovementType.In)
-                    .Sum(x => x.Quantity)))
+                QuantityMath.Sum(g.Where(x => x.Direction == MovementType.Out)
+                    .Select(x => x.Quantity)),
+                QuantityMath.Sum(g.Where(x => x.Direction == MovementType.In)
+                    .Select(x => x.Quantity))))
             .OrderBy(x => x.DisplayOrder)
             .ThenBy(x => x.ContainerType, StringComparer.OrdinalIgnoreCase)
             .ToList();

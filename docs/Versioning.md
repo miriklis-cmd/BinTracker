@@ -1,6 +1,6 @@
 # Versioning
 
-BinTracker currently uses semantic pre-release version `0.5.0-alpha.15`.
+BinTracker currently uses semantic pre-release version `0.5.0-alpha.16`.
 
 ## Single source of truth
 
@@ -9,7 +9,7 @@ The release version is defined in the repository root:
 `Directory.Build.props`
 
 ```xml
-<Version>0.5.0-alpha.15</Version>
+<Version>0.5.0-alpha.16</Version>
 ```
 
 The same value is used by:
@@ -100,7 +100,9 @@ Hard rule: **maximum two numeric components after `alpha`** for the new scheme.
 
 `0.5.0-alpha.14` is the next feature/development increment for the reconciled Security Hardening Batch A. It implements canonical bounded authentication identity, current-account revalidation and uniform Services authorization without overwriting alpha.13 session-lifecycle evidence. Batch B and later hardening remain separately governed by the Security register.
 
-`0.5.0-alpha.15` is the accepted Security Hardening Batch B increment. It closes BT-SH-006/030 with Data-owned transactional mutation/audit consistency without overwriting accepted alpha.14 identity/authorization evidence. BT-ARCH-018-P4's exact candidate passed the operator BAT under SDK 10.0.402 at 265 permanent IDs across 27 Markdown files and 901/901 tests, then was committed/pushed as `9f2e6b6`. The governance-only P6 correction does not require a version bump but is candidate-defining and requires its own canonical BAT. Batch C and later hardening remain separately governed by the Security register.
+`0.5.0-alpha.15` is the accepted Security Hardening Batch B increment. It closes BT-SH-006/030 with Data-owned transactional mutation/audit consistency without overwriting accepted alpha.14 identity/authorization evidence. BT-ARCH-018-P4's exact candidate passed the operator BAT under SDK 10.0.402 at 265 permanent IDs across 27 Markdown files and 901/901 tests, then was committed/pushed as `9f2e6b6`. The later governance-only P6/FIX1 work did not require a version bump.
+
+`0.5.0-alpha.16` is the Security Hardening Batch C candidate. It closes BT-SH-015/016/039/040/044 at static/focused-automated evidence level through provider-neutral enum/input guards, checked quantity arithmetic, authoritative master-data maxima and a Unicode-preserving operational-identifier policy. It does not overwrite alpha.15 acceptance evidence; independent review and the exact-candidate operator BAT remain required before Batch C closure.
 
 Do not create forms such as:
 

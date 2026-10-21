@@ -6,6 +6,7 @@
 - BT-CUST-002: Customer code is the primary visible customer identifier.
 - BT-CUST-003: Customer codes must be unique without regard to case.
 - BT-CUST-004: Customer codes are normalised to uppercase.
+- Customer operational identifiers preserve accepted Unicode text and receive no compatibility normalization or transliteration. Customer code/name/contact/phone/mobile/email/address/notes maxima are 50/200/150/50/50/200/500/2000 UTF-16 code units.
 - BT-CUST-005: Customers are classified as Account or Cash / COD.
 - BT-CUST-006: Customers can be deactivated/reactivated without destroying history.
 - BT-CUST-007: Customer balances are maintained separately per Container Type.
@@ -17,6 +18,7 @@
 - BT-CONT-002: Container types are data-driven and administrator-manageable.
 - BT-CONT-003: Balances are maintained independently per container type.
 - BT-CONT-004: Container types can be marked as Special Floor Report Containers.
+- Container operational identifiers preserve accepted Unicode letters/digits under the established trim/uppercase behavior. Name/short code/system code/description/notes/dashboard-colour maxima are 100/30/50/500/2000/50 UTF-16 code units.
 
 ## Movements
 

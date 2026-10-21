@@ -1,4 +1,6 @@
 
+using BinTracker.Core;
+
 namespace BinTracker.Services;
 
 public enum ImportExistingCustomerDecisionAction
@@ -21,6 +23,11 @@ public static class ImportExistingCustomerDecisionPlanner
         ImportReviewPlan review,
         IReadOnlyDictionary<string, ImportExistingCustomerDecision> existing)
     {
+        ArgumentNullException.ThrowIfNull(review);
+        ArgumentNullException.ThrowIfNull(existing);
+        foreach (var decision in existing.Values)
+            ProviderNeutralValidation.RequireDefined(decision.Action, nameof(decision.Action));
+
         var result = new Dictionary<string, ImportExistingCustomerDecision>(
             existing,
             StringComparer.OrdinalIgnoreCase);
@@ -59,11 +66,22 @@ public static class ImportExistingCustomerDecisionPlanner
 
     public static int UnconfirmedCount(
         IReadOnlyDictionary<string, ImportExistingCustomerDecision> decisions) =>
-        decisions.Values.Count(x =>
+        Validated(decisions).Count(x =>
             x.Action == ImportExistingCustomerDecisionAction.Unconfirmed);
 
     public static int ConfirmedCount(
         IReadOnlyDictionary<string, ImportExistingCustomerDecision> decisions) =>
-        decisions.Values.Count(x =>
+        Validated(decisions).Count(x =>
             x.Action != ImportExistingCustomerDecisionAction.Unconfirmed);
+
+    private static IEnumerable<ImportExistingCustomerDecision> Validated(
+        IReadOnlyDictionary<string, ImportExistingCustomerDecision> decisions)
+    {
+        ArgumentNullException.ThrowIfNull(decisions);
+        foreach (var decision in decisions.Values)
+        {
+            ProviderNeutralValidation.RequireDefined(decision.Action, nameof(decision.Action));
+            yield return decision;
+        }
+    }
 }

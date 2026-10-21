@@ -1,6 +1,6 @@
 # BinTracker Architecture
 
-Current baseline: **v0.5.0-alpha.15**
+Current baseline: **v0.5.0-alpha.16**
 
 ## Display and DPI boundary
 
@@ -50,7 +50,9 @@ The desktop `UserSession` owns one atomically replaced authentication snapshot. 
 
 `ICurrentAccountAuthorization` is the application-boundary authority for authenticated, operational and Administrator workflows. In desktop composition it reloads the stable user ID from provider-neutral persistence at each Services workflow boundary, refreshes current username/display/role, and denies/signs out a missing, inactive, locked, invalid-role or password-change-required account. The credential-change workflow uses a narrow variant that permits only the required password change while still revalidating existence/active/lock state. Infrastructure/cancellation failure propagates and the requested workflow does not continue. A future API supplies equivalent current request-scoped account semantics; no client receives EF state or database credentials.
 
-Authentication usernames have a distinct provider-neutral security-identifier policy: new values normalize with NFKC, lowercase invariantly, contain 3-64 ASCII letters/digits/`.`/`_`/`-`, and begin/end alphanumerically. Login accepts a bounded legacy comparison identity up to 100 characters, rejects invisible/control/format/private/surrogate/unassigned text, and fails closed if retained rows produce more than one canonical match. New canonical values continue to use the exact database unique index for concurrent-create arbitration. Customer/container codes are operational identifiers and remain a separate Batch C normalization decision.
+Authentication usernames have a distinct provider-neutral security-identifier policy: new values normalize with NFKC, lowercase invariantly, contain 3-64 ASCII letters/digits/`.`/`_`/`-`, and begin/end alphanumerically. Login accepts a bounded legacy comparison identity up to 100 characters, rejects invisible/control/format/private/surrogate/unassigned text, and fails closed if retained rows produce more than one canonical match. New canonical values continue to use the exact database unique index for concurrent-create arbitration. Customer/container codes are distinct operational identifiers governed by the Unicode-preserving policy below.
+
+Customer codes and container short/system codes are operational identifiers, not authentication principals. They retain the established trim plus invariant-uppercase behavior and accepted Unicode letters/digits; alpha.16 adds no Unicode normalization, transliteration or retained-data rewrite. Provider-neutral Core constants define the same customer/container field maxima used by Services validation and EF metadata. Public/service enum inputs fail closed before branching or writes, and quantity/balance/report arithmetic aggregates as `long` or uses checked `int` operations before crossing existing `int` contracts.
 
 - `IUserContext` carries authenticated user identity and role.
 - `IBusinessClock` supplies UTC and configured business-local time/date.

@@ -95,7 +95,7 @@ internal sealed class ContainerTypeService(
         {
             var customerBalances = await movements
                 .GroupBy(x => x.CustomerId)
-                .Select(g => g.Sum(x => x.MovementType == MovementType.Out ? x.Quantity : -x.Quantity))
+                .Select(g => g.Sum(x => x.MovementType == MovementType.Out ? (long)x.Quantity : -(long)x.Quantity))
                 .ToListAsync(cancellationToken);
             customersWithBalance = customerBalances.Count(x => x != 0);
         }
@@ -119,6 +119,7 @@ internal sealed class ContainerTypeService(
 
     public async Task<int> SaveAsync(ContainerTypeEditModel model, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(model);
         await authorization.RequireAdministratorAsync(cancellationToken);
         var name = model.Name.Trim();
         var nameKey = ContainerTypeNameKey.Normalize(name);
@@ -128,6 +129,12 @@ internal sealed class ContainerTypeService(
         if (shortCode.Length < 2) throw new ArgumentException("Short code must be at least 2 characters.");
         if (shortCode.Any(ch => !char.IsLetterOrDigit(ch) && ch != '_' && ch != '-'))
             throw new ArgumentException("Short code can contain letters, numbers, hyphen and underscore only.");
+        MasterDataLimits.RequireMaximum(name, MasterDataLimits.ContainerName, nameof(model.Name));
+        MasterDataLimits.RequireMaximum(nameKey, MasterDataLimits.ContainerName, nameof(ContainerType.NameKey));
+        MasterDataLimits.RequireMaximum(shortCode, MasterDataLimits.ContainerShortCode, nameof(model.ShortCode));
+        MasterDataLimits.RequireOptionalMaximum(model.Description?.Trim(), MasterDataLimits.ContainerDescription, nameof(model.Description));
+        MasterDataLimits.RequireOptionalMaximum(model.Notes?.Trim(), MasterDataLimits.ContainerNotes, nameof(model.Notes));
+        MasterDataLimits.RequireOptionalMaximum(model.DashboardColour?.Trim(), MasterDataLimits.ContainerDashboardColour, nameof(model.DashboardColour));
 
         try
         {
@@ -258,6 +265,7 @@ internal sealed class ContainerTypeService(
         var suffix = 2;
         while (await db.ContainerTypes.AnyAsync(x => x.SystemCode == code, cancellationToken))
             code = $"{baseCode}_{suffix++}";
+        MasterDataLimits.RequireMaximum(code, MasterDataLimits.ContainerSystemCode, nameof(ContainerType.SystemCode));
         return code;
     }
 

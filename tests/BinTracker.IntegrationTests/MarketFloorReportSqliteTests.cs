@@ -172,7 +172,7 @@ public sealed class MarketFloorReportSqliteTests
     }
 
     [Fact]
-    public async Task Alpha8_final_total_uses_unchecked_integer_arithmetic()
+    public async Task Final_total_overflow_fails_closed_instead_of_wrapping()
     {
         await using var h = await Harness.CreateAsync();
         var customer = await h.AddCustomerAsync("OVERFLOW", "Overflow", CustomerType.Account);
@@ -182,13 +182,52 @@ public sealed class MarketFloorReportSqliteTests
             Movement(customer, 1, new DateOnly(2026, 9, 2), MovementType.Out,
                 MovementSource.Manual, 1));
 
+        await Assert.ThrowsAsync<OverflowException>(() =>
+            h.Service.GetAsync(new DateOnly(2026, 9, 2)));
+    }
+
+    [Fact]
+    public async Task Intermediate_total_above_int_maximum_returns_representable_final_total()
+    {
+        await using var h = await Harness.CreateAsync();
+        var customer = await h.AddCustomerAsync(
+            "CANCELLED-OVERFLOW", "Cancelled Overflow", CustomerType.Account);
+        await h.AddMovementsAsync(
+            Movement(customer, 1, new DateOnly(2026, 9, 1), MovementType.Out,
+                MovementSource.Manual, int.MaxValue),
+            Movement(customer, 1, new DateOnly(2026, 9, 2), MovementType.Out,
+                MovementSource.Manual, 1),
+            Movement(customer, 1, new DateOnly(2026, 9, 2), MovementType.In,
+                MovementSource.Manual, 1));
+
         var result = await h.Service.GetAsync(new DateOnly(2026, 9, 2));
 
         var row = Assert.Single(result.AccountDaily);
-        Assert.Equal((int.MaxValue, 1, 0, int.MinValue),
+        Assert.Equal((int.MaxValue, 1, 1, int.MaxValue),
             (row.BroughtForward, row.Out, row.In, row.Total));
-        Assert.Empty(result.AccountOwing);
-        Assert.Equal(int.MinValue, Assert.Single(result.Credits).Total);
+    }
+
+    [Fact]
+    public async Task Intermediate_total_below_int_minimum_returns_representable_final_total()
+    {
+        await using var h = await Harness.CreateAsync();
+        var customer = await h.AddCustomerAsync(
+            "CANCELLED-UNDERFLOW", "Cancelled Underflow", CustomerType.Account);
+        await h.AddMovementsAsync(
+            Movement(customer, 1, new DateOnly(2026, 9, 1), MovementType.In,
+                MovementSource.Manual, int.MaxValue),
+            Movement(customer, 1, new DateOnly(2026, 9, 1), MovementType.In,
+                MovementSource.Manual, 1),
+            Movement(customer, 1, new DateOnly(2026, 9, 1), MovementType.In,
+                MovementSource.Manual, 1),
+            Movement(customer, 1, new DateOnly(2026, 9, 1), MovementType.Out,
+                MovementSource.Manual, 1));
+
+        var result = await h.Service.GetAsync(new DateOnly(2026, 9, 2));
+
+        var row = Assert.Single(result.AccountDaily);
+        Assert.Equal((int.MinValue, 0, 0, int.MinValue),
+            (row.BroughtForward, row.Out, row.In, row.Total));
     }
 
     private static BinMovement Movement(

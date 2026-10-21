@@ -26,7 +26,7 @@ public sealed record ImportRunCorrectionChangeRow(
     int PreviousNetEffect,
     int CorrectedNetEffect)
 {
-    public int Difference => CorrectedNetEffect - PreviousNetEffect;
+    public int Difference => QuantityMath.Subtract(CorrectedNetEffect, PreviousNetEffect);
 }
 
 public sealed record ImportRunOpeningReconciliationRow(

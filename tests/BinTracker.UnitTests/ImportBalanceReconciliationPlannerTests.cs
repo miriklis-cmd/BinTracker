@@ -448,6 +448,77 @@ public sealed class ImportBalanceReconciliationPlannerTests
         Assert.Equal(4, row.ProjectedBalance);
     }
 
+    [Fact]
+    public void Intermediate_total_above_int_maximum_returns_representable_projected_balance()
+    {
+        var analysis = Analysis(new ImportSnapshotCandidate(
+            "Update Account", "Clamms", CustomerType.Account, null,
+            Out: 1, In: 1, BroughtForward: int.MaxValue,
+            ExcelTotal: int.MaxValue, SourceRow: "43"));
+
+        var result = ImportBalanceReconciliationPlanner.Build(
+            analysis,
+            SourceMapping,
+            CustomerPlan(7, "Clamms", ImportCustomerReviewStatus.Existing),
+            Containers,
+            [new BalanceRow(7, "Clamms Seafood", 1, "Blue Bin", int.MaxValue)],
+            null,
+            null,
+            new Dictionary<string, ImportExistingCustomerDecision>(
+                StringComparer.OrdinalIgnoreCase)
+            {
+                ["Clamms"] = new(
+                    "Clamms", ImportExistingCustomerDecisionAction.AcceptMatch,
+                    7, "CLAMMS", "Clamms Seafood")
+            });
+
+        var row = Assert.Single(result.Rows);
+        Assert.Equal(0, row.OpeningAdjustment);
+        Assert.Equal(int.MaxValue, row.ProjectedBalance);
+        Assert.Equal(ImportBalanceReconciliationStatus.Ready, row.Status);
+    }
+
+    [Fact]
+    public void Intermediate_total_below_int_minimum_returns_representable_projected_balance()
+    {
+        var analysis = Analysis(new ImportSnapshotCandidate(
+            "Update Account", "Clamms", CustomerType.Account, null,
+            Out: 1, In: 1, BroughtForward: int.MinValue,
+            ExcelTotal: int.MinValue, SourceRow: "44"));
+
+        var result = ImportBalanceReconciliationPlanner.Build(
+            analysis,
+            SourceMapping,
+            CustomerPlan(7, "Clamms", ImportCustomerReviewStatus.Existing),
+            Containers,
+            [new BalanceRow(7, "Clamms Seafood", 1, "Blue Bin", int.MinValue)],
+            null,
+            null,
+            new Dictionary<string, ImportExistingCustomerDecision>(
+                StringComparer.OrdinalIgnoreCase)
+            {
+                ["Clamms"] = new(
+                    "Clamms", ImportExistingCustomerDecisionAction.AcceptMatch,
+                    7, "CLAMMS", "Clamms Seafood")
+            });
+
+        var row = Assert.Single(result.Rows);
+        Assert.Equal(0, row.OpeningAdjustment);
+        Assert.Equal(int.MinValue, row.ProjectedBalance);
+        Assert.Equal(ImportBalanceReconciliationStatus.Ready, row.Status);
+    }
+
+    [Fact]
+    public void Unrepresentable_final_snapshot_total_throws_overflow()
+    {
+        var snapshot = new ImportSnapshotCandidate(
+            "Update Account", "Clamms", CustomerType.Account, null,
+            Out: 1, In: 0, BroughtForward: int.MaxValue,
+            ExcelTotal: null, SourceRow: "45");
+
+        Assert.Throws<OverflowException>(() => snapshot.CalculatedTotal);
+    }
+
     private static ExcelImportAnalysis Analysis(
         params ImportSnapshotCandidate[] snapshots) =>
         new(

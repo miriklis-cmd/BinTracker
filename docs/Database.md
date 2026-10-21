@@ -1,5 +1,7 @@
 # BinTracker Database
 
+Customer/container length metadata uses the provider-neutral `MasterDataLimits` constants that Services enforces before persistence. This keeps the current SQLite EF model and future suitable SQL-provider schemas aligned without making SQLite's permissive length behavior a business-rule fallback. Equivalent database `CHECK` enforcement remains the distinct BT-SH-038 Batch-D migration item.
+
 ## Activated logical movement lineage (normal schema17 runtime candidate)
 
 BT-20-P2 makes the Task20D Data-owned coordinator the sole normal SQLite startup funnel. `Program` retains its ready session for the host lifetime; normal DI registers the native initial-lineage writer, Single receipt store, mutation writer and transactional projection authority only as part of this same cutover. The normal catalogue ends at17, while its schema17 callback fails closed because actual 16→17 execution requires the coordinator's ownership, preflight, verified backup, migration and postflight prerequisites. Explicit schema16 compatibility fixtures retain a separate catalogue ending16.

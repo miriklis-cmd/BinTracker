@@ -256,9 +256,10 @@ public static class AuditReviewPolicy
         row.RequiresAdministratorReview && !row.ReviewedUtc.HasValue && IsMovementChangeAction(row.Action);
     public static bool Matches(AuditTrailRow row, AuditReviewFilter filter) => filter switch
     {
+        AuditReviewFilter.All => true,
         AuditReviewFilter.NeedsReview => row.RequiresAdministratorReview && !row.ReviewedUtc.HasValue,
         AuditReviewFilter.Reviewed => row.RequiresAdministratorReview && row.ReviewedUtc.HasValue,
-        _ => true
+        _ => throw new ArgumentOutOfRangeException(nameof(filter), filter, "Audit review filter is invalid.")
     };
     public static AuditTrailRow? SelectOldestPending(IEnumerable<AuditTrailRow> rows) => rows
         .Where(CanMarkReviewed).OrderBy(x => x.TimestampUtc).ThenBy(x => x.Id).FirstOrDefault();
@@ -481,6 +482,7 @@ internal sealed class AuditService(
         int limit = 500, CancellationToken cancellationToken = default)
     {
         await authorization.RequireAdministratorAsync(cancellationToken);
+        ProviderNeutralValidation.RequireDefined(filter, nameof(filter));
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         var query = db.AuditEvents.AsNoTracking();
         query = filter switch
@@ -1364,12 +1366,12 @@ internal sealed class BalanceService(
                     g.Key.ContainerTypeId,
                     Balance = g.Sum(x =>
                         x.MovementType == MovementType.Out
-                            ? x.Quantity
-                            : -x.Quantity)
+                            ? (long)x.Quantity
+                            : -(long)x.Quantity)
                 })
                 .ToListAsync(cancellationToken);
             totals = rawTotals
-                .Select(x => (x.CustomerId, x.ContainerTypeId, x.Balance))
+                .Select(x => (x.CustomerId, x.ContainerTypeId, QuantityMath.ToInt32(x.Balance)))
                 .ToList();
         }
         else

@@ -23,15 +23,15 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
         {
             e.Property(x => x.Revision).IsConcurrencyToken();
             e.ToTable("Customers");
-            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
-            e.Property(x => x.CustomerCode).HasMaxLength(50);
+            e.Property(x => x.Name).HasMaxLength(MasterDataLimits.CustomerName).IsRequired();
+            e.Property(x => x.CustomerCode).HasMaxLength(MasterDataLimits.CustomerCode);
             e.Property(x => x.CustomerType).IsRequired();
-            e.Property(x => x.ContactName).HasMaxLength(150);
-            e.Property(x => x.Phone).HasMaxLength(50);
-            e.Property(x => x.MobileNumber).HasMaxLength(50);
-            e.Property(x => x.Email).HasMaxLength(200);
-            e.Property(x => x.Address).HasMaxLength(500);
-            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.ContactName).HasMaxLength(MasterDataLimits.CustomerContactName);
+            e.Property(x => x.Phone).HasMaxLength(MasterDataLimits.CustomerPhone);
+            e.Property(x => x.MobileNumber).HasMaxLength(MasterDataLimits.CustomerMobileNumber);
+            e.Property(x => x.Email).HasMaxLength(MasterDataLimits.CustomerEmail);
+            e.Property(x => x.Address).HasMaxLength(MasterDataLimits.CustomerAddress);
+            e.Property(x => x.Notes).HasMaxLength(MasterDataLimits.CustomerNotes);
             e.HasIndex(x => x.CustomerCode).IsUnique();
             e.HasIndex(x => x.Name);
         });
@@ -40,13 +40,13 @@ public sealed class BinTrackerDbContext(DbContextOptions<BinTrackerDbContext> op
         {
             e.Property(x => x.Revision).IsConcurrencyToken();
             e.ToTable("ContainerTypes");
-            e.Property(x => x.Name).HasMaxLength(100).IsRequired();
-            e.Property(x => x.NameKey).HasMaxLength(100).IsRequired();
-            e.Property(x => x.ShortCode).HasMaxLength(30).IsRequired();
-            e.Property(x => x.SystemCode).HasMaxLength(50).IsRequired();
-            e.Property(x => x.Description).HasMaxLength(500);
-            e.Property(x => x.Notes).HasMaxLength(2000);
-            e.Property(x => x.DashboardColour).HasMaxLength(50);
+            e.Property(x => x.Name).HasMaxLength(MasterDataLimits.ContainerName).IsRequired();
+            e.Property(x => x.NameKey).HasMaxLength(MasterDataLimits.ContainerName).IsRequired();
+            e.Property(x => x.ShortCode).HasMaxLength(MasterDataLimits.ContainerShortCode).IsRequired();
+            e.Property(x => x.SystemCode).HasMaxLength(MasterDataLimits.ContainerSystemCode).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(MasterDataLimits.ContainerDescription);
+            e.Property(x => x.Notes).HasMaxLength(MasterDataLimits.ContainerNotes);
+            e.Property(x => x.DashboardColour).HasMaxLength(MasterDataLimits.ContainerDashboardColour);
             e.HasIndex(x => x.NameKey).IsUnique();
             e.HasIndex(x => x.ShortCode).IsUnique();
             e.HasIndex(x => x.SystemCode).IsUnique();

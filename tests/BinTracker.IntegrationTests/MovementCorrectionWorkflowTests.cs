@@ -510,6 +510,17 @@ public sealed class MovementCorrectionWorkflowTests
         Assert.DoesNotContain(detail.Lines, x => x.MovementId == unrelated);
     }
 
+    [Fact]
+    public async Task Persisted_batch_total_overflow_fails_closed()
+    {
+        await using var h = await Harness.Create(UserRole.Operator);
+        var batchId = await h.AddBatch(
+            new DateOnly(2026, 8, 25), MovementType.Out, [int.MaxValue, 1]);
+
+        await Assert.ThrowsAsync<OverflowException>(() =>
+            h.Corrections.GetBatchAsync(batchId));
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

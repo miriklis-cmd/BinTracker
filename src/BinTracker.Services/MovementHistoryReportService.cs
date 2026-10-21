@@ -126,7 +126,7 @@ public sealed record MovementHistoryContainerTotal(
     int OutQuantity,
     int InQuantity)
 {
-    public int NetQuantity => OutQuantity - InQuantity;
+    public int NetQuantity => QuantityMath.Subtract(OutQuantity, InQuantity);
 }
 
 public sealed record MovementHistoryReportResult(
@@ -136,14 +136,14 @@ public sealed record MovementHistoryReportResult(
     IReadOnlyList<MovementHistoryContainerTotal> ContainerTotals)
 {
     public int OutQuantity =>
-        Rows.Where(x => x.Direction == MovementType.Out)
-            .Sum(x => x.Quantity);
+        QuantityMath.Sum(Rows.Where(x => x.Direction == MovementType.Out)
+            .Select(x => x.Quantity));
 
     public int InQuantity =>
-        Rows.Where(x => x.Direction == MovementType.In)
-            .Sum(x => x.Quantity);
+        QuantityMath.Sum(Rows.Where(x => x.Direction == MovementType.In)
+            .Select(x => x.Quantity));
 
-    public int NetQuantity => OutQuantity - InQuantity;
+    public int NetQuantity => QuantityMath.Subtract(OutQuantity, InQuantity);
 }
 
 public interface IMovementHistoryReportService
@@ -164,7 +164,10 @@ internal sealed class MovementHistoryReportService(
         MovementHistoryReportQuery query,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(query);
         await authorization.RequireAuthenticatedAsync(cancellationToken);
+        ProviderNeutralValidation.RequireDefined(query.Direction, nameof(query.Direction));
+        ProviderNeutralValidation.RequireDefined(query.Source, nameof(query.Source));
         var today = clock.Today;
 
         var requestedStart = query.StartDate > today
@@ -320,10 +323,10 @@ internal sealed class MovementHistoryReportService(
                 g.Key.ContainerTypeId,
                 g.Key.ContainerType,
                 g.Key.ContainerDisplayOrder,
-                g.Where(x => x.Direction == MovementType.Out)
-                    .Sum(x => x.Quantity),
-                g.Where(x => x.Direction == MovementType.In)
-                    .Sum(x => x.Quantity)))
+                QuantityMath.Sum(g.Where(x => x.Direction == MovementType.Out)
+                    .Select(x => x.Quantity)),
+                QuantityMath.Sum(g.Where(x => x.Direction == MovementType.In)
+                    .Select(x => x.Quantity))))
             .OrderBy(x => x.DisplayOrder)
             .ThenBy(x => x.ContainerType, StringComparer.OrdinalIgnoreCase)
             .ToList();
