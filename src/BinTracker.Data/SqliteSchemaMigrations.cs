@@ -30,18 +30,23 @@ internal static class SqliteSchemaMigrations
         new(16, "Movement correction operations and administrator review", ApplyV16Async)
     ];
 
-    // Schema 17 is deliberately registered only at the atomic runtime cutover.
-    // Its governed preflight/backup/migration/postflight sequence is owned by
-    // SqliteStartupDatabaseCoordinator rather than this legacy callback shape.
+    // Schemas 17 and 18 are deliberately registered only at the atomic runtime
+    // cutover. Their governed preflight/backup/migration/postflight sequences are
+    // owned by SqliteStartupDatabaseCoordinator, not this legacy callback shape.
     public static IReadOnlyList<SqliteSchemaMigration> All { get; } =
     [
         .. Schema16Baseline,
-        new(17, "Logical movement lineage activation", ApplyV17ThroughCoordinatorOnlyAsync)
+        new(17, "Logical movement lineage activation", ApplyV17ThroughCoordinatorOnlyAsync),
+        new(18, "Database integrity constraints", ApplyV18ThroughCoordinatorOnlyAsync)
     ];
 
     private static Task ApplyV17ThroughCoordinatorOnlyAsync(BinTrackerDbContext db) =>
         throw new InvalidOperationException(
             "Schema 17 must be activated through the Data-owned startup coordinator.");
+
+    private static Task ApplyV18ThroughCoordinatorOnlyAsync(BinTrackerDbContext db) =>
+        throw new InvalidOperationException(
+            "Schema 18 must be activated through the Data-owned startup coordinator.");
 
     private static async Task ApplyV16Async(BinTrackerDbContext db)
     {

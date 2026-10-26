@@ -2,7 +2,7 @@
 
 Task 19's shared-snapshot prerequisite was reviewed/canonically verified at commit `930f2c77b1df7cd4629be2faff662750431854fe`; BT-20-P2 now includes that authority in normal schema17 composition. Windows/operator real preview/print and retained-database acceptance remain separate.
 
-Current baseline: **v0.5.0-alpha.16**
+Current baseline: **v0.5.0-alpha.17**
 
 This is the practical operator/release checklist. `docs/RequirementsAcceptanceRegister.md` remains the authoritative implementation/status ledger; historical candidate detail belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`.
 
@@ -82,7 +82,7 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 - [P] Security Batch E fixes BT-SH-012 by implementing BT-BATCH-012 below WinForms: after User A persists a draft and logs out, User B cannot Continue, Save, Discard or see it as recoverable work; User A can recover the same draft after login.
 - [P] The same Batch E obligation rejects username/display-name substitution, Administrator bypass and malformed/missing ownership; Save Batch role authorization remains independent and implemented owner crash/restart recovery remains intact. BT-BATCH-012 is not a separate post-Communications milestone.
 - [R] Cancellation/late async loads cannot restore Update Line after Esc/Clear.
-- [S] After schema17 readiness, normal eligible Single/Batch saves atomically create complete generation-zero lineage or nothing; native Single also persists its typed response receipt. Windows/operator acceptance remains pending.
+- [S] After current schema18 startup readiness (retaining schema17 lineage semantics), normal eligible Single/Batch saves atomically create complete generation-zero lineage or nothing; native Single also persists its typed response receipt. Windows/operator acceptance remains pending.
 
 ## Excel import and re-import
 
@@ -128,7 +128,7 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 
 ## Activated lineage foundation and remaining acceptance
 
-- [S] Core contracts pin lineage vocabulary and persisted enum values; normal runtime composes their Data adapters only after schema17 readiness.
+- [S] Core contracts pin lineage vocabulary and persisted enum values; normal runtime composes their Data adapters only after current schema18 readiness has revalidated the schema17 lineage layer.
 - [S] Read-only preflight, exact-source verified recovery artifact, exclusive upgrade lease and recovery classification are active normal migration prerequisites. A SHA-256-verified exact copy of the retained schema16 source passed the normal schema16-to17 migration/backup/native-health rehearsal with physical counts preserved; actual production-database mutation and recovery execution remain out of scope.
 - [S] Normal schema16→17 migration creates truthful complete MigrationBaseline state through the coordinator; direct legacy callback execution of catalogue17 fails closed.
 - [S] Migration-publication postflight remains strictly MigrationBaseline-only, while schema17 re-entry separately reuses current-root validation so valid native Initial/later roots are accepted and malformed native current lineage is rejected.
@@ -151,7 +151,7 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 - [P] Dashboard design discussion precedes implementation; then validate KPIs, attention/drill-through, activity, summaries, charts/ageing and display layouts.
 - [P] Google Workspace email + Texto SMS delivery, templates, secure settings, manual/automatic sends, opt-out, history, retry/idempotency and audit.
 - [P] Production user-facing Backup/Restore, scheduled retention and recovery drill (separate from pre-lineage migration safety).
-- [P] Complete the five remaining Security/Data Integrity/Code Quality batches D–H. The alpha.16 Batch-C candidate awaits independent review and the operator-owned canonical BAT. The 15 `CONFIRMED-V1` and 1 `REVIEW-V1` findings still block v1; Batch D database invariants is next after Batch C closure.
+- [P] Complete the four remaining Security/Data Integrity/Code Quality batches E–H. Accepted alpha.16 closed Batch C. Alpha.17 Batch D fixes BT-SH-038/043 at static/focused-automated evidence level through schema18 SQLite constraints, preflight, backup and rollback/retry coverage. Independent FIX2 review passed, and the pre-FIX2 exact-candidate operator BAT passed 959/959 with zero failed/skipped and a successful build under SDK 10.0.402. FIX2's necessary multi-document closure reconciliation is candidate-defining, so the exact final candidate still requires the canonical BAT. The 13 `CONFIRMED-V1` and 1 `REVIEW-V1` findings still block v1.
 - [P] BT-REL-013 requires the real third-party/commercial-release compliance inventory, eligibility and notice/attribution review, asset provenance, explicit QuestPDF and SQLite/native decisions, SBOM-equivalent inventory, package validation and reviewed signoff. No legal conclusion is claimed until that work occurs.
 - [P] Resolve BT-AUD-006 v1 versus post-v1 scope, audit retention and the commercial activation decision. BT-PV1-009 remains `POST-V1`: either commercial v1 deliberately ships without activation or it must be rescheduled before commercial release; no option is selected.
 - [P] Installer/upgrade/deployment acceptance and full v1 production regression.

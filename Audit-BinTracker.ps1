@@ -324,10 +324,10 @@ $securityCounts = @{}
 foreach ($disposition in $allowedSecurityDispositions) {
     $securityCounts[$disposition] = @($securityRows | Where-Object { $_.Groups[2].Value -eq $disposition }).Count
 }
-if ($securityCounts['FIXED'] -ne 21 -or $securityCounts['CONFIRMED-V1'] -ne 15 -or
+if ($securityCounts['FIXED'] -ne 23 -or $securityCounts['CONFIRMED-V1'] -ne 13 -or
     $securityCounts['REVIEW-V1'] -ne 1 -or $securityCounts['POST-V1'] -ne 11 -or
     $securityCounts['NOT-APPLICABLE'] -ne 2) {
-    Fail "Security disposition totals must be 21 FIXED / 15 CONFIRMED-V1 / 1 REVIEW-V1 / 11 POST-V1 / 2 NOT-APPLICABLE."
+    Fail "Security disposition totals must be 23 FIXED / 13 CONFIRMED-V1 / 1 REVIEW-V1 / 11 POST-V1 / 2 NOT-APPLICABLE."
 }
 $securityBlockers = $securityCounts['CONFIRMED-V1'] + $securityCounts['REVIEW-V1']
 $coverageSecuritySummary = (Get-Content -Raw -LiteralPath 'docs/RoadmapCoverageMatrix.md').Replace('`', '')
@@ -336,7 +336,21 @@ $expectedSecurityTotals = "$($securityCounts['FIXED']) FIXED, $($securityCounts[
 foreach ($summary in @($coverageSecuritySummary, $debtSecuritySummary)) {
     if ($summary -notmatch [regex]::Escape($expectedSecurityTotals)) { Fail 'Current security summary disagrees with computed disposition totals.' }
     if ($summary -notmatch [regex]::Escape("$securityBlockers") -or $summary -notmatch 'block') { Fail 'Current security summary disagrees with the computed v1-blocker count.' }
-    if ($summary -notmatch 'Batch D') { Fail 'Current security summary must name Batch D as the next security batch.' }
+    if ($summary -notmatch 'Batch E') { Fail 'Current security summary must name Batch E as the next security batch.' }
+}
+foreach ($fixedId in @('BT-SH-038','BT-SH-043')) {
+    $row = $securityRows | Where-Object { $_.Groups[1].Value -eq $fixedId }
+    if ($row.Groups[2].Value -ne 'FIXED') { Fail "$fixedId must remain FIXED after Security Batch D." }
+}
+$schema18Text = Get-Content -Raw 'src/BinTracker.Data/SqliteSchema18Integrity.cs'
+$schema18Tests = Get-Content -Raw 'tests/BinTracker.IntegrationTests/SecurityBatchDDatabaseIntegrityTests.cs'
+if ($schema18Text -notmatch 'bintracker_utf16_length' -or
+    $schema18Text -notmatch 'TargetSchemaVersion = 18' -or
+    $schema18Text -notmatch [regex]::Escape('parts.Add("(\"Id\" = 1)")') -or
+    $schema18Text -notmatch 'SCHEMA18_APPLICATION_SETTINGS_SINGLETON_INVALID' -or
+    $schema18Tests -notmatch 'Schema18_counts_supplementary_text_as_dotnet_utf16_code_units' -or
+    $schema18Tests -notmatch 'Schema18_failure_rolls_back_to_exact_schema17_and_verified_backup_supports_retry') {
+    Fail 'BT-SH-038/043 schema18 enforcement or focused behavioural coverage is incomplete.'
 }
 foreach ($id in @('BT-SEC-008','BT-SEC-009','BT-SEC-010','BT-SEC-011')) {
     if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost security hard-gate requirement: $id" }

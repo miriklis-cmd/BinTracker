@@ -21,7 +21,7 @@ public sealed class LineageSchema17ContractTests
     {
         Assert.Equal(16, SqliteLineageSchema17Migrator.SourceSchemaVersion);
         Assert.Equal(17, SqliteLineageSchema17Migrator.TargetSchemaVersion);
-        Assert.Equal(17, DatabaseSetup.LatestSchemaVersion);
+        Assert.Equal(18, DatabaseSetup.LatestSchemaVersion);
     }
 
     [Fact]

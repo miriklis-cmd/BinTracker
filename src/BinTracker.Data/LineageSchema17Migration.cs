@@ -102,7 +102,7 @@ public sealed class SqliteLineageSchema17Migrator(
             Pooling = false
         }.ConnectionString;
 
-        await using var connection = new SqliteConnection(connectionString);
+        await using var connection = SqliteUtf16Length.CreateConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
         var existingVersion = Convert.ToInt32(await ScalarAsync(
             connection, null, "SELECT Version FROM SchemaVersion WHERE Id=1;", cancellationToken));

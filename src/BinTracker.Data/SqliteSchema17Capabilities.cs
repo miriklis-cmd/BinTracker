@@ -14,7 +14,7 @@ internal static partial class SqliteSchema17Capabilities
         // This empty in-memory DDL reference describes required capabilities, not a
         // schema16 database or migration prerequisite. No preflight, backup, baseline
         // population or EnsureCreated runs on the native17 path.
-        await using var reference = new SqliteConnection("Data Source=:memory:;Foreign Keys=False;Pooling=False");
+        await using var reference = SqliteUtf16Length.CreateConnection("Data Source=:memory:;Foreign Keys=False;Pooling=False");
         await reference.OpenAsync(token);
         await using (var create = reference.CreateCommand())
         {

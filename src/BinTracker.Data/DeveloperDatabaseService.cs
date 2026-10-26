@@ -245,8 +245,8 @@ internal sealed class PendingDatabaseOperationClaim : IDisposable
     {
         if (completed) throw new InvalidOperationException("Pending operation is already complete.");
         ArgumentNullException.ThrowIfNull(session);
-        if (!session.IsReadyForActivatedHost || session.SchemaVersion != 17)
-            throw new InvalidOperationException("A pending operation can complete only after schema17 readiness.");
+        if (!session.IsReadyForActivatedHost || session.SchemaVersion != SqliteSchema18Definition.TargetSchemaVersion)
+            throw new InvalidOperationException("A pending operation can complete only after schema18 readiness.");
 
         if (Operation.State == PendingDatabaseOperationState.ExecutionInProgress)
         {
@@ -346,9 +346,9 @@ internal sealed class DeveloperDatabaseService : IDeveloperDatabaseService
             Path.GetDirectoryName(fullDestination)
             ?? throw new InvalidOperationException("Backup destination folder is invalid."));
 
-        await using var source = new SqliteConnection(DatabaseSetup.ConnectionString);
+        await using var source = SqliteUtf16Length.CreateConnection(DatabaseSetup.ConnectionString);
         await using var destination =
-            new SqliteConnection($"Data Source={fullDestination}");
+            SqliteUtf16Length.CreateConnection($"Data Source={fullDestination}");
 
         await source.OpenAsync(cancellationToken);
         await destination.OpenAsync(cancellationToken);
@@ -416,7 +416,7 @@ internal sealed class DeveloperDatabaseService : IDeveloperDatabaseService
                 Mode = SqliteOpenMode.ReadOnly
             };
 
-            await using var connection = new SqliteConnection(builder.ConnectionString);
+            await using var connection = SqliteUtf16Length.CreateConnection(builder.ConnectionString);
             await connection.OpenAsync(cancellationToken);
 
             await using var command = connection.CreateCommand();

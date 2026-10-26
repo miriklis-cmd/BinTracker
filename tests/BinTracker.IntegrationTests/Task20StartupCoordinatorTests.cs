@@ -1,6 +1,7 @@
 using BinTracker.Core;
 using BinTracker.Data;
 using Microsoft.Data.Sqlite;
+using System.Text.Json;
 using Xunit;
 
 namespace BinTracker.IntegrationTests;
@@ -40,7 +41,7 @@ public sealed class Task20StartupCoordinatorTests
         using var ready = await f.Coordinator(p => { phases.Add(p); return Task.CompletedTask; }).StartAsync();
         Assert.True(ready.IsReadyForActivatedHost);
         Assert.Equal(StartupDatabaseState.Schema16ActivationRequired, ready.InitialState);
-        Assert.Equal(17, await f.ScalarAsync("SELECT Version FROM SchemaVersion WHERE Id=1"));
+        Assert.Equal(18, await f.ScalarAsync("SELECT Version FROM SchemaVersion WHERE Id=1"));
         Assert.Equal(1, await ReversalForeignKeyCountAsync(f, "BinMovements", "Id", "RESTRICT"));
         Assert.True(phases.IndexOf(StartupDatabasePhase.Preflight) < phases.IndexOf(StartupDatabasePhase.Backup));
         Assert.True(phases.IndexOf(StartupDatabasePhase.BackupVerified) < phases.IndexOf(StartupDatabasePhase.SourceVerification));
@@ -48,7 +49,7 @@ public sealed class Task20StartupCoordinatorTests
         Assert.True(phases.IndexOf(StartupDatabasePhase.Schema17Published) < phases.IndexOf(StartupDatabasePhase.NativeStructure));
         Assert.True(phases.IndexOf(StartupDatabasePhase.NativeHealth) < phases.IndexOf(StartupDatabasePhase.RuntimeTransition));
         Assert.True(phases.IndexOf(StartupDatabasePhase.RuntimeReacquired) < phases.IndexOf(StartupDatabasePhase.FinalValidation));
-        Assert.Single(Directory.GetFiles(Backups(f), "*.manifest.json"));
+        Assert.Equal(2, Directory.GetFiles(Backups(f), "*.manifest.json").Length);
     }
 
     [Theory]
@@ -99,7 +100,7 @@ public sealed class Task20StartupCoordinatorTests
         Assert.Equal(1, await ReversalForeignKeyCountAsync(f, "BinMovements", "Id", "RESTRICT"));
         using var ready = await f.Coordinator().StartAsync();
         Assert.True(ready.IsReadyForActivatedHost);
-        Assert.Equal(17, await f.ScalarAsync("SELECT Version FROM SchemaVersion WHERE Id=1"));
+        Assert.Equal(18, await f.ScalarAsync("SELECT Version FROM SchemaVersion WHERE Id=1"));
     }
 
     [Fact]
@@ -117,22 +118,24 @@ public sealed class Task20StartupCoordinatorTests
             Assert.Throws<DatabaseUpgradeUnavailableException>(() => Gate(f).AcquireUpgrade(PathOf(f)));
         }
         Assert.True(phases.IndexOf(StartupDatabasePhase.BackupVerified) < phases.IndexOf(StartupDatabasePhase.Migration));
-        var backup = Assert.Single(Directory.GetFiles(Backups(f), "*.manifest.json"));
-        File.Move(backup, backup + ".retained-offline");
+        var retainedBackups = Directory.GetFiles(Backups(f), "*", SearchOption.AllDirectories)
+            .Order().ToArray();
         phases.Clear();
         var before = await f.StateAsync();
         using var later = await f.Coordinator(p => { phases.Add(p); return Task.CompletedTask; }).StartAsync();
-        Assert.Equal(StartupDatabaseState.Schema17ValidationRequired, later.InitialState);
+        Assert.Equal(StartupDatabaseState.Schema18ValidationRequired, later.InitialState);
         Assert.DoesNotContain(StartupDatabasePhase.Preflight, phases);
         Assert.DoesNotContain(StartupDatabasePhase.Backup, phases);
         Assert.DoesNotContain(StartupDatabasePhase.Migration, phases);
         Assert.Equal(before, await f.StateAsync());
+        Assert.Equal(retainedBackups, Directory.GetFiles(
+            Backups(f), "*", SearchOption.AllDirectories).Order().ToArray());
     }
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task A3_native_initial_and_later_generations_use_only_native_validation(bool later)
+    public async Task A3_schema18_reentry_preserves_native_initial_and_later_generations(bool later)
     {
         await using var f = await Task20Fixture.CreateAsync();
         var root = await f.Database.CreateSingleAsync(Task20Fixture.Today, f.CustomerId, 1, 7);
@@ -142,14 +145,19 @@ public sealed class Task20StartupCoordinatorTests
             await f.Database.MutateAsync(root.RootId, 0, MovementMutationRequest.Correct(
                 MovementMutationScope.Individual, [new(line)], "native startup", quantity: MovementFieldIntent<int>.Selected(8)));
         }
+        using (var upgraded = await f.Coordinator().StartAsync())
+            Assert.Equal(StartupDatabaseState.Schema17UpgradeRequired, upgraded.InitialState);
         var before = await f.StateAsync();
+        var retainedBackups = Directory.GetFiles(Backups(f), "*", SearchOption.AllDirectories)
+            .Order().ToArray();
         var phases = new List<StartupDatabasePhase>();
         using var ready = await f.Coordinator(p => { phases.Add(p); return Task.CompletedTask; }).StartAsync();
         Assert.True(ready.IsReadyForActivatedHost);
         Assert.Equal(before, await f.StateAsync());
         Assert.DoesNotContain(StartupDatabasePhase.Preflight, phases);
         Assert.DoesNotContain(StartupDatabasePhase.Migration, phases);
-        Assert.False(Directory.Exists(Backups(f)));
+        Assert.Equal(retainedBackups, Directory.GetFiles(
+            Backups(f), "*", SearchOption.AllDirectories).Order().ToArray());
     }
 
     [Theory]
@@ -235,7 +243,7 @@ public sealed class Task20StartupCoordinatorTests
         Assert.Equal(17, failure.PersistedState.SchemaVersion);
         Assert.Equal(17, await f.ScalarAsync("SELECT Version FROM SchemaVersion"));
         using var later = await f.Coordinator().StartAsync();
-        Assert.Equal(StartupDatabaseState.Schema17ValidationRequired, later.InitialState);
+        Assert.Equal(StartupDatabaseState.Schema17UpgradeRequired, later.InitialState);
     }
 
     [Theory]
@@ -263,7 +271,7 @@ public sealed class Task20StartupCoordinatorTests
                         File.Replace(PathOf(f) + ".swap", PathOf(f), PathOf(f) + ".old");
                         Assert.NotEqual(identity, WindowsFileIdentity.Get(PathOf(f)));
                         break;
-                    case "schema": await f.ExecuteAsync("UPDATE SchemaVersion SET Version=18"); break;
+                    case "schema": await f.ExecuteAsync("UPDATE SchemaVersion SET Version=19"); break;
                     case "health": await f.ExecuteAsync("UPDATE LogicalMovementBatches SET CurrentGenerationNumber=99"); break;
                     case "structure": await f.ExecuteAsync("DROP INDEX IX_LogicalMovementLines_RootMovementId"); break;
                 }
@@ -276,7 +284,7 @@ public sealed class Task20StartupCoordinatorTests
                 "health" => StartupDatabaseFailure.CurrentHealthInvalid,
                 _ => StartupDatabaseFailure.StructuralCapabilityMissing
             }, failure.Failure);
-            Assert.Equal(change == "schema" ? 18 : 17, failure.PersistedState.SchemaVersion);
+            Assert.Equal(change == "schema" ? 19 : 18, failure.PersistedState.SchemaVersion);
             Assert.Equal(WindowsFileIdentity.Get(PathOf(f)), failure.PersistedState.PhysicalIdentity);
             Assert.Equal(1, await f.ScalarAsync("SELECT COUNT(*) FROM LogicalMovementBatches"));
         }
@@ -334,11 +342,11 @@ public sealed class Task20StartupCoordinatorTests
         using var loserReady = await second;
         Assert.Equal(1, creators);
         Assert.Equal(StartupDatabaseState.Absent, ready.InitialState);
-        Assert.Equal(StartupDatabaseState.Schema17ValidationRequired, loserReady.InitialState);
+        Assert.Equal(StartupDatabaseState.Schema18ValidationRequired, loserReady.InitialState);
         Assert.Equal(ready.PhysicalIdentity, loserReady.PhysicalIdentity);
         Assert.True(loserReady.IsReadyForActivatedHost);
-        Assert.Single(Directory.GetFiles(sandbox.Backups, "*.manifest.json"));
-        Assert.Equal(17, ready.SchemaVersion);
+        Assert.Equal(2, Directory.GetFiles(sandbox.Backups, "*.manifest.json").Length);
+        Assert.Equal(18, ready.SchemaVersion);
     }
 
     [Fact]
@@ -374,7 +382,7 @@ public sealed class Task20StartupCoordinatorTests
         finally { proceed.TrySetResult(); }
         using var ready = await first;
         Assert.True(ready.IsReadyForActivatedHost);
-        Assert.Single(Directory.GetFiles(sandbox.Backups, "*.manifest.json"));
+        Assert.Equal(2, Directory.GetFiles(sandbox.Backups, "*.manifest.json").Length);
     }
 
     [Fact]
@@ -419,6 +427,8 @@ public sealed class Task20StartupCoordinatorTests
         await using var competingSource = await Task20Fixture.CreateAsync();
         await source.Database.CreateSingleAsync(Task20Fixture.Today, source.CustomerId, 1, 7);
         await competingSource.Database.CreateSingleAsync(Task20Fixture.Today, competingSource.CustomerId, 1, 11);
+        var competingSourceState = await competingSource.StateAsync();
+        var competingSourceContent = await RetainedContentAsync(competingSource);
         var released = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var proceed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         string? publishedIdentity = null;
@@ -451,9 +461,10 @@ public sealed class Task20StartupCoordinatorTests
             Assert.False(failure.SchemaMutationAttempted);
             Assert.Equal(competitor?.PhysicalIdentity, failure.PersistedState.PhysicalIdentity);
             Assert.Equal(WindowsFileIdentity.Get(PathOf(target)), failure.PersistedState.PhysicalIdentity);
-            Assert.Equal(17, failure.PersistedState.SchemaVersion);
+            Assert.Equal(18, failure.PersistedState.SchemaVersion);
             Assert.Equal(11, await target.ScalarAsync("SELECT Quantity FROM BinMovements"));
-            Assert.Equal(await competingSource.StateAsync(), await target.StateAsync());
+            Assert.Equal(competingSourceState, await competingSource.StateAsync());
+            Assert.Equal(competingSourceContent, await RetainedContentAsync(target));
         }
     }
 
@@ -497,8 +508,8 @@ public sealed class Task20StartupCoordinatorTests
         Assert.Equal(StartupDatabaseState.Pre16UpgradeRequired, ready.InitialState);
         Assert.Equal(identity, ready.PhysicalIdentity);
         Assert.True(visited.IndexOf(StartupDatabasePhase.BaselineProgression) < visited.IndexOf(StartupDatabasePhase.Preflight));
-        Assert.Equal(17, await f.ScalarAsync("SELECT Version FROM SchemaVersion"));
-        Assert.Single(Directory.GetFiles(Backups(f), "*.manifest.json"));
+        Assert.Equal(18, await f.ScalarAsync("SELECT Version FROM SchemaVersion"));
+        Assert.Equal(2, Directory.GetFiles(Backups(f), "*.manifest.json").Length);
     }
 
     [Theory]
@@ -534,7 +545,7 @@ public sealed class Task20StartupCoordinatorTests
         Assert.Equal(StartupDatabaseState.Schema16ActivationRequired, ready.InitialState);
         Assert.Equal(0, await f.ScalarAsync("SELECT COUNT(*) FROM BinMovements"));
         Assert.Single(Directory.GetFiles(Path.GetDirectoryName(PathOf(f)) ?? string.Empty, "*.before-replacement-*.db"));
-        Assert.Single(Directory.GetFiles(Backups(f), "*.manifest.json"));
+        Assert.Equal(3, Directory.GetFiles(Backups(f), "*.manifest.json").Length);
     }
 
     [Fact]
@@ -624,7 +635,7 @@ public sealed class Task20StartupCoordinatorTests
     [InlineData(StartupDatabasePhase.RuntimeTransition)]
     [InlineData(StartupDatabasePhase.RuntimeReacquired)]
     [InlineData(StartupDatabasePhase.FinalValidation)]
-    public async Task Cancellation_during_runtime_handoff_reports_committed17_and_releases_ownership(StartupDatabasePhase at)
+    public async Task Cancellation_during_runtime_handoff_reports_committed18_and_releases_ownership(StartupDatabasePhase at)
     {
         await using var f = await Task20Fixture.CreateAsync(schema17: false, enabled: false, projection: false);
         using var cancelled = new CancellationTokenSource();
@@ -634,9 +645,9 @@ public sealed class Task20StartupCoordinatorTests
             return Task.CompletedTask;
         }).StartAsync(cancelled.Token));
         Assert.Equal(StartupDatabaseFailure.Cancelled, failure.Failure);
-        Assert.Equal(17, failure.PersistedState.SchemaVersion);
+        Assert.Equal(18, failure.PersistedState.SchemaVersion);
         Assert.True(failure.SchemaMutationAttempted);
-        Assert.Equal(17, await f.ScalarAsync("SELECT Version FROM SchemaVersion"));
+        Assert.Equal(18, await f.ScalarAsync("SELECT Version FROM SchemaVersion"));
         using var released = Gate(f).AcquireUpgrade(PathOf(f));
     }
 
@@ -677,26 +688,28 @@ public sealed class Task20StartupCoordinatorTests
         }).StartAsync());
         Assert.Equal(StartupDatabaseFailure.CurrentHealthInvalid, failure.Failure);
         Assert.Equal(StartupDatabasePhase.FinalValidation, failure.Phase);
-        Assert.Equal(17, failure.PersistedState.SchemaVersion);
+        Assert.Equal(18, failure.PersistedState.SchemaVersion);
         Assert.Equal(99, await f.ScalarAsync("SELECT CurrentGenerationNumber FROM LogicalMovementBatches"));
         using var released = Gate(f).AcquireUpgrade(PathOf(f));
     }
 
     [Fact]
-    public async Task A15_load_native17_reclassifies_native_without_migration_backup()
+    public async Task A15_load_native17_upgrades_copy_without_mutating_source()
     {
         await using var target = await Task20Fixture.CreateAsync();
         await using var source = await Task20Fixture.CreateAsync();
         await source.Database.CreateSingleAsync(Task20Fixture.Today, source.CustomerId, 1, 11);
         var oldIdentity = WindowsFileIdentity.Get(PathOf(target));
         var sourceState = await source.StateAsync();
+        var sourceContent = await RetainedContentAsync(source);
         using var ready = await target.Coordinator().LoadAsync(PathOf(source));
-        Assert.Equal(StartupDatabaseState.Schema17ValidationRequired, ready.InitialState);
+        Assert.Equal(StartupDatabaseState.Schema17UpgradeRequired, ready.InitialState);
         Assert.NotEqual(oldIdentity, ready.PhysicalIdentity);
         Assert.NotEqual(WindowsFileIdentity.Get(PathOf(source)), ready.PhysicalIdentity);
         Assert.Equal(sourceState, await source.StateAsync());
-        Assert.Equal(sourceState, await target.StateAsync());
-        Assert.False(Directory.Exists(Backups(target)));
+        Assert.Equal(18, ready.SchemaVersion);
+        Assert.Equal(sourceContent, await RetainedContentAsync(target));
+        Assert.Single(Directory.GetFiles(Backups(target), "*.manifest.json"));
     }
 
     [Fact]
@@ -706,10 +719,11 @@ public sealed class Task20StartupCoordinatorTests
         await using var source = await Task20Fixture.CreateAsync();
         await source.Database.CreateSingleAsync(Task20Fixture.Today, source.CustomerId, 1, 11);
         using var ready = await target.Coordinator().LoadAsync(PathOf(source));
-        Assert.Equal(StartupDatabaseState.Schema17ValidationRequired, ready.InitialState);
+        Assert.Equal(StartupDatabaseState.Schema17UpgradeRequired, ready.InitialState);
         Assert.Equal(WindowsFileIdentity.Get(target.Path), ready.PhysicalIdentity);
         Assert.NotEqual(WindowsFileIdentity.Get(PathOf(source)), ready.PhysicalIdentity);
-        Assert.False(Directory.Exists(target.Backups));
+        Assert.Equal(18, ready.SchemaVersion);
+        Assert.Single(Directory.GetFiles(target.Backups, "*.manifest.json"));
     }
 
     [Fact]
@@ -793,14 +807,14 @@ public sealed class Task20StartupCoordinatorTests
     {
         await using var target = await Task20Fixture.CreateAsync();
         await using var source = await Task20Fixture.CreateAsync();
-        await source.ExecuteAsync("UPDATE SchemaVersion SET Version=18");
+        await source.ExecuteAsync("UPDATE SchemaVersion SET Version=19");
         var oldIdentity = WindowsFileIdentity.Get(PathOf(target));
         var before = await target.StateAsync();
         var failure = await Assert.ThrowsAsync<StartupDatabaseException>(() => target.Coordinator().LoadAsync(PathOf(source)));
         Assert.Equal(StartupDatabaseFailure.UnsupportedSchema, failure.Failure);
         Assert.Equal(oldIdentity, failure.PersistedState.PhysicalIdentity);
         Assert.Equal(before, await target.StateAsync());
-        Assert.Equal(18, await source.ScalarAsync("SELECT Version FROM SchemaVersion"));
+        Assert.Equal(19, await source.ScalarAsync("SELECT Version FROM SchemaVersion"));
     }
 
     [Fact]
@@ -893,6 +907,51 @@ public sealed class Task20StartupCoordinatorTests
         Assert.Equal(WindowsFileIdentity.Get(PathOf(f)), result.Manifest?.SourceFileIdentity);
     }
 
+    private static async Task<string> RetainedContentAsync(Task20Fixture fixture)
+    {
+        await using var connection = await fixture.Database.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT name
+            FROM sqlite_master
+            WHERE type='table' AND name NOT LIKE 'sqlite_%'
+            ORDER BY name
+            """;
+        var tables = new List<string>();
+        await using (var reader = await command.ExecuteReaderAsync())
+            while (await reader.ReadAsync()) tables.Add(reader.GetString(0));
+
+        var evidence = new List<string>();
+        foreach (var table in tables)
+        {
+            command.CommandText = $"SELECT name FROM pragma_table_info('{table.Replace("'", "''")}') ORDER BY cid";
+            var columns = new List<string>();
+            await using (var reader = await command.ExecuteReaderAsync())
+                while (await reader.ReadAsync())
+                {
+                    var column = reader.GetString(0);
+                    if (column != SqliteSchema18Definition.GuardColumn &&
+                        (table != "SchemaVersion" || column is not ("Version" or "UpdatedUtc")))
+                        columns.Add(column);
+                }
+
+            evidence.Add(JsonSerializer.Serialize(new { Table = table, Columns = columns }));
+            var projection = string.Join(", ", columns.Select(QuoteIdentifier));
+            command.CommandText = $"SELECT {projection} FROM {QuoteIdentifier(table)} ORDER BY rowid";
+            await using var rows = await command.ExecuteReaderAsync();
+            while (await rows.ReadAsync())
+            {
+                var values = new object[rows.FieldCount];
+                rows.GetValues(values);
+                evidence.Add(JsonSerializer.Serialize(values));
+            }
+        }
+
+        return JsonSerializer.Serialize(evidence);
+
+        static string QuoteIdentifier(string value) => $"\"{value.Replace("\"", "\"\"")}\"";
+    }
+
     private sealed class InjectedFailure : Exception;
     private sealed class LifecycleFailure(Action<LineageSchema17MigrationCheckpoint> action) : ILineageSchema17FailureInjector
     {
@@ -920,7 +979,7 @@ public sealed class Task20StartupCoordinatorTests
         using var ready = await f.Coordinator(migrationFailures: injector).StartAsync();
         Assert.True(checkedOwnership);
         Assert.Equal(7, await f.ScalarAsync("SELECT Quantity FROM BinMovements"));
-        Assert.Equal(17, await f.ScalarAsync("SELECT Version FROM SchemaVersion"));
+        Assert.Equal(18, await f.ScalarAsync("SELECT Version FROM SchemaVersion"));
     }
 
     [Theory]
@@ -961,6 +1020,8 @@ public sealed class Task20StartupCoordinatorTests
     public async Task Unexpected_health_phase_exception_retains_infrastructure_classification()
     {
         await using var f = await Task20Fixture.CreateAsync();
+        using (var upgraded = await f.Coordinator().StartAsync())
+            Assert.Equal(StartupDatabaseState.Schema17UpgradeRequired, upgraded.InitialState);
         var before = await f.StateAsync();
         var original = new InvalidOperationException("unexpected implementation failure");
         var failure = await Assert.ThrowsAsync<StartupDatabaseException>(() => f.Coordinator(p =>

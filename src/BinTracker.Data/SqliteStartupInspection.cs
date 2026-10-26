@@ -14,7 +14,7 @@ internal static class SqliteStartupInspection
 
     internal static async Task<SqliteConnection> OpenAsync(string path, CancellationToken token)
     {
-        var c = new SqliteConnection(ConnectionString(path));
+        var c = SqliteUtf16Length.CreateConnection(ConnectionString(path));
         try { await c.OpenAsync(token); return c; }
         catch { await c.DisposeAsync(); throw; }
     }
@@ -37,11 +37,12 @@ internal static class SqliteStartupInspection
                 var number = reader.GetInt64(1);
                 if (number < 0 || number > int.MaxValue || await reader.ReadAsync(token)) return Bad();
                 version = (int)number;
-                if (version > 17) return new(StartupDatabaseState.UnsupportedFutureSchema, version, identity);
+                if (version > SqliteSchema18Definition.TargetSchemaVersion)
+                    return new(StartupDatabaseState.UnsupportedFutureSchema, version, identity);
             }
 
             if (tables.Any(t => t.StartsWith("__", StringComparison.Ordinal))) return Bad(version);
-            if (version != 17)
+            if (version is not (17 or 18))
             {
                 if (tables.Any(t => t.StartsWith("LogicalMovement", StringComparison.Ordinal))) return Bad(version);
                 foreach (var (table, columns) in new[]
@@ -64,7 +65,8 @@ internal static class SqliteStartupInspection
                 return Bad(version);
             return new(version switch
             {
-                17 => StartupDatabaseState.Schema17ValidationRequired,
+                18 => StartupDatabaseState.Schema18ValidationRequired,
+                17 => StartupDatabaseState.Schema17UpgradeRequired,
                 16 => StartupDatabaseState.Schema16ActivationRequired,
                 _ => StartupDatabaseState.Pre16UpgradeRequired
             }, version ?? 0, identity);

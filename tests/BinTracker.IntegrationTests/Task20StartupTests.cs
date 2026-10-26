@@ -95,10 +95,10 @@ public sealed class Task20StartupActivationTests
     public async Task Future_schema_is_rejected_without_changing_persisted_schema_or_data()
     {
         await using var f = await Task20Fixture.CreateAsync();
-        await f.ExecuteAsync("UPDATE SchemaVersion SET Version=18");
+        await f.ExecuteAsync("UPDATE SchemaVersion SET Version=19");
         var before = await f.StateAsync();
         var error = await Assert.ThrowsAsync<StartupDatabaseException>(f.StartCoordinatedAsync);
-        Assert.Equal(18, await f.ScalarAsync("SELECT Version FROM SchemaVersion"));
+        Assert.Equal(19, await f.ScalarAsync("SELECT Version FROM SchemaVersion"));
         Assert.Equal(before, await f.StateAsync());
         Assert.Equal(StartupDatabaseFailure.UnsupportedSchema, error.Failure);
         Assert.Equal(StartupDatabaseState.UnsupportedFutureSchema, error.PersistedState.State);

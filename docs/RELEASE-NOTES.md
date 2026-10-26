@@ -1,5 +1,14 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.17
+
+- Completes Security Hardening Batch D at static/focused-automated evidence level: BT-SH-038/043 are `FIXED`; totals are 23 FIXED, 13 CONFIRMED-V1, 1 REVIEW-V1, 11 POST-V1 and 2 NOT-APPLICABLE, with 14 v1 blockers remaining.
+- Adds governed schema18 SQLite constraints for every mapped bounded string and the `ApplicationSettings.Id = 1` singleton. Customer/container maxima still originate in provider-neutral Core/EF metadata, and exact .NET UTF-16 code-unit behavior preserves accepted Unicode without truncation, normalization or retained-data rewrite.
+- Extends the sole Data-owned startup funnel with schema17 read-only preflight, verified non-overwriting provider backup plus SHA-256/row-count manifest, exact-source recheck, atomic constraint/version publication, exact native postflight and controlled rollback/postcommit retry behavior.
+- Preserves existing schema17 lineage, projection, mutation, foreign keys, indexes, audit and business identities. Fresh/pre16/schema16/Load/Fresh paths converge on schema18, while explicit schema16 compatibility remains bounded to its existing fixtures.
+- Adds real SQLite coverage for all customer/container mapped fields (including nullable values and `ContainerType.NameKey`), exact/oversize and supplementary Unicode boundaries, settings ID/ambiguity rejection, malformed retained state, fresh and schema17 upgrade, weakened-schema rejection, interruption rollback, verified backup, postcommit recovery and existing-data/lineage preservation.
+- Independent FIX2 review passed, and Jack/operator's pre-FIX2 exact candidate passed the canonical Debug BAT 959/959 with zero failed/skipped and a successful build under SDK 10.0.402. FIX2's necessary multi-document closure reconciliation is candidate-defining, so the exact final candidate still requires the canonical BAT; no retained/customer database, package or deployment is claimed.
+
 ## v0.5.0-alpha.16
 
 - Completes Security Hardening Batch C at static/focused-automated evidence level: BT-SH-015/016/039/040/044 are `FIXED`; totals are 21 FIXED, 15 CONFIRMED-V1, 1 REVIEW-V1, 11 POST-V1 and 2 NOT-APPLICABLE.

@@ -80,7 +80,7 @@ public sealed class SqliteOperationalMovementProjectionAuthority(string connecti
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(scope);
-        await using var connection = new SqliteConnection(connectionString);
+        await using var connection = SqliteUtf16Length.CreateConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(
             IsolationLevel.Serializable, cancellationToken);
@@ -119,9 +119,10 @@ public sealed class SqliteOperationalMovementProjectionAuthority(string connecti
         OperationalMovementProjectionScope scope,
         CancellationToken cancellationToken)
     {
-        if (await ScalarInt64Async(connection, transaction,
-                "SELECT Version FROM SchemaVersion WHERE Id=1;", cancellationToken) !=
-            SqliteLineageSchema17Migrator.TargetSchemaVersion)
+        var schemaVersion = await ScalarInt64Async(connection, transaction,
+            "SELECT Version FROM SchemaVersion WHERE Id=1;", cancellationToken);
+        if (schemaVersion < SqliteLineageSchema17Migrator.TargetSchemaVersion ||
+            schemaVersion > SqliteSchema18Definition.TargetSchemaVersion)
             throw Failure(OperationalMovementProjectionFailure.SchemaUnavailable,
                 "The corrected operational projection requires explicit schema 17 composition.");
 

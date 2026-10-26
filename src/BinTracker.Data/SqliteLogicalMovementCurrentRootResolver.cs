@@ -14,7 +14,7 @@ public sealed class SqliteLogicalMovementCurrentRootResolver(string connectionSt
         LogicalMovementBatchId logicalMovementBatchId,
         CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(connectionString);
+        await using var connection = SqliteUtf16Length.CreateConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
         // All raw structured state is captured under one SQLite snapshot. Validation below performs no lazy reads.
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(

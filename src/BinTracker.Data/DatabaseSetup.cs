@@ -93,7 +93,8 @@ public static class DatabaseSetup
             case DatabaseProvider.Sqlite:
                 options.UseSqlite(
                     settings.ConnectionString ??
-                    $"Data Source={DatabaseConfiguration.DefaultSqlitePath};Cache=Shared");
+                    $"Data Source={DatabaseConfiguration.DefaultSqlitePath};Cache=Shared")
+                    .AddInterceptors(SqliteUtf16Length.ConnectionInterceptor.Instance);
                 break;
 
             case DatabaseProvider.PostgreSql:

@@ -36,7 +36,8 @@ internal sealed class Task20Fixture : IAsyncDisposable
         var collection = new ServiceCollection();
         collection.AddDbContextFactory<BinTrackerDbContext>(b =>
         {
-            b.UseSqlite(database.ConnectionString);
+            b.UseSqlite(database.ConnectionString)
+                .AddInterceptors(SqliteUtf16Length.ConnectionInterceptor.Instance);
             if (interceptor is not null) b.AddInterceptors(interceptor);
         });
         collection.AddSingleton<IBusinessClock>(new Clock());
@@ -259,13 +260,15 @@ internal sealed class Task20Fixture : IAsyncDisposable
 
     internal SqliteStartupDatabaseCoordinator Coordinator(Func<StartupDatabasePhase, Task>? checkpoint = null,
         ILineageSchema17FailureInjector? migrationFailures = null,
-        Func<SqliteConnection, SqliteTransaction, Task>? beforePublicationValidation = null, Action? afterCommit = null)
+        Func<SqliteConnection, SqliteTransaction, Task>? beforePublicationValidation = null, Action? afterCommit = null,
+        ISchema18FailureInjector? integrityFailures = null, Action? integrityAfterCommit = null)
     {
         var path = new SqliteConnectionStringBuilder(Database.ConnectionString).DataSource;
         var root = Directory.GetParent(Path.GetDirectoryName(path) ?? throw new InvalidOperationException())
             ?? throw new InvalidOperationException();
         return new(path, Path.Combine(root.FullName, "startup-backups"), Path.Combine(root.FullName, "startup-locks"),
-            Path.Combine(root.FullName, "pending.json"), checkpoint, migrationFailures, beforePublicationValidation, afterCommit);
+            Path.Combine(root.FullName, "pending.json"), checkpoint, migrationFailures, beforePublicationValidation,
+            afterCommit, integrityFailures: integrityFailures, integrityAfterCommit: integrityAfterCommit);
     }
 
     internal async Task StartCoordinatedAsync()

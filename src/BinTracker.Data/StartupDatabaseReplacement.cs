@@ -52,7 +52,7 @@ public sealed partial class SqliteStartupDatabaseCoordinator
                     using var sourceOwnership = new Ownership(gate.AcquireRuntime(sourcePath), sourcePath);
                     RejectUnstartable(await InspectAsync(sourcePath, token));
                     await using var source = await SqliteStartupInspection.OpenAsync(sourcePath, token);
-                    await using var target = new SqliteConnection(SqliteStartupInspection.ConnectionString(stage, readOnly: false));
+                    await using var target = SqliteUtf16Length.CreateConnection(SqliteStartupInspection.ConnectionString(stage, readOnly: false));
                     await target.OpenAsync(token);
                     source.BackupDatabase(target);
                     sourceOwnership.VerifyIdentity();
@@ -69,8 +69,13 @@ public sealed partial class SqliteStartupDatabaseCoordinator
                 }
                 // Validate the stable provider snapshot before selecting it. Live-source
                 // validation alone could race another allowed writer on that source.
-                if (stagedState.State == StartupDatabaseState.Schema17ValidationRequired)
+                if (stagedState.State == StartupDatabaseState.Schema18ValidationRequired)
                     await ValidateNativeAsync(stagedOwnership, null, token, stage);
+                else if (stagedState.State == StartupDatabaseState.Schema17UpgradeRequired)
+                {
+                    await ValidateSchema17ForUpgradeAsync(stagedOwnership, token, stage);
+                    await new SqliteSchema18Preflight().InspectAsync(stage, token);
+                }
                 else
                 {
                     await ValidateBaselineCapabilitiesAsync(stage, token);
@@ -130,7 +135,7 @@ public sealed partial class SqliteStartupDatabaseCoordinator
 
     private static async Task CheckpointForReplacementAsync(string path, CancellationToken token)
     {
-        await using var c = new SqliteConnection(SqliteStartupInspection.ConnectionString(path, readOnly: false));
+        await using var c = SqliteUtf16Length.CreateConnection(SqliteStartupInspection.ConnectionString(path, readOnly: false));
         await c.OpenAsync(token);
         await using var cmd = c.CreateCommand();
         cmd.CommandText = "PRAGMA wal_checkpoint(TRUNCATE)";

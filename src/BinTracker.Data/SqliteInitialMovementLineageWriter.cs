@@ -99,8 +99,9 @@ internal sealed class SqliteInitialMovementLineageWriter(
         {
             await using var version = Command(
                 connection, transaction, "SELECT Version FROM SchemaVersion WHERE Id=1;");
-            if (Convert.ToInt32(await version.ExecuteScalarAsync(cancellationToken)) !=
-                SqliteLineageSchema17Migrator.TargetSchemaVersion)
+            var schemaVersion = Convert.ToInt32(await version.ExecuteScalarAsync(cancellationToken));
+            if (schemaVersion < SqliteLineageSchema17Migrator.TargetSchemaVersion ||
+                schemaVersion > SqliteSchema18Definition.TargetSchemaVersion)
             {
                 throw new InvalidOperationException(SchemaRequired);
             }

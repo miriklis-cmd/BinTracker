@@ -337,7 +337,7 @@ public sealed class SqliteLineageMigrationPreflight : ILineageMigrationPreflight
             Pooling = false
         };
 
-        await using var connection = new SqliteConnection(builder.ConnectionString);
+        await using var connection = SqliteUtf16Length.CreateConnection(builder.ConnectionString);
         try
         {
             await connection.OpenAsync(cancellationToken);
@@ -1241,8 +1241,8 @@ public sealed class SqliteLineageMigrationBackupService : ILineageMigrationBacku
             Cache = SqliteCacheMode.Private,
             Pooling = false
         };
-        await using var source = new SqliteConnection(sourceBuilder.ConnectionString);
-        await using var destination = new SqliteConnection(destinationBuilder.ConnectionString);
+        await using var source = SqliteUtf16Length.CreateConnection(sourceBuilder.ConnectionString);
+        await using var destination = SqliteUtf16Length.CreateConnection(destinationBuilder.ConnectionString);
         await source.OpenAsync(cancellationToken);
         await destination.OpenAsync(cancellationToken);
         source.BackupDatabase(destination);

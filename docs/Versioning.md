@@ -1,6 +1,6 @@
 # Versioning
 
-BinTracker currently uses semantic pre-release version `0.5.0-alpha.16`.
+BinTracker currently uses semantic pre-release version `0.5.0-alpha.17`.
 
 ## Single source of truth
 
@@ -9,7 +9,7 @@ The release version is defined in the repository root:
 `Directory.Build.props`
 
 ```xml
-<Version>0.5.0-alpha.16</Version>
+<Version>0.5.0-alpha.17</Version>
 ```
 
 The same value is used by:
@@ -102,7 +102,9 @@ Hard rule: **maximum two numeric components after `alpha`** for the new scheme.
 
 `0.5.0-alpha.15` is the accepted Security Hardening Batch B increment. It closes BT-SH-006/030 with Data-owned transactional mutation/audit consistency without overwriting accepted alpha.14 identity/authorization evidence. BT-ARCH-018-P4's exact candidate passed the operator BAT under SDK 10.0.402 at 265 permanent IDs across 27 Markdown files and 901/901 tests, then was committed/pushed as `9f2e6b6`. The later governance-only P6/FIX1 work did not require a version bump.
 
-`0.5.0-alpha.16` is the Security Hardening Batch C candidate. It closes BT-SH-015/016/039/040/044 at static/focused-automated evidence level through provider-neutral enum/input guards, checked quantity arithmetic, authoritative master-data maxima and a Unicode-preserving operational-identifier policy. It does not overwrite alpha.15 acceptance evidence; independent review and the exact-candidate operator BAT remain required before Batch C closure.
+`0.5.0-alpha.16` is the accepted Security Hardening Batch C increment. It closes BT-SH-015/016/039/040/044 through provider-neutral enum/input guards, checked quantity arithmetic, authoritative master-data maxima and a Unicode-preserving operational-identifier policy. Independent source review passed; the exact-candidate canonical BAT passed 931/931 tests with zero failures/skips and a successful zero-warning/error build; the implementation is committed/pushed as `41735cfdc4179bcc8a8bf8b5579b9833ea9a3150`.
+
+`0.5.0-alpha.17` is the Security Hardening Batch D candidate. It closes BT-SH-038/043 at static/focused-automated evidence level through governed schema18 SQLite string/singleton constraints, exact UTF-16 measurement, malformed-retained-data preflight, verified backup and atomic rollback/retry semantics. It does not overwrite accepted alpha.16 evidence. Independent FIX2 review passed, and the pre-FIX2 exact candidate passed the operator BAT 959/959 with zero failed/skipped and a successful build under SDK 10.0.402. FIX2's necessary multi-document closure reconciliation is candidate-defining, so the exact final candidate still requires the canonical BAT before Batch D closure.
 
 Do not create forms such as:
 

@@ -39,7 +39,7 @@ public sealed class LineageSchema17MigrationTests
         Assert.Equal(0L, await ScalarAsync(connection,
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name LIKE 'LogicalMovement%';"));
         Assert.Equal(16, DatabaseSetup.LatestSchema16CompatibilityVersion);
-        Assert.Equal(17, DatabaseSetup.LatestSchemaVersion);
+        Assert.Equal(18, DatabaseSetup.LatestSchemaVersion);
     }
 
     [Fact]

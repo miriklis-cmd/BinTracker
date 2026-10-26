@@ -15,14 +15,14 @@ public sealed class Task20RuntimeActivationTests
     {
         await using var f = await RuntimeFixture.CreateAsync();
 
-        Assert.Equal(17, DatabaseSetup.LatestSchemaVersion);
+        Assert.Equal(18, DatabaseSetup.LatestSchemaVersion);
         Assert.Equal(16, DatabaseSetup.LatestSchema16CompatibilityVersion);
-        Assert.Equal(17, SqliteSchemaMigrations.All[^1].Version);
+        Assert.Equal(18, SqliteSchemaMigrations.All[^1].Version);
         Assert.Equal(16, SqliteSchemaMigrations.Schema16Baseline[^1].Version);
 
         using var session = await DatabaseSetup.InitializeAsync(f.Services);
         Assert.True(session.IsReadyForActivatedHost);
-        Assert.Equal(17, await f.SchemaVersionAsync());
+        Assert.Equal(18, await f.SchemaVersionAsync());
 
         await using var scope = f.Services.CreateAsyncScope();
         Assert.IsType<SqliteInitialMovementLineageWriter>(
@@ -46,7 +46,7 @@ public sealed class Task20RuntimeActivationTests
 
         var session = await coordinator.StartAsync();
         Assert.Equal(StartupDatabaseState.Schema16ActivationRequired, session.InitialState);
-        Assert.Equal(17, await f.SchemaVersionAsync());
+        Assert.Equal(18, await f.SchemaVersionAsync());
         Assert.Throws<DatabaseUpgradeUnavailableException>(() =>
             new WindowsFileDatabaseUpgradeGate(f.LockDirectory,
                     new PendingDatabaseOperationConflictProbe(f.MarkerPath))
@@ -156,7 +156,7 @@ public sealed class Task20RuntimeActivationTests
     }
 
     [Fact]
-    public async Task Existing_schema17_revalidates_without_replaying_migration_or_backup()
+    public async Task Existing_schema18_revalidates_without_replaying_migration_or_backup()
     {
         await using var f = await RuntimeFixture.CreateAsync();
         using (var first = await DatabaseSetup.InitializeAsync(f.Services))
@@ -168,8 +168,8 @@ public sealed class Task20RuntimeActivationTests
 
         using var second = await DatabaseSetup.InitializeAsync(f.Services);
 
-        Assert.Equal(StartupDatabaseState.Schema17ValidationRequired, second.InitialState);
-        Assert.Equal(17, await f.SchemaVersionAsync());
+        Assert.Equal(StartupDatabaseState.Schema18ValidationRequired, second.InitialState);
+        Assert.Equal(18, await f.SchemaVersionAsync());
         Assert.Equal(roots, await f.ScalarAsync("SELECT COUNT(*) FROM LogicalMovementBatches"));
         Assert.Equal(backupFiles, Directory.GetFiles(
             f.BackupDirectory, "*", SearchOption.AllDirectories).Order().ToArray());
@@ -179,7 +179,7 @@ public sealed class Task20RuntimeActivationTests
     public async Task Future_schema_is_rejected_without_mutation_or_backup()
     {
         await using var f = await RuntimeFixture.CreateSchema16Async();
-        await f.SetSchemaVersionAsync(18);
+        await f.SetSchemaVersionAsync(19);
 
         var error = await Assert.ThrowsAsync<StartupDatabaseException>(() =>
             DatabaseSetup.InitializeAsync(f.Services));
@@ -187,7 +187,7 @@ public sealed class Task20RuntimeActivationTests
         Assert.Equal(StartupDatabaseFailure.UnsupportedSchema, error.Failure);
         Assert.Equal(StartupDatabaseState.UnsupportedFutureSchema, error.PersistedState.State);
         Assert.False(error.SchemaMutationAttempted);
-        Assert.Equal(18, await f.SchemaVersionAsync());
+        Assert.Equal(19, await f.SchemaVersionAsync());
         Assert.False(Directory.Exists(f.BackupDirectory));
     }
 
@@ -217,7 +217,7 @@ public sealed class Task20RuntimeActivationTests
 
         using var session = await f.Services.GetRequiredService<IStartupDatabaseCoordinator>().StartAsync();
 
-        Assert.Equal(17, await f.SchemaVersionAsync());
+        Assert.Equal(18, await f.SchemaVersionAsync());
         Assert.False(File.Exists(f.MarkerPath));
         if (staged is not null) Assert.False(File.Exists(staged));
         Assert.Equal(operationType == PendingDatabaseOperationType.Load ? 1 : 0,
@@ -241,7 +241,7 @@ public sealed class Task20RuntimeActivationTests
 
         Assert.True(failure.DatabaseReplacementPublished);
         Assert.Equal(StartupDatabasePhase.PendingOperationCleanup, failure.Phase);
-        Assert.Equal(17, await f.SchemaVersionAsync());
+        Assert.Equal(18, await f.SchemaVersionAsync());
         var publishedIdentity = WindowsFileIdentity.Get(f.DatabasePath);
         var marker = ReadPendingOperation(f.MarkerPath);
         Assert.Equal(PendingDatabaseOperationState.PublicationReadyForCleanup, marker.State);
@@ -269,7 +269,7 @@ public sealed class Task20RuntimeActivationTests
 
         Assert.True(failure.DatabaseReplacementPublished);
         Assert.Equal(StartupDatabasePhase.PendingOperationCleanup, failure.Phase);
-        Assert.Equal(17, await f.SchemaVersionAsync());
+        Assert.Equal(18, await f.SchemaVersionAsync());
         var publishedIdentity = WindowsFileIdentity.Get(f.DatabasePath);
         var marker = ReadPendingOperation(f.MarkerPath);
         Assert.Equal(PendingDatabaseOperationState.PublicationReadyForCleanup, marker.State);
@@ -327,7 +327,7 @@ public sealed class Task20RuntimeActivationTests
 
         Assert.True(publicationReadyPersistAttempted);
         Assert.True(failure.DatabaseReplacementPublished);
-        Assert.Equal(17, await f.SchemaVersionAsync());
+        Assert.Equal(18, await f.SchemaVersionAsync());
         var publishedIdentity = WindowsFileIdentity.Get(f.DatabasePath);
         Assert.Equal(PendingDatabaseOperationState.ExecutionInProgress,
             ReadPendingOperation(f.MarkerPath).State);
@@ -592,7 +592,7 @@ public sealed class Task20RuntimeActivationTests
 
         Assert.True(session.IsReadyForActivatedHost);
         Assert.False(File.Exists(f.MarkerPath));
-        Assert.Equal(17, await f.SchemaVersionAsync());
+        Assert.Equal(18, await f.SchemaVersionAsync());
         Assert.Equal(0, await f.ScalarAsync(
             "SELECT COUNT(*) FROM Customers WHERE CustomerCode='NORMAL'"));
     }

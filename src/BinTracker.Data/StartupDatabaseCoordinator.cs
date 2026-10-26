@@ -9,7 +9,8 @@ public enum StartupDatabaseState
     Absent,
     Pre16UpgradeRequired,
     Schema16ActivationRequired,
-    Schema17ValidationRequired,
+    Schema17UpgradeRequired,
+    Schema18ValidationRequired,
     UnsupportedFutureSchema,
     PartialOrCorrupt,
     Unknown
@@ -45,6 +46,11 @@ public enum StartupDatabasePhase
     SourceVerification,
     Migration,
     Schema17Published,
+    Schema18Preflight,
+    Schema18Backup,
+    Schema18BackupVerified,
+    Schema18Migration,
+    Schema18Published,
     NativeStructure,
     NativeHealth,
     RuntimeTransition,
@@ -78,7 +84,7 @@ public sealed class StartupDatabaseException(
 }
 
 /// <summary>
-/// Proof of validated schema17 readiness for an activated host. The host must
+/// Proof of validated schema18 readiness for an activated host. The host must
 /// retain this session until all database users have stopped.
 /// </summary>
 public sealed class StartupDatabaseSession : IDisposable
@@ -93,7 +99,7 @@ public sealed class StartupDatabaseSession : IDisposable
 
     public StartupDatabaseState InitialState { get; }
     public string PhysicalIdentity { get; }
-    public int SchemaVersion => 17;
+    public int SchemaVersion => SqliteSchema18Definition.TargetSchemaVersion;
     public bool IsReadyForActivatedHost => ownership is not null;
     public void Dispose() => Interlocked.Exchange(ref ownership, null)?.Dispose();
 }
@@ -116,6 +122,7 @@ public sealed partial class SqliteStartupDatabaseCoordinator : IStartupDatabaseC
     private readonly IDatabaseUpgradeGate gate;
     private readonly SqliteLineageMigrationPreflight preflight = new();
     private readonly SqliteLineageSchema17Migrator migrator;
+    private readonly SqliteSchema18Migrator integrityMigrator;
     private readonly Func<StartupDatabasePhase, Task>? checkpoint;
 
     public SqliteStartupDatabaseCoordinator(string databasePath, string? backupDirectory = null,
@@ -127,7 +134,8 @@ public sealed partial class SqliteStartupDatabaseCoordinator : IStartupDatabaseC
         Func<StartupDatabasePhase, Task>? checkpoint, ILineageSchema17FailureInjector? migrationFailures,
         Func<SqliteConnection, SqliteTransaction, Task>? beforePublicationValidation = null, Action? afterCommit = null,
         Action<PendingDatabaseOperationCleanupStep>? pendingCleanup = null,
-        Action<PendingDatabaseOperationState>? pendingStatePersist = null)
+        Action<PendingDatabaseOperationState>? pendingStatePersist = null,
+        ISchema18FailureInjector? integrityFailures = null, Action? integrityAfterCommit = null)
     {
         this.databasePath = Path.GetFullPath(databasePath);
         this.backupDirectory = Path.GetFullPath(backupDirectory ?? DatabaseConfiguration.LineageRecoveryFolder);
@@ -141,6 +149,7 @@ public sealed partial class SqliteStartupDatabaseCoordinator : IStartupDatabaseC
             BeforePublicationValidation = beforePublicationValidation,
             AfterCommit = afterCommit
         };
+        integrityMigrator = new(integrityFailures) { AfterCommit = integrityAfterCommit };
     }
 
     public async Task<StartupDatabaseSession> StartAsync(CancellationToken cancellationToken = default)
@@ -318,7 +327,7 @@ public sealed partial class SqliteStartupDatabaseCoordinator : IStartupDatabaseC
                 var observed = await InspectAsync(databasePath, cancellationToken);
                 initial = observed.State;
                 RejectUnstartable(observed);
-                if (initial != StartupDatabaseState.Schema17ValidationRequired)
+                if (initial != StartupDatabaseState.Schema18ValidationRequired)
                 {
                     var identity = ownership.Identity;
                     ownership.Dispose();
@@ -387,8 +396,41 @@ public sealed partial class SqliteStartupDatabaseCoordinator : IStartupDatabaseC
                     }, () => mutationAttempted = true, cancellationToken);
                 phase = StartupDatabasePhase.Schema17Published;
                 await ReachAsync(phase);
+                state = (await InspectAsync(databasePath, cancellationToken)).State;
             }
-            else if (state != StartupDatabaseState.Schema17ValidationRequired)
+
+            if (state == StartupDatabaseState.Schema17UpgradeRequired)
+            {
+                var upgrade = ownership.UpgradeLease ?? throw new StartupFault(StartupDatabaseFailure.OwnershipUnavailable);
+                await ValidateSchema17ForUpgradeAsync(ownership, cancellationToken);
+                phase = StartupDatabasePhase.Schema18Preflight;
+                await ReachAsync(phase);
+                ownership.VerifyIdentity();
+                var integrityPreflight = await new SqliteSchema18Preflight()
+                    .InspectAsync(databasePath, cancellationToken);
+
+                phase = StartupDatabasePhase.Schema18Backup;
+                await ReachAsync(phase);
+                var integrityBackups = new SqliteSchema18BackupService();
+                var integrityBackup = await integrityBackups.CreateVerifiedAsync(
+                    upgrade, backupDirectory, integrityPreflight, cancellationToken);
+                phase = StartupDatabasePhase.Schema18BackupVerified;
+                await ReachAsync(phase);
+                ownership.VerifyIdentity();
+                await SqliteStartupInspection.RequireEquivalentAsync(
+                    databasePath, integrityBackup.BackupPath, cancellationToken);
+
+                phase = StartupDatabasePhase.Schema18Migration;
+                await ReachAsync(phase);
+                mutationAttempted = true;
+                await integrityMigrator.MigrateAsync(upgrade, integrityPreflight,
+                    integrityBackup, cancellationToken);
+                phase = StartupDatabasePhase.Schema18Published;
+                await ReachAsync(phase);
+                state = (await InspectAsync(databasePath, cancellationToken)).State;
+            }
+
+            if (state != StartupDatabaseState.Schema18ValidationRequired)
                 throw new StartupFault(StartupDatabaseFailure.PartialOrCorrupt);
 
             phase = StartupDatabasePhase.NativeStructure;
@@ -448,10 +490,36 @@ public sealed partial class SqliteStartupDatabaseCoordinator : IStartupDatabaseC
         await using var tx = c.BeginTransaction(System.Data.IsolationLevel.Serializable, deferred: true);
         var state = await SqliteStartupInspection.InspectAsync(c, tx, ownership.Identity, token);
         RejectUnstartable(state);
-        if (state.State != StartupDatabaseState.Schema17ValidationRequired)
+        if (state.State != StartupDatabaseState.Schema18ValidationRequired)
             throw new StartupFault(StartupDatabaseFailure.PartialOrCorrupt);
         await SqliteSchema17Capabilities.ValidateAsync(c, tx, token);
+        await SqliteSchema18Preflight.ValidateTargetAsync(c, tx, token);
         if (beforeHealth is not null) await beforeHealth();
+        try
+        {
+            await SqliteLineageSchema17Migrator.ValidateStructuralAndCurrentHealthAsync(c, tx,
+                "STARTUP_LINEAGE_TABLE_MISSING", "STARTUP_LINEAGE_HEALTH_INVALID", token,
+                () => new StartupFault(StartupDatabaseFailure.CurrentHealthInvalid));
+            await SqliteOperationalMovementProjectionAuthority.QueryInSnapshotAsync(c, tx,
+                OperationalMovementProjectionScope.All(), token);
+        }
+        catch (Exception ex) when (ex is OperationalMovementProjectionException or OverflowException)
+        {
+            throw new StartupFault(StartupDatabaseFailure.CurrentHealthInvalid, ex);
+        }
+        ownership.VerifyIdentity();
+    }
+
+    private async Task ValidateSchema17ForUpgradeAsync(Ownership ownership, CancellationToken token,
+        string? selectedPath = null)
+    {
+        ownership.VerifyIdentity();
+        await using var c = await SqliteStartupInspection.OpenAsync(selectedPath ?? databasePath, token);
+        await using var tx = c.BeginTransaction(System.Data.IsolationLevel.Serializable, deferred: true);
+        var state = await SqliteStartupInspection.InspectAsync(c, tx, ownership.Identity, token);
+        if (state.State != StartupDatabaseState.Schema17UpgradeRequired)
+            throw new StartupFault(StartupDatabaseFailure.PartialOrCorrupt);
+        await SqliteSchema17Capabilities.ValidateAsync(c, tx, token);
         try
         {
             await SqliteLineageSchema17Migrator.ValidateStructuralAndCurrentHealthAsync(c, tx,
@@ -520,8 +588,10 @@ public sealed partial class SqliteStartupDatabaseCoordinator : IStartupDatabaseC
         OperationCanceledException => StartupDatabaseFailure.Cancelled,
         DatabaseUpgradeUnavailableException => phase == StartupDatabasePhase.RuntimeTransition
             ? StartupDatabaseFailure.RuntimeParticipationFailed : StartupDatabaseFailure.OwnershipUnavailable,
-        _ when phase is StartupDatabasePhase.Backup or StartupDatabasePhase.BackupVerified => StartupDatabaseFailure.BackupFailed,
-        _ when phase == StartupDatabasePhase.Migration => StartupDatabaseFailure.MigrationFailed,
+        _ when phase is StartupDatabasePhase.Preflight or StartupDatabasePhase.Schema18Preflight => StartupDatabaseFailure.PreflightRejected,
+        _ when phase is StartupDatabasePhase.Backup or StartupDatabasePhase.BackupVerified or
+            StartupDatabasePhase.Schema18Backup or StartupDatabasePhase.Schema18BackupVerified => StartupDatabaseFailure.BackupFailed,
+        _ when phase is StartupDatabasePhase.Migration or StartupDatabasePhase.Schema18Migration => StartupDatabaseFailure.MigrationFailed,
         _ => StartupDatabaseFailure.InfrastructureFailure
     };
 

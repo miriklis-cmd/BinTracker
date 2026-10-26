@@ -1,3 +1,12 @@
+## v0.5.0-alpha.17 (23 October 2026)
+
+- Completed Security Hardening Batch D in source: BT-SH-038 and BT-SH-043 are fixed by the governed schema18 SQLite integrity migration.
+- Added exact database `CHECK` enforcement for mapped string maxima using a deterministic .NET UTF-16 code-unit function, including nullable fields, `ContainerType.NameKey` and supplementary characters; retained text is never truncated, normalized or rewritten.
+- Added database enforcement that every `ApplicationSettings` row has ID 1, while preserving normal singleton creation/update behavior.
+- Extended startup/replacement classification, preflight, verified backup, atomic migration, postflight and retry behavior from schema17 to schema18 without changing accepted lineage identities, relationships, projection/mutation semantics, indexes, foreign keys, audit or business rows.
+- Added focused real-SQLite tests for exact/oversize writes, Unicode, singleton corruption, fresh/upgrade paths, malformed retained data, constraint weakening, interruption rollback, postcommit recovery and preservation.
+- Advanced Version/InformationalVersion from alpha.16 to alpha.17 while retaining AssemblyVersion/FileVersion `0.5.0.0`. Independent FIX2 review passed, and the pre-FIX2 exact candidate passed the operator BAT 959/959 under SDK 10.0.402. FIX2's necessary multi-document closure reconciliation is candidate-defining, so the exact final candidate still requires the canonical BAT.
+
 ## v0.5.0-alpha.16 (20 October 2026)
 
 - Completed Security Hardening Batch C in source: BT-SH-015/016/039/040/044 now fail closed on undefined public/service enum inputs, arithmetic overflow, oversize master data and invalid report filters.

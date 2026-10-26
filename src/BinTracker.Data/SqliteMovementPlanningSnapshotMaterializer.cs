@@ -22,7 +22,7 @@ internal sealed class SqliteMovementPlanningSnapshotMaterializer
     public async Task<TrustedMovementPlanningSnapshot> MaterializeAsync(
         LogicalMovementBatchId logicalMovementBatchId, CancellationToken cancellationToken = default)
     {
-        await using var connection = new SqliteConnection(connectionString);
+        await using var connection = SqliteUtf16Length.CreateConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
         await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(
             IsolationLevel.Serializable, cancellationToken);
