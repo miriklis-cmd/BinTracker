@@ -41,7 +41,8 @@ public sealed record SaveMovementBatchRequest(
     DateOnly MovementDate,
     MovementType MovementType,
     string? Notes,
-    IReadOnlyList<MovementBatchLine> Lines);
+    IReadOnlyList<MovementBatchLine> Lines,
+    int? DraftOwnerUserId = null);
 
 public sealed record SaveMovementBatchResult(
     int BatchId,
@@ -87,6 +88,10 @@ public sealed class DraftMovementBatch(IBusinessClock clock)
     public DateOnly MovementDate { get; set; } = clock.Today;
     public MovementType MovementType { get; set; } = MovementType.In;
     public List<DraftMovementLine> Lines { get; } = [];
+    public Guid ClientOperationId { get; private set; } = Guid.NewGuid();
+
+    internal long StorageRevision { get; private set; }
+    internal bool OperationIdentityPersisted { get; private set; }
 
     public int TotalQuantity => QuantityMath.Sum(Lines.Select(x => x.Quantity));
     public bool HasLines => Lines.Count > 0;
@@ -96,91 +101,288 @@ public sealed class DraftMovementBatch(IBusinessClock clock)
         Lines.Clear();
         MovementDate = clock.Today;
         MovementType = MovementType.In;
+        ClientOperationId = Guid.NewGuid();
+        OperationIdentityPersisted = false;
     }
 
     internal void Restore(
         DateOnly movementDate,
         MovementType movementType,
-        IEnumerable<DraftMovementLine> lines)
+        IEnumerable<DraftMovementLine> lines,
+        Guid clientOperationId,
+        long storageRevision,
+        bool operationIdentityPersisted)
     {
         Lines.Clear();
         Lines.AddRange(lines);
         MovementDate = movementDate;
         MovementType = movementType;
+        ClientOperationId = clientOperationId;
+        StorageRevision = storageRevision;
+        OperationIdentityPersisted = operationIdentityPersisted;
+    }
+
+    internal void MarkPersisted(long storageRevision)
+    {
+        StorageRevision = storageRevision;
+        OperationIdentityPersisted = true;
+    }
+
+    internal void MarkCleared(long storageRevision)
+    {
+        Clear();
+        StorageRevision = storageRevision;
+    }
+
+    internal void AdoptClearedRevision(long storageRevision) =>
+        StorageRevision = storageRevision;
+
+    internal void Detach()
+    {
+        StorageRevision = 0;
+        Clear();
     }
 }
 
 public interface IBatchDraftStore
 {
-    DraftMovementBatchSnapshot? Load();
-    void Save(DraftMovementBatch draft);
-    void Clear();
+    BatchDraftLoadResult Load(int ownerUserId);
+    long Save(int ownerUserId, DraftMovementBatch draft);
+    long Clear(int ownerUserId, long expectedRevision, Guid clearedOperationId);
 }
 
+public sealed record BatchDraftLoadResult(
+    DraftMovementBatchSnapshot? Draft,
+    string? Diagnostic,
+    long StorageRevision = 0);
+
 public sealed record DraftMovementBatchSnapshot(
+    int OwnerUserId,
+    Guid ClientOperationId,
     DateOnly MovementDate,
     MovementType MovementType,
     IReadOnlyList<DraftMovementLine> Lines,
-    DateTimeOffset LastSavedAtUtc);
+    DateTimeOffset LastSavedAtUtc,
+    long StorageRevision,
+    bool OperationIdentityPersisted);
 
 public sealed class ApplicationState
 {
     private readonly IBatchDraftStore? draftStore;
+    private readonly IUserContext? userContext;
+    private readonly DraftMovementBatch draftBatch;
+    private readonly HashSet<int> activatedOwnerUserIds = [];
+    private int? activeOwnerUserId;
+    private DateTimeOffset? recoveryDraftLastSavedAtUtc;
+    private bool recoveryPromptPending;
+    private string? recoveryDiagnostic;
 
     public ApplicationState(IBusinessClock clock)
     {
-        DraftBatch = new DraftMovementBatch(clock);
+        draftBatch = new DraftMovementBatch(clock);
     }
 
     public ApplicationState(
         IBatchDraftStore draftStore,
-        IBusinessClock clock)
+        IBusinessClock clock,
+        IUserContext userContext)
     {
-        this.draftStore = draftStore;
-        DraftBatch = new DraftMovementBatch(clock);
+        this.draftStore = draftStore ?? throw new ArgumentNullException(nameof(draftStore));
+        this.userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
+        draftBatch = new DraftMovementBatch(clock);
+    }
 
-        var restored = draftStore.Load();
-        if (restored is not null)
+    /// <summary>
+    /// Returns only the draft owned by the current authenticated stable user ID.
+    /// Changing identity first detaches the prior user's in-memory graph.
+    /// </summary>
+    public DraftMovementBatch DraftBatch
+    {
+        get
         {
-            DraftBatch.Restore(
-                restored.MovementDate,
-                restored.MovementType,
-                restored.Lines);
-            RecoveryDraftLastSavedAtUtc = restored.LastSavedAtUtc;
-            RecoveryPromptPending = true;
+            EnsureAuthenticatedOwner();
+            return draftBatch;
         }
     }
 
-    public DraftMovementBatch DraftBatch { get; }
+    public DateTimeOffset? RecoveryDraftLastSavedAtUtc
+    {
+        get
+        {
+            EnsureAuthenticatedOwner();
+            return recoveryDraftLastSavedAtUtc;
+        }
+    }
 
-    public DateTimeOffset? RecoveryDraftLastSavedAtUtc { get; private set; }
+    /// <summary>
+    /// Controlled recovery warning for rejected/quarantined evidence. It never
+    /// supplies another user's draft graph or grants an operation on that file.
+    /// </summary>
+    public string? RecoveryDiagnostic
+    {
+        get
+        {
+            EnsureAuthenticatedOwner();
+            return recoveryDiagnostic;
+        }
+    }
 
     /// <summary>
     /// True only when this application process started with a persisted draft
     /// loaded from disk. Drafts created later in the same process (including
     /// logout/login) are not presented as crash/power-loss recovery.
     /// </summary>
-    public bool RecoveryPromptPending { get; private set; }
+    public bool RecoveryPromptPending
+    {
+        get
+        {
+            EnsureAuthenticatedOwner();
+            return recoveryPromptPending;
+        }
+    }
 
-    public void MarkRecoveryPromptHandled() => RecoveryPromptPending = false;
+    public void MarkRecoveryPromptHandled()
+    {
+        EnsureAuthenticatedOwner();
+        recoveryPromptPending = false;
+    }
+
+    public void MarkRecoveryDiagnosticHandled()
+    {
+        EnsureAuthenticatedOwner();
+        recoveryDiagnostic = null;
+    }
 
     public void PersistDraft()
     {
         if (draftStore is null)
             return;
 
-        if (DraftBatch.HasLines)
-            draftStore.Save(DraftBatch);
+        var ownerUserId = EnsureAuthenticatedOwner();
+        if (draftBatch.HasLines)
+        {
+            var revision = draftStore.Save(ownerUserId, draftBatch);
+            draftBatch.MarkPersisted(revision);
+        }
         else
-            draftStore.Clear();
+        {
+            var revision = draftStore.Clear(
+                ownerUserId,
+                draftBatch.StorageRevision,
+                draftBatch.ClientOperationId);
+            draftBatch.MarkCleared(revision);
+        }
+    }
+
+    /// <summary>
+    /// Captures a save command only after rechecking that the current stable
+    /// authenticated user owns the active draft. MovementService independently
+    /// enforces the actor's current operational role when executing the command.
+    /// </summary>
+    public SaveMovementBatchRequest CreateOwnedSaveRequest(string? notes = null)
+    {
+        var ownerUserId = EnsureAuthenticatedOwner();
+        if (!draftBatch.HasLines)
+            throw new InvalidOperationException("The owned draft has no lines to save.");
+
+        // Schema-3 drafts predate durable command identity. Upgrade them before
+        // allowing execution so an interrupted cleanup can never mint a new ID.
+        if (draftStore is not null && !draftBatch.OperationIdentityPersisted)
+        {
+            var revision = draftStore.Save(ownerUserId, draftBatch);
+            draftBatch.MarkPersisted(revision);
+        }
+
+        return new SaveMovementBatchRequest(
+            draftBatch.ClientOperationId,
+            draftBatch.MovementDate,
+            draftBatch.MovementType,
+            notes,
+            draftBatch.Lines
+                .Select(line => new MovementBatchLine(
+                    line.CustomerId,
+                    line.ContainerTypeId,
+                    line.Quantity,
+                    line.Reference,
+                    line.Notes))
+                .ToList(),
+            ownerUserId);
     }
 
     public void ClearDraft()
     {
-        DraftBatch.Clear();
-        RecoveryPromptPending = false;
-        RecoveryDraftLastSavedAtUtc = null;
-        draftStore?.Clear();
+        var ownerUserId = EnsureAuthenticatedOwner();
+        if (draftStore is not null)
+        {
+            var revision = draftStore.Clear(
+                ownerUserId,
+                draftBatch.StorageRevision,
+                draftBatch.ClientOperationId);
+            draftBatch.MarkCleared(revision);
+        }
+        else
+        {
+            draftBatch.Clear();
+        }
+        recoveryPromptPending = false;
+        recoveryDraftLastSavedAtUtc = null;
+        recoveryDiagnostic = null;
+    }
+
+    private int EnsureAuthenticatedOwner()
+    {
+        if (draftStore is null)
+            return 0;
+
+        if (userContext is null ||
+            !userContext.IsAuthenticated ||
+            userContext.UserId is not int ownerUserId ||
+            ownerUserId <= 0)
+        {
+            DetachDraft();
+            throw new InvalidOperationException(
+                "An authenticated persisted user identity is required to access Batch Entry drafts.");
+        }
+
+        if (activeOwnerUserId == ownerUserId)
+            return ownerUserId;
+
+        DetachDraft();
+        activeOwnerUserId = ownerUserId;
+        var firstActivationThisProcess = activatedOwnerUserIds.Add(ownerUserId);
+        var loaded = draftStore.Load(ownerUserId);
+        recoveryDiagnostic = loaded.Diagnostic;
+        if (loaded.Draft is not null)
+        {
+            if (loaded.Draft.OwnerUserId != ownerUserId)
+                throw new InvalidOperationException(
+                    "The draft store returned ownership inconsistent with the authenticated account.");
+
+            draftBatch.Restore(
+                loaded.Draft.MovementDate,
+                loaded.Draft.MovementType,
+                loaded.Draft.Lines,
+                loaded.Draft.ClientOperationId,
+                loaded.Draft.StorageRevision,
+                loaded.Draft.OperationIdentityPersisted);
+            recoveryDraftLastSavedAtUtc = loaded.Draft.LastSavedAtUtc;
+            recoveryPromptPending = firstActivationThisProcess;
+        }
+        else
+        {
+            draftBatch.AdoptClearedRevision(loaded.StorageRevision);
+        }
+
+        return ownerUserId;
+    }
+
+    private void DetachDraft()
+    {
+        draftBatch.Detach();
+        activeOwnerUserId = null;
+        recoveryDraftLastSavedAtUtc = null;
+        recoveryPromptPending = false;
+        recoveryDiagnostic = null;
     }
 }
 
@@ -378,7 +580,13 @@ internal sealed class MovementService(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        await authorization.RequireOperationalAsync(cancellationToken);
+        var actor = await authorization.RequireOperationalAsync(cancellationToken);
+        if (request.DraftOwnerUserId.HasValue &&
+            request.DraftOwnerUserId.Value != actor.UserId)
+        {
+            throw new UnauthorizedAccessException(
+                "Only the persisted draft owner may save this Batch Entry draft.");
+        }
         ProviderNeutralValidation.RequireDefined(request.MovementType, nameof(request.MovementType));
 
         if (request.Lines is null || request.Lines.Count == 0)

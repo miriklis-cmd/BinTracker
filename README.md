@@ -1,4 +1,4 @@
-# BinTracker v0.5.0-alpha.17
+# BinTracker v0.5.0-alpha.18
 
 BinTracker is a .NET 8 Windows desktop application for tracking reusable container movements, customer/container balances, operational reporting and audited business activity.
 
@@ -39,11 +39,11 @@ See `KNOWN-ISSUES.md` and `docs/Roadmap.md`.
 
 Most important remaining items include:
 
-- Batch Entry edit/remove/Enter/Esc interaction smoke; Continue/Save/Discard recovery is accepted, while Security Batch E must add BT-BATCH-012 stable-user-ID owner isolation;
+- Batch Entry edit/remove/Enter/Esc interaction smoke and complete BT-BATCH-010/011 manual recovery acceptance remain; alpha.18 enforces stable-user-ID draft ownership below WinForms;
 - dashboard operational pass;
 - Business Information branding expansion: logo + shared report/email output identity;
 - real Email/SMS reminder delivery;
-- the six remaining Security Hardening batches after Batches A/B closed transactional audit consistency and split the residual operational-identifier scope of BT-SH-040 into Batch C;
+- the three remaining Security Hardening batches F–H after alpha.18 completed user-scoped resilient draft storage;
 - production backup/restore;
 - the unresolved BT-AUD-006 Audit search/filter/export release decision and commercial-v1 activation decision;
 - BT-REL-013 third-party/commercial-release compliance review, required notices/material and package validation;

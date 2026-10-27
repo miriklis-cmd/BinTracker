@@ -405,7 +405,7 @@ public sealed class MainForm : BinTrackerForm
             return;
 
         var draftMessage = appState.DraftBatch.HasLines
-            ? "\n\nYour unsaved Batch Entry draft will be kept on this computer for the next login."
+            ? "\n\nYour unsaved Batch Entry draft will remain available only to your account on this computer."
             : string.Empty;
 
         if (MessageBox.Show(
@@ -610,6 +610,18 @@ public sealed class MainForm : BinTrackerForm
 
     private async Task HandleRecoveredBatchAsync()
     {
+        var recoveryDiagnostic = appState.RecoveryDiagnostic;
+        if (!string.IsNullOrWhiteSpace(recoveryDiagnostic))
+        {
+            appState.MarkRecoveryDiagnosticHandled();
+            MessageBox.Show(
+                this,
+                recoveryDiagnostic,
+                "Batch Entry Recovery",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
+
         if (!appState.RecoveryPromptPending || !appState.DraftBatch.HasLines)
             return;
 
@@ -641,8 +653,21 @@ public sealed class MainForm : BinTrackerForm
 
                 if (answer == DialogResult.Yes)
                 {
-                    appState.ClearDraft();
-                    ShowDashboard();
+                    try
+                    {
+                        appState.ClearDraft();
+                        ShowDashboard();
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(
+                            this,
+                            "The owned recovery draft could not be discarded safely. " + ex.Message,
+                            "Discard Recovered Batch",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                        ShowBatchEntry();
+                    }
                 }
                 else
                 {
@@ -659,21 +684,25 @@ public sealed class MainForm : BinTrackerForm
         try
         {
             var result = await movements.SaveBatchAsync(
-                new SaveMovementBatchRequest(
-                Guid.NewGuid(),
-                    draft.MovementDate,
-                    draft.MovementType,
-                    null,
-                    draft.Lines
-                        .Select(x => new MovementBatchLine(
-                            x.CustomerId,
-                            x.ContainerTypeId,
-                            x.Quantity,
-                            x.Reference,
-                            x.Notes))
-                        .ToList()));
+                appState.CreateOwnedSaveRequest());
 
-            appState.ClearDraft();
+            try
+            {
+                appState.ClearDraft();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    this,
+                    $"Recovered batch #{result.BatchId} was saved, but its recovery file could not be cleared.\n\n" +
+                    "It is safe to retry Save Batch or Clear Batch; the durable draft identity prevents duplicate movements.\n\n" +
+                    ex.Message,
+                    "Recovered Batch Saved — Cleanup Required",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                ShowBatchEntry();
+                return;
+            }
 
             MessageBox.Show(
                 $"Recovered batch #{result.BatchId} saved successfully.\n\n" +

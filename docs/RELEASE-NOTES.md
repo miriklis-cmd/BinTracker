@@ -1,5 +1,15 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.18
+
+- Completes Security Hardening Batch E at static/focused-automated evidence level: BT-SH-012/013/014/036/037 are `FIXED`, BT-BATCH-012 is `IMPLEMENTED-STATIC`, and totals are 28 FIXED, 8 CONFIRMED-V1, 1 REVIEW-V1, 11 POST-V1 and 2 NOT-APPLICABLE, with 9 v1 blockers remaining.
+- Persists every unfinished draft in an owner-specific schema-4 envelope carrying stable `UserAccount.Id`, a monotonic recovery revision and one durable Batch Entry `ClientOperationId`; schema-3 owned drafts upgrade before execution. Services detach the prior graph on identity change and gate Continue, Save and Discard by exact ID; batch execution rechecks draft owner after current-account/role authorization. Username/display equality and Administrator role never grant takeover.
+- Preserves legacy schema-1/2 ownerless evidence without assigning it. Missing, foreign, duplicate or invalid ownership and malformed/null nested graphs fail closed before recovery UI or business execution, with a controlled diagnostic when quarantine cannot move the source.
+- Bounds recovery to 16 MiB, 10,000 lines and JSON depth 8; validates exact required fields, types, identities, enums, authoritative customer/container text maxima and checked totals; rejects rather than silently truncates.
+- Uses create-new GUID temporary siblings, write-through/disk flush, one same-owner publication lease, expected-revision comparison and atomic replacement for both Save and Clear. Clear publishes a payload-free higher-revision tombstone: stale Save cannot resurrect cleared work and stale Clear cannot remove newer work. Corrupt quarantine remains high-resolution UTC/GUID and `overwrite: false`.
+- Both WinForms Save routes submit the persisted draft operation ID. If a database commit succeeds but tombstone publication fails, restart/recovery repeats that ID and the existing database-unique exact-replay path returns the original batch without duplicate movements or audit. Accepted Clear creates a new identity for a genuine fresh draft.
+- Corrective focused Release results pass 43/43 draft unit tests, 22/22 complete movement-entry SQLite tests and 43/43 adjacent WinForms tests. They include deterministic Save/Clear races, stale operations, independent owners, failed publication/clear, schema-3 upgrade, schema-4 adversarial rejection, post-commit cleanup failure/restart/exact replay, uncommitted retry and a fresh post-clear batch. Independent review, canonical BAT and broader BT-BATCH-010/011 manual recovery acceptance remain pending. No real/customer database, package, deployment or Git write is claimed.
+
 ## v0.5.0-alpha.17
 
 - Completes Security Hardening Batch D at static/focused-automated evidence level: BT-SH-038/043 are `FIXED`; totals are 23 FIXED, 13 CONFIRMED-V1, 1 REVIEW-V1, 11 POST-V1 and 2 NOT-APPLICABLE, with 14 v1 blockers remaining.
@@ -7,7 +17,7 @@
 - Extends the sole Data-owned startup funnel with schema17 read-only preflight, verified non-overwriting provider backup plus SHA-256/row-count manifest, exact-source recheck, atomic constraint/version publication, exact native postflight and controlled rollback/postcommit retry behavior.
 - Preserves existing schema17 lineage, projection, mutation, foreign keys, indexes, audit and business identities. Fresh/pre16/schema16/Load/Fresh paths converge on schema18, while explicit schema16 compatibility remains bounded to its existing fixtures.
 - Adds real SQLite coverage for all customer/container mapped fields (including nullable values and `ContainerType.NameKey`), exact/oversize and supplementary Unicode boundaries, settings ID/ambiguity rejection, malformed retained state, fresh and schema17 upgrade, weakened-schema rejection, interruption rollback, verified backup, postcommit recovery and existing-data/lineage preservation.
-- Independent FIX2 review passed, and Jack/operator's pre-FIX2 exact candidate passed the canonical Debug BAT 959/959 with zero failed/skipped and a successful build under SDK 10.0.402. FIX2's necessary multi-document closure reconciliation is candidate-defining, so the exact final candidate still requires the canonical BAT; no retained/customer database, package or deployment is claimed.
+- Independent FIX2 review/input/handoff validation passed, and Jack/operator's accepted exact candidate passed the canonical Debug BAT 959/959 with zero failed/skipped and a successful build before commit/push as `462266c1adbfc741dcc957fe7d267406cf915fd3`; no retained/customer database, package or deployment is claimed.
 
 ## v0.5.0-alpha.16
 

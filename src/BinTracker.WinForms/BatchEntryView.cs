@@ -734,7 +734,7 @@ public sealed class BatchEntryView : UserControl
         if (batchType.SelectedItem is BatchTypeOption type)
             Draft.MovementType = type.Value;
 
-        Draft.Lines.Add(new DraftMovementLine(
+        var addedLine = new DraftMovementLine(
             selectedCustomer.CustomerId,
             selectedCustomer.Code,
             selectedCustomer.Name,
@@ -742,9 +742,20 @@ public sealed class BatchEntryView : UserControl
             selectedContainer.Name,
             (int)quantity.Value,
             Clean(reference.Text),
-            Clean(notes.Text)));
+            Clean(notes.Text));
+        Draft.Lines.Add(addedLine);
 
-        appState.PersistDraft();
+        try
+        {
+            appState.PersistDraft();
+        }
+        catch (Exception ex)
+        {
+            Draft.Lines.Remove(addedLine);
+            validation.Text =
+                "The line was not added because the owned recovery draft could not be saved safely. " + ex.Message;
+            return;
+        }
 
         // Movement date, batch direction and container type intentionally carry
         // forward for rapid keyboard entry. Customer-specific fields do not.
@@ -818,6 +829,7 @@ public sealed class BatchEntryView : UserControl
             return;
         }
 
+        var previousLine = Draft.Lines[index];
         Draft.Lines[index] = new DraftMovementLine(
             selectedCustomer.CustomerId,
             selectedCustomer.Code,
@@ -827,7 +839,17 @@ public sealed class BatchEntryView : UserControl
             (int)quantity.Value,
             Clean(reference.Text),
             Clean(notes.Text));
-        appState.PersistDraft();
+        try
+        {
+            appState.PersistDraft();
+        }
+        catch (Exception ex)
+        {
+            Draft.Lines[index] = previousLine;
+            validation.Text =
+                "The line was not updated because the owned recovery draft could not be saved safely. " + ex.Message;
+            return;
+        }
 
         var code = selectedCustomer.Code;
         RefreshPendingGrid();
@@ -878,8 +900,22 @@ public sealed class BatchEntryView : UserControl
         if (pending.CurrentRow?.DataBoundItem is not DraftMovementLine line)
             return;
 
-        Draft.Lines.Remove(line);
-        appState.PersistDraft();
+        var index = Draft.Lines.IndexOf(line);
+        if (index < 0)
+            return;
+
+        Draft.Lines.RemoveAt(index);
+        try
+        {
+            appState.PersistDraft();
+        }
+        catch (Exception ex)
+        {
+            Draft.Lines.Insert(index, line);
+            validation.Text =
+                "The line was not removed because the owned recovery draft could not be saved safely. " + ex.Message;
+            return;
+        }
 
         RefreshPendingGrid();
         CancelEdit(clearCustomer: true);
@@ -900,7 +936,18 @@ public sealed class BatchEntryView : UserControl
         // Clear Batch is also the explicit escape hatch from any stale/partial edit
         // state. Even with zero draft rows it must leave the editor ready to add.
         if (Draft.HasLines)
-            appState.ClearDraft();
+        {
+            try
+            {
+                appState.ClearDraft();
+            }
+            catch (Exception ex)
+            {
+                validation.Text =
+                    "The owned recovery draft could not be cleared safely. " + ex.Message;
+                return;
+            }
+        }
 
         CancelEdit(clearCustomer: true);
         ClearCurrentLineEntry(clearContainer: false);
@@ -948,21 +995,20 @@ public sealed class BatchEntryView : UserControl
             Enabled = false;
 
             var result = await movements.SaveBatchAsync(
-                new SaveMovementBatchRequest(
-                Guid.NewGuid(),
-                    Draft.MovementDate,
-                    Draft.MovementType,
-                    null,
-                    Draft.Lines
-                        .Select(x => new MovementBatchLine(
-                            x.CustomerId,
-                            x.ContainerTypeId,
-                            x.Quantity,
-                            x.Reference,
-                            x.Notes))
-                        .ToList()));
+                appState.CreateOwnedSaveRequest());
 
-            appState.ClearDraft();
+            try
+            {
+                appState.ClearDraft();
+            }
+            catch (Exception ex)
+            {
+                validation.Text =
+                    $"Batch #{result.BatchId} was saved, but its recovery file could not be cleared. " +
+                    "It is safe to retry Save Batch or Clear Batch; the durable draft identity prevents duplicate movements. " +
+                    ex.Message;
+                return;
+            }
 
             loadingDraft = true;
             movementDate.Value = Draft.MovementDate.ToDateTime(TimeOnly.MinValue);

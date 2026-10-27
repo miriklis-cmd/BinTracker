@@ -117,7 +117,7 @@ foreach ($row in $reqRows) {
     if ($allowedScopes -notcontains $row.Scope) { Fail "Invalid requirement scope for $($row.Id): $($row.Scope)" }
     if ($allowedStatuses -notcontains $row.Status) { Fail "Invalid requirement status for $($row.Id): $($row.Status)" }
 }
-$mustHaveIds = @('BT-REL-001','BT-REL-013','BT-RPT-003','BT-RPT-018','BT-RPT-019','BT-RPT-020','BT-RPT-021','BT-UI-014','BT-UI-015','BT-BATCH-010','BT-BATCH-011','BT-IMP-010','BT-IMP-022','BT-CORR-001','BT-CORR-007','BT-CORR-008','BT-CORR-009','BT-CORR-010','BT-CORR-011','BT-CORR-012','BT-CORR-013','BT-CORR-014','BT-CORR-015','BT-CORR-018','BT-CORR-019','BT-CORR-021','BT-CORR-024','BT-CORR-029','BT-CORR-030','BT-CORR-031','BT-CORR-032','BT-CORR-033','BT-AUD-013','BT-AUD-015','BT-AUD-016','BT-AUD-017','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-HIST-006','BT-HIST-007','BT-HIST-008','BT-HIST-009','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-OPS-011','BT-OPS-012','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015','BT-ARCH-016','BT-ARCH-017','BT-ARCH-018')
+$mustHaveIds = @('BT-REL-001','BT-REL-013','BT-RPT-003','BT-RPT-018','BT-RPT-019','BT-RPT-020','BT-RPT-021','BT-UI-014','BT-UI-015','BT-BATCH-010','BT-BATCH-011','BT-BATCH-012','BT-IMP-010','BT-IMP-022','BT-CORR-001','BT-CORR-007','BT-CORR-008','BT-CORR-009','BT-CORR-010','BT-CORR-011','BT-CORR-012','BT-CORR-013','BT-CORR-014','BT-CORR-015','BT-CORR-018','BT-CORR-019','BT-CORR-021','BT-CORR-024','BT-CORR-029','BT-CORR-030','BT-CORR-031','BT-CORR-032','BT-CORR-033','BT-AUD-013','BT-AUD-015','BT-AUD-016','BT-AUD-017','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-HIST-006','BT-HIST-007','BT-HIST-008','BT-HIST-009','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-OPS-011','BT-OPS-012','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015','BT-ARCH-016','BT-ARCH-017','BT-ARCH-018')
 foreach ($id in $mustHaveIds) { if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost mandatory ID: $id" } }
 
 $releaseCompliance = $reqRows | Where-Object Id -eq 'BT-REL-013'
@@ -324,10 +324,10 @@ $securityCounts = @{}
 foreach ($disposition in $allowedSecurityDispositions) {
     $securityCounts[$disposition] = @($securityRows | Where-Object { $_.Groups[2].Value -eq $disposition }).Count
 }
-if ($securityCounts['FIXED'] -ne 23 -or $securityCounts['CONFIRMED-V1'] -ne 13 -or
+if ($securityCounts['FIXED'] -ne 28 -or $securityCounts['CONFIRMED-V1'] -ne 8 -or
     $securityCounts['REVIEW-V1'] -ne 1 -or $securityCounts['POST-V1'] -ne 11 -or
     $securityCounts['NOT-APPLICABLE'] -ne 2) {
-    Fail "Security disposition totals must be 23 FIXED / 13 CONFIRMED-V1 / 1 REVIEW-V1 / 11 POST-V1 / 2 NOT-APPLICABLE."
+    Fail "Security disposition totals must be 28 FIXED / 8 CONFIRMED-V1 / 1 REVIEW-V1 / 11 POST-V1 / 2 NOT-APPLICABLE."
 }
 $securityBlockers = $securityCounts['CONFIRMED-V1'] + $securityCounts['REVIEW-V1']
 $coverageSecuritySummary = (Get-Content -Raw -LiteralPath 'docs/RoadmapCoverageMatrix.md').Replace('`', '')
@@ -336,11 +336,11 @@ $expectedSecurityTotals = "$($securityCounts['FIXED']) FIXED, $($securityCounts[
 foreach ($summary in @($coverageSecuritySummary, $debtSecuritySummary)) {
     if ($summary -notmatch [regex]::Escape($expectedSecurityTotals)) { Fail 'Current security summary disagrees with computed disposition totals.' }
     if ($summary -notmatch [regex]::Escape("$securityBlockers") -or $summary -notmatch 'block') { Fail 'Current security summary disagrees with the computed v1-blocker count.' }
-    if ($summary -notmatch 'Batch E') { Fail 'Current security summary must name Batch E as the next security batch.' }
+    if ($summary -notmatch 'Batch(?:es)? F') { Fail 'Current security summary must name Batch F among the remaining security batches.' }
 }
-foreach ($fixedId in @('BT-SH-038','BT-SH-043')) {
+foreach ($fixedId in @('BT-SH-012','BT-SH-013','BT-SH-014','BT-SH-036','BT-SH-037','BT-SH-038','BT-SH-043')) {
     $row = $securityRows | Where-Object { $_.Groups[1].Value -eq $fixedId }
-    if ($row.Groups[2].Value -ne 'FIXED') { Fail "$fixedId must remain FIXED after Security Batch D." }
+    if ($row.Groups[2].Value -ne 'FIXED') { Fail "$fixedId must remain FIXED after Security Batch E." }
 }
 $schema18Text = Get-Content -Raw 'src/BinTracker.Data/SqliteSchema18Integrity.cs'
 $schema18Tests = Get-Content -Raw 'tests/BinTracker.IntegrationTests/SecurityBatchDDatabaseIntegrityTests.cs'
@@ -601,12 +601,14 @@ if ($singleEntryText -notmatch 'SaveMovementButtonText = "Save Movement"' -or
     Fail 'Single Entry Save Movement label stability source gate failed.'
 }
 
-# Batch Entry acceptance/recovery source guard (BT-BATCH-008/009/010/011).
+# Batch Entry acceptance/recovery source guard (BT-BATCH-008/009/010/011/012).
 $batchViewText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\BatchEntryView.cs")
 $movementServicesText = Get-Content -Raw (Join-Path $root "src\BinTracker.Services\MovementServices.cs")
 if ($batchViewText -notmatch 'suppressPendingSelectionChanged = true' -or $batchViewText -notmatch 'pending\.CurrentCell = null') { Fail 'BT-BATCH-006 source gate failed: edit reset must suppress pending selection and clear CurrentCell.' }
 $batchStoreText = Get-Content -Raw (Join-Path $root "src\BinTracker.Services\FileBatchDraftStore.cs")
 $mainFormText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\MainForm.cs")
+$batchDraftTestsText = Get-Content -Raw (Join-Path $root "tests\BinTracker.UnitTests\BatchDraftTests.cs")
+$movementEntryTestsText = Get-Content -Raw (Join-Path $root "tests\BinTracker.IntegrationTests\MovementEntryCharacterizationTests.cs")
 if ($batchViewText -notmatch 'HasCurrentLineInput' -or
     $batchViewText -notmatch 'ClearCurrentLineEntry' -or
     $batchViewText -notmatch 'exitRequested' -or
@@ -626,18 +628,48 @@ if ($batchViewText -notmatch 'HasCurrentLineInput' -or
     $movementServicesText -notmatch 'RecoveryPromptPending' -or
     $movementServicesText -notmatch 'RecoveryDraftLastSavedAtUtc' -or
     $movementServicesText -notmatch 'MarkRecoveryPromptHandled' -or
+    $movementServicesText -notmatch 'CreateOwnedSaveRequest' -or
+    $movementServicesText -notmatch 'public Guid ClientOperationId \{ get; private set; \} = Guid\.NewGuid\(\)' -or
+    $movementServicesText -notmatch 'draftBatch\.ClientOperationId' -or
+    $movementServicesText -notmatch 'DraftOwnerUserId' -or
+    $movementServicesText -notmatch 'Only the persisted draft owner may save' -or
     $batchStoreText -notmatch 'LocalApplicationData' -or
     $batchStoreText -notmatch 'batch-entry-draft\.json' -or
     $batchStoreText -notmatch 'SavedAtUtc' -or
-    $batchStoreText -notmatch 'File\.Move\(temporaryPath, filePath, overwrite:\s*true\)' -or
+    $batchStoreText -notmatch 'MaximumFileBytes = 16 \* 1024 \* 1024' -or
+    $batchStoreText -notmatch 'MaximumLineCount = 10_000' -or
+    $batchStoreText -notmatch 'MaximumJsonDepth = 8' -or
+    $batchStoreText -notmatch 'CurrentSchemaVersion = 4' -or
+    $batchStoreText -notmatch 'RequireExpectedRevision' -or
+    $batchStoreText -notmatch '"Cleared"' -or
+    $batchStoreText -notmatch 'Guid\.NewGuid\(\):N' -or
+    $batchStoreText -notmatch 'FileMode\.CreateNew' -or
+    $batchStoreText -notmatch 'FileOptions\.WriteThrough' -or
+    $batchStoreText -notmatch 'Flush\(flushToDisk: true\)' -or
+    $batchStoreText -notmatch 'File\.Move\(temporaryPath, ownerPath, overwrite:\s*true\)' -or
+    $batchStoreText -notmatch 'File\.Move\(sourcePath, quarantinePath, overwrite:\s*false\)' -or
+    $batchStoreText -notmatch 'AcquirePublicationLease' -or
+    $batchDraftTestsText -notmatch 'User_switch_hides_and_blocks_prior_owner_then_owner_recovers_same_draft' -or
+    $batchDraftTestsText -notmatch 'Missing_invalid_foreign_or_ambiguous_ownership_fails_closed' -or
+    $batchDraftTestsText -notmatch 'Concurrent_unique_temporary_writers_publish_one_complete_revision' -or
+    $batchDraftTestsText -notmatch 'Concurrent_save_and_clear_for_same_owner_accept_exactly_one_revision' -or
+    $batchDraftTestsText -notmatch 'Stale_save_after_accepted_clear_cannot_resurrect_draft' -or
+    $batchDraftTestsText -notmatch 'Stale_clear_cannot_delete_newer_legitimate_save' -or
+    $batchDraftTestsText -notmatch 'Malformed_schema4_revision_state_and_operation_identity_fail_closed' -or
+    $batchDraftTestsText -notmatch 'Quarantine_failure_reports_truthfully_and_leaves_original_evidence' -or
+    $movementEntryTestsText -notmatch 'Committed_batch_with_failed_draft_cleanup_restarts_and_replays_without_duplicates' -or
+    $movementEntryTestsText -notmatch 'Uncommitted_owned_draft_retry_keeps_identity_and_can_commit_normally' -or
+    $batchViewText -match 'CreateOwnedSaveRequest\(Guid\.NewGuid\(\)\)' -or
+    $mainFormText -match 'CreateOwnedSaveRequest\(Guid\.NewGuid\(\)\)' -or
     $mainFormText -notmatch 'new BatchEntryView\(movements, session, appState, ShowDashboard\)' -or
+    $mainFormText -notmatch 'RecoveryDiagnostic' -or
     $mainFormText -notmatch 'HandleRecoveredBatchAsync' -or
     $mainFormText -notmatch 'SaveRecoveredBatchAsync' -or
     $mainFormText -notmatch 'RecoveredBatchAction\.Continue' -or
     $mainFormText -notmatch 'RecoveredBatchAction\.Save' -or
     $mainFormText -notmatch 'RecoveredBatchAction\.Discard' -or
     $mainFormText -notmatch 'SelectNavigationForPage\(page\)') {
-    Fail "Batch Entry source gate failed: BT-BATCH-008/009/010/011 Esc/reset/recovery implementation is incomplete."
+    Fail "Batch Entry source gate failed: BT-BATCH-008/009/010/011/012 Esc/reset/owned-recovery implementation is incomplete."
 }
 $recoveredDialogText = Get-Content -Raw (Join-Path $root "src\BinTracker.WinForms\RecoveredBatchDialog.cs")
 if ($recoveredDialogText -notmatch 'Continue Batch' -or

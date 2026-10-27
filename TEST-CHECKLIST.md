@@ -2,7 +2,7 @@
 
 Task 19's shared-snapshot prerequisite was reviewed/canonically verified at commit `930f2c77b1df7cd4629be2faff662750431854fe`; BT-20-P2 now includes that authority in normal schema17 composition. Windows/operator real preview/print and retained-database acceptance remain separate.
 
-Current baseline: **v0.5.0-alpha.17**
+Current baseline: **v0.5.0-alpha.18**
 
 This is the practical operator/release checklist. `docs/RequirementsAcceptanceRegister.md` remains the authoritative implementation/status ledger; historical candidate detail belongs in `docs/CHANGELOG.md` and `docs/DocumentationAudit.md`.
 
@@ -28,6 +28,8 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 - [A] BT-SH-004-P3 completes alpha.15 Batch B: BT-SH-006/030 are `FIXED`. A Data-owned transaction runner and the existing transaction audit appender commit affected business/authentication state with required audit evidence as one unit. BT-ARCH-018-P4's exact candidate then passed the canonical BAT under SDK 10.0.402 with 265 permanent IDs across 27 Markdown files, restore/build success, 901/901 tests passed, 0 failed, 0 skipped and `BUILD SUCCESSFUL`; it is committed and pushed as `9f2e6b6` with `master` equal to `origin/master`.
 
 - [S] BT-SH-004-P4 implements alpha.16 Batch C: BT-SH-015/016/039/040/044 are `FIXED` at static/focused-automated evidence level. Public mutation/report/import/planner enum inputs reject undefined values; persisted draft direction is validated; customer/container maxima are shared by Services/EF; accepted Unicode operational identifiers retain established trim/uppercase semantics; and quantity/balance/report arithmetic fails closed on overflow. Release build and focused regressions pass. Independent review and the exact-candidate operator BAT remain required.
+
+- [S] BT-SH-004-P6 plus FIX3 implement alpha.18 Batch E: BT-SH-012/013/014/036/037 are `FIXED` and BT-BATCH-010/011/012 remain `IMPLEMENTED-STATIC`. Services bind Continue/Save/Discard to stable persisted owner ID and one durable logical-draft operation ID; schema-4 revisioned Save/Clear compare-and-swap and payload-free tombstones prevent stale resurrection/deletion, while database exact replay prevents post-commit cleanup failure from duplicating a batch. Malformed/ownerless/unbounded input still fails closed and quarantine remains no-overwrite. Corrective focused results pass 43/43 draft, 22/22 movement-entry SQLite and 43/43 adjacent WinForms cases. Independent review and exact-candidate BAT remain required.
 
 - [A] BT-ARCH-018-P1 remediates the four accepted layer-audit findings: user administration lists a credential-free immutable Services DTO; developer database mutations require an authenticated Administrator in a Services facade before unchanged Data mechanics; public audit queries return DTOs while only internal Services appenders may write and CSV exports submit bounded typed intent; Monthly Summary and Movement History preserve displayed row order while retaining Services-supplied totals. Independent ChatGPT review passed with no blocking correction, and Jack/operator's exact-candidate canonical BAT passed audit/build with zero warnings/errors and 841/841 tests with none failed/skipped under SDK 10.0.401. Commit `cd53f9ca19de1a10ea9ec375b63e294fdddfad23` is the accepted implementation; the architecture gate is closed. No Windows UI acceptance or Security Hardening remediation is implied.
 
@@ -78,9 +80,9 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 - [A] Batch `Ctrl+Enter`, Tab/Shift+Tab, same-process draft retention and post-add reset/focus remain accepted.
 - [S] Batch pending Current/With Draft preview is implemented; no separate manual acceptance is claimed.
 - [R] Batch Enter/add/update/remove/Esc transitions never duplicate or resurrect a stale selected row; Dashboard navigation/highlight and retained draft remain correct.
-- [R] Crash/close recovery offers Continue Batch / Save Batch / Discard Batch in order; Save/Discard/Clear remove persisted state. History records a general three-action operator confirmation, but no explicit complete acceptance record covers every BT-BATCH-010/011 clause, so both permanent rows remain `IMPLEMENTED-STATIC`.
-- [P] Security Batch E fixes BT-SH-012 by implementing BT-BATCH-012 below WinForms: after User A persists a draft and logs out, User B cannot Continue, Save, Discard or see it as recoverable work; User A can recover the same draft after login.
-- [P] The same Batch E obligation rejects username/display-name substitution, Administrator bypass and malformed/missing ownership; Save Batch role authorization remains independent and implemented owner crash/restart recovery remains intact. BT-BATCH-012 is not a separate post-Communications milestone.
+- [R] Crash/close recovery offers Continue Batch / Save Batch / Discard Batch in order; Save/Discard/Clear remove recoverable payload by publishing a revisioned cleared tombstone. Automated tests cover stale Save/Clear arbitration and cleanup-failure replay, but no explicit complete Windows acceptance record covers every BT-BATCH-010/011 clause, so both permanent rows remain `IMPLEMENTED-STATIC`.
+- [S] Alpha.18 Security Batch E implements BT-BATCH-012 below WinForms: after User A persists/logs out, User B cannot Continue, Save, Discard or see that work; User A recovers the identical draft. Stable ID—not username/display name or Administrator role—controls ownership.
+- [S] Missing/invalid/foreign/duplicate and legacy-ownerless ownership fails closed; malformed/null/deep/oversized/excessive-line input never reaches recovery; Save Batch role authorization remains independent; unique temp/quarantine behavior preserves prior/evidentiary state. Broader BT-BATCH-010/011 manual acceptance remains open.
 - [R] Cancellation/late async loads cannot restore Update Line after Esc/Clear.
 - [S] After current schema18 startup readiness (retaining schema17 lineage semantics), normal eligible Single/Batch saves atomically create complete generation-zero lineage or nothing; native Single also persists its typed response receipt. Windows/operator acceptance remains pending.
 
@@ -147,11 +149,11 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 
 ## Remaining pre-v1 product and release gates
 
-- [P] Complete Security Hardening Batches C–H; Batch E also satisfies BT-BATCH-012. After hardening closes, implement Google Workspace email + Texto SMS Communications first, then Container Type ordering, Branding, Dashboard, analytics and Backup/Restore.
+- [P] Complete Security Hardening Batches F–H. After hardening closes, implement Google Workspace email + Texto SMS Communications first, then Container Type ordering, Branding, Dashboard, analytics and Backup/Restore.
 - [P] Dashboard design discussion precedes implementation; then validate KPIs, attention/drill-through, activity, summaries, charts/ageing and display layouts.
 - [P] Google Workspace email + Texto SMS delivery, templates, secure settings, manual/automatic sends, opt-out, history, retry/idempotency and audit.
 - [P] Production user-facing Backup/Restore, scheduled retention and recovery drill (separate from pre-lineage migration safety).
-- [P] Complete the four remaining Security/Data Integrity/Code Quality batches E–H. Accepted alpha.16 closed Batch C. Alpha.17 Batch D fixes BT-SH-038/043 at static/focused-automated evidence level through schema18 SQLite constraints, preflight, backup and rollback/retry coverage. Independent FIX2 review passed, and the pre-FIX2 exact-candidate operator BAT passed 959/959 with zero failed/skipped and a successful build under SDK 10.0.402. FIX2's necessary multi-document closure reconciliation is candidate-defining, so the exact final candidate still requires the canonical BAT. The 13 `CONFIRMED-V1` and 1 `REVIEW-V1` findings still block v1.
+- [P] Complete the three remaining Security/Data Integrity/Code Quality batches F–H. Alpha.18 Batch E fixes BT-SH-012/013/014/036/037 at static/focused-automated evidence level and implements BT-BATCH-012. The 8 `CONFIRMED-V1` and 1 `REVIEW-V1` findings still block v1; independent Batch-E review and exact-candidate canonical BAT remain pending.
 - [P] BT-REL-013 requires the real third-party/commercial-release compliance inventory, eligibility and notice/attribution review, asset provenance, explicit QuestPDF and SQLite/native decisions, SBOM-equivalent inventory, package validation and reviewed signoff. No legal conclusion is claimed until that work occurs.
 - [P] Resolve BT-AUD-006 v1 versus post-v1 scope, audit retention and the commercial activation decision. BT-PV1-009 remains `POST-V1`: either commercial v1 deliberately ships without activation or it must be rescheduled before commercial release; no option is selected.
 - [P] Installer/upgrade/deployment acceptance and full v1 production regression.

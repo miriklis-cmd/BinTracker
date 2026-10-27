@@ -247,6 +247,115 @@ public sealed class MovementEntryCharacterizationTests
         await AssertSchema16DormantAsync(db);
     }
 
+    [Fact]
+    public async Task Committed_batch_with_failed_draft_cleanup_restarts_and_replays_without_duplicates()
+    {
+        await using var harness = await Harness.CreateAsync();
+        using var drafts = new DraftFiles();
+        var firstState = new ApplicationState(drafts.Store, new DraftClock(), harness.User);
+        firstState.DraftBatch.MovementDate = new DateOnly(2026, 9, 1);
+        firstState.DraftBatch.MovementType = MovementType.Out;
+        firstState.DraftBatch.Lines.Add(new DraftMovementLine(
+            harness.ActiveCustomerId,
+            "ACTIVE",
+            "Active Customer",
+            1,
+            "Blue Bin",
+            3,
+            "batch-ref",
+            "line-note"));
+        firstState.PersistDraft();
+        var firstRequest = firstState.CreateOwnedSaveRequest("batch-note");
+
+        var committed = await harness.Movements.SaveBatchAsync(firstRequest);
+        using (var locked = new FileStream(
+                   drafts.OwnerPath(Harness.UserId),
+                   FileMode.Open,
+                   FileAccess.Read,
+                   FileShare.Read))
+        {
+            var cleanupFailure = Record.Exception(firstState.ClearDraft);
+            Assert.True(cleanupFailure is IOException or UnauthorizedAccessException);
+            Assert.True(firstState.DraftBatch.HasLines);
+        }
+
+        var restartedState = new ApplicationState(drafts.Store, new DraftClock(), harness.User);
+        Assert.True(restartedState.RecoveryPromptPending);
+        var replayRequest = restartedState.CreateOwnedSaveRequest("batch-note");
+        Assert.Equal(firstRequest.ClientOperationId, replayRequest.ClientOperationId);
+
+        var replayed = await harness.Movements.SaveBatchAsync(replayRequest);
+        Assert.Equal(committed, replayed);
+        restartedState.ClearDraft();
+        Assert.Null(drafts.Store.Load(Harness.UserId).Draft);
+
+        restartedState.DraftBatch.MovementDate = new DateOnly(2026, 9, 1);
+        restartedState.DraftBatch.MovementType = MovementType.Out;
+        restartedState.DraftBatch.Lines.Add(new DraftMovementLine(
+            harness.ActiveCustomerId,
+            "ACTIVE",
+            "Active Customer",
+            1,
+            "Blue Bin",
+            2,
+            null,
+            null));
+        restartedState.PersistDraft();
+        var freshRequest = restartedState.CreateOwnedSaveRequest();
+        Assert.NotEqual(firstRequest.ClientOperationId, freshRequest.ClientOperationId);
+        var fresh = await harness.Movements.SaveBatchAsync(freshRequest);
+        restartedState.ClearDraft();
+
+        await using var db = harness.CreateContext();
+        var batches = await db.MovementBatches.AsNoTracking().ToListAsync();
+        Assert.Equal(2, batches.Count);
+        Assert.Single(batches, x => x.ClientOperationId == firstRequest.ClientOperationId);
+        Assert.Single(batches, x => x.ClientOperationId == freshRequest.ClientOperationId);
+        Assert.Equal(2, await db.BinMovements.AsNoTracking().CountAsync());
+        var audits = await db.AuditEvents.AsNoTracking()
+            .Where(x => x.Action == "MOVEMENT_BATCH_RECORDED")
+            .ToListAsync();
+        Assert.Equal(2, audits.Count);
+        Assert.Single(audits, x => x.EntityId == committed.BatchId.ToString());
+        Assert.Single(audits, x => x.EntityId == fresh.BatchId.ToString());
+        Assert.Null(drafts.Store.Load(Harness.UserId).Draft);
+    }
+
+    [Fact]
+    public async Task Uncommitted_owned_draft_retry_keeps_identity_and_can_commit_normally()
+    {
+        await using var harness = await Harness.CreateAsync();
+        using var drafts = new DraftFiles();
+        var firstState = new ApplicationState(drafts.Store, new DraftClock(), harness.User);
+        firstState.DraftBatch.MovementDate = new DateOnly(2026, 9, 1);
+        firstState.DraftBatch.MovementType = MovementType.Out;
+        firstState.DraftBatch.Lines.Add(new DraftMovementLine(
+            harness.ActiveCustomerId,
+            "ACTIVE",
+            "Active Customer",
+            1,
+            "Blue Bin",
+            4,
+            null,
+            null));
+        firstState.PersistDraft();
+        var firstRequest = firstState.CreateOwnedSaveRequest();
+        harness.FailSaveChangesOn(1);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            harness.Movements.SaveBatchAsync(firstRequest));
+        await harness.AssertNoArtifactsAsync();
+
+        var restartedState = new ApplicationState(drafts.Store, new DraftClock(), harness.User);
+        var retryRequest = restartedState.CreateOwnedSaveRequest();
+        Assert.Equal(firstRequest.ClientOperationId, retryRequest.ClientOperationId);
+        var result = await harness.Movements.SaveBatchAsync(retryRequest);
+
+        Assert.True(result.BatchId > 0);
+        Assert.Equal(1, result.LineCount);
+        Assert.Equal(4, result.TotalQuantity);
+    }
+
     [Theory]
     [InlineData(false, UserRole.Operator)]
     [InlineData(true, UserRole.Viewer)]
@@ -258,9 +367,43 @@ public sealed class MovementEntryCharacterizationTests
         harness.User.SetAccess(authenticated, role);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            harness.Movements.SaveBatchAsync(BatchRequest(harness)));
+            harness.Movements.SaveBatchAsync(BatchRequest(harness) with
+            {
+                DraftOwnerUserId = authenticated ? Harness.UserId : null
+            }));
 
         await harness.AssertNoArtifactsAsync();
+    }
+
+    [Theory]
+    [InlineData(UserRole.Operator)]
+    [InlineData(UserRole.Administrator)]
+    public async Task Persisted_draft_owner_mismatch_is_denied_below_presentation(
+        UserRole role)
+    {
+        await using var harness = await Harness.CreateAsync();
+        harness.User.SetAccess(authenticated: true, role);
+        var request = BatchRequest(harness) with
+        {
+            DraftOwnerUserId = Harness.UserId + 1
+        };
+
+        var error = await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            harness.Movements.SaveBatchAsync(request));
+
+        Assert.Contains("draft owner", error.Message, StringComparison.OrdinalIgnoreCase);
+        await harness.AssertNoArtifactsAsync();
+    }
+
+    [Fact]
+    public async Task Persisted_draft_owner_match_still_requires_and_accepts_operational_role()
+    {
+        await using var harness = await Harness.CreateAsync();
+        var result = await harness.Movements.SaveBatchAsync(
+            BatchRequest(harness) with { DraftOwnerUserId = Harness.UserId });
+
+        Assert.True(result.BatchId > 0);
+        Assert.Equal(1, result.LineCount);
     }
 
     [Theory]
@@ -339,6 +482,37 @@ public sealed class MovementEntryCharacterizationTests
         Assert.Null(movement.ImportRunId);
         Assert.Null(movement.ReversesMovementId);
         Assert.Null(movement.CorrectedByMovementId);
+    }
+
+    private sealed class DraftClock : IBusinessClock
+    {
+        public DateTime UtcNow => Harness.UtcNow;
+        public DateTime LocalNow => UtcNow;
+        public DateOnly Today => new(2026, 9, 2);
+        public string TimeZoneId => "UTC";
+    }
+
+    private sealed class DraftFiles : IDisposable
+    {
+        public DraftFiles()
+        {
+            DirectoryPath = Path.Combine(Path.GetTempPath(), $"BinTrackerMovementDrafts-{Guid.NewGuid():N}");
+            LegacyPath = Path.Combine(DirectoryPath, "batch-entry-draft.json");
+            Store = new FileBatchDraftStore(LegacyPath);
+        }
+
+        public string DirectoryPath { get; }
+        public string LegacyPath { get; }
+        public FileBatchDraftStore Store { get; }
+
+        public string OwnerPath(int ownerUserId) =>
+            Path.Combine(DirectoryPath, $"batch-entry-draft.user-{ownerUserId}.json");
+
+        public void Dispose()
+        {
+            if (Directory.Exists(DirectoryPath))
+                Directory.Delete(DirectoryPath, recursive: true);
+        }
     }
 
     private static async Task AssertSchema16DormantAsync(BinTrackerDbContext db)

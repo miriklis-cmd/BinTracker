@@ -1,3 +1,15 @@
+## v0.5.0-alpha.18 (26 October 2026)
+
+- Corrected the Batch E Save/Clear race with schema-4 owner envelopes, expected-revision compare-and-swap under one owner lease and atomic payload-free clear tombstones. Accepted Clear fences stale Save; newer accepted Save fences stale Clear; different owners remain independent.
+- Persisted one `ClientOperationId` per logical draft and routed both WinForms Save paths through it. A committed batch whose recovery cleanup fails now survives restart as an idempotent replay of the original database batch/audit, while accepted Clear creates a distinct identity for genuine new work. Schema-3 owned recovery upgrades before execution.
+- Added deterministic concurrency/failure/restart and schema-4 adversarial coverage. Corrective focused Release results pass 43/43 draft unit, 22/22 movement-entry SQLite and 43/43 adjacent WinForms cases; full operator BAT and manual BT-BATCH-010/011 acceptance remain pending.
+- Completed Security Hardening Batch E in source: BT-SH-012/013/014/036/037 are fixed and BT-BATCH-012 is implemented-static through stable persisted-user-ID ownership below WinForms.
+- Replaced the shared draft slot with owner-specific files, now schema-4 after FIX3. Services detach on account changes; owner-only Continue/Save/Discard uses exact stable ID; movement save rechecks owner after operational authorization; username/display/role/Administrator status cannot take over another draft.
+- Preserved legacy ownerless and corrupt evidence through collision-resistant no-overwrite quarantine, including truthful diagnostics when quarantine fails. Added exact malformed-graph validation plus 16 MiB, 10,000-line and depth-8 recovery budgets with no partial recovery or silent truncation.
+- Replaced the fixed `.tmp` with create-new GUID temporary files, durable flush, exclusive publication ownership and atomic replacement. Concurrent/stale temp and locked publication/discard failures preserve a valid prior draft or return controlled failure.
+- Initial P6 evidence added cross-user, stable-ID, Administrator, malformed/ambiguous ownership, legacy, malformed graph, resource-bound, concurrency, interruption and quarantine regression coverage: 35/35 unit, 20/20 integration and 43/43 adjacent WinForms. FIX3's expanded final focused counts and additional integrity cases are recorded above.
+- Advanced Version/InformationalVersion from alpha.17 to alpha.18 while retaining AssemblyVersion/FileVersion `0.5.0.0`. Independent review and exact-candidate canonical BAT remain pending; no real/customer data or Git refs were changed.
+
 ## v0.5.0-alpha.17 (23 October 2026)
 
 - Completed Security Hardening Batch D in source: BT-SH-038 and BT-SH-043 are fixed by the governed schema18 SQLite integrity migration.
@@ -5,7 +17,7 @@
 - Added database enforcement that every `ApplicationSettings` row has ID 1, while preserving normal singleton creation/update behavior.
 - Extended startup/replacement classification, preflight, verified backup, atomic migration, postflight and retry behavior from schema17 to schema18 without changing accepted lineage identities, relationships, projection/mutation semantics, indexes, foreign keys, audit or business rows.
 - Added focused real-SQLite tests for exact/oversize writes, Unicode, singleton corruption, fresh/upgrade paths, malformed retained data, constraint weakening, interruption rollback, postcommit recovery and preservation.
-- Advanced Version/InformationalVersion from alpha.16 to alpha.17 while retaining AssemblyVersion/FileVersion `0.5.0.0`. Independent FIX2 review passed, and the pre-FIX2 exact candidate passed the operator BAT 959/959 under SDK 10.0.402. FIX2's necessary multi-document closure reconciliation is candidate-defining, so the exact final candidate still requires the canonical BAT.
+- Advanced Version/InformationalVersion from alpha.16 to alpha.17 while retaining AssemblyVersion/FileVersion `0.5.0.0`. Independent FIX2 review/input/handoff validation and the accepted exact-candidate operator BAT passed 959/959 under SDK 10.0.402; commit `462266c1adbfc741dcc957fe7d267406cf915fd3` is the pushed alpha.17 checkpoint.
 
 ## v0.5.0-alpha.16 (20 October 2026)
 
