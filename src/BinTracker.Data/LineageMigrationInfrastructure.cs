@@ -136,12 +136,21 @@ public sealed class PendingDatabaseOperationConflictProbe : IDatabaseOperationCo
 
     internal PendingDatabaseOperationClaim? TryClaim(string databasePath)
     {
-        if (!File.Exists(markerPath)) return null;
-
+        FileStream? publicationLease = null;
         FileStream? claimLock = null;
         FileStream? stream = null;
         try
         {
+            // Initial staging and startup claim use one stable sibling lease. A
+            // startup arriving while staging is still flushing waits and then
+            // observes either the complete marker or no operation at all.
+            publicationLease = AtomicFilePublication.AcquireLease(markerPath);
+            if (!File.Exists(markerPath))
+            {
+                publicationLease.Dispose();
+                return null;
+            }
+
             claimLock = new FileStream(claimPath, FileMode.CreateNew, FileAccess.ReadWrite,
                 FileShare.None, bufferSize: 1, FileOptions.DeleteOnClose | FileOptions.WriteThrough);
             stream = new FileStream(markerPath, FileMode.Open, FileAccess.ReadWrite,
@@ -149,19 +158,22 @@ public sealed class PendingDatabaseOperationConflictProbe : IDatabaseOperationCo
             var operation = ValidatedPendingDatabaseOperation.Read(
                 stream, markerPath, databasePath);
 
-            var created = new PendingDatabaseOperationClaim(markerPath, stream, claimLock, operation,
+            var created = new PendingDatabaseOperationClaim(markerPath, stream, claimLock,
+                publicationLease, operation,
                 () => Interlocked.Exchange(ref claim, null), beforeCleanup, beforeStatePersist);
             if (Interlocked.CompareExchange(ref claim, created, null) is not null)
                 throw new InvalidOperationException(
                     "The pending developer database operation is already being processed.");
             stream = null;
             claimLock = null;
+            publicationLease = null;
             return created;
         }
         catch (Exception ex)
         {
             stream?.Dispose();
             claimLock?.Dispose();
+            publicationLease?.Dispose();
             throw new DatabaseUpgradeUnavailableException(
                 DatabaseUpgradeUnavailableReason.PendingDatabaseOperation,
                 "The pending BinTracker database operation could not be claimed and validated.", ex);
@@ -171,6 +183,7 @@ public sealed class PendingDatabaseOperationConflictProbe : IDatabaseOperationCo
     public void EnsureNoConflict(string databasePath)
     {
         if (claim?.IsActive == true) return;
+        using var publicationLease = AtomicFilePublication.AcquireLease(markerPath);
         if (File.Exists(markerPath))
         {
             throw new DatabaseUpgradeUnavailableException(

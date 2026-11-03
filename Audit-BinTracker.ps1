@@ -324,10 +324,10 @@ $securityCounts = @{}
 foreach ($disposition in $allowedSecurityDispositions) {
     $securityCounts[$disposition] = @($securityRows | Where-Object { $_.Groups[2].Value -eq $disposition }).Count
 }
-if ($securityCounts['FIXED'] -ne 28 -or $securityCounts['CONFIRMED-V1'] -ne 8 -or
+if ($securityCounts['FIXED'] -ne 32 -or $securityCounts['CONFIRMED-V1'] -ne 4 -or
     $securityCounts['REVIEW-V1'] -ne 1 -or $securityCounts['POST-V1'] -ne 11 -or
     $securityCounts['NOT-APPLICABLE'] -ne 2) {
-    Fail "Security disposition totals must be 28 FIXED / 8 CONFIRMED-V1 / 1 REVIEW-V1 / 11 POST-V1 / 2 NOT-APPLICABLE."
+    Fail "Security disposition totals must be 32 FIXED / 4 CONFIRMED-V1 / 1 REVIEW-V1 / 11 POST-V1 / 2 NOT-APPLICABLE."
 }
 $securityBlockers = $securityCounts['CONFIRMED-V1'] + $securityCounts['REVIEW-V1']
 $coverageSecuritySummary = (Get-Content -Raw -LiteralPath 'docs/RoadmapCoverageMatrix.md').Replace('`', '')
@@ -336,11 +336,31 @@ $expectedSecurityTotals = "$($securityCounts['FIXED']) FIXED, $($securityCounts[
 foreach ($summary in @($coverageSecuritySummary, $debtSecuritySummary)) {
     if ($summary -notmatch [regex]::Escape($expectedSecurityTotals)) { Fail 'Current security summary disagrees with computed disposition totals.' }
     if ($summary -notmatch [regex]::Escape("$securityBlockers") -or $summary -notmatch 'block') { Fail 'Current security summary disagrees with the computed v1-blocker count.' }
-    if ($summary -notmatch 'Batch(?:es)? F') { Fail 'Current security summary must name Batch F among the remaining security batches.' }
+    if ($summary -notmatch 'Batch(?:es)? G') { Fail 'Current security summary must name Batch G among the remaining security batches.' }
 }
-foreach ($fixedId in @('BT-SH-012','BT-SH-013','BT-SH-014','BT-SH-036','BT-SH-037','BT-SH-038','BT-SH-043')) {
+foreach ($fixedId in @('BT-SH-012','BT-SH-013','BT-SH-014','BT-SH-027','BT-SH-033','BT-SH-034','BT-SH-035','BT-SH-036','BT-SH-037','BT-SH-038','BT-SH-043')) {
     $row = $securityRows | Where-Object { $_.Groups[1].Value -eq $fixedId }
-    if ($row.Groups[2].Value -ne 'FIXED') { Fail "$fixedId must remain FIXED after Security Batch E." }
+    if ($row.Groups[2].Value -ne 'FIXED') { Fail "$fixedId must remain FIXED after Security Batch F." }
+}
+$batchFBackupText = Get-Content -Raw 'src/BinTracker.Data/DeveloperDatabaseService.cs'
+$batchFConfigurationText = Get-Content -Raw 'src/BinTracker.Data/DatabaseConfiguration.cs'
+$batchFPublicationText = Get-Content -Raw 'src/BinTracker.Data/AtomicFilePublication.cs'
+$batchFTests = Get-Content -Raw 'tests/BinTracker.IntegrationTests/SecurityBatchFFilesystemSafetyTests.cs'
+if ($batchFBackupText -notmatch 'SqliteConnectionStringBuilder' -or
+    $batchFBackupText -notmatch 'WindowsFileIdentity\.Get' -or
+    $batchFBackupText -notmatch 'File\.Move\(temporaryPath, fullDestination, overwrite: false\)' -or
+    $batchFBackupText -notmatch 'Backup destination already exists' -or
+    $batchFConfigurationText -match 'File\.WriteAllText' -or
+    $batchFBackupText -match 'File\.WriteAllText' -or
+    $batchFConfigurationText -notmatch 'AtomicFilePublication\.Write' -or
+    $batchFPublicationText -notmatch 'Flush\(flushToDisk: true\)' -or
+    $batchFPublicationText -notmatch 'File\.Replace' -or
+    $batchFTests -notmatch 'hard_link_alias' -or
+    $batchFTests -notmatch 'Reparse_point_directory_alias' -or
+    $batchFTests -notmatch 'Destination_created_during_backup' -or
+    $batchFTests -notmatch 'Interrupted_settings_publication' -or
+    $batchFTests -notmatch 'Concurrent_pending_operation_writers') {
+    Fail 'Security Batch F backup/configuration filesystem enforcement or focused evidence is incomplete.'
 }
 $schema18Text = Get-Content -Raw 'src/BinTracker.Data/SqliteSchema18Integrity.cs'
 $schema18Tests = Get-Content -Raw 'tests/BinTracker.IntegrationTests/SecurityBatchDDatabaseIntegrityTests.cs'

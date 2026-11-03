@@ -132,6 +132,7 @@ Alpha.18 automated acceptance covers User A persist/logout, User B owner-operati
 - BT-OPS-002: Restore requires explicit confirmation and database validation.
 - BT-OPS-003: Upgrades protect existing data and include recovery guidance.
 - BT-OPS-011/012: Lineage migration requires read-only per-database preflight plus a unique verified provider-consistent backup, hash/manifest/integrity/FK/schema/count equivalence and a tested stopped-client recovery route before any schema mutation.
+- Security Batch F hardens the current Administrator developer tools without claiming production BT-OPS-001 delivery: Data builds SQLite backup connections safely, rejects source aliases by Windows physical identity, never overwrites an existing destination, and publishes settings/pending-operation files only as flushed complete atomic siblings under one cross-process writer lease. Existing/concurrently created files and prior valid control evidence survive failure.
 
 ## Central service and concurrency
 

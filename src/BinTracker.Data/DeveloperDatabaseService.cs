@@ -186,12 +186,14 @@ internal sealed class PendingDatabaseOperationClaim : IDisposable
     private readonly string? stagedDatabasePath;
     private FileStream? stream;
     private FileStream? claimLock;
+    private FileStream? publicationLease;
     private bool completed;
 
     internal PendingDatabaseOperationClaim(
         string markerPath,
         FileStream stream,
         FileStream claimLock,
+        FileStream publicationLease,
         ValidatedPendingDatabaseOperation operation,
         Action release,
         Action<PendingDatabaseOperationCleanupStep>? beforeCleanup = null,
@@ -200,6 +202,7 @@ internal sealed class PendingDatabaseOperationClaim : IDisposable
         this.markerPath = markerPath;
         this.stream = stream;
         this.claimLock = claimLock;
+        this.publicationLease = publicationLease;
         Operation = operation.Operation;
         stagedDatabasePath = operation.StagedDatabasePath;
         this.release = release;
@@ -276,32 +279,32 @@ internal sealed class PendingDatabaseOperationClaim : IDisposable
     private void Persist(PendingDatabaseOperation operation)
     {
         _ = stream ?? throw new ObjectDisposedException(nameof(PendingDatabaseOperationClaim));
-        var temporaryPath = markerPath + $".{Guid.NewGuid():N}.tmp";
-        FileStream? replacementStream = null;
+        _ = publicationLease ?? throw new ObjectDisposedException(nameof(PendingDatabaseOperationClaim));
+
         try
         {
-            replacementStream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.ReadWrite,
-                FileShare.Delete, bufferSize: 4096, FileOptions.WriteThrough);
-            JsonSerializer.Serialize(replacementStream, operation);
-            replacementStream.Flush(flushToDisk: true);
-            beforeStatePersist?.Invoke(operation.State);
-
-            // The claim lock remains held while the marker stream is exchanged.
-            // The previous marker stays complete until this same-volume replacement
-            // publishes the fully flushed successor.
-            replacementStream.Dispose();
-            replacementStream = null;
-            Interlocked.Exchange(ref stream, null)?.Dispose();
-            File.Replace(temporaryPath, markerPath, destinationBackupFileName: null,
-                ignoreMetadataErrors: false);
+            AtomicFilePublication.Write(
+                markerPath,
+                replacement => JsonSerializer.Serialize(replacement, operation),
+                AtomicFilePublicationMode.ReplaceExisting,
+                publicationLease,
+                () =>
+                {
+                    beforeStatePersist?.Invoke(operation.State);
+                    Interlocked.Exchange(ref stream, null)?.Dispose();
+                });
             Interlocked.Exchange(ref stream, new FileStream(markerPath, FileMode.Open,
                 FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete));
             Operation = operation;
         }
-        finally
+        catch
         {
-            replacementStream?.Dispose();
-            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            if (stream is null)
+            {
+                Interlocked.Exchange(ref stream, new FileStream(markerPath, FileMode.Open,
+                    FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete));
+            }
+            throw;
         }
     }
 
@@ -311,16 +314,59 @@ internal sealed class PendingDatabaseOperationClaim : IDisposable
     {
         Interlocked.Exchange(ref stream, null)?.Dispose();
         Interlocked.Exchange(ref claimLock, null)?.Dispose();
+        Interlocked.Exchange(ref publicationLease, null)?.Dispose();
         release();
     }
 }
 
+internal sealed class DeveloperDatabaseFailureHooks
+{
+    internal Action? BeforeBackupPublication { get; init; }
+    internal Action? BeforeSettingsOrMarkerPublication { get; init; }
+}
+
 internal sealed class DeveloperDatabaseService : IDeveloperDatabaseService
 {
+    private readonly DatabaseProvider provider;
+    private readonly string activeDatabasePath;
+    private readonly string connectionString;
+    private readonly string developerBackupFolder;
+    private readonly string pendingOperationPath;
+    private readonly string pendingDatabasePath;
+    private readonly DeveloperDatabaseFailureHooks? failureHooks;
+
+    public DeveloperDatabaseService()
+        : this(
+            DatabaseSetup.Settings,
+            DatabaseConfiguration.DeveloperBackupFolder,
+            DatabaseConfiguration.PendingDatabaseOperationPath,
+            DatabaseConfiguration.PendingDatabaseFilePath)
+    {
+    }
+
+    internal DeveloperDatabaseService(
+        DatabaseSettings settings,
+        string developerBackupFolder,
+        string pendingOperationPath,
+        string pendingDatabasePath,
+        DeveloperDatabaseFailureHooks? failureHooks = null)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        provider = settings.Provider;
+        connectionString = settings.ConnectionString ??
+            DatabaseConfiguration.CreateSqliteConnectionString(DatabaseConfiguration.DefaultSqlitePath);
+        activeDatabasePath = DatabaseConfiguration.GetSqlitePath(connectionString)
+            ?? DatabaseConfiguration.DefaultSqlitePath;
+        this.developerBackupFolder = Path.GetFullPath(developerBackupFolder);
+        this.pendingOperationPath = Path.GetFullPath(pendingOperationPath);
+        this.pendingDatabasePath = Path.GetFullPath(pendingDatabasePath);
+        this.failureHooks = failureHooks;
+    }
+
     public DeveloperDatabaseStatus GetStatus() => new(
-        DatabaseSetup.ActiveSqlitePath,
-        DatabaseConfiguration.DeveloperBackupFolder,
-        File.Exists(DatabaseConfiguration.PendingDatabaseOperationPath));
+        activeDatabasePath,
+        developerBackupFolder,
+        File.Exists(pendingOperationPath));
 
     public async Task BackupAsync(
         string destinationPath,
@@ -331,29 +377,95 @@ internal sealed class DeveloperDatabaseService : IDeveloperDatabaseService
         if (string.IsNullOrWhiteSpace(destinationPath))
             throw new ArgumentException("Choose a backup destination.");
 
-        var activePath = DatabaseSetup.ActiveSqlitePath;
-        var fullDestination = Path.GetFullPath(destinationPath);
+        var requestedDestination = Path.GetFullPath(destinationPath);
+        var destinationName = Path.GetFileName(requestedDestination);
+        if (string.IsNullOrWhiteSpace(destinationName))
+            throw new InvalidOperationException("Backup destination filename is invalid.");
 
-        if (Path.GetFullPath(activePath).Equals(
-                fullDestination,
-                StringComparison.OrdinalIgnoreCase))
+        var requestedDirectory = Path.GetDirectoryName(requestedDestination)
+            ?? throw new InvalidOperationException("Backup destination folder is invalid.");
+        Directory.CreateDirectory(requestedDirectory);
+        var destinationDirectory = SqliteMigrationPath.NormalizeExistingDirectory(requestedDirectory);
+        var fullDestination = Path.Combine(destinationDirectory, destinationName);
+        var sourcePath = SqliteMigrationPath.NormalizeExistingDatabase(activeDatabasePath);
+        var sourceIdentity = WindowsFileIdentity.Get(sourcePath);
+
+        RejectExistingBackupDestination(fullDestination, sourceIdentity);
+
+        var temporaryPath = Path.Combine(
+            destinationDirectory,
+            $".bintracker-backup-{Guid.NewGuid():N}.tmp");
+        var published = false;
+        Exception? failure = null;
+        try
         {
-            throw new InvalidOperationException(
-                "Backup destination cannot be the active BinTracker database.");
+            string temporaryIdentity;
+            using (var pin = new FileStream(
+                temporaryPath,
+                FileMode.CreateNew,
+                FileAccess.ReadWrite,
+                FileShare.ReadWrite,
+                bufferSize: 4096,
+                FileOptions.WriteThrough))
+            {
+                temporaryIdentity = WindowsFileIdentity.Get(temporaryPath);
+                if (temporaryIdentity == sourceIdentity)
+                    throw new InvalidOperationException(
+                        "Backup temporary storage resolves to the active BinTracker database.");
+
+                await using (var source = SqliteUtf16Length.CreateConnection(
+                    BuildUnpooledSourceConnectionString(connectionString)))
+                await using (var destination = SqliteUtf16Length.CreateConnection(
+                    BuildBackupConnectionString(temporaryPath)))
+                {
+                    await source.OpenAsync(cancellationToken);
+                    await destination.OpenAsync(cancellationToken);
+                    if (WindowsFileIdentity.Get(sourcePath) != sourceIdentity ||
+                        WindowsFileIdentity.Get(temporaryPath) != temporaryIdentity)
+                    {
+                        throw new IOException("Backup source or temporary destination identity changed.");
+                    }
+
+                    source.BackupDatabase(destination);
+                }
+
+                pin.Flush(flushToDisk: true);
+                if (WindowsFileIdentity.Get(sourcePath) != sourceIdentity ||
+                    WindowsFileIdentity.Get(temporaryPath) != temporaryIdentity)
+                {
+                    throw new IOException("Backup source or temporary destination identity changed.");
+                }
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            failureHooks?.BeforeBackupPublication?.Invoke();
+            RejectExistingBackupDestination(fullDestination, sourceIdentity);
+            if (WindowsFileIdentity.Get(temporaryPath) != temporaryIdentity)
+                throw new IOException("Backup temporary destination identity changed before publication.");
+
+            File.Move(temporaryPath, fullDestination, overwrite: false);
+            published = true;
+            var publishedIdentity = WindowsFileIdentity.Get(fullDestination);
+            if (publishedIdentity != temporaryIdentity || publishedIdentity == sourceIdentity)
+                throw new IOException("The published backup identity could not be proven.");
         }
-
-        Directory.CreateDirectory(
-            Path.GetDirectoryName(fullDestination)
-            ?? throw new InvalidOperationException("Backup destination folder is invalid."));
-
-        await using var source = SqliteUtf16Length.CreateConnection(DatabaseSetup.ConnectionString);
-        await using var destination =
-            SqliteUtf16Length.CreateConnection($"Data Source={fullDestination}");
-
-        await source.OpenAsync(cancellationToken);
-        await destination.OpenAsync(cancellationToken);
-
-        source.BackupDatabase(destination);
+        catch (Exception ex)
+        {
+            failure = ex;
+            throw;
+        }
+        finally
+        {
+            try
+            {
+                if (!published && File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            }
+            catch when (failure is not null)
+            {
+                // Do not hide the operation failure. This unique unpublished file
+                // is never authoritative and a later maintenance pass may remove it.
+            }
+        }
     }
 
     public async Task<string> StageLoadAsync(
@@ -367,20 +479,27 @@ internal sealed class DeveloperDatabaseService : IDeveloperDatabaseService
 
         await ValidateDatabaseAsync(sourcePath, cancellationToken);
 
-        var automaticBackup = await CreateAutomaticBackupAsync(
-            "before-load",
-            cancellationToken);
+        using var publicationLease = AtomicFilePublication.AcquireLease(pendingOperationPath);
+        RejectPendingOperation();
 
-        var staged = DatabaseConfiguration.PendingDatabaseFilePath;
-        Directory.CreateDirectory(DatabaseConfiguration.AppFolder);
-        File.Copy(sourcePath, staged, overwrite: true);
+        var automaticBackup = await CreateAutomaticBackupAsync("before-load", cancellationToken);
+
+        AtomicFilePublication.Write(
+            pendingDatabasePath,
+            stream =>
+            {
+                using var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read,
+                    FileShare.Read, bufferSize: 81920, FileOptions.SequentialScan);
+                source.CopyTo(stream);
+            },
+            AtomicFilePublicationMode.CreateOrReplace);
 
         WritePending(new PendingDatabaseOperation(
             PendingDatabaseOperationType.Load,
-            DatabaseSetup.ActiveSqlitePath,
-            staged,
+            activeDatabasePath,
+            pendingDatabasePath,
             automaticBackup,
-            DateTime.UtcNow));
+            DateTime.UtcNow), publicationLease);
 
         return automaticBackup;
     }
@@ -390,16 +509,17 @@ internal sealed class DeveloperDatabaseService : IDeveloperDatabaseService
     {
         EnsureSqlite();
 
-        var automaticBackup = await CreateAutomaticBackupAsync(
-            "before-fresh",
-            cancellationToken);
+        using var publicationLease = AtomicFilePublication.AcquireLease(pendingOperationPath);
+        RejectPendingOperation();
+
+        var automaticBackup = await CreateAutomaticBackupAsync("before-fresh", cancellationToken);
 
         WritePending(new PendingDatabaseOperation(
             PendingDatabaseOperationType.Fresh,
-            DatabaseSetup.ActiveSqlitePath,
+            activeDatabasePath,
             null,
             automaticBackup,
-            DateTime.UtcNow));
+            DateTime.UtcNow), publicationLease);
 
         return automaticBackup;
     }
@@ -413,7 +533,8 @@ internal sealed class DeveloperDatabaseService : IDeveloperDatabaseService
             var builder = new SqliteConnectionStringBuilder
             {
                 DataSource = Path.GetFullPath(path),
-                Mode = SqliteOpenMode.ReadOnly
+                Mode = SqliteOpenMode.ReadOnly,
+                Pooling = false
             };
 
             await using var connection = SqliteUtf16Length.CreateConnection(builder.ConnectionString);
@@ -451,30 +572,68 @@ internal sealed class DeveloperDatabaseService : IDeveloperDatabaseService
         string reason,
         CancellationToken cancellationToken)
     {
-        Directory.CreateDirectory(DatabaseConfiguration.DeveloperBackupFolder);
+        Directory.CreateDirectory(developerBackupFolder);
 
         var file = Path.Combine(
-            DatabaseConfiguration.DeveloperBackupFolder,
-            $"BinTracker-{reason}-{DateTime.Now:yyyyMMdd-HHmmss}.db");
+            developerBackupFolder,
+            $"BinTracker-{reason}-{DateTime.UtcNow:yyyyMMddTHHmmssfffZ}-{Guid.NewGuid():N}.db");
 
         await BackupAsync(file, cancellationToken);
         return file;
     }
 
-    private static void WritePending(PendingDatabaseOperation operation)
+    private void WritePending(PendingDatabaseOperation operation, FileStream publicationLease)
     {
-        Directory.CreateDirectory(DatabaseConfiguration.AppFolder);
-
-        File.WriteAllText(
-            DatabaseConfiguration.PendingDatabaseOperationPath,
-            JsonSerializer.Serialize(
+        AtomicFilePublication.Write(
+            pendingOperationPath,
+            stream => JsonSerializer.Serialize(
+                stream,
                 operation,
-                new JsonSerializerOptions { WriteIndented = true }));
+                new JsonSerializerOptions { WriteIndented = true }),
+            AtomicFilePublicationMode.CreateNew,
+            publicationLease,
+            failureHooks?.BeforeSettingsOrMarkerPublication);
     }
 
-    private static void EnsureSqlite()
+    private void RejectPendingOperation()
     {
-        if (DatabaseSetup.Settings.Provider != DatabaseProvider.Sqlite)
+        if (File.Exists(pendingOperationPath))
+            throw new InvalidOperationException(
+                "A developer database operation is already pending restart.");
+    }
+
+    private static void RejectExistingBackupDestination(string path, string sourceIdentity)
+    {
+        if (!File.Exists(path)) return;
+
+        if (WindowsFileIdentity.Get(path) == sourceIdentity)
+            throw new InvalidOperationException(
+                "Backup destination resolves to the active BinTracker database.");
+
+        throw new IOException(
+            "Backup destination already exists. BinTracker never overwrites a backup or unrelated file.");
+    }
+
+    internal static string BuildBackupConnectionString(string path) =>
+        new SqliteConnectionStringBuilder
+        {
+            DataSource = path,
+            Mode = SqliteOpenMode.ReadWrite,
+            Pooling = false
+        }.ConnectionString;
+
+    private static string BuildUnpooledSourceConnectionString(string configuredConnectionString)
+    {
+        var builder = new SqliteConnectionStringBuilder(configuredConnectionString)
+        {
+            Pooling = false
+        };
+        return builder.ConnectionString;
+    }
+
+    private void EnsureSqlite()
+    {
+        if (provider != DatabaseProvider.Sqlite)
         {
             throw new NotSupportedException(
                 "Developer database backup/load currently supports SQLite only.");

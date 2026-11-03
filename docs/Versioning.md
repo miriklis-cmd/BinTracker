@@ -1,6 +1,6 @@
 # Versioning
 
-BinTracker currently uses semantic pre-release version `0.5.0-alpha.18`.
+BinTracker currently uses semantic pre-release version `0.5.0-alpha.19`.
 
 ## Single source of truth
 
@@ -9,7 +9,7 @@ The release version is defined in the repository root:
 `Directory.Build.props`
 
 ```xml
-<Version>0.5.0-alpha.18</Version>
+<Version>0.5.0-alpha.19</Version>
 ```
 
 The same value is used by:
@@ -106,7 +106,9 @@ Hard rule: **maximum two numeric components after `alpha`** for the new scheme.
 
 `0.5.0-alpha.17` is the accepted Security Hardening Batch D increment. It closes BT-SH-038/043 through governed schema18 SQLite string/singleton constraints, exact UTF-16 measurement, malformed-retained-data preflight, verified backup and atomic rollback/retry semantics. Independent FIX2 review/input/handoff validation passed; Jack/operator's exact accepted candidate passed the canonical BAT 959/959 with zero failed/skipped and a successful build, and the result was committed/pushed as `462266c1adbfc741dcc957fe7d267406cf915fd3`.
 
-`0.5.0-alpha.18` is the Security Hardening Batch E candidate. It closes BT-SH-012/013/014/036/037 at static/focused-automated evidence level and implements BT-BATCH-012 through stable-user-ID owner-specific drafts, Services owner enforcement, bounded exact recovery parsing, unique durable temporary publication and collision-resistant no-overwrite quarantine. FIX3 strengthens the same candidate with schema-4 monotonic Save/Clear fencing, payload-free clear tombstones and one durable `ClientOperationId` per logical draft so post-commit cleanup failure/restart replays exactly. It does not overwrite accepted alpha.17 evidence. Independent review and the exact-candidate canonical BAT remain required.
+`0.5.0-alpha.18` is the accepted Security Hardening Batch E milestone. It closes BT-SH-012/013/014/036/037 and implements BT-BATCH-012 through stable-user-ID owner-specific drafts, Services owner enforcement, bounded exact recovery parsing, unique durable temporary publication and collision-resistant no-overwrite quarantine. FIX3 strengthens the same candidate with schema-4 monotonic Save/Clear fencing, payload-free clear tombstones and one durable `ClientOperationId` per logical draft so post-commit cleanup failure/restart replays exactly. Independent review passed; the exact-candidate canonical BAT passed 998/998 with zero failed/skipped and a zero-warning/error build; commit `9bbb01a23a04e56a6f0513c34af5de95798a5ecc` is pushed.
+
+`0.5.0-alpha.19` is the Security Hardening Batch F candidate. It closes BT-SH-027/033/034/035 at static/focused-automated evidence level through Data-owned SQLite connection-string construction, Windows physical-file identity, an unconditional no-overwrite backup policy and leased flushed atomic settings/pending-marker publication. It preserves accepted alpha.18 evidence and keeps the distinct production Backup/Restore roadmap scope pending. Independent review and the exact-candidate canonical BAT remain required.
 
 Do not create forms such as:
 

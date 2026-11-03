@@ -1,4 +1,4 @@
-# BinTracker v0.5.0-alpha.18
+# BinTracker v0.5.0-alpha.19
 
 BinTracker is a .NET 8 Windows desktop application for tracking reusable container movements, customer/container balances, operational reporting and audited business activity.
 
@@ -43,7 +43,7 @@ Most important remaining items include:
 - dashboard operational pass;
 - Business Information branding expansion: logo + shared report/email output identity;
 - real Email/SMS reminder delivery;
-- the three remaining Security Hardening batches F–H after alpha.18 completed user-scoped resilient draft storage;
+- the two remaining Security Hardening batches G–H after accepted alpha.18 Batch E and alpha.19 Batch F filesystem hardening;
 - production backup/restore;
 - the unresolved BT-AUD-006 Audit search/filter/export release decision and commercial-v1 activation decision;
 - BT-REL-013 third-party/commercial-release compliance review, required notices/material and package validation;

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 
 namespace BinTracker.Data;
 
@@ -45,30 +46,34 @@ public static class DatabaseConfiguration
     public static string PendingDatabaseFilePath =>
         Path.Combine(AppFolder, "pending-database-load.db");
 
-    public static DatabaseSettings Load()
+    public static DatabaseSettings Load() => Load(SettingsPath, DefaultSqlitePath);
+
+    internal static DatabaseSettings Load(string settingsPath, string defaultSqlitePath)
     {
-        if (!File.Exists(SettingsPath))
+        var fullSettingsPath = Path.GetFullPath(settingsPath);
+        var fullDefaultPath = Path.GetFullPath(defaultSqlitePath);
+        if (!File.Exists(fullSettingsPath))
         {
             var defaults = new DatabaseSettings
             {
                 Provider = DatabaseProvider.Sqlite,
-                ConnectionString = $"Data Source={DefaultSqlitePath};Cache=Shared"
+                ConnectionString = CreateSqliteConnectionString(fullDefaultPath)
             };
 
-            Save(defaults);
+            Save(defaults, fullSettingsPath);
             return defaults;
         }
 
         try
         {
-            var json = File.ReadAllText(SettingsPath);
+            var json = File.ReadAllText(fullSettingsPath);
             var settings = JsonSerializer.Deserialize<DatabaseSettings>(json)
                 ?? throw new InvalidOperationException("Database settings are empty.");
 
             if (settings.Provider == DatabaseProvider.Sqlite &&
                 string.IsNullOrWhiteSpace(settings.ConnectionString))
             {
-                settings.ConnectionString = $"Data Source={DefaultSqlitePath};Cache=Shared";
+                settings.ConnectionString = CreateSqliteConnectionString(fullDefaultPath);
             }
 
             return settings;
@@ -76,18 +81,33 @@ public static class DatabaseConfiguration
         catch (Exception ex)
         {
             throw new InvalidOperationException(
-                $"Could not read database settings from '{SettingsPath}'.", ex);
+                $"Could not read database settings from '{fullSettingsPath}'.", ex);
         }
     }
 
     public static void Save(DatabaseSettings settings)
+        => Save(settings, SettingsPath);
+
+    internal static void Save(
+        DatabaseSettings settings,
+        string settingsPath,
+        Action? beforePublication = null)
     {
-        Directory.CreateDirectory(AppFolder);
+        ArgumentNullException.ThrowIfNull(settings);
         var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions
         {
             WriteIndented = true
         });
-        File.WriteAllText(SettingsPath, json);
+        AtomicFilePublication.Write(
+            settingsPath,
+            stream =>
+            {
+                using var writer = new StreamWriter(stream, leaveOpen: true);
+                writer.Write(json);
+                writer.Flush();
+            },
+            AtomicFilePublicationMode.CreateOrReplace,
+            beforePublication: beforePublication);
     }
 
     public static string GetStatusText(DatabaseSettings settings) =>
@@ -103,11 +123,13 @@ public static class DatabaseConfiguration
         if (string.IsNullOrWhiteSpace(connectionString))
             return null;
 
-        const string prefix = "Data Source=";
-        var part = connectionString
-            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .FirstOrDefault(x => x.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
-
-        return part is null ? null : part[prefix.Length..];
+        return new SqliteConnectionStringBuilder(connectionString).DataSource;
     }
+
+    internal static string CreateSqliteConnectionString(string path) =>
+        new SqliteConnectionStringBuilder
+        {
+            DataSource = Path.GetFullPath(path),
+            Cache = SqliteCacheMode.Shared
+        }.ConnectionString;
 }

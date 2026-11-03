@@ -1,12 +1,12 @@
 # BinTracker Requirements & Acceptance Register
 
-Current baseline: **v0.5.0-alpha.18**
+Current baseline: **v0.5.0-alpha.19**
 
 This is the permanent requirements ledger for BinTracker. A requirement may change status or scope, but it must not silently disappear. `docs/Roadmap.md` provides sequencing; this register provides requirement identity and acceptance state.
 
 ## V1 sequencing and commercial-release decisions — 18 October 2026
 
-Security Hardening remains the current hard gate. Alpha.18 Security Batch E implements the complete BT-BATCH-012 stable-user-ID draft-ownership contract and fixes BT-SH-012/013/014/036/037 at static/focused-automated evidence level; BT-BATCH-012 is not a separate post-hardening feature milestone. Batches F–H remain. After all Security Hardening batches close, Email, SMS & Customer Communications is the first feature milestone. Container Type ordering, Business Information & Branding, Dashboard, customer operational analytics/polish and Production Backup/Restore/Recovery follow in that order. Release closure then settles remaining explicit product/acceptance decisions, performs final security/audit/reliability review and the permanent third-party/commercial-release compliance gate, and completes installer/upgrade/deployment, full v1 acceptance and v1.0 release.
+Security Hardening remains the current hard gate. Accepted alpha.18 Security Batch E implements the complete BT-BATCH-012 stable-user-ID draft-ownership contract and fixes BT-SH-012/013/014/036/037; BT-BATCH-012 is not a separate post-hardening feature milestone. Alpha.19 Security Batch F fixes BT-SH-027/033/034/035 at static/focused-automated evidence level without claiming production Backup/Restore completion. Batches G–H remain. After all Security Hardening batches close, Email, SMS & Customer Communications is the first feature milestone. Container Type ordering, Business Information & Branding, Dashboard, customer operational analytics/polish and Production Backup/Restore/Recovery follow in that order. Release closure then settles remaining explicit product/acceptance decisions, performs final security/audit/reliability review and the permanent third-party/commercial-release compliance gate, and completes installer/upgrade/deployment, full v1 acceptance and v1.0 release.
 
 BT-PV1-009 remains `POST-V1`, but commercial-v1 activation is an explicit unresolved product decision: either commercial v1 intentionally ships without technical activation, or BT-PV1-009 must be rescheduled into v1 before commercial release. This register does not choose either outcome. Authenticated API/central-provider implementation remains post-v1.
 

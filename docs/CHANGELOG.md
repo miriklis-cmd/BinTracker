@@ -1,3 +1,9 @@
+## v0.5.0-alpha.19 (2 November 2026)
+
+- Completed Security Hardening Batch F in source: BT-SH-027/033/034/035 are fixed by Data-owned connection-string construction, Windows physical-file identity, unconditional no-overwrite backup publication and leased flushed atomic settings/pending-marker publication.
+- Added real Windows/SQLite coverage for hostile valid path characters, quote/delimiter builder round-trip, direct/hard-link/reparse aliases, existing and racing destinations, concurrent backup/settings/marker writers, interruption, locked/read-only targets, retained prior evidence, startup interpretation and normal Load staging.
+- Advanced Version/InformationalVersion from accepted alpha.18 to alpha.19 while retaining AssemblyVersion/FileVersion `0.5.0.0`. Independent review and exact-candidate canonical BAT remain pending; no real/customer data, package, deployment or Git refs were changed.
+
 ## v0.5.0-alpha.18 (26 October 2026)
 
 - Corrected the Batch E Save/Clear race with schema-4 owner envelopes, expected-revision compare-and-swap under one owner lease and atomic payload-free clear tombstones. Accepted Clear fences stale Save; newer accepted Save fences stale Clear; different owners remain independent.
@@ -8,7 +14,7 @@
 - Preserved legacy ownerless and corrupt evidence through collision-resistant no-overwrite quarantine, including truthful diagnostics when quarantine fails. Added exact malformed-graph validation plus 16 MiB, 10,000-line and depth-8 recovery budgets with no partial recovery or silent truncation.
 - Replaced the fixed `.tmp` with create-new GUID temporary files, durable flush, exclusive publication ownership and atomic replacement. Concurrent/stale temp and locked publication/discard failures preserve a valid prior draft or return controlled failure.
 - Initial P6 evidence added cross-user, stable-ID, Administrator, malformed/ambiguous ownership, legacy, malformed graph, resource-bound, concurrency, interruption and quarantine regression coverage: 35/35 unit, 20/20 integration and 43/43 adjacent WinForms. FIX3's expanded final focused counts and additional integrity cases are recorded above.
-- Advanced Version/InformationalVersion from alpha.17 to alpha.18 while retaining AssemblyVersion/FileVersion `0.5.0.0`. Independent review and exact-candidate canonical BAT remain pending; no real/customer data or Git refs were changed.
+- Advanced Version/InformationalVersion from alpha.17 to alpha.18 while retaining AssemblyVersion/FileVersion `0.5.0.0`. Independent review passed; the exact-candidate canonical BAT passed 998/998 with zero failed/skipped and a zero-warning/error build; commit `9bbb01a` is pushed. No real/customer data was changed.
 
 ## v0.5.0-alpha.17 (23 October 2026)
 
