@@ -1,5 +1,12 @@
 # Documentation Audit Record
 
+## 4 November 2026 — BT-SH-004-P10 accepted alpha.19 evidence reconciliation
+
+- Mechanically validated the exact attributable P10 input and re-established root `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`, `master`, HEAD/upstream `1b95e5b67a62e89db5ae1aeeb646a4a0d223063c`, divergence `0/0`, empty index/clean tracked entry state, version `0.5.0-alpha.19` and exactly the three protected unrelated untracked paths.
+- Reconciled the stale P8 pre-review/pre-BAT state to the supplied closure evidence: independent ChatGPT review found no blocking source defect; exact P8 input/output validation passed with four boundaries; Jack/operator's exact-candidate canonical BAT passed the v0.5.0-alpha.19 mechanical audit (265 permanent IDs / 27 Markdown files), restore, Debug build and 1011/1011 automated tests with 0 failed/skipped under SDK 10.0.403; the candidate was committed/pushed as `1b95e5b` and fetched equal to `origin/master` at divergence `0/0`.
+- Promoted only the Batch F milestone/checklist state to accepted/closed. BT-SH-027/033/034/035 remain `FIXED` at their existing source/focused-automated evidence level; totals remain 32 FIXED / 4 CONFIRMED-V1 / 1 REVIEW-V1 / 11 POST-V1 / 2 NOT-APPLICABLE. Production Backup/Restore, retained-data rehearsal, package/deployment, manual filesystem-workflow and v1 acceptance remain pending. Batch G / BT-SH-005 is next; no Batch G/H implementation occurred.
+- This P10 pass is documentation-only and did not run build, restore, automated tests or `Build-BinTracker.bat`. Its governed status edits exceed the narrow two-file post-acceptance bookkeeping exception, so the 1011/1011 BAT remains exact historical acceptance evidence for commit `1b95e5b`; it is not represented as testing the later uncommitted P10 documentation bytes. The next candidate-defining pass requires its own exact-final-candidate canonical BAT.
+
 ## 2 November 2026 — BT-SH-004-P8 Security Batch F final validation
 
 - Resumed the interrupted P7 candidate without reopening implementation. Exact attributable P8 input validation passed, and repository reality matched the active checkpoint: root `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`, `master`, HEAD/upstream `9bbb01a23a04e56a6f0513c34af5de95798a5ecc`, divergence `0/0`, empty staging, candidate version `0.5.0-alpha.19`, the expected Batch F inventory and exactly the three protected unrelated untracked groups.

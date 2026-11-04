@@ -6,7 +6,7 @@
 - Builds every SQLite backup target connection with `SqliteConnectionStringBuilder`; resolves existing directory links and proves Windows physical file identity for the active source plus existing, temporary and published targets. Direct, hard-link and reparse aliases cannot select the active database as a backup destination.
 - Makes no-overwrite the authoritative Data policy. Existing or concurrently created destinations remain unchanged; each backup uses a unique identity-pinned same-directory temporary snapshot and publishes only by non-overwriting move. This developer-tool hardening does not claim the distinct production Backup/Restore roadmap milestone.
 - Publishes database settings, staged database files and pending-operation markers from flushed unique temporary siblings under stable cross-process leases. Settings writers publish whole files with last-completed-writer semantics; only one pending database operation is admitted, and startup holds the same marker lease through atomic state transitions and cleanup.
-- New real Windows/SQLite tests plus adjacent startup/identity/developer regressions pass. Independent review and Jack/operator's exact-final-candidate canonical BAT remain required; no manual acceptance, package or retained/customer-data change is claimed.
+- New real Windows/SQLite tests plus adjacent startup/identity/developer regressions pass. Independent review found no blocking source defect; Jack/operator's exact-final-candidate canonical BAT passed audit/restore/build and all 1011/1011 automated tests with 0 failed/skipped under SDK 10.0.403, and commit `1b95e5b` is pushed. No retained/customer-data change, production Backup/Restore, package/deployment or manual filesystem-workflow acceptance is claimed.
 
 ## v0.5.0-alpha.18
 

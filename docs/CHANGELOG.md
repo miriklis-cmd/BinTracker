@@ -2,7 +2,7 @@
 
 - Completed Security Hardening Batch F in source: BT-SH-027/033/034/035 are fixed by Data-owned connection-string construction, Windows physical-file identity, unconditional no-overwrite backup publication and leased flushed atomic settings/pending-marker publication.
 - Added real Windows/SQLite coverage for hostile valid path characters, quote/delimiter builder round-trip, direct/hard-link/reparse aliases, existing and racing destinations, concurrent backup/settings/marker writers, interruption, locked/read-only targets, retained prior evidence, startup interpretation and normal Load staging.
-- Advanced Version/InformationalVersion from accepted alpha.18 to alpha.19 while retaining AssemblyVersion/FileVersion `0.5.0.0`. Independent review and exact-candidate canonical BAT remain pending; no real/customer data, package, deployment or Git refs were changed.
+- Advanced Version/InformationalVersion from accepted alpha.18 to alpha.19 while retaining AssemblyVersion/FileVersion `0.5.0.0`. Independent review found no blocking source defect; Jack/operator's exact-candidate canonical BAT passed audit/restore/build and 1011/1011 automated tests with 0 failed/skipped under SDK 10.0.403. The accepted candidate was committed and pushed as `1b95e5b`; no real/customer data, retained-database rehearsal, production Backup/Restore, package or deployment acceptance is implied.
 
 ## v0.5.0-alpha.18 (26 October 2026)
 
