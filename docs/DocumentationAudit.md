@@ -1,5 +1,19 @@
 # Documentation Audit Record
 
+## 5 November 2026 — BT-SH-004-P12 Batch G workbook classification correction
+
+- Mechanically validated the exact attributable P12 input and re-established root `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`, `master`, HEAD/upstream `f2f8c2658cd9208a05d0735004c9b17d5692ee82`, divergence `0/0`, empty staging, candidate version `0.5.0-alpha.20`, the expected uncommitted Batch G inventory and exactly the three protected unrelated untracked paths.
+- Corrected only XML-versus-binary package-part classification: `.xml`, `.rels`, `.vml`, exact `application/xml`/`text/xml` and `+xml` media types remain XML-parsed; printer-settings `.bin` content whose MIME type merely contains `openxmlformats` is bounded binary content. All established file/package/expansion/XML/worksheet/row/cell/used-range, authorization and transactional boundaries remain unchanged.
+- A generated data-free `.xlsm`-path fixture with binary printer settings and VML failed before the source edit with the reported binary-as-XML `XmlException`, then passed end-to-end analysis after the correction. Focused and adjacent Release evidence passes 21/21 with separate VML DTD, VML XML-part-size and printer-settings binary-entry-size failures plus unchanged import execution cases.
+- BT-SH-005 remains `FIXED` at static/focused-automated level and the version remains `0.5.0-alpha.20`. Independent review, operator retest of `Arjun Bin List (most recent).xlsm` and the exact-candidate canonical BAT remain pending. No customer workbook/data was added, and no full suite, BAT, package, database operation, Batch H or Git write occurred.
+
+## 5 November 2026 — BT-SH-004-P11 Security Batch G workbook resource budgets
+
+- Mechanically validated the exact attributable P11 input and re-established root `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`, `master`, HEAD/upstream `f2f8c2658cd9208a05d0735004c9b17d5692ee82`, divergence `0/0`, clean tracked/index entry state, accepted version `0.5.0-alpha.19` and exactly the three protected unrelated untracked paths. Commit `f2f8c26` is the synchronized P10 Batch-G authorization successor to accepted Batch-F commit `1b95e5b`.
+- Reconciled `BT-SH-005 -> bounded workbook resource consumption -> desktop pre-allocation cap plus Services ZIP/XML/worksheet guard and execution byte cap -> 17/17 focused/adjacent Release import tests -> FIXED`. Alpha.20 retains `.xlsx`/`.xlsm`, analysis ordering/read-only behavior and transactional execution while bounding file, package, expansion, XML, sheet, row, cell and rectangular scan work before ClosedXML.
+- Advanced Version/InformationalVersion to `0.5.0-alpha.20` while retaining AssemblyVersion/FileVersion `0.5.0.0`. Security totals are 33 FIXED / 4 CONFIRMED-V1 / 0 REVIEW-V1 / 11 POST-V1 / 2 NOT-APPLICABLE; the 4 Batch-H findings remain v1 blockers. Alpha.19 review/BAT/commit evidence remains accepted history. No Batch H, Communications, production database operation, package, deployment or Git write occurred.
+- The semantic reconciliation preserves provider-neutral Services contracts and Data/business authority, distinguishes static/focused evidence from real-workbook/operator/canonical-BAT acceptance, and leaves independent review plus Jack/operator's exact-final-candidate BAT pending. Final Release-build, mechanical-audit and diff-check results are reported in the P11 returned handoff.
+
 ## 4 November 2026 — BT-SH-004-P10 accepted alpha.19 evidence reconciliation
 
 - Mechanically validated the exact attributable P10 input and re-established root `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`, `master`, HEAD/upstream `1b95e5b67a62e89db5ae1aeeb646a4a0d223063c`, divergence `0/0`, empty index/clean tracked entry state, version `0.5.0-alpha.19` and exactly the three protected unrelated untracked paths.

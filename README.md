@@ -1,4 +1,4 @@
-# BinTracker v0.5.0-alpha.19
+# BinTracker v0.5.0-alpha.20
 
 BinTracker is a .NET 8 Windows desktop application for tracking reusable container movements, customer/container balances, operational reporting and audited business activity.
 
@@ -43,7 +43,7 @@ Most important remaining items include:
 - dashboard operational pass;
 - Business Information branding expansion: logo + shared report/email output identity;
 - real Email/SMS reminder delivery;
-- the two remaining Security Hardening batches G–H after accepted alpha.18 Batch E and alpha.19 Batch F filesystem hardening;
+- Security Hardening Batch H after accepted alpha.19 Batch F filesystem hardening and alpha.20 Batch G workbook resource budgets;
 - production backup/restore;
 - the unresolved BT-AUD-006 Audit search/filter/export release decision and commercial-v1 activation decision;
 - BT-REL-013 third-party/commercial-release compliance review, required notices/material and package validation;
@@ -52,6 +52,8 @@ Most important remaining items include:
 ## Excel Import
 
 The Import Wizard supports `.xlsm` and `.xlsx` legacy migration.
+
+Before ClosedXML parsing, the importer enforces bounded file, ZIP expansion/entry, XML, worksheet, row, cell and rectangular used-range budgets. Oversized, over-expanded, structurally excessive or corrupt workbooks fail before import execution; the desktop also enforces the 32 MiB file limit before whole-file allocation.
 
 Current workflow:
 

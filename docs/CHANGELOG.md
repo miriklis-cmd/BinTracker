@@ -1,3 +1,10 @@
+## v0.5.0-alpha.20 (5 November 2026)
+
+- Fixed BT-SH-005 by bounding workbook file bytes, ZIP directory/entries, declared and actual expansion, XML parts/elements, worksheets, rows, cells and rectangular used ranges before ClosedXML parsing.
+- Corrected package-part classification so binary printer settings are bounded binary content while `.xml`, `.rels`, `.vml` and genuine XML media types retain streamed XML/DTD protection.
+- Added bounded desktop file reading plus Services and execution byte enforcement without changing supported `.xlsx`/`.xlsm` import semantics or transactional execution.
+- Added deterministic real-workbook and hostile-input coverage for ordinary/boundary workbooks, excessive sheets, sparse ranges, row/cell budgets, compressed expansion and corruption.
+
 ## v0.5.0-alpha.19 (2 November 2026)
 
 - Completed Security Hardening Batch F in source: BT-SH-027/033/034/035 are fixed by Data-owned connection-string construction, Windows physical-file identity, unconditional no-overwrite backup publication and leased flushed atomic settings/pending-marker publication.

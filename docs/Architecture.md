@@ -1,6 +1,6 @@
 # BinTracker Architecture
 
-Current baseline: **v0.5.0-alpha.19**
+Current baseline: **v0.5.0-alpha.20**
 
 ## Display and DPI boundary
 
@@ -66,7 +66,7 @@ Customer codes and container short/system codes are operational identifiers, not
 
 ## Transport boundary
 
-Imports cross the service boundary as `ImportSourceDocument` content plus safe metadata. `SourceClientPath` is provenance only and is never treated by business/server logic as a readable path. PDF/report services return bytes; the desktop client chooses where to save or open them. Local crash-draft recovery and developer database tools remain explicitly desktop-local.
+Imports cross the service boundary as `ImportSourceDocument` content plus safe metadata. `SourceClientPath` is provenance only and is never treated by business/server logic as a readable path. The Services analysis boundary enforces provider-neutral workbook resource budgets before ClosedXML parsing; the desktop additionally enforces the file-byte limit before whole-file allocation. PDF/report services return bytes; the desktop client chooses where to save or open them. Local crash-draft recovery and developer database tools remain explicitly desktop-local.
 
 ## Concurrency, retries and invariants
 

@@ -1,5 +1,17 @@
 # BinTracker Automated Testing
 
+## BT-SH-004-P12 Batch G workbook classification correction — 5 November 2026
+
+- The generated data-free `.xlsm`-path regression package contains non-XML printer-settings bytes with the real printer-settings MIME value plus a VML XML part. Before the correction it failed exactly because byte `0x00` was parsed as XML; afterward it completes normal analysis and success audit. No customer workbook or business data is embedded.
+- Focused/adjacent Release `ExcelImportAnalysisTests|ImportExecutionSqliteTests` passes 21/21 with zero failed/skipped. VML remains DTD-prohibited and subject to the XML-part budget; printer settings remains subject to the binary entry/aggregate expansion budgets. Existing file, ZIP, XML, worksheet, row, cell, used-range, authorization and transaction cases remain green.
+- This is static/focused-automated evidence. Operator retest of `Arjun Bin List (most recent).xlsm`, independent review and the exact-candidate canonical BAT remain required; no actual-workbook acceptance is claimed.
+
+## BT-SH-004-P11 Security Batch G workbook resource budgets — 5 November 2026
+
+- `ExcelImportAnalysisTests|ImportExecutionSqliteTests` passes 17/17 in Release with zero failed/skipped. The set retains ordinary analysis and transactional import/re-import behavior while adding ordinary `.xlsx`/`.xlsm`, exact 64-sheet acceptance, 65-sheet rejection before success audit, 32 MiB pre-archive enforcement through a reduced deterministic test budget, sparse used-range rejection, row/cell limits, compressed expansion and controlled corrupt input.
+- The desktop checks the 32 MiB cap before whole-file allocation under a stable read handle. Services repeats that cap, validates the bounded ZIP directory before archive construction, then bounds declared and actual decompression, entries, XML parts/elements, worksheets, rows, cells, columns and rectangular used-range traversal before ClosedXML. Execution fingerprinting also rejects over-limit source bytes before database access.
+- This is static/focused-automated evidence. A real production-workbook pass, independent review and Jack/operator's exact-candidate canonical BAT remain required. No customer/production database, package, deployment or manual acceptance is claimed.
+
 ## BT-SH-004-P7 implementation / P8 final validation — Security Batch F filesystem safety — 2 November 2026
 
 - P7 pre-production characterization passed 2/2 configuration unit cases and 25/25 developer authorization plus pending-operation startup/recovery integration cases, all zero failed/skipped.

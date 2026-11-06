@@ -1,5 +1,7 @@
+using System.Xml;
 using BinTracker.Core;
 using ClosedXML.Excel;
+using DocumentFormat.OpenXml.Packaging;
 
 namespace BinTracker.Services;
 
@@ -346,7 +348,7 @@ internal sealed class ExcelImportService(
     {
         await authorization.RequireAdministratorAsync(cancellationToken);
 
-        if (source is null || source.Content.Length == 0)
+        if (source is null || source.Content is null || source.Content.Length == 0)
             throw new ArgumentException("Choose an Excel workbook first.");
 
         var extension = Path.GetExtension(source.FileName);
@@ -357,13 +359,15 @@ internal sealed class ExcelImportService(
                 "BinTracker import currently supports .xlsx and .xlsm workbooks.");
         }
 
+        ExcelWorkbookResourceGuard.ValidateForAnalysis(source, cancellationToken);
+
         var worksheets = new List<ImportWorksheetAnalysis>();
         var candidates = new List<ImportCustomerCandidate>();
         var snapshots = new List<ImportSnapshotCandidate>();
         var warnings = new List<string>();
 
         using var stream = new MemoryStream(source.Content, writable: false);
-        using var workbook = new XLWorkbook(stream);
+        using var workbook = OpenWorkbook(stream);
 
         foreach (var sheet in workbook.Worksheets)
         {
@@ -648,6 +652,21 @@ internal sealed class ExcelImportService(
         return worksheetName.Contains("cash", StringComparison.OrdinalIgnoreCase)
             ? CustomerType.CashCod
             : CustomerType.Account;
+    }
+
+    private static XLWorkbook OpenWorkbook(Stream stream)
+    {
+        try
+        {
+            return new XLWorkbook(stream);
+        }
+        catch (Exception ex) when (ex is InvalidDataException or XmlException or
+                                   OpenXmlPackageException or ArgumentException or
+                                   FormatException or NotSupportedException)
+        {
+            throw new InvalidOperationException(
+                "The selected file is not a valid, readable Excel workbook.", ex);
+        }
     }
 
 }

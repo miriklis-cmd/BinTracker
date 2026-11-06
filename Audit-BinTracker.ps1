@@ -324,10 +324,10 @@ $securityCounts = @{}
 foreach ($disposition in $allowedSecurityDispositions) {
     $securityCounts[$disposition] = @($securityRows | Where-Object { $_.Groups[2].Value -eq $disposition }).Count
 }
-if ($securityCounts['FIXED'] -ne 32 -or $securityCounts['CONFIRMED-V1'] -ne 4 -or
-    $securityCounts['REVIEW-V1'] -ne 1 -or $securityCounts['POST-V1'] -ne 11 -or
+if ($securityCounts['FIXED'] -ne 33 -or $securityCounts['CONFIRMED-V1'] -ne 4 -or
+    $securityCounts['REVIEW-V1'] -ne 0 -or $securityCounts['POST-V1'] -ne 11 -or
     $securityCounts['NOT-APPLICABLE'] -ne 2) {
-    Fail "Security disposition totals must be 32 FIXED / 4 CONFIRMED-V1 / 1 REVIEW-V1 / 11 POST-V1 / 2 NOT-APPLICABLE."
+    Fail "Security disposition totals must be 33 FIXED / 4 CONFIRMED-V1 / 0 REVIEW-V1 / 11 POST-V1 / 2 NOT-APPLICABLE."
 }
 $securityBlockers = $securityCounts['CONFIRMED-V1'] + $securityCounts['REVIEW-V1']
 $coverageSecuritySummary = (Get-Content -Raw -LiteralPath 'docs/RoadmapCoverageMatrix.md').Replace('`', '')
@@ -336,11 +336,28 @@ $expectedSecurityTotals = "$($securityCounts['FIXED']) FIXED, $($securityCounts[
 foreach ($summary in @($coverageSecuritySummary, $debtSecuritySummary)) {
     if ($summary -notmatch [regex]::Escape($expectedSecurityTotals)) { Fail 'Current security summary disagrees with computed disposition totals.' }
     if ($summary -notmatch [regex]::Escape("$securityBlockers") -or $summary -notmatch 'block') { Fail 'Current security summary disagrees with the computed v1-blocker count.' }
-    if ($summary -notmatch 'Batch(?:es)? G') { Fail 'Current security summary must name Batch G among the remaining security batches.' }
+    if ($summary -notmatch 'Batch H') { Fail 'Current security summary must name Batch H as the remaining security batch.' }
 }
-foreach ($fixedId in @('BT-SH-012','BT-SH-013','BT-SH-014','BT-SH-027','BT-SH-033','BT-SH-034','BT-SH-035','BT-SH-036','BT-SH-037','BT-SH-038','BT-SH-043')) {
+foreach ($fixedId in @('BT-SH-005','BT-SH-012','BT-SH-013','BT-SH-014','BT-SH-027','BT-SH-033','BT-SH-034','BT-SH-035','BT-SH-036','BT-SH-037','BT-SH-038','BT-SH-043')) {
     $row = $securityRows | Where-Object { $_.Groups[1].Value -eq $fixedId }
-    if ($row.Groups[2].Value -ne 'FIXED') { Fail "$fixedId must remain FIXED after Security Batch F." }
+    if ($row.Groups[2].Value -ne 'FIXED') { Fail "$fixedId must remain FIXED through Security Batch G." }
+}
+$batchGGuardText = Get-Content -Raw 'src/BinTracker.Services/ExcelWorkbookResourceGuard.cs'
+$batchGAnalysisText = Get-Content -Raw 'src/BinTracker.Services/ExcelImportService.cs'
+$batchGExecutionText = Get-Content -Raw 'src/BinTracker.Services/ImportExecutionService.cs'
+$batchGDesktopText = Get-Content -Raw 'src/BinTracker.WinForms/ExcelImportForm.cs'
+$batchGTests = Get-Content -Raw 'tests/BinTracker.IntegrationTests/ExcelImportAnalysisTests.cs'
+if ($batchGGuardText -notmatch 'MaximumFileBytes = 32L \* 1024 \* 1024' -or
+    $batchGGuardText -notmatch 'MaximumExpandedBytes: 256L \* 1024 \* 1024' -or
+    $batchGGuardText -notmatch 'MaximumWorksheets: 64' -or
+    $batchGGuardText -notmatch 'MaximumCellsTotal: 500_000' -or
+    $batchGGuardText -notmatch 'DtdProcessing = DtdProcessing.Prohibit' -or
+    $batchGAnalysisText -notmatch 'ExcelWorkbookResourceGuard.ValidateForAnalysis' -or
+    $batchGExecutionText -notmatch 'ExcelWorkbookResourceGuard.ValidateFileLength' -or
+    $batchGDesktopText -notmatch 'ExcelWorkbookResourceLimits.EnsureFileLength' -or
+    $batchGTests -notmatch 'Resource_guard_rejects_compressed_expansion' -or
+    $batchGTests -notmatch 'Resource_guard_reports_corrupt_input') {
+    Fail 'BT-SH-005 workbook resource-budget enforcement or focused evidence is incomplete.'
 }
 $batchFBackupText = Get-Content -Raw 'src/BinTracker.Data/DeveloperDatabaseService.cs'
 $batchFConfigurationText = Get-Content -Raw 'src/BinTracker.Data/DatabaseConfiguration.cs'

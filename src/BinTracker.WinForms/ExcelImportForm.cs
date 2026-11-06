@@ -1692,12 +1692,12 @@ public sealed class ExcelImportForm : BinTrackerForm
             UseWaitCursor = true;
             analyseButton.Enabled = false;
 
-                        var selectedPath = filePath.Text.Trim();
+            var selectedPath = filePath.Text.Trim();
             if (selectedPath.Length == 0)
                 throw new InvalidOperationException("Choose an Excel workbook first.");
 
             var info = new FileInfo(selectedPath);
-            var content = await File.ReadAllBytesAsync(selectedPath);
+            var content = await ReadWorkbookBytesAsync(selectedPath);
 
             analysis = await service.AnalyzeAsync(
                 new ImportSourceDocument(
@@ -1753,6 +1753,22 @@ public sealed class ExcelImportForm : BinTrackerForm
             analyseButton.Enabled = true;
             UseWaitCursor = false;
         }
+    }
+
+    private static async Task<byte[]> ReadWorkbookBytesAsync(string path)
+    {
+        await using var stream = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 64 * 1024,
+            useAsync: true);
+
+        ExcelWorkbookResourceLimits.EnsureFileLength(stream.Length);
+        var content = new byte[checked((int)stream.Length)];
+        await stream.ReadExactlyAsync(content);
+        return content;
     }
 
     private async Task ShowImportPageAsync()

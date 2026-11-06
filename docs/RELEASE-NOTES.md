@@ -1,5 +1,12 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.20
+
+- Implements Security Hardening Batch G at static/focused-automated evidence level: BT-SH-005 is `FIXED`, and totals are 33 FIXED, 4 CONFIRMED-V1, 0 REVIEW-V1, 11 POST-V1 and 2 NOT-APPLICABLE. The 4 remaining v1 blockers are Batch H.
+- Rejects workbook files above 32 MiB before desktop whole-file allocation and again at the Services/fingerprinting contracts. Before ClosedXML, bounded ZIP/XML streaming enforces package-entry, declared/actual expansion, per-entry/XML, XML-count/element, sheet, row, cell, used-column and rectangular used-range budgets. P12 precisely classifies `.xml`, `.rels`, `.vml` and genuine XML media types while draining binary printer-settings parts through the bounded binary path.
+- Preserves `.xlsx`/`.xlsm` analysis, ordering, read-only Analyse behavior, mapping/review semantics and transactional execution. Focused and adjacent Release import tests pass 21/21 with zero failed/skipped, including binary printer settings/VML, exact sheet boundary, excessive sheet, sparse range, row/cell, XML/binary size, DTD, compressed expansion and corrupt input.
+- Independent review, the exact-candidate canonical BAT and operator retest of the previously accepted workbook remain required. No customer/production database, package, deployment, Git write or Batch-H work is claimed.
+
 ## v0.5.0-alpha.19
 
 - Completes Security Hardening Batch F at static/focused-automated evidence level: BT-SH-027/033/034/035 are `FIXED`, and totals are 32 FIXED, 4 CONFIRMED-V1, 1 REVIEW-V1, 11 POST-V1 and 2 NOT-APPLICABLE, with 5 v1 blockers remaining across Batches G–H.

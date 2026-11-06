@@ -12,6 +12,8 @@ Administrators select `.xlsx` or `.xlsm`.
 
 BinTracker reads the workbook without requiring Excel, discovers worksheets/used ranges, identifies candidate customer/snapshot rows and reports structural/duplicate warnings.
 
+Analysis rejects inputs above the governed 32 MiB file, 2,048 package-entry, 256 MiB expanded-package, 64 MiB entry, 32 MiB XML-part, 1,024 XML-part, 2,000,000 XML-element, 64-sheet, 100,000-row-per-sheet/200,000-total-row, 250,000-cell-per-sheet/500,000-total-cell, 256-used-column and 500,000-per-sheet/1,000,000-total rectangular used-range budgets. File bytes and ZIP-directory declarations are checked before decompression; actual expansion and streaming XML/worksheet structure are bounded before ClosedXML allocation/traversal.
+
 No database writes occur during Analyse.
 
 ### 2. Map

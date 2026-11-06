@@ -1,6 +1,6 @@
 # Versioning
 
-BinTracker currently uses semantic pre-release version `0.5.0-alpha.19`.
+BinTracker currently uses semantic pre-release version `0.5.0-alpha.20`.
 
 ## Single source of truth
 
@@ -9,7 +9,7 @@ The release version is defined in the repository root:
 `Directory.Build.props`
 
 ```xml
-<Version>0.5.0-alpha.19</Version>
+<Version>0.5.0-alpha.20</Version>
 ```
 
 The same value is used by:
@@ -109,6 +109,8 @@ Hard rule: **maximum two numeric components after `alpha`** for the new scheme.
 `0.5.0-alpha.18` is the accepted Security Hardening Batch E milestone. It closes BT-SH-012/013/014/036/037 and implements BT-BATCH-012 through stable-user-ID owner-specific drafts, Services owner enforcement, bounded exact recovery parsing, unique durable temporary publication and collision-resistant no-overwrite quarantine. FIX3 strengthens the same candidate with schema-4 monotonic Save/Clear fencing, payload-free clear tombstones and one durable `ClientOperationId` per logical draft so post-commit cleanup failure/restart replays exactly. Independent review passed; the exact-candidate canonical BAT passed 998/998 with zero failed/skipped and a zero-warning/error build; commit `9bbb01a23a04e56a6f0513c34af5de95798a5ecc` is pushed.
 
 `0.5.0-alpha.19` is the accepted Security Hardening Batch F release. It closes BT-SH-027/033/034/035 at static/focused-automated evidence level through Data-owned SQLite connection-string construction, Windows physical-file identity, an unconditional no-overwrite backup policy and leased flushed atomic settings/pending-marker publication. Independent review passed, the exact-candidate canonical BAT passed audit/restore/build and 1011/1011 automated tests with 0 failed/skipped under SDK 10.0.403, and commit `1b95e5b` is pushed. The distinct retained-data, production Backup/Restore, package/deployment and v1 acceptance scopes remain pending.
+
+`0.5.0-alpha.20` is the Security Hardening Batch G candidate. It closes BT-SH-005 at static/focused-automated evidence level through bounded workbook file bytes, ZIP directory/entries, declared and actual expansion, XML parts/elements and worksheet row/cell/used-range work before ClosedXML. It preserves accepted alpha.19 evidence. Independent review, the exact-candidate canonical BAT and real production-workbook acceptance remain pending; Batch H is not included.
 
 Do not create forms such as:
 

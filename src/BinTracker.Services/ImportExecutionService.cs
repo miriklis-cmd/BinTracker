@@ -1552,8 +1552,10 @@ internal sealed class ImportExecutionService(
         ImportSourceDocument source,
         CancellationToken cancellationToken)
     {
-        if (source is null || source.Content.Length == 0)
+        if (source is null || source.Content is null || source.Content.Length == 0)
             throw new ArgumentException("Import workbook content is required.");
+
+        ExcelWorkbookResourceGuard.ValidateFileLength(source);
 
         using var sha256 = SHA256.Create();
         await using var stream =

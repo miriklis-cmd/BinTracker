@@ -4,6 +4,9 @@ using BinTracker.Services;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using System.IO.Compression;
+using System.Text;
+using System.Xml.Linq;
 using Xunit;
 
 namespace BinTracker.IntegrationTests;
@@ -96,6 +99,295 @@ public sealed class ExcelImportAnalysisTests
         }
     }
 
+    [Fact]
+    public void Resource_guard_accepts_the_maximum_worksheet_boundary()
+    {
+        var content = CreateWorkbookBytes(workbook =>
+        {
+            for (var index = 1; index <= ExcelWorkbookResourceBudget.Default.MaximumWorksheets; index++)
+                workbook.AddWorksheet($"Sheet {index}").Cell("A1").Value = index;
+        });
+
+        ExcelWorkbookResourceGuard.ValidateForAnalysis(
+            new ImportSourceDocument("boundary.xlsx", content));
+    }
+
+    [Theory]
+    [InlineData("ordinary.xlsx")]
+    [InlineData("ordinary.xlsm")]
+    public async Task Analysis_preserves_supported_workbook_formats(string fileName)
+    {
+        var content = CreateWorkbookBytes(workbook =>
+            workbook.AddWorksheet("Update Account").Cell("A1").Value = "Buyer");
+        var audit = new TestAuditService();
+
+        var result = await CreateImporter(audit).AnalyzeAsync(
+            new ImportSourceDocument(fileName, content));
+
+        Assert.Single(result.Worksheets);
+        Assert.Equal(1, audit.AppendCount);
+    }
+
+    [Fact]
+    public async Task Analysis_accepts_binary_printer_settings_and_vml_xml()
+    {
+        var content = CreateWorkbookPackage(
+            printerSettings: [0x00, 0xff, 0x01, 0xfe, 0x02],
+            vml: "<xml xmlns:v=\"urn:schemas-microsoft-com:vml\"><v:shape id=\"synthetic\" /></xml>");
+        var audit = new TestAuditService();
+
+        var result = await CreateImporter(audit).AnalyzeAsync(
+            new ImportSourceDocument("synthetic-printer-settings.xlsm", content));
+
+        Assert.Single(result.Worksheets);
+        Assert.Equal(1, audit.AppendCount);
+    }
+
+    [Fact]
+    public void Resource_guard_rejects_dtd_in_vml_xml_part()
+    {
+        var content = CreateWorkbookPackage(
+            printerSettings: [0x00, 0xff, 0x01],
+            vml: "<!DOCTYPE xml [<!ENTITY hostile \"expanded\">]>" +
+                 "<xml xmlns:v=\"urn:schemas-microsoft-com:vml\"><v:shape id=\"&hostile;\" /></xml>");
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            ExcelWorkbookResourceGuard.ValidateForAnalysis(
+                new ImportSourceDocument("synthetic-hostile-vml.xlsm", content)));
+
+        Assert.IsNotType<WorkbookResourceLimitException>(exception);
+        Assert.Contains("not a valid", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Resource_guard_enforces_xml_part_budget_for_vml()
+    {
+        var content = CreateWorkbookPackage(
+            printerSettings: [0x00, 0xff, 0x01],
+            vml: $"<xml>{new string('x', 128 * 1024)}</xml>");
+        var budget = ExcelWorkbookResourceBudget.Default with
+        {
+            MaximumXmlEntryBytes = 64 * 1024
+        };
+
+        var exception = Assert.Throws<WorkbookResourceLimitException>(() =>
+            ExcelWorkbookResourceGuard.ValidateForAnalysis(
+                new ImportSourceDocument("synthetic-oversized-vml.xlsm", content), budget));
+
+        Assert.Contains("xl/drawings/synthetic.vml", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("XML-part limit", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Resource_guard_enforces_binary_entry_budget_for_printer_settings()
+    {
+        var content = CreateWorkbookPackage(
+            printerSettings: new byte[128 * 1024],
+            vml: "<xml xmlns:v=\"urn:schemas-microsoft-com:vml\"><v:shape id=\"synthetic\" /></xml>");
+        var budget = ExcelWorkbookResourceBudget.Default with
+        {
+            MaximumEntryBytes = 64 * 1024
+        };
+
+        var exception = Assert.Throws<WorkbookResourceLimitException>(() =>
+            ExcelWorkbookResourceGuard.ValidateForAnalysis(
+                new ImportSourceDocument("synthetic-oversized-printer-settings.xlsm", content), budget));
+
+        Assert.Contains(
+            "xl/printerSettings/printerSettings1.bin",
+            exception.Message,
+            StringComparison.Ordinal);
+        Assert.Contains("entry limit", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Resource_guard_rejects_file_bytes_before_archive_processing()
+    {
+        var content = CreateWorkbookBytes(workbook =>
+            workbook.AddWorksheet("Bytes").Cell("A1").Value = 1);
+        var budget = ExcelWorkbookResourceBudget.Default with
+        {
+            MaximumFileBytes = content.Length - 1
+        };
+
+        Assert.Throws<WorkbookResourceLimitException>(() =>
+            ExcelWorkbookResourceGuard.ValidateForAnalysis(
+                new ImportSourceDocument("bytes.xlsx", content), budget));
+    }
+
+    [Fact]
+    public async Task Analysis_rejects_excess_worksheets_before_success_audit()
+    {
+        var content = CreateWorkbookBytes(workbook =>
+        {
+            for (var index = 1;
+                 index <= ExcelWorkbookResourceBudget.Default.MaximumWorksheets + 1;
+                 index++)
+            {
+                workbook.AddWorksheet($"Sheet {index}").Cell("A1").Value = index;
+            }
+        });
+        var audit = new TestAuditService();
+        var importer = CreateImporter(audit);
+
+        var exception = await Assert.ThrowsAsync<WorkbookResourceLimitException>(() =>
+            importer.AnalyzeAsync(new ImportSourceDocument("too-many-sheets.xlsx", content)));
+
+        Assert.Contains("worksheets", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, audit.AppendCount);
+    }
+
+    [Fact]
+    public void Resource_guard_rejects_sparse_used_range_before_closedxml_load()
+    {
+        var content = CreateWorkbookBytes(workbook =>
+        {
+            var sheet = workbook.AddWorksheet("Sparse");
+            sheet.Cell("A1").Value = "Buyer";
+            sheet.Cell("IW1").Value = "hostile extent";
+        });
+
+        var exception = Assert.Throws<WorkbookResourceLimitException>(() =>
+            ExcelWorkbookResourceGuard.ValidateForAnalysis(
+                new ImportSourceDocument("sparse.xlsx", content)));
+
+        Assert.Contains("columns", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Resource_guard_enforces_row_and_cell_budgets_on_real_workbook()
+    {
+        var content = CreateWorkbookBytes(workbook =>
+        {
+            var sheet = workbook.AddWorksheet("Rows");
+            sheet.Cell("A1").Value = 1;
+            sheet.Cell("A2").Value = 2;
+            sheet.Cell("A3").Value = 3;
+        });
+        var rowBudget = ExcelWorkbookResourceBudget.Default with
+        {
+            MaximumRowsPerWorksheet = 2
+        };
+        var cellBudget = ExcelWorkbookResourceBudget.Default with
+        {
+            MaximumCellsPerWorksheet = 2
+        };
+
+        Assert.Throws<WorkbookResourceLimitException>(() =>
+            ExcelWorkbookResourceGuard.ValidateForAnalysis(
+                new ImportSourceDocument("rows.xlsx", content), rowBudget));
+        Assert.Throws<WorkbookResourceLimitException>(() =>
+            ExcelWorkbookResourceGuard.ValidateForAnalysis(
+                new ImportSourceDocument("cells.xlsx", content), cellBudget));
+    }
+
+    [Fact]
+    public void Resource_guard_rejects_compressed_expansion_with_bounded_fixture()
+    {
+        var content = CreateWorkbookBytes(workbook =>
+        {
+            workbook.AddWorksheet("Compressed")
+                .Cell("A1").Value = new string('A', 16_000);
+        });
+        var budget = ExcelWorkbookResourceBudget.Default with
+        {
+            MaximumExpandedBytes = 4_096
+        };
+
+        var exception = Assert.Throws<WorkbookResourceLimitException>(() =>
+            ExcelWorkbookResourceGuard.ValidateForAnalysis(
+                new ImportSourceDocument("compressed.xlsx", content), budget));
+
+        Assert.Contains("expands beyond", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Resource_guard_reports_corrupt_input_as_controlled_failure()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            ExcelWorkbookResourceGuard.ValidateForAnalysis(
+                new ImportSourceDocument("corrupt.xlsx", [0x50, 0x4b, 0x03, 0x04])));
+
+        Assert.IsNotType<WorkbookResourceLimitException>(exception);
+        Assert.Contains("not a valid", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static byte[] CreateWorkbookBytes(Action<XLWorkbook> configure)
+    {
+        using var workbook = new XLWorkbook();
+        configure(workbook);
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    private static byte[] CreateWorkbookPackage(
+        byte[] printerSettings,
+        string vml)
+    {
+        var workbookBytes = CreateWorkbookBytes(workbook =>
+            workbook.AddWorksheet("Synthetic").Cell("A1").Value = "Fixture");
+        using var package = new MemoryStream();
+        package.Write(workbookBytes);
+        package.Position = 0;
+
+        using (var archive = new ZipArchive(
+                   package,
+                   ZipArchiveMode.Update,
+                   leaveOpen: true))
+        {
+            var contentTypesEntry = archive.GetEntry("[Content_Types].xml")!;
+            XDocument contentTypes;
+            using (var stream = contentTypesEntry.Open())
+                contentTypes = XDocument.Load(stream);
+
+            var packageNamespace = contentTypes.Root!.Name.Namespace;
+            contentTypes.Root.Add(
+                new XElement(
+                    packageNamespace + "Override",
+                    new XAttribute("PartName", "/xl/printerSettings/printerSettings1.bin"),
+                    new XAttribute(
+                        "ContentType",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.printerSettings")),
+                new XElement(
+                    packageNamespace + "Default",
+                    new XAttribute("Extension", "vml"),
+                    new XAttribute(
+                        "ContentType",
+                        "application/vnd.openxmlformats-officedocument.vmlDrawing")));
+
+            contentTypesEntry.Delete();
+            var replacementContentTypes = archive.CreateEntry("[Content_Types].xml");
+            using (var stream = replacementContentTypes.Open())
+                contentTypes.Save(stream);
+
+            var printerSettingsEntry = archive.CreateEntry(
+                "xl/printerSettings/printerSettings1.bin");
+            using (var stream = printerSettingsEntry.Open())
+                stream.Write(printerSettings);
+
+            var vmlEntry = archive.CreateEntry("xl/drawings/synthetic.vml");
+            using (var stream = vmlEntry.Open())
+                stream.Write(Encoding.UTF8.GetBytes(vml));
+        }
+
+        return package.ToArray();
+    }
+
+    private static IExcelImportService CreateImporter(TestAuditService audit)
+    {
+        var clock = new TestBusinessClock();
+        var session = new UserSession(clock);
+        session.SignIn(new UserAccount
+        {
+            Id = 1,
+            Username = "admin",
+            DisplayName = "Administrator",
+            Role = UserRole.Administrator
+        });
+        return new ExcelImportServiceForTest(session, audit);
+    }
+
     private sealed class TestFactory(
         DbContextOptions<BinTrackerDbContext> options)
         : IDbContextFactory<BinTrackerDbContext>
@@ -109,6 +401,8 @@ public sealed class ExcelImportAnalysisTests
 
     private sealed class TestAuditService : IAuditService, IAuditAppender
     {
+        public int AppendCount { get; private set; }
+
         public event EventHandler<AdministratorReviewState>? AdministratorReviewStateChanged { add { } remove { } }
         public Task AppendAsync(
             string action,
@@ -118,8 +412,11 @@ public sealed class ExcelImportAnalysisTests
             bool succeeded = true,
             object? before = null,
             object? after = null,
-            CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+            CancellationToken cancellationToken = default)
+        {
+            AppendCount++;
+            return Task.CompletedTask;
+        }
 
         public Task<IReadOnlyList<AuditEventSummary>> GetRecentAsync(
             int limit = 500,
