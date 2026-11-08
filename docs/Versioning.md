@@ -1,6 +1,6 @@
 # Versioning
 
-BinTracker currently uses semantic pre-release version `0.5.0-alpha.20`.
+BinTracker currently uses semantic pre-release version `0.5.0-alpha.21`.
 
 ## Single source of truth
 
@@ -9,7 +9,7 @@ The release version is defined in the repository root:
 `Directory.Build.props`
 
 ```xml
-<Version>0.5.0-alpha.20</Version>
+<Version>0.5.0-alpha.21</Version>
 ```
 
 The same value is used by:
@@ -112,6 +112,8 @@ Hard rule: **maximum two numeric components after `alpha`** for the new scheme.
 
 `0.5.0-alpha.20` is the Security Hardening Batch G candidate. It closes BT-SH-005 at static/focused-automated evidence level through bounded workbook file bytes, ZIP directory/entries, declared and actual expansion, XML parts/elements and worksheet row/cell/used-range work before ClosedXML. It preserves accepted alpha.19 evidence. Independent review, the exact-candidate canonical BAT and real production-workbook acceptance remain pending; Batch H is not included.
 
+`0.5.0-alpha.21` is the Security Hardening Batch H candidate. It closes BT-SH-047/048/049/050 at static/focused evidence level through exact SDK pinning, committed dependency locks, fail-closed online advisory scanning, SDK security-category analyzers and verified external package SHA-256 manifests. Checksums prove artifact integrity only; publisher signing requires a real certificate/external release decision. Independent review and the exact-candidate canonical BAT remain pending.
+
 Do not create forms such as:
 
 - `alpha.3.1.1`
@@ -141,4 +143,4 @@ Packaging mismatch is a release-blocking audit failure.
 
 ## Mechanical package gate
 
-`Package-BinTracker.ps1` must create `BinTracker-v<Version>.zip`, stage the sole root as `BinTracker-v<Version>`, reopen the archive, and verify embedded Version/InformationalVersion before a package is treated as releasable. `docs/RequirementsAcceptanceRegister.md` is also part of the source audit gate.
+`Package-BinTracker.ps1` must create `BinTracker-v<Version>.zip`, stage the sole root as `BinTracker-v<Version>`, reopen the archive, verify embedded Version/InformationalVersion, emit `BinTracker-v<Version>.zip.sha256`, reread the manifest and rehash the ZIP before a package is treated as releasable. The checksum is integrity evidence, not publisher authentication or a cryptographic signature. A real signing certificate/external signing service remains an explicit release decision. `docs/RequirementsAcceptanceRegister.md` is also part of the source audit gate.

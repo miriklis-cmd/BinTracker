@@ -1,5 +1,18 @@
 # BinTracker Automated Testing
 
+## BT-SH-004-FIX5 Batch H BAT test-compatibility correction — 9 November 2026
+
+- The first alpha.21 canonical BAT passed security audit, locked restore, online advisory scan, Release security-analyzer build and Debug build, then passed 1023/1024 automated tests with zero skipped. It failed correctly on `Task20StartupCoordinatorTests.Quoted_partial_index_predicate_cannot_impersonate_required_token_sequence` because SQLitePCLRaw.lib.e_sqlite3 2.1.14 rejects the fixture's double-quoted `"RootMovementBatchId IS NOT NULL"` as a nonexistent identifier during `CREATE INDEX`.
+- FIX5 changes only that adversarial fixture to the valid SQLite string literal `'RootMovementBatchId IS NOT NULL'`. It remains one quoted token rather than the required four-token predicate, so the unchanged production startup validator still returns `StructuralCapabilityMissing`. The existing assertions continue to prove no schema mutation attempt and unchanged persisted state.
+- The exact failed test passes 1/1 in Release. The directly affected startup native-structure group passes 16/16 with zero failed/skipped, including filtered-unique and quoted-null-check adversarial coverage. No adjacent fixture defect was demonstrated, so no other test or production source changed.
+- Alpha.21 remains unaccepted. Independent review and a complete operator rerun of the exact-candidate canonical BAT remain required; the failed 1023/1024 run is not acceptance evidence.
+
+## BT-SH-004-FIX4 Batch H governance recovery — 7 November 2026
+
+- No P13/P14 technical check was rerun. The preserved P14 evidence is six intended malformed/incomplete scanner-contract rejections, valid zero-vulnerability acceptance, locked restore, exact seven-project/framework coverage, online zero-finding advisory output, a Release security-analyzer build with zero warnings/errors, mechanical audit and diff check. Independent ChatGPT subsequently found no blocking source defect in the P14 correction. These are technical/source-review facts, not proof that P14 used a compliant task identity or returned handoff.
+- P14 was a post-review correction incorrectly identified with `P14`; its actual assistant response omitted the mandatory returned-handoff boundaries. Its reported input/output compliance passes are rejected. The attempted FIX3 governance recovery correctly stopped with no edits when it found the existing historical Batch E FIX3 collision; that stop supplied no P14 validation.
+- FIX4 is documentation-only governance recovery. Alpha.21 remains static/focused evidence and is not operator-accepted. Independent review of the exact source/governance candidate and the exact-candidate canonical BAT remain required. Broader CA2100/CA5392 review, publisher signing, final release security/reliability review and BT-REL-013 licensing/release compliance remain separate gates.
+
 ## BT-SH-004-P12 Batch G workbook classification correction — 5 November 2026
 
 - The generated data-free `.xlsm`-path regression package contains non-XML printer-settings bytes with the real printer-settings MIME value plus a VML XML part. Before the correction it failed exactly because byte `0x00` was parsed as XML; afterward it completes normal analysis and success audit. No customer workbook or business data is embedded.
@@ -460,6 +473,8 @@ Run:
 ```
 
 A local candidate is valid only when restore, build and automated tests all succeed with zero warnings.
+
+Alpha.21 additionally pins SDK 10.0.403 and commits every project dependency lock. The governed security gate must complete locked restore, prove the exact seven expected project/framework pairs through machine-readable package inventory, obtain machine-readable NuGet advisory data for those same seven projects with zero vulnerability findings and a reported online source, and complete a Release build with the SDK recommended security-category analyzers enabled as errors. Missing, partial, duplicate, malformed or unexpected scanner identities fail closed; the supported SDK's legitimate project-only zero-vulnerability result remains valid after the companion inventory establishes framework coverage. The broader `All` diagnostic run is review evidence, not a release policy silently satisfied by suppressions. Unreachable advisory sources are a blocking unavailable result, never a scan pass. Packaging must emit and verify the external ZIP SHA-256 manifest; checksum integrity does not authenticate a publisher or substitute for a real signing decision.
 
 
 ## UI/business workflow acceptance

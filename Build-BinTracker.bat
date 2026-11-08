@@ -21,20 +21,6 @@ echo Running BinTracker source/package-state audit...
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Audit-BinTracker.ps1 || goto :fail
 echo.
 
-rem Self-heal the exact obsolete global.json created by BinTracker alpha.23.3.
-rem A newer ZIP cannot delete a file left behind when extracted over an older folder.
-if exist ".\global.json" (
-    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-      "$ErrorActionPreference='Stop'; $p = Join-Path (Get-Location) 'global.json'; $j = Get-Content -Raw -LiteralPath $p | ConvertFrom-Json; if ($j.sdk.version -eq '8.0.100' -and $j.sdk.rollForward -eq 'latestFeature') { Remove-Item -LiteralPath $p -Force; exit 0 } else { exit 7 }"
-    if errorlevel 7 (
-        echo ERROR: A global.json exists, but it is not the obsolete BinTracker alpha.23.3 file.
-        echo BinTracker will not delete a user-managed SDK configuration automatically.
-        goto :fail
-    )
-    echo Removed obsolete alpha.23.3 global.json.
-    echo.
-)
-
 where dotnet >nul 2>&1 || (
     echo ERROR: dotnet was not found on PATH.
     goto :fail
@@ -54,8 +40,8 @@ echo Shutting down stale .NET/MSBuild build servers...
 dotnet build-server shutdown >nul 2>&1
 rem Shutdown failure is non-fatal.
 
-echo Restoring BinTracker...
-dotnet restore .\BinTracker.sln --disable-parallel -m:1 /nr:false || goto :fail
+echo Running locked dependency, advisory and code-security checks...
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Invoke-BinTrackerSecurityChecks.ps1 || goto :fail
 
 echo.
 echo Building BinTracker v%VERSION%...

@@ -327,9 +327,9 @@ A build is **not complete** merely because code was changed or static checks pas
 
 ## Local SDK and MSBuild worker policy
 
-BinTracker targets `net8.0` / `net8.0-windows`, but the local build SDK is not pinned to .NET 8. The current accepted operator evidence used .NET SDK 10.0.401 to build the project's .NET 8 target frameworks.
+BinTracker targets `net8.0` / `net8.0-windows` and pins the supported build SDK to 10.0.403 in `global.json`; the pin was selected only after that SDK produced accepted Batch G operator evidence and was confirmed installed. Missing or different SDK resolution is a blocking environment error, not permission to weaken the pin.
 
-Do not add a restrictive `global.json` unless the required SDK is first confirmed installed on the development machine.
+Every project commits `packages.lock.json`. Governed build/package paths restore with `--locked-mode`; intentional dependency changes require explicit package-reference review and regenerated lock files in the same candidate. The security gate also requires reachable configured NuGet sources for machine-readable direct/transitive vulnerability advisories. A source/advisory failure blocks the gate and must never be reported as a successful scan.
 
 `Build-BinTracker.bat` hardens local builds against intermittent MSBuild SDK-resolver worker shutdowns by:
 
@@ -342,6 +342,8 @@ Do not add a restrictive `global.json` unless the required SDK is first confirme
 - printing the resolved SDK version.
 
 Restore/build/test commands use direct `command || goto :fail` guards. A failed command must never fall through to `BUILD SUCCESSFUL`.
+
+The same shared gate runs a Release build with the SDK recommended security-category analyzers enabled and warnings treated as errors. The broader `All` ruleset remains review evidence where it reports low-confidence findings; warnings are not suppressed to force a pass. Static analysis supplements rather than replaces the mechanical requirements/source audit, automated behavioral tests, independent review or manual acceptance.
 
 
 ## ZIP overlay stale-file handling

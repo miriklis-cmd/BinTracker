@@ -19,7 +19,7 @@ function Invoke-Step {
     }
 }
 
-Invoke-Step "Restoring BinTracker..." { dotnet restore .\BinTracker.sln }
+Invoke-Step "Running locked dependency, advisory and code-security checks..." { & .\Invoke-BinTrackerSecurityChecks.ps1 }
 Invoke-Step "Building BinTracker..." { dotnet build .\BinTracker.sln --configuration Debug --no-restore }
 Invoke-Step "Running automated tests..." { dotnet test .\BinTracker.sln --configuration Debug --no-build }
 

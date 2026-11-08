@@ -793,7 +793,7 @@ public sealed class Task20StartupCoordinatorTests
         await f.ExecuteAsync("""
             DROP INDEX IX_LogicalMovementBatches_RootMovementBatchId;
             CREATE UNIQUE INDEX IX_LogicalMovementBatches_RootMovementBatchId
-            ON LogicalMovementBatches(RootMovementBatchId) WHERE "RootMovementBatchId IS NOT NULL";
+            ON LogicalMovementBatches(RootMovementBatchId) WHERE 'RootMovementBatchId IS NOT NULL';
             """);
         var before = await f.StateAsync();
         var failure = await Assert.ThrowsAsync<StartupDatabaseException>(() => f.Coordinator().StartAsync());

@@ -1,3 +1,10 @@
+## v0.5.0-alpha.21 (6 November 2026)
+
+- Implemented Security Hardening Batch H (BT-SH-047/048/049/050): exact supported SDK pin, committed dependency locks, fail-closed online direct/transitive vulnerability scanning, SDK security-category analyzer enforcement and external verified package SHA-256 manifests. The first scan blocked GHSA-2m69-gcr7-jv3q in SQLitePCLRaw native 2.1.6; compatible 2.1.14 is now pinned directly.
+- Corrected vulnerability-scan completeness so exactly seven expected project/framework pairs must be proven and the advisory result must independently cover those same seven projects; empty, partial, duplicate, malformed or unexpected results fail closed while legitimate zero-vulnerability output remains accepted.
+- Kept checksum integrity explicitly separate from publisher identity/signing; no certificate or signature is claimed.
+- Preserved .NET 8 targets and application/business/database behavior.
+
 ## v0.5.0-alpha.20 (5 November 2026)
 
 - Fixed BT-SH-005 by bounding workbook file bytes, ZIP directory/entries, declared and actual expansion, XML parts/elements, worksheets, rows, cells and rectangular used ranges before ClosedXML parsing.

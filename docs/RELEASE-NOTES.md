@@ -1,5 +1,15 @@
 # BinTracker Current Release Notes
 
+## v0.5.0-alpha.21
+
+- Implements final Security Hardening Batch H at static/focused evidence level: BT-SH-047/048/049/050 are `FIXED`; totals are 37 FIXED, 0 CONFIRMED-V1, 0 REVIEW-V1, 11 POST-V1 and 2 NOT-APPLICABLE.
+- Pins supported SDK 10.0.403, commits seven project dependency locks and requires locked restore in governed build/package paths.
+- Adds fail-closed direct/transitive NuGet vulnerability scanning. The first online run blocked SQLitePCLRaw native 2.1.6 under GHSA-2m69-gcr7-jv3q; the candidate pins compatible 2.1.14. Configured advisory sources must be reachable; unavailable data is an explicit failure, not a successful scan.
+- Requires exact machine-readable coverage of all seven project/framework pairs and the same seven projects in the online advisory result; incomplete, duplicate, malformed or unexpected scanner output is rejected without rejecting legitimate zero-vulnerability projects.
+- Enables the SDK recommended security-category analyzers as errors in the governed Release security build. The broader all-rules review remains evidence and is not silenced; static analysis does not guarantee complete code security.
+- Packaging emits and re-verifies `BinTracker-v0.5.0-alpha.21.zip.sha256`. The checksum proves integrity only; this candidate is unsigned and publisher signing remains a release decision requiring a real certificate or external signing step.
+- No application feature, UI, database or retained-data behavior changes. Independent review and the exact-candidate canonical BAT remain required.
+
 ## v0.5.0-alpha.20
 
 - Implements Security Hardening Batch G at static/focused-automated evidence level: BT-SH-005 is `FIXED`, and totals are 33 FIXED, 4 CONFIRMED-V1, 0 REVIEW-V1, 11 POST-V1 and 2 NOT-APPLICABLE. The 4 remaining v1 blockers are Batch H.

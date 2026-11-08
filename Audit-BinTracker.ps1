@@ -38,7 +38,54 @@ if ($testChecklistText -notmatch [regex]::Escape('Package-BinTracker.ps1') -or
     Fail 'TEST-CHECKLIST.md packaging gate must require the current Directory.Build.props Version rather than a historical hard-coded release.'
 }
 
-if (Test-Path -LiteralPath 'global.json') { Fail 'Unexpected global.json is present. BinTracker currently uses the installed compatible SDK.' }
+$sdkPolicy = Get-Content -Raw -LiteralPath 'global.json' | ConvertFrom-Json
+if ($sdkPolicy.sdk.version -cne '10.0.403' -or $sdkPolicy.sdk.rollForward -cne 'disable' -or
+    $sdkPolicy.sdk.allowPrerelease -ne $false) {
+    Fail 'global.json must pin supported SDK 10.0.403 exactly with prerelease SDKs disabled.'
+}
+$lockFiles = @(
+    'src/BinTracker.Core/packages.lock.json',
+    'src/BinTracker.Data/packages.lock.json',
+    'src/BinTracker.Services/packages.lock.json',
+    'src/BinTracker.WinForms/packages.lock.json',
+    'tests/BinTracker.IntegrationTests/packages.lock.json',
+    'tests/BinTracker.UnitTests/packages.lock.json',
+    'tests/BinTracker.WinForms.Tests/packages.lock.json'
+)
+foreach ($lockFile in $lockFiles) {
+    if (-not (Test-Path -LiteralPath $lockFile -PathType Leaf)) { Fail "Missing dependency lock file: $lockFile" }
+    $lock = Get-Content -Raw -LiteralPath $lockFile | ConvertFrom-Json
+    if ($lock.version -ne 1 -or $null -eq $lock.dependencies) { Fail "Invalid dependency lock file: $lockFile" }
+}
+$sqliteSecurityPin = '<PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.14" />'
+foreach ($path in @('src/BinTracker.Data/BinTracker.Data.csproj','tests/BinTracker.IntegrationTests/BinTracker.IntegrationTests.csproj')) {
+    if ((Get-Content -Raw -LiteralPath $path) -notmatch [regex]::Escape($sqliteSecurityPin)) {
+        Fail "$path lost the reviewed GHSA-2m69-gcr7-jv3q native SQLite security pin."
+    }
+}
+$buildPolicy = Get-Content -Raw -LiteralPath 'Directory.Build.props'
+foreach ($term in @('<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>',
+        '<EnableNETAnalyzers>true</EnableNETAnalyzers>',
+        '<RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>',
+        '<AnalysisLevelSecurity>latest</AnalysisLevelSecurity>',
+        '<AnalysisModeSecurity>Recommended</AnalysisModeSecurity>')) {
+    if ($buildPolicy -notmatch [regex]::Escape($term)) { Fail "Build security policy is missing: $term" }
+}
+$securityGate = Get-Content -Raw -LiteralPath 'Invoke-BinTrackerSecurityChecks.ps1'
+foreach ($term in @('--locked-mode','--vulnerable','--include-transitive','--format','json',
+        'no scan pass is recorded','RunAnalyzers=true')) {
+    if ($securityGate -notmatch [regex]::Escape($term)) { Fail "Security gate is missing required enforcement: $term" }
+}
+$buildBat = Get-Content -Raw -LiteralPath 'Build-BinTracker.bat'
+$packageScript = Get-Content -Raw -LiteralPath 'Package-BinTracker.ps1'
+foreach ($script in @($buildBat, $packageScript)) {
+    if ($script -notmatch [regex]::Escape('Invoke-BinTrackerSecurityChecks.ps1')) {
+        Fail 'Governed build/package path does not invoke the security gate.'
+    }
+}
+foreach ($term in @('Get-FileHash','SHA256','.sha256','Publisher identity is not authenticated')) {
+    if ($packageScript -notmatch [regex]::Escape($term)) { Fail "Package integrity gate is missing: $term" }
+}
 
 $requiredDocuments = @(
  'AGENTS.md','README.md','KNOWN-ISSUES.md','TECH-DEBT.md','TEST-CHECKLIST.md',
@@ -324,10 +371,10 @@ $securityCounts = @{}
 foreach ($disposition in $allowedSecurityDispositions) {
     $securityCounts[$disposition] = @($securityRows | Where-Object { $_.Groups[2].Value -eq $disposition }).Count
 }
-if ($securityCounts['FIXED'] -ne 33 -or $securityCounts['CONFIRMED-V1'] -ne 4 -or
+if ($securityCounts['FIXED'] -ne 37 -or $securityCounts['CONFIRMED-V1'] -ne 0 -or
     $securityCounts['REVIEW-V1'] -ne 0 -or $securityCounts['POST-V1'] -ne 11 -or
     $securityCounts['NOT-APPLICABLE'] -ne 2) {
-    Fail "Security disposition totals must be 33 FIXED / 4 CONFIRMED-V1 / 0 REVIEW-V1 / 11 POST-V1 / 2 NOT-APPLICABLE."
+    Fail "Security disposition totals must be 37 FIXED / 0 CONFIRMED-V1 / 0 REVIEW-V1 / 11 POST-V1 / 2 NOT-APPLICABLE."
 }
 $securityBlockers = $securityCounts['CONFIRMED-V1'] + $securityCounts['REVIEW-V1']
 $coverageSecuritySummary = (Get-Content -Raw -LiteralPath 'docs/RoadmapCoverageMatrix.md').Replace('`', '')
@@ -336,11 +383,11 @@ $expectedSecurityTotals = "$($securityCounts['FIXED']) FIXED, $($securityCounts[
 foreach ($summary in @($coverageSecuritySummary, $debtSecuritySummary)) {
     if ($summary -notmatch [regex]::Escape($expectedSecurityTotals)) { Fail 'Current security summary disagrees with computed disposition totals.' }
     if ($summary -notmatch [regex]::Escape("$securityBlockers") -or $summary -notmatch 'block') { Fail 'Current security summary disagrees with the computed v1-blocker count.' }
-    if ($summary -notmatch 'Batch H') { Fail 'Current security summary must name Batch H as the remaining security batch.' }
+    if ($summary -notmatch 'Batch H') { Fail 'Current security summary must name Batch H closure.' }
 }
-foreach ($fixedId in @('BT-SH-005','BT-SH-012','BT-SH-013','BT-SH-014','BT-SH-027','BT-SH-033','BT-SH-034','BT-SH-035','BT-SH-036','BT-SH-037','BT-SH-038','BT-SH-043')) {
+foreach ($fixedId in @('BT-SH-005','BT-SH-012','BT-SH-013','BT-SH-014','BT-SH-027','BT-SH-033','BT-SH-034','BT-SH-035','BT-SH-036','BT-SH-037','BT-SH-038','BT-SH-043','BT-SH-047','BT-SH-048','BT-SH-049','BT-SH-050')) {
     $row = $securityRows | Where-Object { $_.Groups[1].Value -eq $fixedId }
-    if ($row.Groups[2].Value -ne 'FIXED') { Fail "$fixedId must remain FIXED through Security Batch G." }
+    if ($row.Groups[2].Value -ne 'FIXED') { Fail "$fixedId must remain FIXED through Security Batch H." }
 }
 $batchGGuardText = Get-Content -Raw 'src/BinTracker.Services/ExcelWorkbookResourceGuard.cs'
 $batchGAnalysisText = Get-Content -Raw 'src/BinTracker.Services/ExcelImportService.cs'
