@@ -1,5 +1,12 @@
 # Documentation Audit Record
 
+## 9 November 2026 — Accepted alpha.21 Security Batch H closure evidence
+
+- Mode: POST-ACCEPTANCE EVIDENCE BOOKKEEPING. This append-only entry records completed evidence only; it makes no implementation, correction, acceptance, security-disposition, requirement, status, sequence, scope, semantic, version, package or product-behavior change.
+- After independent review of BT-SH-004-FIX5, Jack/operator ran the exact final `0.5.0-alpha.21` candidate through `Build-BinTracker.bat`. It completed `BUILD SUCCESSFUL` under SDK 10.0.403: the mechanical audit passed with 265 requirement IDs and 27 governed Markdown files; locked restore, the online direct/transitive vulnerability gate, the Release security-analyzer build and the Debug build of all seven projects passed; 1024/1024 automated tests passed with zero failed/skipped; and compiler warnings/errors were zero. The earlier 1023/1024 BAT remains historical failed evidence, not a successful gate.
+- Jack/operator committed exactly the 33 approved candidate files as `94c43d7138ba0e52566575ffb303518fd5530c86` with message `Complete Security Hardening Batch H alpha.21` and pushed it to `origin/master`. Local `master`, HEAD and `origin/master` were equal at that commit with divergence `0/0`, empty staging, no modified tracked files and only the known protected unrelated `.codex-evidence/`, `BIN-LIN-IMP-03A-HANDOFF.tmp` and `codex-git.ps1` untracked groups remaining; GitHub independently showed the accepted commit.
+- The bookkeeping commit itself was not BAT-tested.
+
 ## 9 November 2026 — BT-SH-004-FIX5 Batch H BAT test-compatibility correction
 
 - Entry mechanically matched root `C:/Users/jackm/Desktop/build/BinTracker-Codex-Clone`, synchronized `master` at HEAD/upstream `a312b707805ece315908f3a1c0319a0769d0ee1d`, divergence `0/0`, empty staging, the existing uncommitted alpha.21 candidate and preserved unrelated artifacts. `BT-SH-004-FIX5` was unused in repository history and entering tracked/untracked files; the exact attributable input passed the repository validator.
