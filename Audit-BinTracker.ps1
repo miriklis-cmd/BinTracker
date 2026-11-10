@@ -9,6 +9,28 @@ function Fail([string]$message) {
     exit 1
 }
 
+$governanceHelper = Join-Path $root 'Audit-BinTrackerGovernance.ps1'
+$governanceTests = Join-Path $root 'Test-AuditBinTrackerGovernance.ps1'
+if (-not (Test-Path -LiteralPath $governanceHelper -PathType Leaf) -or
+    -not (Test-Path -LiteralPath $governanceTests -PathType Leaf)) {
+    Fail 'Governance audit helper or focused regression script is missing.'
+}
+. $governanceHelper
+& "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File $governanceTests -RepositoryRoot $root -Quiet
+if ($LASTEXITCODE -ne 0) { Fail 'Focused audit-governance regression tests failed.' }
+$completionGuardPath = Join-Path $root 'Complete-BinTrackerGovernanceCorrection.ps1'
+if (-not (Test-Path -LiteralPath $completionGuardPath -PathType Leaf)) { Fail 'Fail-closed governance completion guard is missing.' }
+$completionGuard = Get-Content -Raw -LiteralPath $completionGuardPath
+foreach ($requiredGuardTerm in @('ValidateSet(''Verify'',''Commit'')','ExpectedCandidateSha256',
+        'IndependentSourceReviewPassed','IndependentBatReviewPassed','ExpectedEvidenceSha256',
+        'Build-BinTracker.bat','Assert-GitIndexMatchesApprovedCandidate','STAGED DIFF CHECK',
+        "@('push','origin',`$ExpectedBranch)",'Push/ref verification failed',
+        'The bookkeeping commit itself was not BAT-tested.')) {
+    if ($completionGuard -notmatch [regex]::Escape($requiredGuardTerm)) {
+        Fail "Governance completion guard is missing required fail-closed term: $requiredGuardTerm"
+    }
+}
+
 [xml]$props = Get-Content -LiteralPath 'Directory.Build.props'
 $version = [string]$props.Project.PropertyGroup.Version
 $infoVersion = [string]$props.Project.PropertyGroup.InformationalVersion
@@ -227,32 +249,49 @@ foreach ($check in $staleChecks) {
     if ((Get-Content -Raw -LiteralPath $check.Path).Contains($check.Text)) { Fail "$($check.Path) retains $($check.Why)." }
 }
 
-# Narrow current-state contradiction guards from BT-ARCH-018-P3/P5. These checks
-# protect explicit operative/ref facts only; they do not attempt semantic or legal proof.
-$continuation = Get-Content -Raw -LiteralPath 'docs/CONTINUATION.md'
-$continuationBoundaryRegex = [regex]::new('(?m)(?=^## (?:Superseded|Historical) )')
-$continuationParts = $continuationBoundaryRegex.Split(($continuation -replace "`r`n","`n"), 2)
-if ($continuationParts.Count -ne 2) {
-    Fail 'CONTINUATION split characterization requires exactly one operative prefix and one historical suffix.'
+# Narrow current-state contradiction guards from BT-ARCH-018-P3/P5. Stable
+# accepted identities are verified independently from the moving current HEAD;
+# a commit is never required to embed its own future SHA.
+$continuation = Get-GovernedFileText 'docs/CONTINUATION.md'
+try { $continuationParts = Split-ContinuationText $continuation 'docs/CONTINUATION.md' }
+catch { Fail $_.Exception.Message }
+$operativeContinuation = $continuationParts.Operative
+$expectedAcceptedApplicationCommit = '94c43d7138ba0e52566575ffb303518fd5530c86'
+$expectedBookkeepingCommit = '1b0c2006a9207f0964ed481ef95cda016f4e92d5'
+$acceptedMatch = [regex]::Match($operativeContinuation, 'Accepted application baseline: `(?<sha>[0-9a-f]{40})`')
+$bookkeepingMatch = [regex]::Match($operativeContinuation, 'Pushed bookkeeping evidence commit: `(?<sha>[0-9a-f]{40})`')
+if (-not $acceptedMatch.Success -or $acceptedMatch.Groups['sha'].Value -cne $expectedAcceptedApplicationCommit) {
+    Fail 'Operative continuation must identify the verified accepted alpha.21 application baseline.'
 }
-$operativeContinuation = $continuationParts[0]
-$continuationRef = [regex]::Match($operativeContinuation, 'Active development is on `(?<branch>[^`]+)` at HEAD/upstream `(?<head>[0-9a-f]{40})`, divergence `(?<ahead>\d+)/(?<behind>\d+)`')
-if (-not $continuationRef.Success) {
-    Fail 'Operative continuation must state the active branch, full HEAD/upstream SHA and divergence.'
+if (-not $bookkeepingMatch.Success -or $bookkeepingMatch.Groups['sha'].Value -cne $expectedBookkeepingCommit) {
+    Fail 'Operative continuation must identify the pushed alpha.21 bookkeeping evidence commit.'
 }
-$actualBranch = (& git branch --show-current).Trim()
-$actualHead = (& git rev-parse HEAD).Trim()
-$actualUpstream = (& git rev-parse '@{upstream}').Trim()
-$actualDivergence = ((& git rev-list --left-right --count 'HEAD...@{upstream}') -split '\s+')
-if ($LASTEXITCODE -ne 0 -or $actualDivergence.Count -lt 2) { Fail 'Unable to establish current Git branch/ref truth.' }
-if ($continuationRef.Groups['branch'].Value -ne $actualBranch -or
-    $continuationRef.Groups['head'].Value -ne $actualHead -or
-    $actualUpstream -ne $actualHead -or
-    [int]$continuationRef.Groups['ahead'].Value -ne [int]$actualDivergence[0] -or
-    [int]$continuationRef.Groups['behind'].Value -ne [int]$actualDivergence[1]) {
-    Fail 'Operative continuation branch/HEAD/upstream/divergence does not match current Git refs.'
+try {
+    Assert-PostAcceptanceBookkeepingTransition $root $expectedAcceptedApplicationCommit $expectedBookkeepingCommit
+    $reviewedMergeMatches = [regex]::Matches(
+        $operativeContinuation,
+        'Reviewed reintegration commit: `(?<sha>[0-9a-f]{40})`')
+    $reviewedMerges = @($reviewedMergeMatches | ForEach-Object { $_.Groups['sha'].Value })
+    $currentGitState = Assert-DevelopmentLineage $root $expectedBookkeepingCommit $reviewedMerges
 }
+catch { Fail $_.Exception.Message }
+$actualBranch = $currentGitState.Branch
+$actualHead = $currentGitState.Head
+$actualUpstream = $currentGitState.Upstream
+try { Assert-Alpha21FailureEvidence $operativeContinuation }
+catch { Fail $_.Exception.Message }
 if ($operativeContinuation -notmatch [regex]::Escape('TEST REQUIRED:')) { Fail 'Operative continuation must state the current test requirement.' }
+$currentTrackedChanges = @(& git diff --name-only HEAD --) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+$candidateDefiningAuditPaths = @('Audit-BinTracker.ps1','Audit-BinTrackerGovernance.ps1',
+    'Test-AuditBinTrackerGovernance.ps1','Complete-BinTrackerGovernanceCorrection.ps1')
+if (@($currentTrackedChanges | Where-Object { $candidateDefiningAuditPaths -contains $_ }).Count -ne 0) {
+    if ($operativeContinuation -notmatch [regex]::Escape('TEST REQUIRED: Full canonical BAT after independent source review.')) {
+        Fail 'The candidate-defining audit correction must require the fresh canonical BAT after independent review.'
+    }
+    if ($operativeContinuation -match [regex]::Escape('Mode: POST-ACCEPTANCE EVIDENCE BOOKKEEPING')) {
+        Fail 'A candidate-defining audit-script change cannot claim post-acceptance bookkeeping mode.'
+    }
+}
 foreach ($obsolete in @('active development is on `codex/movement-correction`','origin/master` remains the old','fast-forward master','master reconciliation is complete','final alpha.15 Git/merge closure requires','P4 remains uncommitted','No P4 BAT pass')) {
     if ($operativeContinuation -match [regex]::Escape($obsolete)) { Fail "Operative continuation retains obsolete branch/closure claim: $obsolete" }
 }
@@ -272,6 +311,16 @@ if ($operativeContinuation -match [regex]::Escape($bookkeepingDeclaration)) {
             Fail "Post-acceptance bookkeeping diff changes non-whitelisted path: $path"
         }
     }
+    foreach ($statusLine in @(& git status --porcelain=v1 --untracked-files=all)) {
+        if ($statusLine -notmatch '^\?\? (?<path>.+)$') { continue }
+        $untrackedPath = $matches['path'] -replace '\\','/'
+        if ($untrackedPath -ceq 'BIN-LIN-IMP-03A-HANDOFF.tmp' -or
+            $untrackedPath -ceq 'codex-git.ps1' -or
+            $untrackedPath.StartsWith('.codex-evidence/', [System.StringComparison]::Ordinal)) {
+            continue
+        }
+        Fail "Post-acceptance bookkeeping has non-protected untracked content: $untrackedPath"
+    }
     if ($changedPaths.Count -gt 0) {
         foreach ($requiredPath in $allowedBookkeepingPaths) {
             if ($changedPaths -notcontains $requiredPath) { Fail "Post-acceptance bookkeeping diff must change both allowed evidence files: $requiredPath" }
@@ -280,35 +329,14 @@ if ($operativeContinuation -match [regex]::Escape($bookkeepingDeclaration)) {
             Fail 'Post-acceptance bookkeeping continuation must disclaim BAT coverage of the bookkeeping commit.'
         }
 
-        $baseContinuation = ((& git show 'HEAD:docs/CONTINUATION.md') -join "`n")
-        $baseContinuationParts = $continuationBoundaryRegex.Split($baseContinuation, 2)
-        $currentContinuationParts = $continuationParts
-        if ($baseContinuationParts.Count -ne 2 -or $currentContinuationParts.Count -ne 2) {
-            Fail 'Post-acceptance bookkeeping requires one operative CONTINUATION section followed by historical content.'
+        try {
+            $baseContinuation = Get-GitBlobText $root $actualHead 'docs/CONTINUATION.md'
+            Assert-ContinuationHistoricalPreserved $baseContinuation $continuation 'HEAD continuation' 'worktree continuation'
+            $baseAudit = Get-GitBlobText $root $actualHead 'docs/DocumentationAudit.md'
+            $currentAudit = Get-GovernedFileText 'docs/DocumentationAudit.md'
+            [void](Get-SingleDocumentationAuditEntry $baseAudit $currentAudit)
         }
-        $baseHistorical = $baseContinuationParts[1].TrimEnd()
-        $currentHistorical = $currentContinuationParts[1].TrimEnd()
-        if ($baseHistorical -ne $currentHistorical) { Fail 'Post-acceptance bookkeeping modified historical CONTINUATION content.' }
-
-        $auditHeader = '# Documentation Audit Record'
-        $baseAudit = (((& git show 'HEAD:docs/DocumentationAudit.md') -join "`n").TrimEnd())
-        $currentAudit = ((Get-Content -Raw -LiteralPath 'docs/DocumentationAudit.md') -replace "`r`n","`n").TrimEnd()
-        if (-not ($baseAudit.StartsWith($auditHeader) -and $currentAudit.StartsWith($auditHeader))) {
-            Fail 'Post-acceptance bookkeeping requires the governed DocumentationAudit heading.'
-        }
-        $baseAuditBody = $baseAudit.Substring($auditHeader.Length).TrimStart()
-        $currentAuditBody = $currentAudit.Substring($auditHeader.Length).TrimStart()
-        $newAuditText = $null
-        if ($currentAuditBody.EndsWith($baseAuditBody)) {
-            $newAuditText = $currentAuditBody.Substring(0, $currentAuditBody.Length - $baseAuditBody.Length)
-        } elseif ($currentAuditBody.StartsWith($baseAuditBody)) {
-            $newAuditText = $currentAuditBody.Substring($baseAuditBody.Length)
-        } else {
-            Fail 'Post-acceptance bookkeeping must add one evidence entry without altering existing DocumentationAudit content.'
-        }
-        if ([regex]::Matches($newAuditText, '(?m)^## ').Count -ne 1) {
-            Fail 'Post-acceptance bookkeeping must add exactly one DocumentationAudit evidence entry.'
-        }
+        catch { Fail $_.Exception.Message }
     }
 }
 

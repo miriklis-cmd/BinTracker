@@ -8,7 +8,7 @@
 - Requires exact machine-readable coverage of all seven project/framework pairs and the same seven projects in the online advisory result; incomplete, duplicate, malformed or unexpected scanner output is rejected without rejecting legitimate zero-vulnerability projects.
 - Enables the SDK recommended security-category analyzers as errors in the governed Release security build. The broader all-rules review remains evidence and is not silenced; static analysis does not guarantee complete code security.
 - Packaging emits and re-verifies `BinTracker-v0.5.0-alpha.21.zip.sha256`. The checksum proves integrity only; this candidate is unsigned and publisher signing remains a release decision requiring a real certificate or external signing step.
-- No application feature, UI, database or retained-data behavior changes. Independent review and the exact-candidate canonical BAT remain required.
+- No application feature, UI, database or retained-data behavior changes. Independent review and the exact-candidate 1024/1024 canonical BAT passed at accepted application commit `94c43d7`. The later documentation-only bookkeeping commit exposed audit/governance defects; FIX8 corrects those tools without changing the alpha.21 application/package identity and requires independent source review, a fresh no-write canonical-BAT evidence phase, and separate evidence review before Git closure.
 
 ## v0.5.0-alpha.20
 
