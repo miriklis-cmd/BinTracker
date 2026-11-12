@@ -1,5 +1,11 @@
 # Documentation Audit Record
 
+## BT-REL-001-P3 targeted governance reconciliation — 11 November 2026
+
+This candidate reconciles the committed/pushed FIX8 baseline and the approved future roadmap order, separates the application BAT from unverified FIX8 BAT evidence, records the current SDK pin decision, and preserves the permanent register while treating direct specification labels as a distinct legacy namespace. It captures current direct definitions and overlapping register rows for mechanical change detection; clause-level semantic equivalence and unresolved mappings still require independent review. Security disposition totals are computed; the 50-ID, allowed-disposition, evidence-baseline and release-blocker checks remain. The one-time FIX8 script is identified as historical without altering its safeguards.
+
+This entry records a targeted source/documentation reconciliation, not the mandatory full pre-package all-Markdown audit, an operator acceptance result, or a canonical BAT. Independent review and an exact-candidate operator BAT remain required. Historical failed bookkeeping audit and P15 evidence remain unchanged. No application or database behavior changes.
+
 ## 10 November 2026 — BT-SH-004-FIX8 independent-review governance corrections
 
 - Entry mechanically matched synchronized `master` at `1b0c2006a9207f0964ed481ef95cda016f4e92d5`, divergence `0/0`, empty staging, the exact existing 17-file FIX7 candidate and only the three protected unrelated untracked groups. FIX8 was unused in the worktree and Git history, and its exact attributable input passed `Test-BinTrackerCodexPrompt.ps1` before substantive work.

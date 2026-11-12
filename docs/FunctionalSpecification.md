@@ -1,5 +1,11 @@
 # BinTracker Functional Specification
 
+## Requirement identity
+
+The permanent Requirements & Acceptance Register is the canonical ID namespace. The direct `BT-...:` labels in this specification are historical specification-local labels, not automatic claims to the identically spelled register ID. All clauses below retain their full meaning and acceptance remains governed by evidence, not by this namespace distinction. The captured direct-definition baseline in `docs/SpecificationRequirementBaseline.json` detects changes; updating it requires semantic reconciliation and independent review. Capturing the baseline does not approve unresolved mappings.
+
+Known same-contract mappings: specification `BT-BATCH-012` → register `BT-BATCH-012`; specification `BT-REL-013` → register `BT-REL-013`. Proposed, not approved, mappings: specification `BT-CUST-003` → register `BT-CUST-002`; specification `BT-CUST-008` and `BT-CUSTOMER-009` → register `BT-CUST-003`; specification `BT-CUST-010..011` → register `BT-CUST-004..005`; specification `BT-BATCH-001..002` → register `BT-BATCH-009` and `BT-BATCH-008`. Specification `BT-BATCH-003`, `BT-OPS-001..002`, and every other unmapped or partially covered clause remain unresolved pending clause-level review. Neither a matching label nor absence of a register row proves equivalent coverage or a missing requirement. Security finding IDs belong to the separate security ledger.
+
 ## Customer Management
 
 - BT-CUST-001: Every customer must have a customer code.

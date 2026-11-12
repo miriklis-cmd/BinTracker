@@ -186,6 +186,8 @@ foreach ($row in $reqRows) {
     if ($allowedScopes -notcontains $row.Scope) { Fail "Invalid requirement scope for $($row.Id): $($row.Scope)" }
     if ($allowedStatuses -notcontains $row.Status) { Fail "Invalid requirement status for $($row.Id): $($row.Status)" }
 }
+try { & .\Test-SpecificationIdentity.ps1 }
+catch { Fail "Specification requirement identity: $($_.Exception.Message)" }
 $mustHaveIds = @('BT-REL-001','BT-REL-013','BT-RPT-003','BT-RPT-018','BT-RPT-019','BT-RPT-020','BT-RPT-021','BT-UI-014','BT-UI-015','BT-BATCH-010','BT-BATCH-011','BT-BATCH-012','BT-IMP-010','BT-IMP-022','BT-CORR-001','BT-CORR-007','BT-CORR-008','BT-CORR-009','BT-CORR-010','BT-CORR-011','BT-CORR-012','BT-CORR-013','BT-CORR-014','BT-CORR-015','BT-CORR-018','BT-CORR-019','BT-CORR-021','BT-CORR-024','BT-CORR-029','BT-CORR-030','BT-CORR-031','BT-CORR-032','BT-CORR-033','BT-AUD-013','BT-AUD-015','BT-AUD-016','BT-AUD-017','BT-HIST-002','BT-HIST-003','BT-HIST-004','BT-HIST-005','BT-HIST-006','BT-HIST-007','BT-HIST-008','BT-HIST-009','BT-BIZ-003','BT-COMM-003','BT-DASH-001','BT-OPS-001','BT-OPS-011','BT-OPS-012','BT-UI-009','BT-ARCH-005','BT-ARCH-008','BT-ARCH-009','BT-ARCH-010','BT-ARCH-011','BT-ARCH-012','BT-ARCH-013','BT-ARCH-014','BT-ARCH-015','BT-ARCH-016','BT-ARCH-017','BT-ARCH-018')
 foreach ($id in $mustHaveIds) { if (-not ($reqRows.Id -contains $id)) { Fail "Requirements register lost mandatory ID: $id" } }
 
@@ -399,11 +401,8 @@ $securityCounts = @{}
 foreach ($disposition in $allowedSecurityDispositions) {
     $securityCounts[$disposition] = @($securityRows | Where-Object { $_.Groups[2].Value -eq $disposition }).Count
 }
-if ($securityCounts['FIXED'] -ne 37 -or $securityCounts['CONFIRMED-V1'] -ne 0 -or
-    $securityCounts['REVIEW-V1'] -ne 0 -or $securityCounts['POST-V1'] -ne 11 -or
-    $securityCounts['NOT-APPLICABLE'] -ne 2) {
-    Fail "Security disposition totals must be 37 FIXED / 0 CONFIRMED-V1 / 0 REVIEW-V1 / 11 POST-V1 / 2 NOT-APPLICABLE."
-}
+try { & .\Test-SecurityFindingEvidence.ps1 }
+catch { Fail "Security FIXED evidence: $($_.Exception.Message)" }
 $securityBlockers = $securityCounts['CONFIRMED-V1'] + $securityCounts['REVIEW-V1']
 $coverageSecuritySummary = (Get-Content -Raw -LiteralPath 'docs/RoadmapCoverageMatrix.md').Replace('`', '')
 $debtSecuritySummary = (Get-Content -Raw -LiteralPath 'TECH-DEBT.md').Replace('`', '')
@@ -469,12 +468,8 @@ foreach ($id in @('BT-SEC-008','BT-SEC-009','BT-SEC-010','BT-SEC-011')) {
 }
 
 $roadmap = Get-Content -Raw -LiteralPath 'docs/Roadmap.md'
-$movementIndex = $roadmap.IndexOf('**Movement Correction / Reversal**')
-$hardeningIndex = $roadmap.IndexOf('**Security, Data Integrity & Code Quality Hardening — HARD GATE**')
-$brandingIndex = $roadmap.IndexOf('**Business Information & Branding**')
-if ($movementIndex -lt 0 -or $hardeningIndex -lt 0 -or $brandingIndex -lt 0 -or -not ($movementIndex -lt $hardeningIndex -and $hardeningIndex -lt $brandingIndex)) {
-    Fail 'Roadmap hard gate failed: Security/Data Integrity/Code Quality Hardening must remain after Movement Correction/Reversal and before Branding.'
-}
+try { & .\Test-RoadmapOrder.ps1 }
+catch { Fail "Roadmap ordering: $($_.Exception.Message)" }
 if ($version -match '^1\.0' -and $securityRegister -match '(?m)^\|\s*BT-SH-\d{3}\s*\|\s*(CONFIRMED-V1|REVIEW-V1)\s*\|') {
     Fail 'v1.0 release blocked: unresolved v1 security hardening findings remain.'
 }

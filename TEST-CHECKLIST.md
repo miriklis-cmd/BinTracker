@@ -1,6 +1,6 @@
 # BinTracker Active Test Checklist
 
-Task 19's shared-snapshot prerequisite was reviewed/canonically verified at commit `930f2c77b1df7cd4629be2faff662750431854fe`; BT-20-P2 now includes that authority in normal schema17 composition. Windows/operator real preview/print and retained-database acceptance remain separate.
+Task 19's shared-snapshot prerequisite was reviewed/canonically verified at commit `930f2c77b1df7cd4629be2faff662750431854fe`; BT-20-P2 includes that authority in normal schema17 composition, with schema18 now the current startup level. The bounded Task20 retained-database rehearsal and real preview/print acceptance were completed; production recovery and full release acceptance remain separate.
 
 Current baseline: **v0.5.0-alpha.21**
 
@@ -58,7 +58,7 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 - [G] `Audit-BinTracker.ps1` passes its mechanical source/governance checks.
 - [G] `Build-BinTracker.bat` reports the current version/resolved SDK, restores, builds with zero warnings/errors and passes every unit/integration test without skips.
 - [G] A failed restore/build/test cannot continue to `BUILD SUCCESSFUL`.
-- [G] When packaging is authorised, `Package-BinTracker.ps1` verifies ZIP filename/root/Version/InformationalVersion against the current `Directory.Build.props` Version and excludes unexpected `global.json`.
+- [G] When packaging is authorised, `Package-BinTracker.ps1` verifies ZIP filename/root/Version/InformationalVersion against the current `Directory.Build.props` Version and enforces the current pinned SDK policy.
 
 ## Authentication, users and shell
 
@@ -153,11 +153,11 @@ Jack reported the v0.5.0-alpha.4 baseline smoke set accepted (8/8). Later candid
 
 ## Remaining pre-v1 product and release gates
 
-- [A] Alpha.21 implements accepted Security Hardening Batch H: supported SDK 10.0.403 is pinned, all seven project graphs are locked, governed build/package paths fail closed on unavailable or vulnerable online advisory data, SDK recommended security-category analyzers run as errors, and packaging emits/reverifies an external SHA-256 manifest without claiming publisher signing. Independent review passed and the accepted application commit `94c43d7` passed the exact-candidate canonical BAT with 1024/1024 tests, zero failed/skipped and zero warnings/errors. FIX8 changes only audit/governance tooling and requires independent source review, its own full canonical BAT in the no-Git-write verification phase, and separate independent BAT-evidence approval before any Git write.
+- [A] Alpha.21 implements accepted Security Hardening Batch H: supported SDK 10.0.403 is pinned, all seven project graphs are locked, governed build/package paths fail closed on unavailable or vulnerable online advisory data, SDK recommended security-category analyzers run as errors, and packaging emits/reverifies an external SHA-256 manifest without claiming publisher signing. Independent review passed and the accepted application commit `94c43d7` passed the exact-candidate canonical BAT with 1024/1024 tests, zero failed/skipped and zero warnings/errors. FIX8 governance correction is committed/pushed at `980b30ad`; its separate BAT evidence must not be confused with that application BAT.
 - [P] Dashboard design discussion precedes implementation; then validate KPIs, attention/drill-through, activity, summaries, charts/ageing and display layouts.
 - [P] Google Workspace email + Texto SMS delivery, templates, secure settings, manual/automatic sends, opt-out, history, retry/idempotency and audit.
 - [P] Production user-facing Backup/Restore, scheduled retention and recovery drill (separate from pre-lineage migration safety).
-- [P] After the FIX8 audit-governance correction passes independent source review, its fresh exact-candidate BAT and separate independent BAT-evidence review, implement Google Workspace email + Texto SMS Communications first, then Container Type ordering, Branding, Dashboard, analytics and Backup/Restore. Final release security/reliability review and BT-REL-013 remain separate gates.
+- [P] Implement Google Workspace email + Texto SMS Communications first, then Container Type ordering, Dashboard after design approval, Branding, analytics and Backup/Restore. Final release security/reliability review and BT-REL-013 remain separate gates.
 - [P] BT-REL-013 requires the real third-party/commercial-release compliance inventory, eligibility and notice/attribution review, asset provenance, explicit QuestPDF and SQLite/native decisions, SBOM-equivalent inventory, package validation and reviewed signoff. No legal conclusion is claimed until that work occurs.
 - [P] Resolve BT-AUD-006 v1 versus post-v1 scope, audit retention and the commercial activation decision. BT-PV1-009 remains `POST-V1`: either commercial v1 deliberately ships without activation or it must be rescheduled before commercial release; no option is selected.
 - [P] Installer/upgrade/deployment acceptance and full v1 production regression.

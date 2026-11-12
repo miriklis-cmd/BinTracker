@@ -4,7 +4,7 @@
 
 - Alpha.8's physical-batch partial-lineage guard is retained only as schema16 compatibility; normal schema17 runtime uses the accepted logical-lineage authority and must never regress to physical MovementBatch identity.
 - BT-20-P2/P3/P4 and the corrective passes delivered normal lineage composition, native Audit/History detail and Restore/RemainReversed UI. The complete Task20 acceptance inventory passed through alpha.9.10 Item 8, including 827/827 canonical automation, the 1920×1080/150% and separate 1920×1080/100% matrices, and clean final integrity/FKs/domain counts. BT-CORR-018..033 are reconciled individually to accepted/static status; completed lineage is no longer a current implementation blocker. The distinct stopped-client recovery route BT-OPS-012 and production Backup/Restore remain planned.
-- BT-ARCH-018 Stage A and alpha.10 closed the protected whole-codebase layer audit and its four accepted remediations. BT-ARCH-018-P4 is committed/pushed at `9f2e6b6`. Security Batches A–G are accepted through alpha.20. Accepted alpha.21 implements Batch H/BT-SH-047..050 through SDK/dependency locking, fail-closed advisory scanning, SDK security analyzers and verified package checksums; independent review and the exact-candidate 1024/1024 BAT passed at application commit `94c43d7`. Current security totals are 37 `FIXED`, 0 `CONFIRMED-V1`, 0 `REVIEW-V1`, 11 `POST-V1` and 2 `NOT-APPLICABLE`: 0 Security-register findings block v1, while the FIX8 audit-governance correction and final release review remain.
+- BT-ARCH-018 Stage A and alpha.10 closed the protected whole-codebase layer audit and its four accepted remediations. BT-ARCH-018-P4 is committed/pushed at `9f2e6b6`. Security Batches A–G are accepted through alpha.20. Accepted alpha.21 implements Batch H/BT-SH-047..050 through SDK/dependency locking, fail-closed advisory scanning, SDK security analyzers and verified package checksums; independent review and the exact-candidate 1024/1024 BAT passed at application commit `94c43d7`. Current security totals are 37 `FIXED`, 0 `CONFIRMED-V1`, 0 `REVIEW-V1`, 11 `POST-V1` and 2 `NOT-APPLICABLE`: 0 Security-register findings block v1. FIX8 is committed/pushed at `980b30ad`; final release review remains.
 - PostgreSQL/API/portal/handheld/WinUI delivery remains post-v1. v1 debt closure is clean boundaries/provider-neutral semantics, not speculative infrastructure.
 
 Engineering improvements that are not currently user-facing defects. Product work belongs in `docs/Roadmap.md`; active defects/limitations belong in `KNOWN-ISSUES.md`.
@@ -240,7 +240,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Local build SDK selection
 
-- BinTracker targets .NET 8 and the accepted BT-ARCH-018-P4 exact-candidate operator gate resolved compatible installed SDK 10.0.402. The invalid alpha.23.3 restrictive `global.json` pin was removed. If deterministic pinning is introduced later, standardise/install the selected SDK on developer/CI machines first and test the failure path.
+- BinTracker targets .NET 8 and currently pins SDK 10.0.403 in `global.json`, with prerelease disabled. Developer and CI machines must have the selected SDK and fail closed on incompatible configuration.
 
 
 ## Build SDK policy correction
@@ -252,7 +252,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Full-ZIP overlay semantics
 
-- Full release ZIPs cannot delete stale files when extracted over an older folder. Build tooling now self-heals the one known dangerous obsolete file (`global.json` from alpha.23.3), but development instructions should continue to prefer extracting full builds into a clean folder.
+- Full release ZIPs cannot delete stale files when extracted over an older folder. The historical alpha.23.3 SDK-file self-heal is superseded; preserve the current pinned `global.json` and prefer extracting full builds into a clean folder.
 
 
 ## Packaging/version drift prevention

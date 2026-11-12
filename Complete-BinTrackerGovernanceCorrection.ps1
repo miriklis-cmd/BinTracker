@@ -1,3 +1,5 @@
+# Historical one-time BT-SH-004-FIX8 closure tool. Its pinned baseline and
+# safeguards remain intact; do not reuse it for later candidates.
 param(
     [Parameter(Mandatory = $true)]
     [ValidateSet('Verify','Commit')]

@@ -26,7 +26,7 @@ The discussion must cover:
 
 Only implement after a preferred direction is agreed. Dashboard is intentionally allowed its own milestone because experimentation may materially change scope.
 
-This design gate applies when Dashboard is reached in the authoritative structure below. It does not move Dashboard ahead of Communications, Container Type ordering or Branding. BT-BATCH-012 is delivered earlier by Security Batch E. The remaining importer failure-detail message and deferred Review cosmetics can be handled alongside the applicable phases without reopening the completed core import safety work.
+BT-BATCH-012 was delivered earlier by Security Batch E. The design gate applies when Dashboard is reached in the authoritative structure below, after Communications and Container Type ordering. The remaining importer failure-detail message and deferred Review cosmetics can be handled alongside the applicable phases without reopening the completed core import safety work.
 
 
 ## Current roadmap structure — reconciled 18 October 2026
@@ -39,25 +39,27 @@ This design gate applies when Dashboard is reached in the authoritative structur
 
 Batch Entry Continue/Save/Discard recovery is implemented. The historical general operator confirmation does not explicitly cover every BT-BATCH-010/011 clause, so those rows remain `IMPLEMENTED-STATIC` and targeted recovery acceptance stays open. Remaining edit/remove/Enter/Esc interaction smoke also stays explicit. Alpha.18 Security Batch E implements cross-user ownership plus FIX3 durable Save/Clear/replay integrity under BT-SH-012/BT-BATCH-010/011/012/BT-ARCH-013 at static/focused-automated level. BT-IMP-014 transactional failure detail remains explicit.
 
-### Current hard gate
+### Completed hardening and continuing release gate
 
-- **Security, Data Integrity & Code Quality Hardening — HARD GATE**: Batches A–H are accepted through alpha.21. Batch H fixes BT-SH-047/048/049/050 through pinned/locked resolution, fail-closed online advisory scanning, SDK security analyzers and verified package checksums; independent review and the exact-candidate 1024/1024 BAT passed at accepted application commit `94c43d7`. The later documentation-only bookkeeping audit failure leaves the FIX8 audit-governance correction, independent source review, fresh no-write canonical-BAT evidence and separate evidence review as the current gate before post-hardening implementation. No Security-register blocker remains; the later final release security/reliability review remains required before release.
+- **Security, Data Integrity & Code Quality Hardening — HARD GATE**: Batches A–H are accepted through alpha.21. Batch H fixes BT-SH-047/048/049/050 through pinned/locked resolution, fail-closed online advisory scanning, SDK security analyzers and verified package checksums; independent review and the exact-candidate 1024/1024 BAT passed at accepted application commit `94c43d7`. FIX8 is committed and pushed at `980b30ad`; its separate BAT evidence must not be conflated with application evidence. No Security-register blocker remains; the permanent v1 prohibition and final release security/reliability review remain required.
 
 ### Post-hardening v1 features
 
 1. **Email, SMS & Customer Communications** — Google Workspace email + Texto SMS direction, manual Customer sends, bulk/automatic reminders, preferences/opt-out, templates, delivery history, retry/duplicate protection, audit, outstanding snapshot and statement attachment/link decision.
 2. **Deterministic configurable Container Type ordering** — define duplicate-order handling and reorder UX without hard-coded container priorities.
-3. **Business Information & Branding** — logo, shared header/branding and generated-output source.
-4. **Dashboard** — complete the mandatory design gate before implementation.
+3. **Dashboard** — complete the mandatory design gate before implementation.
+4. **Business Information & Branding** — logo, shared header/branding and generated-output source.
 5. **Customer operational analytics/polish** — sorting, lifetime totals, statement integration and remaining appropriate UI polish.
 6. **Production Backup / Restore / Recovery** — user backup, validated restore, scheduling/retention and recovery drill; the accepted lineage-migration backup is not a substitute.
+
+Recovery design and commercial/licence investigation may precede their implementation and release milestones.
 
 ### Release closure
 
 - Settle remaining explicit acceptance/product decisions, including BT-RPT-009/010, BT-MF-006, BT-IMP-014, remaining Batch Entry interaction acceptance, BT-AUD-006 release scope, audit-retention policy and the unresolved commercial activation choice.
 - Complete the final security, audit and reliability review.
 - Complete BT-REL-013 third-party/commercial release compliance: dependency/SBOM inventory, licence/notice/asset provenance review, explicit QuestPDF eligibility decision, SQLite/native obligations, distributable notices/package validation and reviewed signoff. No licence conclusion is pre-decided here.
-- Complete installer/upgrade/deployment, full v1 regression and v1.0 release.
+- Complete installer/upgrade/deployment, full v1 regression and acceptance, and v1.0 release.
 
 BT-PV1-009 remains `POST-V1`, but commercial v1 must explicitly decide either to ship without technical activation or to reschedule that requirement into v1 before release. This roadmap makes no choice. Post-v1 also retains authenticated API/central-provider delivery, Windows UI v2 / WinUI 3 evaluation, customer portal, handheld/mobile clients, barcode scanning, multiple depots and Custom Report Designer.
 
@@ -208,7 +210,7 @@ Retained Batch #30 stays protected from mutation/deletion in the retained source
 
 The bounded pre-IMP-07 lifecycle correction keeps actual migration publication strict to the frozen `MigrationBaseline` output while making schema-17 `AlreadyComplete` validation use separate structural/current-health checks that accept valid native `Initial` roots and reject malformed current lineage. It changes no lineage semantics, migration registration or runtime authority.
 
-Unified Correct/Reverse/Restore execution, root-CAS/idempotency/provider translation, corrected activity/PositionAsOf, all prepared consumers, Import reconciliation, Task 19's shared Print Pack snapshot, native Audit/History detail and the separately sequenced Restore/RemainReversed UI are normal implemented behavior with row-specific evidence. The activated-system automated gates, fresh exact-copy retained migration/backup rehearsal, FIX7-A/B/C, FIX6 Batch #30 regression, successful original-anchor correction/refresh and bounded Task20 inventory passed; the missing mixed/multiple-line operator proof keeps BT-CORR-022 static. Alpha.9.10 closed Item 8 on Windows 11 at 1920×1080/150% and on a separate 1920×1080/100% PC after its canonical 827/827 gate; final read-only integrity/FKs and domain counts remained clean and unchanged. BT-ARCH-018 Stage A and alpha.10 P1 are complete and accepted. Security Hardening Batches A–H are accepted through alpha.21; Batch H fixes BT-SH-047/048/049/050, and its accepted application commit passed independent review and the exact-candidate 1024/1024 BAT. Current totals are 37 `FIXED`, 0 `CONFIRMED-V1`, 0 `REVIEW-V1`, 11 `POST-V1` and 2 `NOT-APPLICABLE`; the FIX8 audit-governance correction and final release review remain. Packaging/deployment, actual production-database mutation/recovery, production Backup/Restore and alternative-provider acceptance are not silently implied.
+Unified Correct/Reverse/Restore execution, root-CAS/idempotency/provider translation, corrected activity/PositionAsOf, all prepared consumers, Import reconciliation, Task 19's shared Print Pack snapshot, native Audit/History detail and the separately sequenced Restore/RemainReversed UI are normal implemented behavior with row-specific evidence. The activated-system automated gates, fresh exact-copy retained migration/backup rehearsal, FIX7-A/B/C, FIX6 Batch #30 regression, successful original-anchor correction/refresh and bounded Task20 inventory passed; the missing mixed/multiple-line operator proof keeps BT-CORR-022 static. Alpha.9.10 closed Item 8 on Windows 11 at 1920×1080/150% and on a separate 1920×1080/100% PC after its canonical 827/827 gate; final read-only integrity/FKs and domain counts remained clean and unchanged. BT-ARCH-018 Stage A and alpha.10 P1 are complete and accepted. Security Hardening Batches A–H are accepted through alpha.21; Batch H fixes BT-SH-047/048/049/050, and its accepted application commit passed independent review and the exact-candidate 1024/1024 BAT. Current totals are 37 `FIXED`, 0 `CONFIRMED-V1`, 0 `REVIEW-V1`, 11 `POST-V1` and 2 `NOT-APPLICABLE`; FIX8 is committed/pushed and final release review remains. Packaging/deployment, actual production-database mutation/recovery, production Backup/Restore and alternative-provider acceptance are not silently implied.
 
 The whole-codebase layer delineation audit at execution step 5 and its four accepted alpha.10 remediations are complete and accepted. Independent review and the exact-candidate canonical BAT have passed; the architecture closure gate no longer blocks Security Hardening. No Security Hardening finding is fixed by that closure.
 

@@ -1,6 +1,8 @@
 # BinTracker Automated Testing
 
-## BT-SH-004-FIX8 two-phase closure and exact-index correction — 10 November 2026
+## Historical BT-SH-004-FIX8 two-phase closure and exact-index correction — 10 November 2026
+
+FIX8 is committed and pushed at `980b30ad`. The following describes its one-time closure, not an instruction to rerun the script. The accepted application BAT and any separate FIX8 BAT evidence are distinct; the latter is not asserted by this entry.
 
 - `Complete-BinTrackerGovernanceCorrection.ps1 -Phase Verify` requires the independently approved Git-canonical candidate manifest, synchronized FIX8 entry baseline and empty index. It runs focused governance tests, the mechanical audit, `git diff --check` and the canonical BAT, then revalidates the unchanged candidate and writes a strict-UTF-8 evidence JSON plus complete hashed output log outside the repository. It performs no stage, commit or push.
 - `-Phase Commit` requires explicit independent BAT review, the same candidate manifest and the exact evidence SHA-256. It verifies the evidence fields and log hash, reruns focused tests/audit/diff only, stages the exact approved paths, compares every actual stage-zero index blob/mode/path with the approved Git-filtered manifest, rechecks the index tree immediately before an atomic branch-ref update to an exact-tree commit, then pushes and verifies ref equality. It never reruns BAT.
@@ -399,6 +401,8 @@ Parsers, deserializers, importers, migration readers, recovery-manifest readers 
 For schema 16 -> 17, the structured input is the persisted legacy database graph. Migration coverage therefore includes malformed correction/reversal ownership, cross-domain ImportRun relationships, invalid operation kinds/schema state, partial lineage artifacts, prerequisite tampering and transaction-stage failure injection. An undefined persisted enum value in the source schema is hostile/invalid input: it must not acquire meaning merely because a later schema allocates the same number. Every case must classify deterministically or fail closed without a partially committed schema 17.
 
 ## Logical-lineage implementation and acceptance gate
+
+The following implementation-stage account is historical. Normal runtime was subsequently activated, Task20's bounded acceptance was completed, and schema18 is the current startup level; the separate outstanding BT-CORR-022 manual scope and release gates remain in the current register/checklist.
 
 BT-CORR-018..033 is documentation-frozen. Dormant Core contracts, migration-safety infrastructure, schema-17 migration/postflight and a validation-gated CURRENT-root resolver exist under isolated tests. Resolver coverage exercises non-forgeable success construction, current membership/pointers, required current ledger ownership/roles/introductions, exact root-batch or null-single original membership, preserved ReadOnly reason, unique non-negative ordinals, nonprojectable statuses and undefined relevant enums. An unrelated historical-only link does not determine ordinary current projectability, while migration postflight remains globally strict. Ordinary resolution selects only `CurrentGenerationNumber` under one consistent read boundary; it does not scan full history. Normal startup remains schema 16 and production lineage authority is not activated or accepted.
 
@@ -813,12 +817,9 @@ For build-tooling changes, verify both success and failure paths:
 - the script must never print `BUILD SUCCESSFUL` after any failed dotnet command.
 
 
-## Stale global.json self-heal regression
+## Historical stale global.json self-heal regression
 
-- Place the exact alpha.23.3 generated `global.json` beside `Build-BinTracker.bat`.
-- Run the BAT and confirm it deletes that obsolete file, resolves the installed SDK and continues.
-- Place a different/user-managed `global.json` beside the BAT and confirm BinTracker refuses to delete it and reports BUILD FAILED.
-- Force a restore/build/test failure and confirm the `command || goto :fail` path prints BUILD FAILED and never BUILD SUCCESSFUL.
+This obsolete alpha.23.3/23.4.1 deletion behaviour is superseded by the exact SDK 10.0.403 pin. Current verification must fail closed on missing or incompatible `global.json` and must not delete it. Restore/build/test failures must still report BUILD FAILED and never BUILD SUCCESSFUL.
 
 
 ## Daily Print Pack acceptance
@@ -838,7 +839,7 @@ Dormant schema-17 tests now capture the actual delegated results supplied to PDF
 
 ## Mechanical audit regression
 
-Run `Audit-BinTracker.ps1` and confirm it rejects a deliberately stale README/current Release Notes/Roadmap baseline, unexpected `global.json`, or mismatched Version/InformationalVersion, and passes after reconciliation.
+Run `Audit-BinTracker.ps1` and confirm it rejects a deliberately stale README/current Release Notes/Roadmap baseline, missing or incompatible pinned `global.json`, or mismatched Version/InformationalVersion, and passes after reconciliation.
 
 
 ## Requirements register audit regression
