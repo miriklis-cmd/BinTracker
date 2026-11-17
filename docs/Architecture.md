@@ -68,6 +68,18 @@ Customer codes and container short/system codes are operational identifiers, not
 
 Imports cross the service boundary as `ImportSourceDocument` content plus safe metadata. `SourceClientPath` is provenance only and is never treated by business/server logic as a readable path. The Services analysis boundary enforces provider-neutral workbook resource budgets before ClosedXML parsing; the desktop additionally enforces the file-byte limit before whole-file allocation. PDF/report services return bytes; the desktop client chooses where to save or open them. Local crash-draft recovery and developer database tools remain explicitly desktop-local.
 
+## Communications v1 boundary
+
+Communications follows the permanent client/provider boundary rather than embedding provider or scheduling authority in WinForms:
+
+- Core owns provider-neutral channel, eligibility, approval, message/attempt state, idempotency and interruption semantics. Services owns authenticated planning, whole-list refresh, per-message revalidation, approval, cancellation and dispatch orchestration through stable IDs/DTOs. WinForms renders the top-level Communications and Customer/Settings entry points and submits intent only.
+- Provider adapters and secure-secret storage/recovery are infrastructure concerns. Gmail API, Microsoft Graph, secure SMTP and Texto mechanics, credentials, provider message IDs, rate/backoff handling and provider-specific outcome reconciliation must not leak into public application contracts or define business status meaning.
+- Data owns SQLite schema/migrations, durable run/message/attempt storage and database-enforced uniqueness/concurrency for v1. A future suitable SQL provider supplies equivalent persistence without changing application semantics. The existing `ReminderDelivery` row is partial groundwork, not the approved durable model.
+- One local Windows worker is the v1 execution host. It must acquire one active submission slot per mailbox, apply the three-second email pacing baseline and provider backoff, prevent overlapping unresolved cycles and resume only an authorised safe remainder. Its background identity/authentication, crash recovery and secret-access model must be designed before implementation; interactive desktop authentication cannot be assumed to remain valid in a background process.
+- Approval is bound to the exact rendered message inputs that matter: recipient, destination, channel, sender and non-zero outstanding-by-type content. Services/Data, not the preview UI, revalidate immediately before submission and enforce hold/skip/reapproval outcomes.
+- Durable idempotency is required across lost responses, restart, retry, cancellation and provider timeouts. Accepted, Delivered, Failed and Uncertain are distinct evidence states; Uncertain is never silently retried. Cancellation preserves all accepted outcomes and immutable attempt evidence.
+- v1 remains local WinForms + SQLite. The post-v1 authenticated API, central SQL deployment, web/phone clients and additional provider adapters are excluded from the first implementation slice, while the service contracts must remain reusable by them.
+
 ## Concurrency, retries and invariants
 
 - Customer, Container Type and Application Settings use optimistic `Revision` tokens.

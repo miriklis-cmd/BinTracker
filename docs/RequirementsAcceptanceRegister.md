@@ -8,7 +8,7 @@ The direct labels in `docs/FunctionalSpecification.md` are a separate legacy spe
 
 ### BT-REL-007 SDK policy decision — 11 November 2026
 
-The former alpha.23.3-only `global.json` self-heal requirement is superseded by the accepted alpha.21 security decision: the repository pins supported SDK 10.0.403 exactly with prerelease disabled and build tooling fails closed for a missing or incompatible SDK configuration. The old deletion rule is historical, not permission to delete a current or user-managed file. This material change retains `BT-REL-007` and its existing static status; it does not establish a new release acceptance result.
+The former alpha.23.3-only `global.json` self-heal requirement is superseded by the accepted alpha.21 security decision: the repository pins supported SDK 10.0.404 exactly with prerelease disabled and build tooling fails closed for a missing or incompatible SDK configuration. The controlled 10.0.404 maintenance update replaced the unavailable 10.0.403 SDK without changing this policy. The old deletion rule is historical, not permission to delete a current or user-managed file. This material change retains `BT-REL-007` and its existing static status; it does not establish a new release acceptance result.
 
 ## V1 sequencing and commercial-release decisions — 18 October 2026
 
@@ -166,7 +166,7 @@ Provenance tags:
 | BT-REL-004 | v1 | IMPLEMENTED-STATIC | Packaging must mechanically reopen and verify the produced ZIP before delivery. | CHAT-SURFACED,CURRENT-DOC |
 | BT-REL-005 | v1 | IMPLEMENTED-STATIC | Build script must stop on restore/build/test failure and must never print BUILD SUCCESSFUL after a failed command. | CHAT-SURFACED,CURRENT-DOC,CODE |
 | BT-REL-006 | v1 | IMPLEMENTED-STATIC | Build tooling cleans stale MSBuild build servers and disables server/node reuse to reduce intermittent MSB4242 worker-node failures. | CHAT-SURFACED,CURRENT-DOC,CODE |
-| BT-REL-007 | v1 | IMPLEMENTED-STATIC | Build tooling requires the exact supported SDK 10.0.403 pin with prerelease disabled and fails closed for incompatible configuration; it does not delete `global.json`. See the SDK policy decision above. | CHAT-SURFACED,CURRENT-DOC,CODE,DECISION-RECORDED |
+| BT-REL-007 | v1 | IMPLEMENTED-STATIC | Build tooling requires the exact supported SDK 10.0.404 pin with prerelease disabled and fails closed for incompatible configuration; it does not delete `global.json`. See the SDK policy decision above. | CHAT-SURFACED,CURRENT-DOC,CODE,DECISION-RECORDED |
 | BT-REL-008 | v1 | PLANNED-V1 | Release build acceptance requires clean build, zero warnings and all automated tests passing. | CURRENT-DOC,HIST-BUILD |
 | BT-REL-009 | v1 | IMPLEMENTED-STATIC | Genuine feature milestones increment the milestone; bug/polish fixes use one suffix where practical; avoid deeply nested new-version schemes. | CHAT-SURFACED,CURRENT-DOC |
 | BT-REL-010 | v1 | PLANNED-V1 | UI changes require appropriate Windows smoke/DPI testing; unverified manual behavior stays explicitly unverified. | CHAT-SURFACED,CURRENT-DOC |
@@ -413,6 +413,50 @@ BT-CORR-033 criterion reconciliation: transaction-checkpoint rollback is covered
 
 ## Email / SMS / customer communications
 
+### BT-COMM-006-P1 approved v1 contract and controlled amendment boundary — 16 November 2026
+
+The user-approved v1 Communications design is recorded in Functional Specification, Business Rules, Architecture, Database and Roadmap. It is product authority for the implementation target, not evidence that provider delivery, scheduling, approval, durable dispatch, UI or operator acceptance exists. The permanent IDs remain `BT-COMM-001..011`; none is renumbered, recycled or removed.
+
+Specification-local clauses are a legacy namespace. Their actual-meaning mapping is: specification `001` -> permanent `001` groundwork + `008` enforcement; `002` -> `008`; `003` -> `002` groundwork + `009`; `004` -> `010`; `005` -> `010`; `006` secure credential setup -> permanent `007`; `007` Google Workspace -> `003`; `008` Texto -> `004`; and `009` scheduling direction -> `005`. This explicitly preserves the `BT-COMM-006` collision: the specification-local clause means secure Administrator credential setup, while permanent `BT-COMM-006` means manual/bulk/automatic sending and its UI workflow.
+
+The captured specification identity baseline freezes the direct clauses and overlapping permanent rows. P1 therefore proposes, but does not silently apply, amendments to the protected `BT-COMM-001..009` rows: `003` must include Gmail API, Graph, secure SMTP and None; `004` must include Texto and None; `005` must carry the precise schedule/eligibility/reapproval contract; `006..008` must carry the approved UI, one-off, defaults and permission detail; and `009` must replace its old Pending/Sent/Failed/Skipped placeholder with durable run/message/attempt history and Accepted/Delivered/Failed/Uncertain. Independent clause-level review and an authorised `SpecificationRequirementBaseline.json` update are required before those protected row texts/statuses change. This is an explicit amendment gate, not permission to implement from the stale shorthand where it conflicts with the approved design.
+
+`BT-COMM-011` does not overlap a specification-local direct clause, so P1 records the approved v1 content decision now: itemised outstanding balances by Container Type appear in the email body; v1 has no PDF or links; final wording is deferred. This retains the stable ID and `PLANNED-V1` status and constitutes the required material-change decision record. `docs/CHANGELOG.md` records the same reason.
+
+Approved allocation for the permanent family, subject to the protected-row amendment gate above:
+
+| Permanent ID | Approved v1 responsibility |
+|---|---|
+| `BT-COMM-001` | Customer channel preferences, new-customer-only business default and disabled-versus-needs-attention distinction. |
+| `BT-COMM-002` | Durable run/message/attempt evidence and relevant outstanding snapshot. |
+| `BT-COMM-003` | Business-owned email adapters: Gmail API, Graph, secure SMTP and None; pacing/backoff. |
+| `BT-COMM-004` | SMS adapters: Texto and None. |
+| `BT-COMM-005` | Schedule modes, Friday 1 pm business-local default, corrected per-type eligibility, refresh/revalidation and post-approval change rules. |
+| `BT-COMM-006` | Top-level Communications/Customer UI, manual/scheduled/automatic run workflow, review/preview/cancel and one-off reminder. |
+| `BT-COMM-007` | Templates, Settings pages, secure Administrator provider/credential management and send/approval permissions. |
+| `BT-COMM-008` | Dispatch enforcement of per-customer channel choices, automatic opt-out, one-off exception and provider suppression. |
+| `BT-COMM-009` | Reminder Runs, History and Needs Attention views plus Accepted/Delivered/Failed/Uncertain lifecycle visibility. |
+| `BT-COMM-010` | Idempotent submission, definite-failure retry, uncertain hold/reconciliation, interruption/resume, cancellation and audit. |
+| `BT-COMM-011` | Weekly email body content: itemised outstanding by Container Type, no v1 PDF/link. |
+
+Acceptance trace for the first implementation programme:
+
+| ID | Approved behavior | Existing evidence / groundwork | Intended enforcement boundary | Verification still needed |
+|---|---|---|---|---|
+| `BT-COMM-001` | Independent optional channels; default applies only to new customers; existing preferences preserved; disabled differs from needs-attention. | Customer fields, Services mapping and current editor exist (`IMPLEMENTED-STATIC` groundwork only). | Services policy + Data persistence; WinForms displays/submits intent. | Default/settings persistence, old-customer non-rewrite, concurrent edit and UI/manual cases. |
+| `BT-COMM-002` | Durable run, message and immutable attempt evidence with authoritative snapshot/identity. | Single `ReminderDelivery` entity/table contains partial fields (`IMPLEMENTED-STATIC` groundwork only). | Provider-neutral Core transitions, Services orchestration, Data schema/constraints. | Migration/retained-data, transaction/failure, immutable evidence, ID/FK/uniqueness and recovery tests. |
+| `BT-COMM-003` | Gmail API, Graph, secure SMTP or None; business-owned accounts; 3-second baseline, one active mailbox submission and backoff. | No provider adapter or capability evidence. | Infrastructure adapters behind Services contract; worker owns pacing. | Real provider capability/authentication/suppression/backoff tests and operator setup acceptance. |
+| `BT-COMM-004` | Texto or None with no channel substitution. | No SMS adapter or capability evidence. | Texto adapter behind Services contract. | Texto API/account capability, accepted/delivered/uncertain mapping, suppression and real-provider acceptance. |
+| `BT-COMM-005` | Manual only/Scheduled approval/Fully automatic; Friday 1 pm local approval default; include Friday/no ageing; corrected per-type eligibility; whole-list refresh and immediate revalidation; reapproval/skip rules. | `IBusinessClock` and accepted corrected projection are reusable groundwork; no scheduler/eligibility workflow exists. | Services eligibility/approval authority using provider-consistent corrected projection; Data owns schedule/run concurrency. | Cash/COD/inactive and exact boundary decisions; DST/missed-start/race/change matrix; automatic-worker authorization. |
+| `BT-COMM-006` | Approved navigation/views/indicators/review/preview/options/cancel plus Customer More one-off/history; preserve Customers, Settings, Import and Dashboard seam. | Existing Customers editor, dirty guard, reminder controls, Save Customer, Customer Statement, deactivate/reactivate and Import modal exist; no Communications UI/send workflow. | WinForms presentation over authorised Services DTO/commands. | UI contract tests and Windows 1920x1080/150% plus larger-display manual acceptance; cancel state matrix. |
+| `BT-COMM-007` | Settings General/Email/SMS/Schedule/Permissions; Administrator credentials/settings; configurable Operator manual/scheduled approval defaults on; Viewer denied. | Existing roles/authorization/settings singleton and security hardening are groundwork; no templates/secret store/provider settings. | Services authorization on every command; infrastructure secret store/recovery; WinForms visibility only supplemental. | Settle history/one-off permissions and background auth; secret-at-rest/backup/recovery/log-redaction/adversarial tests. |
+| `BT-COMM-008` | Automatic opt-out enforced; one-off may override only automatic opt-out after saved-data preview/confirm; channel opt-outs/provider suppression remain. | Preferences persist and edit; no send boundary enforces them. | Services eligibility and pre-submission revalidation, never UI-only. | Opt-out/channel/provider combinations, unsaved-edit resolution, concurrency and direct-service bypass tests. |
+| `BT-COMM-009` | Separate Reminder Runs/History/Needs Attention and per-channel outcomes with Accepted/Delivered/Failed/Uncertain. | Existing table/enum is only Pending/Sent/Failed/Skipped and no history UI exists. | Services read models + durable Data evidence; WinForms rendering. | Protected row amendment; lifecycle transition/corruption tests; sorting/detail/DPI/operator acceptance. |
+| `BT-COMM-010` | Duplicate-safe submission; retry only definite temporary failure; hold Uncertain; same-day authorised safe resume; later-day review; no overlapping unresolved cycles; preserve accepted outcomes on cancel; audit. | General command-idempotency/transaction/audit architecture exists, but no Communications enforcement. | Services command identity/state machine + Data uniqueness/CAS/transactions + provider reconciliation. | Lost response/restart/timeout/concurrency/cancel/retry/audit success and failure-path tests. |
+| `BT-COMM-011` | Itemised outstanding by Container Type in email body; no PDF/link in v1; wording deferred. | Decision recorded only; no renderer/provider implementation. | Services renderer from the same revalidated authoritative snapshot. | Exact renderer tests, preview/send byte/content equality and operator wording approval when final copy is supplied. |
+
+Planning/review prerequisites are deliberately not inferred: who may prepare, view and approve runs; Cash/COD and inactive-customer eligibility; history and one-off permission detail; and any actor identity, ownership or recovery semantics that affect the persisted planning/approval contract. The planning slice must represent and test provider-neutral authorization and disabled/suppressed-channel outcomes without live provider calls. Live provider sign-in, unattended execution authentication, operational secrets storage/rotation/backup/recovery, provider capability/suppression verification, execution-time DST/shutdown/clock-change/missed-run boundaries and final wording are dispatch prerequisites. Approved provider targets are not provider-verified, and the live dispatch gates do not block planning/review unless they alter its persisted provider-neutral contract.
+
 | ID | Scope | Status | Requirement | Provenance |
 |---|---|---|---|---|
 | BT-COMM-001 | v1 | IMPLEMENTED-STATIC | Customer model contains Email, Mobile, AllowEmailReminders, AllowSmsReminders and ReminderOptOut groundwork. | CURRENT-DOC,CODE |
@@ -425,7 +469,7 @@ BT-CORR-033 criterion reconciliation: transaction-checkpoint rollback is covered
 | BT-COMM-008 | v1 | PLANNED-V1 | Respect per-customer Email/SMS/Opt-out settings. | CHAT-SURFACED,CURRENT-DOC |
 | BT-COMM-009 | v1 | PLANNED-V1 | Delivery history UI with Pending/Sent/Failed/Skipped lifecycle. | CURRENT-DOC |
 | BT-COMM-010 | v1 | PLANNED-V1 | Retry/error handling must avoid duplicate sends and audit runs/sends. | CHAT-SURFACED,CURRENT-DOC |
-| BT-COMM-011 | v1 | PLANNED-V1 | Decide whether statements are attached or linked in email reminders. | CHAT-SURFACED,CURRENT-DOC |
+| BT-COMM-011 | v1 | PLANNED-V1 | Weekly reminder email body contains the itemised outstanding bin balance by Container Type. v1 includes no PDF and no links; links may be reconsidered for v2. Final wording remains deferred and examples are illustrative. | USER-REQUEST,CURRENT-DOC,DECISION-RECORDED |
 
 ## Dashboard
 

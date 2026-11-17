@@ -1,3 +1,12 @@
+## Unreleased — Communications v1 contract reconciliation (16 November 2026)
+
+- Updated the fail-closed supported build SDK pin from unavailable 10.0.403 to installed 10.0.404 without changing .NET 8 application targets, dependency locks, version or security policy. The prior candidate BAT passed the source audit but stopped before compilation/tests because its exact SDK was unavailable; independent review and a fresh exact-candidate BAT remain required.
+- Recorded the approved local-v1 Communications design and mapped the nine specification-local clauses to permanent `BT-COMM-001..011` by actual meaning, including the `BT-COMM-006` secure-credential-versus-send-workflow collision.
+- Preserved the specification identity baseline: protected overlapping row amendments are proposed for independent review rather than silently changing the captured JSON in this Markdown-only pass.
+- Materially resolved permanent `BT-COMM-011` under its stable ID: weekly email contains itemised outstanding balances by Container Type in the body, with no PDF or links in v1; final wording remains deferred.
+- Defined the first implementation slice as durable provider-neutral planning/review with additive SQLite evidence and no provider submission. Provider/worker execution, unresolved eligibility/permission/authentication/secrets/schedule details and all implementation/operator acceptance remain pending.
+- No application code, tests, schema, dependency, version, database, provider account, package or accepted artifact changed. The accepted v0.5.0-alpha.4 artifact and 8/8 manual result remain historical evidence.
+
 ## v0.5.0-alpha.21 (6 November 2026)
 
 - Repaired the source-audit governance path after pushed bookkeeping commit `1b0c200` exposed a PowerShell 5.1 UTF-8 decoding false positive and an impossible committed-HEAD self-reference. Strict UTF-8/LF-normalized historical comparison and exact accepted-application/bookkeeping validation remain; FIX8 separates no-write BAT evidence from later independently authorized Git closure, permits governed topic-branch/reintegration history, and binds the actual staged blobs/tree to the reviewed candidate without changing product behavior or version.

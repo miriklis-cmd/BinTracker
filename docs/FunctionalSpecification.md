@@ -113,6 +113,42 @@ Alpha.18 automated acceptance covers User A persist/logout, User B owner-operati
 - BT-COMM-005: Reminder sends/runs are auditable.
 - BT-COMM-006: Provider credentials are administrator-configured and securely stored.
 
+### Approved v1 Communications contract
+
+The approved v1 design is a local-Windows Communications workflow backed by the current local SQLite product and reusable client/provider-neutral service boundaries. It does not implement the post-v1 authenticated API or central SQL provider. The following contract is approved for implementation but is not yet an implementation or acceptance claim:
+
+- Communications is a top-level destination immediately below Customers. Reminder Runs, History and Needs Attention are distinct views. The run list uses a prominent icon-and-count strip, compact controls, separate Email and SMS status columns, outstanding bins by Container Type and Last Reminder. Labelled green indicates ready/accepted, red indicates an issue and amber indicates a hold.
+- Review & Approve refreshes the whole eligible list and shows changes, blocked channels and the exact message total. Preview is read-only and shows the selected destination plus rendered content. Run options provide View selected customer, View run details, authorised schedule-settings access and confirmed cancellation only when the run state permits it; cancellation never erases already accepted outcomes.
+- The existing Customers editor, Email/SMS reminder controls, Save Customer, Customer Statement, dirty-edit Save/Discard/Cancel guard and deactivate/reactivate behavior remain. More adds one-off reminder and communication-history actions while retaining deactivate/reactivate. A one-off uses saved authoritative customer data, resolves unsaved edits first, requires preview and explicit confirmation, may override only the automatic-reminder opt-out, and still obeys channel opt-outs and provider suppression.
+- Settings uses a shallow expandable tree with Communications pages General, Email, SMS, Schedule and Permissions. Existing Import Excel and administration functions/access checks remain. Dashboard integration is a seam for its later milestone, not part of Communications v1.
+- Email and SMS are independently optional. Both means two independent eligible submissions, never automatic channel substitution. A business-wide Email/SMS/Both/No reminders default applies only to newly created customers and never rewrites existing preferences. An intentionally disabled channel is distinct from a configured channel that needs attention.
+- Business-owned email adapters target Google Workspace through Gmail API, Microsoft 365 through Graph, secure SMTP and None. SMS targets Texto and None; other adapters are later. Email pacing starts at three seconds with at most one active submission per mailbox, subject to provider backoff. These are approved targets, not current provider-capability verification.
+- Administrator manages providers, credentials and business settings. Operator manual-run and scheduled-approval permissions are independently configurable and default on. Viewer has no send or approval authority. Communication-history and one-off permission detail remains unresolved and must be settled before implementation.
+- Modes are Manual only, Scheduled with approval and Fully automatic. The default is Friday at 1 pm in the configured business timezone with approval required. Friday movements are included and there is no ageing threshold. Eligibility uses corrected outstanding quantities independently by Container Type and never offsets one type against another. There is no arbitrary per-run customer exclusion.
+- The whole eligible list is refreshed before approval or automatic dispatch, and eligibility/content is revalidated immediately before each submission. A missed scheduled start goes to review even in automatic mode. After approval, recipient, destination, channel, sender or non-zero balance changes hold the affected message for fresh approval; newly eligible additions also require approval. Zero/ineligible messages are skipped with a recorded reason, while unchanged eligible messages may retain approval.
+- Durable run, message and attempt history distinguishes Accepted, Delivered, Failed and Uncertain. Only definite temporary failures may be retried safely. Uncertain submissions remain held for outcome reconciliation. The safe remainder of an already-started run may resume on the same business day while still authorised; a later-day remainder requires review. Duplicate submissions and overlapping unresolved cycles are prohibited.
+- Weekly email puts an itemised outstanding balance by Container Type in the body. v1 sends no PDF and no links; links may be reconsidered for v2. Final wording remains deferred and examples are illustrative.
+
+Cash/COD and inactive-customer eligibility, communication-history and one-off permission detail, scheduled/background authentication, secrets storage and recovery, provider capability verification and precise schedule boundary behavior remain explicit engineering/product decisions. They must not be inferred from this approved design.
+
+### Specification-local Communications clause mapping
+
+The permanent register remains the canonical namespace. This table maps actual meaning without relabelling either namespace. Because `docs/SpecificationRequirementBaseline.json` captures the direct definitions and overlapping register rows, changes to those protected lines require the separate independent review/baseline-update gate; this Markdown-only pass records the mapping and amendment proposals but does not alter the captured definitions.
+
+| Specification-local clause | Actual clause meaning | Permanent register mapping by meaning | Disposition / collision |
+|---|---|---|---|
+| `BT-COMM-001` | Independent customer Email/SMS permission | `BT-COMM-001` groundwork plus `BT-COMM-008` execution enforcement | Partial mapping; the permanent `001` row is narrower groundwork. |
+| `BT-COMM-002` | Automatic-send opt-out precedence | `BT-COMM-008` | Same label collision: permanent `002` is delivery persistence, not opt-out. |
+| `BT-COMM-003` | Attempt evidence: channel, destination, status, provider response and outstanding snapshot | `BT-COMM-002` persistence groundwork plus `BT-COMM-009` history/lifecycle | Same label collision: permanent `003` is email-provider direction. |
+| `BT-COMM-004` | Safe retry without duplicate send | `BT-COMM-010` | Same label collision: permanent `004` is SMS-provider direction. |
+| `BT-COMM-005` | Run/send audit | `BT-COMM-010` | Same label collision: permanent `005` is scheduling/eligibility direction. |
+| `BT-COMM-006` | Administrator secure provider credential setup | `BT-COMM-007` | Explicit collision: permanent `BT-COMM-006` is manual/bulk/automatic sending. |
+| `BT-COMM-007` | Google Workspace email direction | `BT-COMM-003` | Partial amendment required: approved v1 also includes Microsoft 365, secure SMTP and None. |
+| `BT-COMM-008` | Texto SMS direction | `BT-COMM-004` | Partial amendment required: approved v1 also includes None. |
+| `BT-COMM-009` | Configurable Friday-or-earlier automatic scheduling direction | `BT-COMM-005` | Partial amendment required for Friday 1 pm business-local, approval-default, no-ageing and missed-start rules. |
+
+Permanent `BT-COMM-006` (send modes/UI/one-off workflow) and `BT-COMM-011` (weekly message content) have no specification-local clause with equivalent meaning. Permanent `BT-COMM-009` also needs its lifecycle terminology amended from the old Pending/Sent/Failed/Skipped placeholder to the approved run/message/attempt model; that protected-row amendment remains pending independent baseline review.
+
 ## Migration
 
 - BT-IMPORT-001: Excel brought-forward positions establish authoritative cutover opening position.

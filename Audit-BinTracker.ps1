@@ -61,9 +61,9 @@ if ($testChecklistText -notmatch [regex]::Escape('Package-BinTracker.ps1') -or
 }
 
 $sdkPolicy = Get-Content -Raw -LiteralPath 'global.json' | ConvertFrom-Json
-if ($sdkPolicy.sdk.version -cne '10.0.403' -or $sdkPolicy.sdk.rollForward -cne 'disable' -or
+if ($sdkPolicy.sdk.version -cne '10.0.404' -or $sdkPolicy.sdk.rollForward -cne 'disable' -or
     $sdkPolicy.sdk.allowPrerelease -ne $false) {
-    Fail 'global.json must pin supported SDK 10.0.403 exactly with prerelease SDKs disabled.'
+    Fail 'global.json must pin supported SDK 10.0.404 exactly with prerelease SDKs disabled.'
 }
 $lockFiles = @(
     'src/BinTracker.Core/packages.lock.json',

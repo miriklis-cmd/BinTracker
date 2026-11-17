@@ -48,7 +48,7 @@ Business Information supports Business Name, Trading Name and Default Report Hea
 ### Email/SMS controls are preferences only
 **Area:** Communications
 
-Customer reminder preferences and the `ReminderDelivery` persistence model exist, but no real Email or SMS provider/send workflow has been implemented.
+Customer reminder preferences and the legacy single `ReminderDelivery` persistence model exist, but no Communications service, schedule/approval workflow, worker, secure credential implementation or real Email/SMS provider/send workflow has been implemented. The approved BT-COMM-001..011 design is a target, not provider verification or acceptance.
 
 ### Movement correction/reversal bounded Task20 acceptance is complete
 - Alpha.9.10 completed the bounded Items 1–8 Windows/operator inventory, including correction/disposition dialogs, native Administrator review and forensic drill-through, real concurrent multi-window stale-state handling, and the required 1920x1080/150% plus larger-effective-workspace DPI matrix.

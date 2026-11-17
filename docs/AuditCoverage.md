@@ -26,7 +26,7 @@ This is the pre-v1 audit-coverage checklist. Audit history is append-only eviden
 - Report generation, including Customer Statement, Market Floor, Outstanding Containers, Daily Movements, Weekly Movements, Movement History, Monthly Summary and Daily Print Pack PDF output.
 - CSV export for Outstanding Containers, Daily Movements, Weekly Movements, Movement History and Monthly Summary.
 - Business Information/settings changes, including future logo/branding changes when implemented.
-- Reminder runs and individual Email/SMS delivery attempts.
+- Communications settings/provider/permission changes; reminder eligibility/approval/reapproval; run creation, cancellation and resume; each skipped/held reason; each Email/SMS submission attempt and outcome reconciliation. Evidence must distinguish Accepted, Delivered, Failed and Uncertain, preserve immutable provider IDs/responses without sensitive payload leakage, bind actor/schedule/run/message/attempt identities and retain already accepted outcomes when cancellation stops the safe remainder.
 - Production Backup/Restore operations when implemented, plus normal lineage database-upgrade attempts. The coordinator is active, but durable operator-facing upgrade/recovery audit coverage remains pending.
 - Lineage preflight, verified pre-upgrade backup/manifest, migration/postflight and recovery attempts require durable evidence. Their active safety enforcement and automated tests do not by themselves constitute complete production audit-log wiring. Recovery evidence must survive restoration to an older database snapshot.
 

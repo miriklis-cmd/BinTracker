@@ -333,7 +333,7 @@ A build is **not complete** merely because code was changed or static checks pas
 
 ## Local SDK and MSBuild worker policy
 
-BinTracker targets `net8.0` / `net8.0-windows` and pins the supported build SDK to 10.0.403 in `global.json`; the pin was selected only after that SDK produced accepted Batch G operator evidence and was confirmed installed. Missing or different SDK resolution is a blocking environment error, not permission to weaken the pin.
+BinTracker targets `net8.0` / `net8.0-windows` and pins the supported build SDK to 10.0.404 in `global.json`; this controlled maintenance update was explicitly authorised after the prior 10.0.403 pin was unavailable and 10.0.404 was confirmed installed. Missing or different SDK resolution is a blocking environment error, not permission to weaken the pin.
 
 Every project commits `packages.lock.json`. Governed build/package paths restore with `--locked-mode`; intentional dependency changes require explicit package-reference review and regenerated lock files in the same candidate. The security gate also requires reachable configured NuGet sources for machine-readable direct/transitive vulnerability advisories. A source/advisory failure blocks the gate and must never be reported as a successful scan.
 
@@ -356,7 +356,7 @@ The same shared gate runs a Release build with the SDK recommended security-cate
 
 Extracting a newer BinTracker ZIP over an existing build folder overwrites matching files but does not remove files that were deleted from the newer package.
 
-The alpha.23.4.1 self-heal was historical. The current alpha.21 toolchain requires repository `global.json` to pin SDK 10.0.403 exactly with prerelease disabled. It fails closed on missing or incompatible configuration and does not delete that file.
+The alpha.23.4.1 self-heal was historical. The current alpha.21 toolchain requires repository `global.json` to pin SDK 10.0.404 exactly with prerelease disabled. It fails closed on missing or incompatible configuration and does not delete that file.
 
 For the cleanest manual workflow, deleting the old extracted BinTracker folder before extracting a new full ZIP remains preferable.
 

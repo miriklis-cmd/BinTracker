@@ -270,7 +270,7 @@ if ($RunScannerContractTests) {
     }
 }
 
-$expectedSdk = '10.0.403'
+$expectedSdk = '10.0.404'
 $actualSdk = (& dotnet --version 2>&1 | Out-String).Trim()
 if ($LASTEXITCODE -ne 0 -or $actualSdk -ne $expectedSdk) {
     Fail "Expected pinned .NET SDK $expectedSdk but resolved '$actualSdk'. Install the pinned SDK; do not change global.json merely to bypass this gate."

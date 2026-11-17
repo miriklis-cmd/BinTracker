@@ -3,7 +3,7 @@
 ## v0.5.0-alpha.21
 
 - Implements final Security Hardening Batch H at static/focused evidence level: BT-SH-047/048/049/050 are `FIXED`; totals are 37 FIXED, 0 CONFIRMED-V1, 0 REVIEW-V1, 11 POST-V1 and 2 NOT-APPLICABLE.
-- Pins supported SDK 10.0.403, commits seven project dependency locks and requires locked restore in governed build/package paths.
+- Pins supported SDK 10.0.404, commits seven project dependency locks and requires locked restore in governed build/package paths.
 - Adds fail-closed direct/transitive NuGet vulnerability scanning. The first online run blocked SQLitePCLRaw native 2.1.6 under GHSA-2m69-gcr7-jv3q; the candidate pins compatible 2.1.14. Configured advisory sources must be reachable; unavailable data is an explicit failure, not a successful scan.
 - Requires exact machine-readable coverage of all seven project/framework pairs and the same seven projects in the online advisory result; incomplete, duplicate, malformed or unexpected scanner output is rejected without rejecting legitimate zero-vulnerability projects.
 - Enables the SDK recommended security-category analyzers as errors in the governed Release security build. The broader all-rules review remains evidence and is not silenced; static analysis does not guarantee complete code security.

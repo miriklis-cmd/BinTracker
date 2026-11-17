@@ -82,6 +82,11 @@ Engineering improvements that are not currently user-facing defects. Product wor
 - Make reminder sends idempotent/retry-safe to avoid duplicate Email/SMS after timeouts.
 - Store enough provider response metadata for support while avoiding sensitive payload leakage.
 - Keep reminder eligibility/business rules separate from provider adapters.
+- Replace the partial single `ReminderDelivery`/Pending-Sent-Failed-Skipped shape with the approved durable run/message/attempt and Accepted/Delivered/Failed/Uncertain model; preserve immutable attempts and link retries/reconciliation rather than overwriting evidence.
+- Design background-worker authentication/authorization, secret access/rotation/backup/recovery and crash/restart ownership. Do not reuse an interactive desktop session as implicit scheduled authority.
+- Settle Cash/COD and inactive-customer eligibility, history/one-off permission detail, provider suppression semantics and DST/shutdown/clock-change/missed-run boundaries before implementation.
+- Prove Gmail API, Graph, secure SMTP and Texto capabilities/outcome mappings with business-owned accounts; approved targets are not provider verification.
+- Keep post-v1 API/central SQL hosting and additional provider adapters outside the local-v1 slice while retaining reusable provider/client-neutral contracts.
 
 ## Security / operations
 
@@ -240,7 +245,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 
 ## Local build SDK selection
 
-- BinTracker targets .NET 8 and currently pins SDK 10.0.403 in `global.json`, with prerelease disabled. Developer and CI machines must have the selected SDK and fail closed on incompatible configuration.
+- BinTracker targets .NET 8 and currently pins SDK 10.0.404 in `global.json`, with prerelease disabled. Developer and CI machines must have the selected SDK and fail closed on incompatible configuration.
 
 
 ## Build SDK policy correction

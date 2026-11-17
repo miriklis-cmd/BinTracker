@@ -45,7 +45,7 @@ Batch Entry Continue/Save/Discard recovery is implemented. The historical genera
 
 ### Post-hardening v1 features
 
-1. **Email, SMS & Customer Communications** — Google Workspace email + Texto SMS direction, manual Customer sends, bulk/automatic reminders, preferences/opt-out, templates, delivery history, retry/duplicate protection, audit, outstanding snapshot and statement attachment/link decision.
+1. **Email, SMS & Customer Communications** — approved local-v1 contract: Gmail API/Graph/secure SMTP/None plus Texto/None; independent customer channels/defaults; manual/scheduled/automatic and one-off workflows; corrected per-type Friday eligibility; review/reapproval; durable run/message/attempt evidence; retry/uncertain/cancel/resume safety; audit; and itemised email-body balances with no v1 PDF/link.
 2. **Deterministic configurable Container Type ordering** — define duplicate-order handling and reorder UX without hard-coded container priorities.
 3. **Dashboard** — complete the mandatory design gate before implementation.
 4. **Business Information & Branding** — logo, shared header/branding and generated-output source.
@@ -252,7 +252,7 @@ BT-SH-001 is fixed at the alpha.11 static/focused-evidence checkpoint: all curre
 
 ### 5B. Email, SMS & Customer Communications — first post-hardening feature
 
-This is the first user-facing feature milestone after the Security Hardening gate closes. Its complete scope remains Google Workspace email, Texto SMS, manual send from Customer, automatic/bulk reminders, customer preferences and opt-out, templates, delivery history, retry/duplicate protection, audit, the relevant outstanding snapshot and the statement attachment/link decision. No later feature milestone may begin first.
+This is the first user-facing feature milestone after the Security Hardening gate closes. Its approved local-v1 scope is the complete BT-COMM-001..011 contract recorded in the register: provider-neutral planning/authorization and durable SQLite evidence; Gmail API/Graph/secure SMTP/None and Texto/None adapters; manual, scheduled-approval, fully automatic and confirmed one-off workflows; customer preferences/defaults/opt-outs; templates; corrected outstanding-by-type eligibility; review/reapproval; delivery history; retry/duplicate/uncertain/interruption/cancellation safety; audit; and an itemised email body with no v1 PDF/link. No later feature milestone may begin first. Post-v1 API/central SQL clients and additional adapters remain excluded.
 
 ### 5C. Completed Security Batch E draft-ownership obligation
 
@@ -284,23 +284,18 @@ Execution position is governed by the current order above and section 5B: this i
 Groundwork already exists:
 
 - customer `AllowEmailReminders`, `AllowSmsReminders` and `ReminderOptOut`;
-- `ReminderDelivery` persistence model with channel, destination, status, provider response and outstanding snapshot.
+- `ReminderDelivery` persistence model with channel, destination, legacy Pending/Sent/Failed/Skipped status, provider response and outstanding snapshot;
+- accepted corrected outstanding-position projection, `IBusinessClock`, authorization/audit and client/provider-neutral architecture seams.
 
 Still required:
 
-- [ ] Finalise reminder business rules around the previously agreed direction: automatically remind customers owing empty bins by **Friday or earlier**, while keeping thresholds/timing configurable where sensible.
-- [ ] Email provider integration using the previously chosen **Google Workspace** direction.
-- [ ] SMS provider integration using the previously chosen **Texto** direction.
-- [ ] Administrator provider/credential configuration with secrets stored securely.
-- [ ] Email and SMS templates.
-- [ ] Manual send from Customer screen.
-- [ ] Bulk/automatic reminder run.
-- [ ] Respect per-customer Email/SMS/Opt-out settings.
-- [ ] Delivery history UI.
-- [ ] Pending / Sent / Failed / Skipped lifecycle.
-- [ ] Retry/error handling without duplicate sends.
-- [ ] Audit reminder runs and sends.
-- [ ] Decide whether statements can be attached/linked in email reminders.
+- [ ] **First coherent implementation slice — durable planning and review foundation, no provider submission:** provider-neutral run/message/attempt and approval contracts; additive SQLite migration/constraints; settings/defaults/permissions excluding live secrets; corrected per-type eligibility; full-list refresh; rendered itemised-body preview; and the top-level Reminder Runs/History/Needs Attention review-only UI. This slice must not mark any provider result Accepted or simulate delivery.
+- [ ] First-slice prerequisites: approve protected `BT-COMM-001..009` row/baseline amendments; settle who may prepare, view and approve runs, Cash/COD and inactive eligibility, history/one-off permission detail, and any actor identity, ownership or recovery semantics that affect the persisted planning/approval contract; approve schema/migration/recovery design; characterize existing Customer editor/dirty guard/navigation and retained schema18 groundwork.
+- [ ] First-slice acceptance: new-customer default never rewrites existing customers; per-type balances never offset; Friday/no-ageing/business-local boundaries and corrected projection agree; whole-list refresh/change display/exact count are deterministic; provider-neutral disabled/suppressed channels and prepare/view/approve authorization are represented and enforced without provider calls; saved-data one-off preview rules are enforced; approval fingerprints hold/skip/reapprove correctly; durable identities and failure rollback are proven; existing Customer/Import/admin behavior is preserved; read-only preview content matches planned content; UI passes contract tests and Windows/DPI review.
+- [ ] Dispatch prerequisites: settle live provider sign-in, unattended execution authentication, operational credential storage/rotation/backup/recovery, live provider capability and suppression verification, DST/shutdown/clock-change/missed-run execution boundaries and final wording. These do not block the no-submission planning/review slice unless they change its persisted provider-neutral authorization or suppression contract.
+- [ ] Subsequent dispatch slice: secure Administrator provider configuration and business-owned Gmail API/Graph/secure SMTP/Texto adapters, None suppression, three-second/one-mailbox pacing, backoff and real capability verification.
+- [ ] Subsequent execution-safety slice: worker authentication/recovery, Accepted/Delivered/Failed/Uncertain transitions, lost-response reconciliation, definite-failure retry, idempotency, overlap prevention, same-day resume/later-day review, cancellation and complete audit evidence.
+- [ ] Final Communications acceptance: real Email/SMS provider tests, templates/final wording, complete authorization/direct-service bypass checks, history/detail behavior and required Windows 11 1920x1080/150% plus larger-display acceptance.
 
 
 ## Priority 3 — production hardening before v1.0
@@ -421,7 +416,7 @@ The roadmap was reconciled against the project history rather than only the most
 - [x] **Daily Print Pack:** Outstanding Summary + physical Movement Detail implemented in one audited PDF; real preview/print acceptance passed.
 - [x] **Movement Correction / Reversal:** linked append-only correction/reversal/restoration records, reason, actor/time, permissions, audit and accepted lineage/history/detail behavior; no destructive edit.
 - [ ] **Business Information & Branding:** logo/custom header and reusable output branding.
-- [ ] **Email/SMS communications:** Google Workspace email + Texto SMS direction; customer Email/SMS/Opt-out settings; Friday-or-earlier empty-bin reminder direction; manual/bulk/automatic sends; templates; delivery history; retry/idempotency; audit; statement attachment/link decision.
+- [ ] **Email/SMS communications:** approved BT-COMM-001..011 local-v1 contract and staged implementation/acceptance plan in section 6; planning-contract prerequisites block the first slice, dispatch prerequisites remain later gates, and no provider delivery is implemented.
 - [ ] **Dashboard:** design before code; charts, useful KPIs, attention states, drill-through, recent activity, by-container view, ageing rule discussion, forecasting/ML hooks and large-monitor layout.
 - [ ] **Dashboard future-UI discussion:** explicitly compare what WinUI 3 v2 would improve in Dashboard, Reports launcher, individual report pages and import workflow, and avoid over-engineering WinForms v1 where appropriate.
 - [ ] **Backup/recovery:** user backup/restore plus scheduled automatic backups, configurable destination/retention, pre-upgrade backup and recovery drill.

@@ -120,8 +120,15 @@ Important security, master-data and movement changes create audit events.
 
 ## Communications
 
-- Current provider direction is Google Workspace for email and Texto for SMS.
-- Automatic reminder policy is intended to contact customers owing empty bins by Friday or earlier, while allowing business-rule refinement before production.
+- Email and SMS are independently optional. Both means two separately eligible submissions and never automatic substitution from a blocked/failed channel to another channel. A business-wide Email/SMS/Both/No reminders default applies only when a new customer is created; saved customer preferences are never rewritten by a later default change. Intentionally disabled and configured-but-needs-attention are distinct states.
+- Automatic eligibility uses the corrected authoritative outstanding position, separately by Container Type with no cross-type offset. The default schedule is Friday at 1 pm in the configured business timezone, includes Friday movements, has no ageing threshold and requires approval. Supported modes are Manual only, Scheduled with approval and Fully automatic; a missed scheduled start always goes to review.
+- The complete eligible set is refreshed before approval or automatic dispatch, then each message's eligibility, destination and rendered content is revalidated immediately before provider submission. There is no arbitrary per-run customer exclusion. An affected approved message is held for fresh approval when recipient, destination, channel, sender or non-zero balance changes; new eligible messages also require approval. Zero/ineligible messages are skipped with the reason, and unchanged eligible messages may proceed under existing approval.
+- Customer automatic opt-out prevents automatic reminders. An authorised one-off may override that automatic opt-out only after resolving unsaved customer edits, loading saved authoritative data, previewing and explicitly confirming; channel opt-outs and provider suppression still apply.
+- Business-owned email accounts may use Gmail API, Microsoft Graph, secure SMTP or None. SMS may use Texto or None. Email starts with a three-second pacing baseline and one active submission per mailbox, subject to provider backoff. Provider capability, credential and recovery details remain implementation prerequisites rather than inferred behavior.
+- Durable evidence distinguishes provider Accepted, downstream Delivered, definite Failed and outcome-unknown Uncertain. Only definite temporary failures are retryable. Uncertain attempts remain held for reconciliation. An interrupted run may resume its safe remainder on the same business day while still authorised; a later-day remainder requires review. Unresolved cycles cannot overlap and provider submission identity must prevent duplicates.
+- Cancellation is state-dependent and confirmed. It stops only the safe unsent remainder and preserves accepted/delivered/failed/uncertain evidence already obtained.
+- Weekly email contains the itemised outstanding balance by Container Type in the body, with no PDF or link in v1. Final wording is deferred; example text is not an accepted template.
+- Administrator manages provider credentials/business settings. Operator authority for manual runs and scheduled approvals is independently configurable and defaults on. Viewer has no send or approval authority. Cash/COD and inactive-customer eligibility plus history/one-off permission detail remain unresolved and must be settled before implementation.
 
 ## Central database
 
