@@ -1,10 +1,12 @@
 ## Unreleased — Communications v1 contract reconciliation (16 November 2026)
 
+- Independently approved and applied the protected Communications amendments for specification-local `BT-COMM-007..009` and permanent `BT-COMM-003..009`, including the matching specification-identity baseline entries; IDs, scopes and statuses remain unchanged.
+- Settled planning/review eligibility and authority for account/Cash-COD, active/inactive, positive/zero per-type balances, Administrator/Operator/Viewer capabilities, one-offs, channel/provider suppression, inactive SMS selection and template-changing status reapproval. Exact copy, persisted actor/ownership/recovery, schema/migration/recovery and dispatch prerequisites remain pending; custom icons remain a UI-pass deliverable.
 - Updated the fail-closed supported build SDK pin from unavailable 10.0.403 to installed 10.0.404 without changing .NET 8 application targets, dependency locks, version or security policy. The prior candidate BAT passed the source audit but stopped before compilation/tests because its exact SDK was unavailable; independent review and a fresh exact-candidate BAT remain required.
 - Recorded the approved local-v1 Communications design and mapped the nine specification-local clauses to permanent `BT-COMM-001..011` by actual meaning, including the `BT-COMM-006` secure-credential-versus-send-workflow collision.
-- Preserved the specification identity baseline: protected overlapping row amendments are proposed for independent review rather than silently changing the captured JSON in this Markdown-only pass.
+- P1 preserved the specification identity baseline pending independent review; P2 supplies that approval and updates only the exact protected entries mapped above.
 - Materially resolved permanent `BT-COMM-011` under its stable ID: weekly email contains itemised outstanding balances by Container Type in the body, with no PDF or links in v1; final wording remains deferred.
-- Defined the first implementation slice as durable provider-neutral planning/review with additive SQLite evidence and no provider submission. Provider/worker execution, unresolved eligibility/permission/authentication/secrets/schedule details and all implementation/operator acceptance remain pending.
+- Defined the first implementation slice as durable provider-neutral planning/review with additive SQLite evidence and no provider submission. Persisted actor/ownership/recovery, schema/migration/recovery, provider/worker execution, authentication/secrets/schedule-execution details and all implementation/operator acceptance remain pending.
 - No application code, tests, schema, dependency, version, database, provider account, package or accepted artifact changed. The accepted v0.5.0-alpha.4 artifact and 8/8 manual result remain historical evidence.
 
 ## v0.5.0-alpha.21 (6 November 2026)

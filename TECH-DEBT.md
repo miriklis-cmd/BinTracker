@@ -84,7 +84,7 @@ Engineering improvements that are not currently user-facing defects. Product wor
 - Keep reminder eligibility/business rules separate from provider adapters.
 - Replace the partial single `ReminderDelivery`/Pending-Sent-Failed-Skipped shape with the approved durable run/message/attempt and Accepted/Delivered/Failed/Uncertain model; preserve immutable attempts and link retries/reconciliation rather than overwriting evidence.
 - Design background-worker authentication/authorization, secret access/rotation/backup/recovery and crash/restart ownership. Do not reuse an interactive desktop session as implicit scheduled authority.
-- Settle Cash/COD and inactive-customer eligibility, history/one-off permission detail, provider suppression semantics and DST/shutdown/clock-change/missed-run boundaries before implementation.
+- P2 settles account/Cash-COD and active/inactive eligibility, prepare/view/approve and one-off authority, automatic/channel/provider suppression, inactive SMS selection and status/template-change reapproval. Persisted actor/ownership/recovery, schema/migration/recovery, final copy and DST/shutdown/clock-change/missed-run execution boundaries remain to be designed before their applicable implementation slices.
 - Prove Gmail API, Graph, secure SMTP and Texto capabilities/outcome mappings with business-owned accounts; approved targets are not provider verification.
 - Keep post-v1 API/central SQL hosting and additional provider adapters outside the local-v1 slice while retaining reusable provider/client-neutral contracts.
 

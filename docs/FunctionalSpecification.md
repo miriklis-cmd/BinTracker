@@ -123,17 +123,18 @@ The approved v1 design is a local-Windows Communications workflow backed by the 
 - Settings uses a shallow expandable tree with Communications pages General, Email, SMS, Schedule and Permissions. Existing Import Excel and administration functions/access checks remain. Dashboard integration is a seam for its later milestone, not part of Communications v1.
 - Email and SMS are independently optional. Both means two independent eligible submissions, never automatic channel substitution. A business-wide Email/SMS/Both/No reminders default applies only to newly created customers and never rewrites existing preferences. An intentionally disabled channel is distinct from a configured channel that needs attention.
 - Business-owned email adapters target Google Workspace through Gmail API, Microsoft 365 through Graph, secure SMTP and None. SMS targets Texto and None; other adapters are later. Email pacing starts at three seconds with at most one active submission per mailbox, subject to provider backoff. These are approved targets, not current provider-capability verification.
-- Administrator manages providers, credentials and business settings. Operator manual-run and scheduled-approval permissions are independently configurable and default on. Viewer has no send or approval authority. Communication-history and one-off permission detail remains unresolved and must be settled before implementation.
-- Modes are Manual only, Scheduled with approval and Fully automatic. The default is Friday at 1 pm in the configured business timezone with approval required. Friday movements are included and there is no ageing threshold. Eligibility uses corrected outstanding quantities independently by Container Type and never offsets one type against another. There is no arbitrary per-run customer exclusion.
-- The whole eligible list is refreshed before approval or automatic dispatch, and eligibility/content is revalidated immediately before each submission. A missed scheduled start goes to review even in automatic mode. After approval, recipient, destination, channel, sender or non-zero balance changes hold the affected message for fresh approval; newly eligible additions also require approval. Zero/ineligible messages are skipped with a recorded reason, while unchanged eligible messages may retain approval.
+- Administrators may prepare, view and approve runs and manage providers, credentials and business settings. Operators may view runs and history; their manual-run preparation and scheduled-run approval permissions are independent and default on. Viewers have no send or approval authority; no additional Viewer read permission is inferred.
+- Modes are Manual only, Scheduled with approval and Fully automatic. The default is Friday at 1 pm in the configured business timezone with approval required. Friday movements are included and there is no ageing threshold. Account and Cash/COD customers are eligible on the same basis; inactive status alone does not disqualify a customer. Eligibility requires a positive corrected outstanding balance in any Container Type and never offsets that balance against a credit in another type. There is no arbitrary per-run customer exclusion.
+- The whole eligible list is refreshed before approval or automatic dispatch, and eligibility/content is revalidated immediately before each submission. A missed scheduled start goes to review even in automatic mode. After approval, recipient, destination, channel, sender or non-zero balance changes hold the affected message for fresh approval; a customer-status change that changes rendered SMS wording/template selection holds the affected SMS for fresh approval. Newly eligible additions also require approval. Zero/ineligible messages are skipped with a recorded reason, while unchanged eligible messages may retain approval.
 - Durable run, message and attempt history distinguishes Accepted, Delivered, Failed and Uncertain. Only definite temporary failures may be retried safely. Uncertain submissions remain held for outcome reconciliation. The safe remainder of an already-started run may resume on the same business day while still authorised; a later-day remainder requires review. Duplicate submissions and overlapping unresolved cycles are prohibited.
 - Weekly email puts an itemised outstanding balance by Container Type in the body. v1 sends no PDF and no links; links may be reconsidered for v2. Final wording remains deferred and examples are illustrative.
+- Inactive customers use distinct factual SMS wording in scheduled and authorised one-off workflows. Exact SMS copy remains deferred. No separate inactive-customer email template is inferred.
 
-Cash/COD and inactive-customer eligibility, communication-history and one-off permission detail, scheduled/background authentication, secrets storage and recovery, provider capability verification and precise schedule boundary behavior remain explicit engineering/product decisions. They must not be inferred from this approved design.
+Administrators may initiate one-off reminders. Operators may initiate them only while their manual-run permission is enabled. Saved authoritative customer data, preview and explicit confirmation are mandatory. Automatic-reminder opt-out alone does not block an authorised one-off; channel opt-out and provider suppression still block that channel. Scheduled/background authentication, secrets storage and recovery, provider capability verification, precise execution-time schedule boundaries and final template copy remain explicit implementation decisions and must not be inferred from this approved design.
 
 ### Specification-local Communications clause mapping
 
-The permanent register remains the canonical namespace. This table maps actual meaning without relabelling either namespace. Because `docs/SpecificationRequirementBaseline.json` captures the direct definitions and overlapping register rows, changes to those protected lines require the separate independent review/baseline-update gate; this Markdown-only pass records the mapping and amendment proposals but does not alter the captured definitions.
+The permanent register remains the canonical namespace. This table maps actual meaning without relabelling either namespace. P2 independently approved the exact protected replacements and corresponding `docs/SpecificationRequirementBaseline.json` update; the captured definitions now match the amended controlled clauses without changing either namespace.
 
 | Specification-local clause | Actual clause meaning | Permanent register mapping by meaning | Disposition / collision |
 |---|---|---|---|
@@ -143,11 +144,11 @@ The permanent register remains the canonical namespace. This table maps actual m
 | `BT-COMM-004` | Safe retry without duplicate send | `BT-COMM-010` | Same label collision: permanent `004` is SMS-provider direction. |
 | `BT-COMM-005` | Run/send audit | `BT-COMM-010` | Same label collision: permanent `005` is scheduling/eligibility direction. |
 | `BT-COMM-006` | Administrator secure provider credential setup | `BT-COMM-007` | Explicit collision: permanent `BT-COMM-006` is manual/bulk/automatic sending. |
-| `BT-COMM-007` | Google Workspace email direction | `BT-COMM-003` | Partial amendment required: approved v1 also includes Microsoft 365, secure SMTP and None. |
-| `BT-COMM-008` | Texto SMS direction | `BT-COMM-004` | Partial amendment required: approved v1 also includes None. |
-| `BT-COMM-009` | Configurable Friday-or-earlier automatic scheduling direction | `BT-COMM-005` | Partial amendment required for Friday 1 pm business-local, approval-default, no-ageing and missed-start rules. |
+| `BT-COMM-007` | Gmail API, Graph, secure SMTP or None email direction | `BT-COMM-003` | Protected clause amended under P2 approval; identity mapping is unchanged. |
+| `BT-COMM-008` | Texto or None SMS direction without channel substitution | `BT-COMM-004` | Protected clause amended under P2 approval; identity mapping is unchanged. |
+| `BT-COMM-009` | Friday 1 pm business-local automatic scheduling and corrected per-type eligibility | `BT-COMM-005` | Protected clause amended under P2 approval; identity mapping is unchanged. |
 
-Permanent `BT-COMM-006` (send modes/UI/one-off workflow) and `BT-COMM-011` (weekly message content) have no specification-local clause with equivalent meaning. Permanent `BT-COMM-009` also needs its lifecycle terminology amended from the old Pending/Sent/Failed/Skipped placeholder to the approved run/message/attempt model; that protected-row amendment remains pending independent baseline review.
+Permanent `BT-COMM-006` (send modes/UI/one-off workflow) and `BT-COMM-011` (weekly message content) have no specification-local clause with equivalent meaning. P2 independently approved the exact protected-row amendments and corresponding baseline update; permanent `BT-COMM-009` now uses the approved run/message/attempt model rather than the old Pending/Sent/Failed/Skipped placeholder.
 
 ## Migration
 
@@ -225,9 +226,9 @@ Permanent `BT-COMM-006` (send modes/UI/one-off workflow) and `BT-COMM-011` (week
 
 ## Communications Provider Direction
 
-- BT-COMM-007: Email delivery targets Google Workspace integration unless the business deliberately changes provider.
-- BT-COMM-008: SMS delivery targets Texto integration unless the business deliberately changes provider.
-- BT-COMM-009: Automatic reminder scheduling supports the agreed operational direction of contacting customers owing empty bins by Friday or earlier, subject to configurable policy.
+- BT-COMM-007: Business-owned email delivery supports Google Workspace through Gmail API, Microsoft 365 through Graph, secure SMTP and None.
+- BT-COMM-008: SMS delivery supports Texto and None; a blocked or disabled channel is never automatically replaced by another channel.
+- BT-COMM-009: Automatic reminder scheduling defaults to Friday at 1 pm in the configured business timezone with approval required, includes Friday movements and has no ageing threshold. Account and Cash/COD customers, whether active or inactive, are eligible when any Container Type has a positive corrected outstanding balance; positive balances are never netted against credits in another type.
 
 ## Outstanding / Historical Reporting
 
